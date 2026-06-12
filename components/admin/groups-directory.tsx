@@ -5,6 +5,7 @@ import {
   memo,
   useCallback,
   useDeferredValue,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -145,6 +146,8 @@ type GroupsDirectoryProps = {
   viewerId?: string | null;
   // SAD9: super-admin-only inline permanent delete of a group record.
   isSuperAdmin?: boolean;
+  // URL-driven initial tab for direct links from Home/setup recovery.
+  initialTab?: GroupListTab;
   // #398: category-picker options grouped by top type, for the create/edit
   // forms in the editing drawer. Each list is the categories applied (active
   // cell) to that audience.
@@ -268,14 +271,15 @@ type GroupTableRow = {
 export function GroupsDirectory(props: GroupsDirectoryProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<ListTab>("all");
+  const initialTab = props.initialTab ?? "all";
+  const [tab, setTab] = useState<ListTab>(initialTab);
 
   // Card⇄table view mode and the table's sort. SSR + the first client render
   // use these render-time defaults ("cards", sorted by group name ascending) so
   // server and client markup match; usePersistedViewState then adopts the
   // admin's saved choice after its restore effect (no hydration flash). The
   // preference is local, per-browser, and profile-scoped (#325).
-  const [mode, setMode] = useState<ViewMode>("cards");
+  const [mode, setMode] = useState<ViewMode>("table");
   // Sort key + direction live in one state object so the header click handler
   // computes both from a single functional update — nesting one setter inside
   // another's updater would double-fire under React StrictMode's intentional
@@ -296,6 +300,10 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   const [density, setDensity] = useState<GroupsTableDensity>(
     DEFAULT_GROUPS_TABLE_DENSITY
   );
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   usePersistedViewState<GroupsViewSnapshot>({
     surface: "groups",
@@ -577,6 +585,33 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     props.healthGradesByGroupId,
   ]);
 
+  const renderCardList = (className?: string) => (
+    <ul
+      className={cn(
+        "m-0 list-none p-0 transition-opacity duration-150",
+        listIsStale && "opacity-60",
+        className
+      )}
+    >
+      {visible.map((g) => (
+        <li key={g.id} className="mb-3.5">
+          <GroupCard
+            group={g}
+            status={statusByGroupId.get(g.id)!}
+            leaders={leadersByGroupId.get(g.id) ?? NO_LEADERS}
+            profilesById={profilesById}
+            activeMemberCount={activeMemberCountByGroup.get(g.id) ?? 0}
+            latestSession={sessionByGroupId.get(g.id) ?? null}
+            override={overrideByGroupId.get(g.id) ?? null}
+            defaults={props.metricDefaults}
+            onEdit={openEdit}
+            isSuperAdmin={props.isSuperAdmin ?? false}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <section className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -645,45 +680,26 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             listIsStale && "opacity-60"
           )}
         >
-          <GroupsTable
-            rows={tableRows}
-            sortKey={sortKey}
-            sortDir={sortDir}
-            onSort={onSort}
-            shownColumns={deferredColumns}
-            density={deferredDensity}
-            profilesById={profilesById}
-            activeMemberCountByGroup={activeMemberCountByGroup}
-            overrideByGroupId={overrideByGroupId}
-            defaults={props.metricDefaults}
-            onEdit={openEdit}
-            isSuperAdmin={props.isSuperAdmin ?? false}
-          />
+          <div className="hidden md:block">
+            <GroupsTable
+              rows={tableRows}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={onSort}
+              shownColumns={deferredColumns}
+              density={deferredDensity}
+              profilesById={profilesById}
+              activeMemberCountByGroup={activeMemberCountByGroup}
+              overrideByGroupId={overrideByGroupId}
+              defaults={props.metricDefaults}
+              onEdit={openEdit}
+              isSuperAdmin={props.isSuperAdmin ?? false}
+            />
+          </div>
+          {renderCardList("md:hidden")}
         </div>
       ) : (
-        <ul
-          className={cn(
-            "m-0 list-none p-0 transition-opacity duration-150",
-            listIsStale && "opacity-60"
-          )}
-        >
-          {visible.map((g) => (
-            <li key={g.id} className="mb-3.5">
-              <GroupCard
-                group={g}
-                status={statusByGroupId.get(g.id)!}
-                leaders={leadersByGroupId.get(g.id) ?? NO_LEADERS}
-                profilesById={profilesById}
-                activeMemberCount={activeMemberCountByGroup.get(g.id) ?? 0}
-                latestSession={sessionByGroupId.get(g.id) ?? null}
-                override={overrideByGroupId.get(g.id) ?? null}
-                defaults={props.metricDefaults}
-                onEdit={openEdit}
-                isSuperAdmin={props.isSuperAdmin ?? false}
-              />
-            </li>
-          ))}
-        </ul>
+        renderCardList()
       )}
 
       {/* One always-mounted drawer (open toggled) so Radix owns the focus trap
@@ -946,6 +962,82 @@ function ColumnVisibilityMenu({
 // the check-in column reuses the already-loaded latest-week session text. The
 // "group" column is structural (never hideable); the rest carry an `optional`
 // key so the header can filter them by the admin's saved column choice (#333).
+function GroupActionsMenu({
+  group,
+  groupLabel,
+  isArchived,
+  onEdit,
+  isSuperAdmin,
+}: {
+  group: GroupsRow;
+  groupLabel: string;
+  isArchived: boolean;
+  onEdit: (group: GroupsRow) => void;
+  isSuperAdmin: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative inline-flex">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-label={`More actions for ${groupLabel}`}
+        aria-expanded={open}
+        aria-haspopup="true"
+        onClick={() => setOpen((v) => !v)}
+      >
+        More
+      </Button>
+      {open ? (
+        <div className="absolute right-0 top-[calc(100%+6px)] z-dropdown grid min-w-[190px] gap-1.5 rounded-md border-0 bg-surface p-2 shadow-softLg">
+          {isArchived ? (
+            <RestoreGroupButton
+              groupId={group.id}
+              groupName={group.name}
+              ariaLabel={`Restore ${groupLabel}`}
+            />
+          ) : (
+            <>
+              <LinkButton
+                href={`/admin/groups/${group.id}/calendar`}
+                aria-label={`Open ${groupLabel} calendar`}
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start"
+              >
+                Calendar
+              </LinkButton>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Edit ${groupLabel}`}
+                className="w-full justify-start"
+                onClick={() => {
+                  setOpen(false);
+                  onEdit(group);
+                }}
+              >
+                Edit
+              </Button>
+            </>
+          )}
+          {isSuperAdmin ? (
+            <div className="pt-1">
+              <SuperAdminInlineDelete
+                entityType="group"
+                id={group.id}
+                label={group.name}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 const TABLE_COLUMNS: {
   key: GroupsTableSortKey;
   label: string;
@@ -1084,40 +1176,13 @@ const GroupTableRowView = memo(function GroupTableRowView({
           >
             View
           </LinkButton>
-          {isArchived ? (
-            <RestoreGroupButton
-              groupId={group.id}
-              groupName={group.name}
-              ariaLabel={`Restore ${groupLabel}`}
-            />
-          ) : (
-            <>
-              <LinkButton
-                href={`/admin/groups/${group.id}/calendar`}
-                aria-label={`Open ${groupLabel} calendar`}
-                variant="ghost"
-                size="sm"
-              >
-                Calendar
-              </LinkButton>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                aria-label={`Edit ${groupLabel}`}
-                onClick={() => onEdit(group)}
-              >
-                Edit
-              </Button>
-            </>
-          )}
-          {isSuperAdmin ? (
-            <SuperAdminInlineDelete
-              entityType="group"
-              id={group.id}
-              label={group.name}
-            />
-          ) : null}
+          <GroupActionsMenu
+            group={group}
+            groupLabel={groupLabel}
+            isArchived={isArchived}
+            onEdit={onEdit}
+            isSuperAdmin={isSuperAdmin}
+          />
         </div>
       </td>
     </tr>
@@ -1415,40 +1480,13 @@ const GroupCard = memo(function GroupCard({
           >
             View group
           </LinkButton>
-          {isArchived ? (
-            <RestoreGroupButton
-              groupId={group.id}
-              groupName={group.name}
-              ariaLabel={`Restore ${groupLabel}`}
-            />
-          ) : (
-            <>
-              <LinkButton
-                href={`/admin/groups/${group.id}/calendar`}
-                aria-label={`Open ${groupLabel} calendar`}
-                variant="ghost"
-                size="sm"
-              >
-                Calendar
-              </LinkButton>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                aria-label={`Edit ${groupLabel}`}
-                onClick={() => onEdit(group)}
-              >
-                Edit
-              </Button>
-            </>
-          )}
-          {isSuperAdmin ? (
-            <SuperAdminInlineDelete
-              entityType="group"
-              id={group.id}
-              label={group.name}
-            />
-          ) : null}
+          <GroupActionsMenu
+            group={group}
+            groupLabel={groupLabel}
+            isArchived={isArchived}
+            onEdit={onEdit}
+            isSuperAdmin={isSuperAdmin}
+          />
         </div>
       </header>
 

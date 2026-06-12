@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { adminCreateLeaderProfile } from "@/app/(protected)/admin/people/actions";
 import {
+  fieldHintClassName,
   fieldInputClassName,
   fieldLabelClassName,
   formGridClassName,
   formNoteClassName,
 } from "./field-styles";
 import { useActionForm, FormStatus } from "./action-form";
+import { isEmail } from "@/lib/admin/validation/shared";
 
 export function LeaderProfileForm({
   // Supplied when rendered inside the EditingSurface drawer: `onSaved` closes
@@ -31,14 +33,21 @@ export function LeaderProfileForm({
     adminCreateLeaderProfile,
     { resetOnSuccess: true }
   );
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
-    if (state?.ok) onSaved?.();
+    if (!state?.ok) return;
+    setFullName("");
+    setEmail("");
+    onSaved?.();
   }, [state, onSaved]);
 
   useEffect(() => {
     onPendingChange?.(pending);
   }, [pending, onPendingChange]);
+
+  const canSubmit = fullName.trim().length > 0 && isEmail(email.trim());
 
   return (
     <form
@@ -61,6 +70,8 @@ export function LeaderProfileForm({
             name="full_name"
             type="text"
             required
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
             autoComplete="off"
             className={fieldInputClassName}
             placeholder="Julian Example"
@@ -75,6 +86,8 @@ export function LeaderProfileForm({
             name="email"
             type="email"
             required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             autoComplete="off"
             className={fieldInputClassName}
             placeholder="julian@example.com"
@@ -95,7 +108,12 @@ export function LeaderProfileForm({
         </div>
       </div>
       <div className="flex flex-wrap gap-2.5">
-        <Button type="submit" variant="primary" size="md" disabled={pending}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          disabled={pending || !canSubmit}
+        >
           {pending ? "Saving…" : "Add leader"}
         </Button>
         {onCancel ? (
@@ -110,6 +128,11 @@ export function LeaderProfileForm({
           </Button>
         ) : null}
       </div>
+      {!canSubmit ? (
+        <p className={fieldHintClassName}>
+          Enter a full name and valid email to enable Add leader.
+        </p>
+      ) : null}
       <FormStatus state={state} successText="Leader profile added." />
     </form>
   );

@@ -145,21 +145,23 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
   });
 
   // Home-link hygiene (ADR 0016): with the default hidden set (Groups, People,
-  // Planning hidden), no visible link may point at a retired/off-nav surface.
-  // The Groups-bound attention rows drop out, the launch-planning links are gone
-  // with the Planning-gated card and the now-removed "This week" milestone, and
-  // group-health re-points to the active Care area.
-  it("renders no links to hidden or off-nav surfaces under the default hidden set", () => {
+  // Planning hidden), the retired launch-planning and group-health surfaces stay
+  // out of Home. The setup recovery checklist is allowed to deep-link directly
+  // to hidden-but-routable Groups/People setup work.
+  it("keeps retired off-nav links out while preserving setup recovery CTAs", () => {
     const html = render({
       hiddenNavAreas: ["/admin/groups", "/admin/people", "/admin/planning"],
     });
 
-    expect(html).not.toContain("/admin/groups");
     expect(html).not.toContain("/admin/launch-planning");
     expect(html).not.toContain("/admin/group-health");
     expect(html).not.toContain("View planning");
     // The Care-owned health link lands on the active area instead.
     expect(html).toContain("/admin/care");
+    expect(html).toContain("Setup checklist");
+    expect(html).toContain("/admin/groups?tab=needs_setup");
+    expect(html).toContain("/admin/groups?tab=needs_health_check");
+    expect(html).toContain("/admin/people");
   });
 });
 

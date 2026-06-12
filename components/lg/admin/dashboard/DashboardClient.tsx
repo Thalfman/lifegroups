@@ -14,10 +14,11 @@ import { InterestFunnelOverviewCard } from "./InterestFunnelOverviewCard";
 import { MultiplyOverviewCard } from "./MultiplyOverviewCard";
 import { LeaderPipelineOverviewCard } from "./LeaderPipelineOverviewCard";
 import { NeedsAttentionArea } from "./NeedsAttentionArea";
+import { SetupRecoveryChecklist } from "./SetupRecoveryChecklist";
 import { ThisWeekCard } from "./ThisWeekCard";
 import { ActivityBand } from "./ActivityBand";
 import { ActivityResetControl } from "./ActivityResetControl";
-import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
+import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
 import { PeriodSlicer } from "./PeriodSlicer";
 import { CollapsibleOverview } from "./CollapsibleOverview";
 
@@ -70,6 +71,7 @@ export function DashboardClient({
   mutedKeys,
   canResetActivity,
   hiddenNavAreas,
+  isSuperAdmin,
 }: {
   data: AdminDashboardData;
   // Pivot overview summaries (#470), loaded in parallel with the dashboard
@@ -92,6 +94,7 @@ export function DashboardClient({
   // drill into a now-hidden surface are dropped here too (the Care/Plan/Multiply
   // pivot keeps Home coherent on day one, #372). Omitted ⇒ hide nothing.
   hiddenNavAreas?: readonly string[];
+  isSuperAdmin?: boolean;
 }) {
   const hidden = new Set(hiddenNavAreas ?? []);
   // Launch-planning capacity drills into the Planning tab; the leader pipeline
@@ -123,6 +126,11 @@ export function DashboardClient({
             degraded={degraded}
             mutedKeys={mutedKeys}
             hiddenNavAreas={hiddenNavAreas}
+          />
+          <SetupRecoveryChecklist
+            data={data}
+            degraded={degraded}
+            isSuperAdmin={isSuperAdmin}
           />
         </section>
 
@@ -208,7 +216,7 @@ export function DashboardClient({
             <div className="flex flex-wrap items-center justify-end gap-3">
               {canResetActivity ? (
                 <div className="flex items-center gap-2">
-                  <SuperAdminOnlyBadge />
+                  <SuperAdminOnlyMark />
                   <ActivityResetControl
                     baselineOn={data.activity.resetBaselineOn}
                   />

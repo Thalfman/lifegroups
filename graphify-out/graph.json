@@ -4,16 +4,16 @@
   "graph": {
     "name": "LifeGroups Product Surface Clean File/Module Graph",
     "kind": "clean-file-module",
-    "raw_node_count": 3378,
-    "raw_edge_count": 7728,
-    "raw_source_file_count": 485,
-    "selected_file_count": 488,
+    "raw_node_count": 3405,
+    "raw_edge_count": 7783,
+    "raw_source_file_count": 488,
+    "selected_file_count": 491,
     "preserved_file_node_count": 122,
     "grouped_bucket_count": 59,
-    "grouped_file_count": 363,
+    "grouped_file_count": 366,
     "target_min_nodes": 80,
     "target_max_nodes": 200,
-    "generated_at": "2026-06-12T13:27:07.586Z"
+    "generated_at": "2026-06-12T15:59:05.065Z"
   },
   "nodes": [
     {
@@ -294,14 +294,14 @@
     {
       "id": "bucket_bucket_groups_route_page_layout_1ilm66",
       "label": "Groups Route/Page/Layout",
-      "title": "Groups Route/Page/Layout bucket\nRoute/Page/Layout / Groups\n2 files, 4 symbols\napp/(protected)/admin/groups/page.tsx\napp/(protected)/admin/group-health/page.tsx",
+      "title": "Groups Route/Page/Layout bucket\nRoute/Page/Layout / Groups\n2 files, 5 symbols\napp/(protected)/admin/groups/page.tsx\napp/(protected)/admin/group-health/page.tsx",
       "source_file": "module/groups/route_page_layout",
       "source_files": [
         "app/(protected)/admin/group-health/page.tsx",
         "app/(protected)/admin/groups/page.tsx"
       ],
       "file_count": 2,
-      "symbol_count": 4,
+      "symbol_count": 5,
       "grouped": true,
       "category": "route_page_layout",
       "category_label": "Route/Page/Layout",
@@ -312,9 +312,9 @@
       "color": "#4E79A7",
       "file_type": "module-bucket",
       "raw_inbound_weight": 0,
-      "raw_outbound_weight": 18,
-      "degree": 15.4,
-      "size": 19.67
+      "raw_outbound_weight": 20,
+      "degree": 17.4,
+      "size": 20.05
     },
     {
       "id": "file_file_app_protected_admin_page_tsx_1rzdvd",
@@ -880,9 +880,9 @@
       "color": "#59A14F",
       "file_type": "module-bucket",
       "raw_inbound_weight": 13,
-      "raw_outbound_weight": 50,
-      "degree": 48.8,
-      "size": 25.83
+      "raw_outbound_weight": 51,
+      "degree": 49.8,
+      "size": 25.94
     },
     {
       "id": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
@@ -935,7 +935,7 @@
     {
       "id": "bucket_bucket_care_feature_component_1sfwud",
       "label": "Care Feature Component",
-      "title": "Care Feature Component bucket\nFeature Component / Care\n37 files, 107 symbols\ncomponents/admin/shepherd-care/shepherd-care-detail-data.ts\ncomponents/admin/care/care-leader-panel.tsx\ncomponents/admin/shepherd-care/care-actions.tsx\ncomponents/admin/care/notes-feed-shell.tsx\ncomponents/admin/follow-ups/follow-ups-data.ts\ncomponents/admin/care/group-rubric-grade-entry.tsx\ncomponents/admin/shepherd-care/status-badge.tsx\ncomponents/admin/follow-ups/follow-up-create-form.tsx\ncomponents/admin/shepherd-care/care-notes-section.tsx\ncomponents/admin/shepherd-care/leader-health-grade.tsx\ncomponents/admin/shepherd-care/private-notes-section.tsx\ncomponents/admin/shepherd-care/care-follow-up-list.tsx\n...25 more",
+      "title": "Care Feature Component bucket\nFeature Component / Care\n37 files, 108 symbols\ncomponents/admin/shepherd-care/shepherd-care-detail-data.ts\ncomponents/admin/care/care-leader-panel.tsx\ncomponents/admin/shepherd-care/care-actions.tsx\ncomponents/admin/care/notes-feed-shell.tsx\ncomponents/admin/follow-ups/follow-ups-data.ts\ncomponents/admin/care/group-rubric-grade-entry.tsx\ncomponents/admin/shepherd-care/status-badge.tsx\ncomponents/admin/follow-ups/follow-up-create-form.tsx\ncomponents/admin/shepherd-care/care-notes-section.tsx\ncomponents/admin/shepherd-care/leader-health-grade.tsx\ncomponents/admin/shepherd-care/private-notes-section.tsx\ncomponents/admin/shepherd-care/care-follow-up-list.tsx\n...25 more",
       "source_file": "module/care/feature_component",
       "source_files": [
         "components/admin/care/care-item-list.tsx",
@@ -977,7 +977,7 @@
         "components/admin/shepherd-care/view-toggle.tsx"
       ],
       "file_count": 37,
-      "symbol_count": 107,
+      "symbol_count": 108,
       "grouped": true,
       "category": "feature_component",
       "category_label": "Feature Component",
@@ -987,9 +987,9 @@
       "feature_label": "Care",
       "color": "#59A14F",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 57,
-      "raw_outbound_weight": 228,
-      "degree": 200.75,
+      "raw_inbound_weight": 58,
+      "raw_outbound_weight": 230,
+      "degree": 201.1,
       "size": 38
     },
     {
@@ -1012,9 +1012,9 @@
       "color": "#59A14F",
       "file_type": "code",
       "raw_inbound_weight": 1,
-      "raw_outbound_weight": 35,
-      "degree": 33.05,
-      "size": 21.91
+      "raw_outbound_weight": 37,
+      "degree": 34.05,
+      "size": 22.04
     },
     {
       "id": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
@@ -1091,7 +1091,7 @@
     {
       "id": "bucket_bucket_core_feature_component_lncng4",
       "label": "Core Feature Component",
-      "title": "Core Feature Component bucket\nFeature Component / Core\n44 files, 123 symbols\ncomponents/admin/danger-zone-card-shell.tsx\ncomponents/admin/forms/group-edit-form.tsx\ncomponents/admin/forms/group-category-options.ts\ncomponents/admin/forms/group-create-form.tsx\ncomponents/admin/super-admin/inline-delete.tsx\ncomponents/admin/permanent-delete-card.tsx\ncomponents/admin/attention-reset-card.tsx\ncomponents/admin/clean-slate-card.tsx\ncomponents/admin/history-reset-card.tsx\ncomponents/admin/people-management-shell.tsx\ncomponents/admin/reset-all-card.tsx\ncomponents/admin/launch-prep-card.tsx\n...32 more",
+      "title": "Core Feature Component bucket\nFeature Component / Core\n44 files, 124 symbols\ncomponents/admin/danger-zone-card-shell.tsx\ncomponents/admin/forms/group-edit-form.tsx\ncomponents/admin/forms/group-category-options.ts\ncomponents/admin/forms/group-create-form.tsx\ncomponents/admin/super-admin/inline-delete.tsx\ncomponents/admin/permanent-delete-card.tsx\ncomponents/admin/attention-reset-card.tsx\ncomponents/admin/clean-slate-card.tsx\ncomponents/admin/history-reset-card.tsx\ncomponents/admin/people-management-shell.tsx\ncomponents/admin/reset-all-card.tsx\ncomponents/admin/launch-prep-card.tsx\n...32 more",
       "source_file": "module/core/feature_component",
       "source_files": [
         "components/admin/area-placeholder.tsx",
@@ -1140,7 +1140,7 @@
         "components/admin/week-selector.tsx"
       ],
       "file_count": 44,
-      "symbol_count": 123,
+      "symbol_count": 124,
       "grouped": true,
       "category": "feature_component",
       "category_label": "Feature Component",
@@ -1151,8 +1151,8 @@
       "color": "#59A14F",
       "file_type": "module-bucket",
       "raw_inbound_weight": 103,
-      "raw_outbound_weight": 271,
-      "degree": 262.85,
+      "raw_outbound_weight": 270,
+      "degree": 262.5,
       "size": 38
     },
     {
@@ -1302,13 +1302,13 @@
     {
       "id": "file_file_components_admin_groups_directory_tsx_qivs9f",
       "label": "Admin Groups Directory",
-      "title": "components/admin/groups-directory.tsx\nFeature Component / Groups\n1 file, 40 symbols",
+      "title": "components/admin/groups-directory.tsx\nFeature Component / Groups\n1 file, 41 symbols",
       "source_file": "components/admin/groups-directory.tsx",
       "source_files": [
         "components/admin/groups-directory.tsx"
       ],
       "file_count": 1,
-      "symbol_count": 40,
+      "symbol_count": 41,
       "grouped": false,
       "category": "feature_component",
       "category_label": "Feature Component",
@@ -1348,9 +1348,9 @@
       "color": "#59A14F",
       "file_type": "module-bucket",
       "raw_inbound_weight": 15,
-      "raw_outbound_weight": 42,
-      "degree": 48.75,
-      "size": 25.63
+      "raw_outbound_weight": 45,
+      "degree": 50.15,
+      "size": 25.78
     },
     {
       "id": "file_file_components_admin_groups_group_management_data_ts_4qfz7g",
@@ -1473,6 +1473,30 @@
       "size": 22.04
     },
     {
+      "id": "file_file_components_admin_settings_multiply_trigger_editor_tsx_1186t3",
+      "label": "Admin Settings Multiply Trigger Editor",
+      "title": "components/admin/settings/multiply-trigger-editor.tsx\nFeature Component / Multiply\n1 file, 19 symbols",
+      "source_file": "components/admin/settings/multiply-trigger-editor.tsx",
+      "source_files": [
+        "components/admin/settings/multiply-trigger-editor.tsx"
+      ],
+      "file_count": 1,
+      "symbol_count": 19,
+      "grouped": false,
+      "category": "feature_component",
+      "category_label": "Feature Component",
+      "community": 2,
+      "community_name": "Feature Component",
+      "feature": "multiply",
+      "feature_label": "Multiply",
+      "color": "#59A14F",
+      "file_type": "code",
+      "raw_inbound_weight": 3,
+      "raw_outbound_weight": 33,
+      "degree": 33.4,
+      "size": 21.96
+    },
+    {
       "id": "bucket_bucket_multiply_feature_component_z3slmr",
       "label": "Multiply Feature Component",
       "title": "Multiply Feature Component bucket\nFeature Component / Multiply\n4 files, 19 symbols\ncomponents/admin/multiply/multiply-plan-data.ts\ncomponents/admin/multiply/multiply-grid.tsx\ncomponents/admin/multiply/multiply-data.ts\ncomponents/admin/multiply/multiply-shell.tsx",
@@ -1500,33 +1524,9 @@
       "size": 23.23
     },
     {
-      "id": "file_file_components_admin_settings_multiply_trigger_editor_tsx_1186t3",
-      "label": "Admin Settings Multiply Trigger Editor",
-      "title": "components/admin/settings/multiply-trigger-editor.tsx\nFeature Component / Multiply\n1 file, 10 symbols",
-      "source_file": "components/admin/settings/multiply-trigger-editor.tsx",
-      "source_files": [
-        "components/admin/settings/multiply-trigger-editor.tsx"
-      ],
-      "file_count": 1,
-      "symbol_count": 10,
-      "grouped": false,
-      "category": "feature_component",
-      "category_label": "Feature Component",
-      "community": 2,
-      "community_name": "Feature Component",
-      "feature": "multiply",
-      "feature_label": "Multiply",
-      "color": "#59A14F",
-      "file_type": "code",
-      "raw_inbound_weight": 3,
-      "raw_outbound_weight": 30,
-      "degree": 31.05,
-      "size": 21.64
-    },
-    {
       "id": "bucket_bucket_people_feature_component_1c53f7",
       "label": "People Feature Component",
-      "title": "People Feature Component bucket\nFeature Component / People\n16 files, 73 symbols\ncomponents/admin/forms/invite-workflow-form.tsx\ncomponents/admin/guests/guest-card.tsx\ncomponents/admin/guests/guests-shell.tsx\ncomponents/admin/person-detail/person-detail-shell.tsx\ncomponents/admin/guests/guest-create-form.tsx\ncomponents/admin/guests/guests-data.ts\ncomponents/admin/people-directory.tsx\ncomponents/admin/forms/member-form.tsx\ncomponents/admin/forms/assign-member-form.tsx\ncomponents/admin/forms/leader-profile-form.tsx\ncomponents/admin/person-detail/person-group-assign.tsx\ncomponents/admin/forms/profile-status-form.tsx\n...4 more",
+      "title": "People Feature Component bucket\nFeature Component / People\n16 files, 73 symbols\ncomponents/admin/forms/invite-workflow-form.tsx\ncomponents/admin/guests/guest-card.tsx\ncomponents/admin/guests/guests-shell.tsx\ncomponents/admin/person-detail/person-detail-shell.tsx\ncomponents/admin/guests/guest-create-form.tsx\ncomponents/admin/guests/guests-data.ts\ncomponents/admin/people-directory.tsx\ncomponents/admin/forms/leader-profile-form.tsx\ncomponents/admin/forms/member-form.tsx\ncomponents/admin/forms/assign-member-form.tsx\ncomponents/admin/person-detail/person-group-assign.tsx\ncomponents/admin/forms/profile-status-form.tsx\n...4 more",
       "source_file": "module/people/feature_component",
       "source_files": [
         "components/admin/forms/assign-member-form.tsx",
@@ -1558,9 +1558,9 @@
       "color": "#59A14F",
       "file_type": "module-bucket",
       "raw_inbound_weight": 23,
-      "raw_outbound_weight": 117,
-      "degree": 106.35,
-      "size": 32.07
+      "raw_outbound_weight": 118,
+      "degree": 107.35,
+      "size": 32.15
     },
     {
       "id": "file_file_components_admin_people_people_data_ts_1k1ju9",
@@ -2539,6 +2539,39 @@
       "size": 26.82
     },
     {
+      "id": "bucket_bucket_home_domain_module_h6qg0x",
+      "label": "Home Domain Module",
+      "title": "Home Domain Module bucket\nDomain Module / Home\n10 files, 69 symbols\nlib/nav/hidden-nav.ts\nlib/dashboard/groups-table-sort.ts\nlib/dashboard/needs-attention.ts\nlib/home/hub-stats.ts\nlib/dashboard/group-fixtures.ts\nlib/dashboard/groups-table-prefs.ts\nlib/dashboard/badge-map.ts\nlib/dashboard/group-list-tabs.ts\nlib/dashboard/setup-recovery.ts\nlib/nav/active-nav.ts",
+      "source_file": "module/home/domain_module",
+      "source_files": [
+        "lib/dashboard/badge-map.ts",
+        "lib/dashboard/group-fixtures.ts",
+        "lib/dashboard/group-list-tabs.ts",
+        "lib/dashboard/groups-table-prefs.ts",
+        "lib/dashboard/groups-table-sort.ts",
+        "lib/dashboard/needs-attention.ts",
+        "lib/dashboard/setup-recovery.ts",
+        "lib/home/hub-stats.ts",
+        "lib/nav/active-nav.ts",
+        "lib/nav/hidden-nav.ts"
+      ],
+      "file_count": 10,
+      "symbol_count": 69,
+      "grouped": true,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "home",
+      "feature_label": "Home",
+      "color": "#B07AA1",
+      "file_type": "module-bucket",
+      "raw_inbound_weight": 46,
+      "raw_outbound_weight": 38,
+      "degree": 77.5,
+      "size": 29.1
+    },
+    {
       "id": "file_file_lib_dashboard_types_ts_1oi588",
       "label": "Dashboard Types",
       "title": "lib/dashboard/types.ts\nDomain Module / Home\n1 file, 33 symbols",
@@ -2557,41 +2590,10 @@
       "feature_label": "Home",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 71,
+      "raw_inbound_weight": 73,
       "raw_outbound_weight": 17,
-      "degree": 71.4,
-      "size": 26.1
-    },
-    {
-      "id": "bucket_bucket_home_domain_module_h6qg0x",
-      "label": "Home Domain Module",
-      "title": "Home Domain Module bucket\nDomain Module / Home\n8 files, 59 symbols\nlib/nav/hidden-nav.ts\nlib/dashboard/groups-table-sort.ts\nlib/dashboard/needs-attention.ts\nlib/home/hub-stats.ts\nlib/dashboard/group-fixtures.ts\nlib/dashboard/groups-table-prefs.ts\nlib/dashboard/badge-map.ts\nlib/nav/active-nav.ts",
-      "source_file": "module/home/domain_module",
-      "source_files": [
-        "lib/dashboard/badge-map.ts",
-        "lib/dashboard/group-fixtures.ts",
-        "lib/dashboard/groups-table-prefs.ts",
-        "lib/dashboard/groups-table-sort.ts",
-        "lib/dashboard/needs-attention.ts",
-        "lib/home/hub-stats.ts",
-        "lib/nav/active-nav.ts",
-        "lib/nav/hidden-nav.ts"
-      ],
-      "file_count": 8,
-      "symbol_count": 59,
-      "grouped": true,
-      "category": "domain_module",
-      "category_label": "Domain Module",
-      "community": 3,
-      "community_name": "Domain Module",
-      "feature": "home",
-      "feature_label": "Home",
-      "color": "#B07AA1",
-      "file_type": "module-bucket",
-      "raw_inbound_weight": 38,
-      "raw_outbound_weight": 36,
-      "degree": 69.45,
-      "size": 28.09
+      "degree": 72.75,
+      "size": 26.22
     },
     {
       "id": "file_file_lib_dashboard_labels_ts_tbyfwm",
@@ -2668,13 +2670,13 @@
     {
       "id": "file_file_lib_dashboard_group_status_ts_n4d1zp",
       "label": "Dashboard Group Status",
-      "title": "lib/dashboard/group-status.ts\nDomain Module / Home\n1 file, 10 symbols",
+      "title": "lib/dashboard/group-status.ts\nDomain Module / Home\n1 file, 9 symbols",
       "source_file": "lib/dashboard/group-status.ts",
       "source_files": [
         "lib/dashboard/group-status.ts"
       ],
       "file_count": 1,
-      "symbol_count": 10,
+      "symbol_count": 9,
       "grouped": false,
       "category": "domain_module",
       "category_label": "Domain Module",
@@ -2684,8 +2686,8 @@
       "feature_label": "Home",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 16,
-      "raw_outbound_weight": 10,
+      "raw_inbound_weight": 15,
+      "raw_outbound_weight": 11,
       "degree": 26,
       "size": 20.9
     },
@@ -2762,6 +2764,30 @@
       "size": 21.4
     },
     {
+      "id": "file_file_lib_admin_multiply_trigger_ts_i90dvl",
+      "label": "Admin Multiply Trigger",
+      "title": "lib/admin/multiply-trigger.ts\nDomain Module / Multiply\n1 file, 25 symbols",
+      "source_file": "lib/admin/multiply-trigger.ts",
+      "source_files": [
+        "lib/admin/multiply-trigger.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 25,
+      "grouped": false,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "multiply",
+      "feature_label": "Multiply",
+      "color": "#B07AA1",
+      "file_type": "code",
+      "raw_inbound_weight": 14,
+      "raw_outbound_weight": 13,
+      "degree": 27,
+      "size": 21.05
+    },
+    {
       "id": "file_file_lib_admin_multiply_grid_ts_13g4b6",
       "label": "Admin Multiply Grid",
       "title": "lib/admin/multiply-grid.ts\nDomain Module / Multiply\n1 file, 12 symbols",
@@ -2782,30 +2808,6 @@
       "file_type": "code",
       "raw_inbound_weight": 6,
       "raw_outbound_weight": 19,
-      "degree": 25,
-      "size": 20.75
-    },
-    {
-      "id": "file_file_lib_admin_multiply_trigger_ts_i90dvl",
-      "label": "Admin Multiply Trigger",
-      "title": "lib/admin/multiply-trigger.ts\nDomain Module / Multiply\n1 file, 25 symbols",
-      "source_file": "lib/admin/multiply-trigger.ts",
-      "source_files": [
-        "lib/admin/multiply-trigger.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 25,
-      "grouped": false,
-      "category": "domain_module",
-      "category_label": "Domain Module",
-      "community": 3,
-      "community_name": "Domain Module",
-      "feature": "multiply",
-      "feature_label": "Multiply",
-      "color": "#B07AA1",
-      "file_type": "code",
-      "raw_inbound_weight": 12,
-      "raw_outbound_weight": 13,
       "degree": 25,
       "size": 20.75
     },
@@ -3725,10 +3727,10 @@
       "feature_label": "Shared",
       "color": "#BAB0AC",
       "file_type": "code",
-      "raw_inbound_weight": 109,
+      "raw_inbound_weight": 111,
       "raw_outbound_weight": 0,
-      "degree": 44.7,
-      "size": 23.36
+      "degree": 45.4,
+      "size": 23.44
     },
     {
       "id": "file_file_lib_shared_uuid_ts_da5eyb",
@@ -3883,7 +3885,7 @@
     {
       "id": "bucket_bucket_home_shared_ui_primitive_55jz9s",
       "label": "Home Shared UI Primitive",
-      "title": "Home Shared UI Primitive bucket\nShared UI Primitive / Home\n14 files, 43 symbols\ncomponents/lg/admin/dashboard/LaunchPlanningOverviewCard.tsx\ncomponents/lg/admin/dashboard/NeedsAttentionArea.tsx\ncomponents/lg/admin/dashboard/ActivityResetControl.tsx\ncomponents/lg/admin/dashboard/InterestFunnelOverviewCard.tsx\ncomponents/lg/admin/dashboard/VitalSignsBand.tsx\ncomponents/lg/admin/dashboard/LeaderPipelineOverviewCard.tsx\ncomponents/lg/admin/dashboard/LeaderCareOverviewCard.tsx\ncomponents/lg/admin/dashboard/HealthDistributionCard.tsx\ncomponents/lg/admin/dashboard/PeriodSlicer.tsx\ncomponents/lg/admin/dashboard/ThisWeekCard.tsx\ncomponents/lg/admin/dashboard/CollapsibleOverview.tsx\ncomponents/lg/admin/dashboard/ActivityBand.tsx\n...2 more",
+      "title": "Home Shared UI Primitive bucket\nShared UI Primitive / Home\n15 files, 47 symbols\ncomponents/lg/admin/dashboard/LaunchPlanningOverviewCard.tsx\ncomponents/lg/admin/dashboard/NeedsAttentionArea.tsx\ncomponents/lg/admin/dashboard/SetupRecoveryChecklist.tsx\ncomponents/lg/admin/dashboard/ActivityResetControl.tsx\ncomponents/lg/admin/dashboard/InterestFunnelOverviewCard.tsx\ncomponents/lg/admin/dashboard/VitalSignsBand.tsx\ncomponents/lg/admin/dashboard/LeaderPipelineOverviewCard.tsx\ncomponents/lg/admin/dashboard/LeaderCareOverviewCard.tsx\ncomponents/lg/admin/dashboard/HealthDistributionCard.tsx\ncomponents/lg/admin/dashboard/PeriodSlicer.tsx\ncomponents/lg/admin/dashboard/ThisWeekCard.tsx\ncomponents/lg/admin/dashboard/CollapsibleOverview.tsx\n...3 more",
       "source_file": "module/home/shared_ui_primitive",
       "source_files": [
         "components/lg/admin/dashboard/ActivityBand.tsx",
@@ -3896,13 +3898,14 @@
         "components/lg/admin/dashboard/LeaderPipelineOverviewCard.tsx",
         "components/lg/admin/dashboard/NeedsAttentionArea.tsx",
         "components/lg/admin/dashboard/PeriodSlicer.tsx",
+        "components/lg/admin/dashboard/SetupRecoveryChecklist.tsx",
         "components/lg/admin/dashboard/ThisWeekCard.tsx",
         "components/lg/admin/dashboard/VitalSignsBand.tsx",
         "components/lg/shell/NavLinkStatus.tsx",
         "components/pastoral/shell-nav.tsx"
       ],
-      "file_count": 14,
-      "symbol_count": 43,
+      "file_count": 15,
+      "symbol_count": 47,
       "grouped": true,
       "category": "shared_ui_primitive",
       "category_label": "Shared UI Primitive",
@@ -3912,10 +3915,10 @@
       "feature_label": "Home",
       "color": "#9C755F",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 28,
-      "raw_outbound_weight": 65,
-      "degree": 38.25,
-      "size": 25.49
+      "raw_inbound_weight": 31,
+      "raw_outbound_weight": 73,
+      "degree": 43.75,
+      "size": 26.25
     },
     {
       "id": "file_file_components_lg_admin_dashboard_dashboardclient_tsx_hbj0o9",
@@ -3937,9 +3940,9 @@
       "color": "#9C755F",
       "file_type": "code",
       "raw_inbound_weight": 1,
-      "raw_outbound_weight": 33,
-      "degree": 14.45,
-      "size": 18.89
+      "raw_outbound_weight": 35,
+      "degree": 15.15,
+      "size": 19.03
     },
     {
       "id": "file_file_components_lg_admin_dashboard_overview_primitives_tsx_1vm66s",
@@ -4040,7 +4043,7 @@
     {
       "id": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
       "label": "Shared Shared UI Primitive",
-      "title": "Shared Shared UI Primitive bucket\nShared UI Primitive / Shared\n18 files, 40 symbols\ncomponents/lg/shell/Sidebar.tsx\ncomponents/lg/shell/LgAppShell.tsx\ncomponents/lg/Icon.tsx\ncomponents/pastoral/shell.tsx\ncomponents/lg/admin/editing-surface.tsx\ncomponents/lg/admin/use-editing-drawer.ts\ncomponents/lg/Card.tsx\ncomponents/lg/shell/MobileSidebar.tsx\ncomponents/lg/shell/TopBar.tsx\ncomponents/lg/Pill.tsx\ncomponents/lg/Avatar.tsx\ncomponents/lg/ErrorBanner.tsx\n...6 more",
+      "title": "Shared Shared UI Primitive bucket\nShared UI Primitive / Shared\n18 files, 41 symbols\ncomponents/lg/shell/Sidebar.tsx\ncomponents/lg/shell/LgAppShell.tsx\ncomponents/lg/admin/editing-surface.tsx\ncomponents/lg/Icon.tsx\ncomponents/pastoral/shell.tsx\ncomponents/lg/shell/MobileSidebar.tsx\ncomponents/lg/admin/use-editing-drawer.ts\ncomponents/lg/Card.tsx\ncomponents/lg/shell/TopBar.tsx\ncomponents/ui/dialog.tsx\ncomponents/lg/Avatar.tsx\ncomponents/lg/ErrorBanner.tsx\n...6 more",
       "source_file": "module/shared/shared_ui_primitive",
       "source_files": [
         "components/lg/Avatar.tsx",
@@ -4063,7 +4066,7 @@
         "components/ui/dialog.tsx"
       ],
       "file_count": 18,
-      "symbol_count": 40,
+      "symbol_count": 41,
       "grouped": true,
       "category": "shared_ui_primitive",
       "category_label": "Shared UI Primitive",
@@ -4073,10 +4076,10 @@
       "feature_label": "Shared",
       "color": "#9C755F",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 57,
-      "raw_outbound_weight": 45,
-      "degree": 33.3,
-      "size": 25.19
+      "raw_inbound_weight": 60,
+      "raw_outbound_weight": 47,
+      "degree": 34.95,
+      "size": 25.41
     },
     {
       "id": "file_file_components_ui_button_tsx_oeuxi6",
@@ -4097,10 +4100,10 @@
       "feature_label": "Shared",
       "color": "#9C755F",
       "file_type": "code",
-      "raw_inbound_weight": 49,
+      "raw_inbound_weight": 55,
       "raw_outbound_weight": 2,
-      "degree": 24.5,
-      "size": 20.67
+      "degree": 26.3,
+      "size": 20.95
     },
     {
       "id": "file_file_components_lg_pageheader_tsx_l27hhv",
@@ -4145,10 +4148,10 @@
       "feature_label": "Shared",
       "color": "#9C755F",
       "file_type": "code",
-      "raw_inbound_weight": 35,
+      "raw_inbound_weight": 36,
       "raw_outbound_weight": 2,
-      "degree": 19.65,
-      "size": 19.87
+      "degree": 20.65,
+      "size": 20.04
     },
     {
       "id": "file_file_components_pastoral_atoms_tsx_3cd0t2",
@@ -4265,10 +4268,10 @@
       "feature_label": "Core",
       "color": "#FF9DA7",
       "file_type": "code",
-      "raw_inbound_weight": 129,
+      "raw_inbound_weight": 130,
       "raw_outbound_weight": 3,
-      "degree": 130.05,
-      "size": 30.68
+      "degree": 131.05,
+      "size": 30.74
     },
     {
       "id": "bucket_bucket_core_validation_xi3dff",
@@ -5174,6 +5177,21 @@
     },
     {
       "source": "bucket_bucket_calendar_feature_component_1tkr9p",
+      "target": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/admin-master-calendar-drawer.tsx -> components/ui/dialog.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_calendar_feature_component_1tkr9p",
       "target": "file_file_components_pastoral_atoms_tsx_3cd0t2",
       "weight": 5,
       "visual_weight": 1.75,
@@ -6031,18 +6049,19 @@
     {
       "source": "bucket_bucket_care_feature_component_1sfwud",
       "target": "file_file_components_ui_button_tsx_oeuxi6",
-      "weight": 4,
-      "visual_weight": 1.4,
+      "weight": 5,
+      "visual_weight": 1.75,
       "softened": true,
       "relation": "imports",
       "relation_counts": {
-        "imports": 4
+        "imports": 5
       },
-      "raw_edge_count": 4,
+      "raw_edge_count": 5,
       "examples": [
         "components/admin/care/care-item-list.tsx -> components/ui/button.tsx",
         "components/admin/care/care-leader-panel.tsx -> components/ui/button.tsx",
         "components/admin/care/group-rubric-grade-entry.tsx -> components/ui/button.tsx",
+        "components/admin/shepherd-care/care-directory-table-base.tsx -> components/ui/button.tsx",
         "components/admin/shepherd-care/filter-chips.tsx -> components/ui/button.tsx"
       ]
     },
@@ -7256,14 +7275,14 @@
     {
       "source": "bucket_bucket_core_feature_component_lncng4",
       "target": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
-      "weight": 8,
-      "visual_weight": 2.8,
+      "weight": 7,
+      "visual_weight": 2.45,
       "softened": true,
       "relation": "imports",
       "relation_counts": {
-        "imports": 8
+        "imports": 7
       },
-      "raw_edge_count": 8,
+      "raw_edge_count": 7,
       "examples": [
         "components/admin/audit-workspace.tsx -> components/lg/Icon.tsx",
         "components/admin/console-status.tsx -> components/lg/Icon.tsx",
@@ -8290,6 +8309,21 @@
     },
     {
       "source": "bucket_bucket_groups_feature_component_1dluny",
+      "target": "bucket_bucket_home_domain_module_h6qg0x",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/group-management-shell.tsx -> lib/dashboard/group-list-tabs.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_groups_feature_component_1dluny",
       "target": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
       "weight": 2,
       "visual_weight": 1,
@@ -8462,14 +8496,15 @@
     {
       "source": "bucket_bucket_groups_feature_component_1dluny",
       "target": "file_file_components_ui_button_tsx_oeuxi6",
-      "weight": 2,
-      "visual_weight": 1,
+      "weight": 4,
+      "visual_weight": 1.4,
       "softened": true,
       "relation": "imports",
       "relation_counts": {
-        "imports": 2
+        "imports": 3,
+        "calls": 1
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 4,
       "examples": [
         "components/admin/group-detail/group-health-edit-button.tsx -> components/ui/button.tsx",
         "components/admin/group-detail/group-roster-manager.tsx -> components/ui/button.tsx"
@@ -8582,6 +8617,22 @@
       "raw_edge_count": 1,
       "examples": [
         "app/(protected)/admin/group-health/page.tsx -> components/lg/admin/group-health-triage.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_groups_route_page_layout_1ilm66",
+      "target": "bucket_bucket_home_domain_module_h6qg0x",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 1,
+        "imports": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "app/(protected)/admin/groups/page.tsx -> lib/dashboard/group-list-tabs.ts"
       ]
     },
     {
@@ -9030,6 +9081,21 @@
     },
     {
       "source": "bucket_bucket_home_domain_module_h6qg0x",
+      "target": "bucket_bucket_home_shared_ui_primitive_55jz9s",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "contains",
+      "relation_counts": {
+        "contains": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/dashboard/setup-recovery.ts -> components/lg/admin/dashboard/SetupRecoveryChecklist.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_home_domain_module_h6qg0x",
       "target": "bucket_bucket_settings_domain_module_11y1so",
       "weight": 3,
       "visual_weight": 3,
@@ -9127,16 +9193,17 @@
     {
       "source": "bucket_bucket_home_domain_module_h6qg0x",
       "target": "file_file_lib_dashboard_types_ts_1oi588",
-      "weight": 1,
-      "visual_weight": 1,
+      "weight": 2,
+      "visual_weight": 2,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 1
+        "imports": 2
       },
-      "raw_edge_count": 1,
+      "raw_edge_count": 2,
       "examples": [
-        "lib/dashboard/needs-attention.ts -> lib/dashboard/types.ts"
+        "lib/dashboard/needs-attention.ts -> lib/dashboard/types.ts",
+        "lib/dashboard/setup-recovery.ts -> lib/dashboard/types.ts"
       ]
     },
     {
@@ -9364,17 +9431,18 @@
     {
       "source": "bucket_bucket_home_shared_ui_primitive_55jz9s",
       "target": "bucket_bucket_home_domain_module_h6qg0x",
-      "weight": 4,
-      "visual_weight": 1.4,
+      "weight": 7,
+      "visual_weight": 2.45,
       "softened": true,
       "relation": "imports",
       "relation_counts": {
-        "imports": 3,
-        "calls": 1
+        "imports": 5,
+        "calls": 2
       },
-      "raw_edge_count": 4,
+      "raw_edge_count": 7,
       "examples": [
-        "components/lg/admin/dashboard/NeedsAttentionArea.tsx -> lib/dashboard/needs-attention.ts"
+        "components/lg/admin/dashboard/NeedsAttentionArea.tsx -> lib/dashboard/needs-attention.ts",
+        "components/lg/admin/dashboard/SetupRecoveryChecklist.tsx -> lib/dashboard/setup-recovery.ts"
       ]
     },
     {
@@ -9406,6 +9474,21 @@
       "raw_edge_count": 2,
       "examples": [
         "components/lg/admin/dashboard/CollapsibleOverview.tsx -> lib/hooks/use-persisted-view-state.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_home_shared_ui_primitive_55jz9s",
+      "target": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/pastoral/shell-nav.tsx -> components/ui/dialog.tsx"
       ]
     },
     {
@@ -9462,18 +9545,34 @@
     },
     {
       "source": "bucket_bucket_home_shared_ui_primitive_55jz9s",
-      "target": "file_file_components_ui_button_tsx_oeuxi6",
-      "weight": 2,
+      "target": "file_file_components_ui_badge_tsx_1ou9r7",
+      "weight": 1,
       "visual_weight": 1,
       "softened": true,
-      "relation": "calls",
+      "relation": "imports",
       "relation_counts": {
-        "calls": 1,
         "imports": 1
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 1,
       "examples": [
-        "components/lg/admin/dashboard/NeedsAttentionArea.tsx -> components/ui/button.tsx"
+        "components/lg/admin/dashboard/SetupRecoveryChecklist.tsx -> components/ui/badge.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_home_shared_ui_primitive_55jz9s",
+      "target": "file_file_components_ui_button_tsx_oeuxi6",
+      "weight": 3,
+      "visual_weight": 1.05,
+      "softened": true,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 2,
+        "calls": 1
+      },
+      "raw_edge_count": 3,
+      "examples": [
+        "components/lg/admin/dashboard/NeedsAttentionArea.tsx -> components/ui/button.tsx",
+        "components/lg/admin/dashboard/SetupRecoveryChecklist.tsx -> components/ui/button.tsx"
       ]
     },
     {
@@ -9539,14 +9638,14 @@
     {
       "source": "bucket_bucket_home_shared_ui_primitive_55jz9s",
       "target": "file_file_lib_dashboard_types_ts_1oi588",
-      "weight": 12,
-      "visual_weight": 4.2,
+      "weight": 13,
+      "visual_weight": 4.55,
       "softened": true,
       "relation": "imports",
       "relation_counts": {
-        "imports": 12
+        "imports": 13
       },
-      "raw_edge_count": 12,
+      "raw_edge_count": 13,
       "examples": [
         "components/lg/admin/dashboard/ActivityBand.tsx -> lib/dashboard/types.ts",
         "components/lg/admin/dashboard/HealthDistributionCard.tsx -> lib/dashboard/types.ts",
@@ -9574,18 +9673,19 @@
     {
       "source": "bucket_bucket_home_shared_ui_primitive_55jz9s",
       "target": "file_file_lib_utils_ts_1hfszh",
-      "weight": 4,
-      "visual_weight": 1.4,
+      "weight": 5,
+      "visual_weight": 1.75,
       "softened": true,
       "relation": "imports",
       "relation_counts": {
-        "imports": 3,
+        "imports": 4,
         "calls": 1
       },
-      "raw_edge_count": 4,
+      "raw_edge_count": 5,
       "examples": [
         "components/lg/admin/dashboard/NeedsAttentionArea.tsx -> lib/utils.ts",
         "components/lg/admin/dashboard/PeriodSlicer.tsx -> lib/utils.ts",
+        "components/lg/admin/dashboard/SetupRecoveryChecklist.tsx -> lib/utils.ts",
         "components/pastoral/shell-nav.tsx -> lib/utils.ts"
       ]
     },
@@ -10387,6 +10487,21 @@
         "components/admin/forms/member-form.tsx -> components/ui/button.tsx",
         "components/admin/people-directory.tsx -> components/ui/button.tsx",
         "components/admin/person-detail/person-group-assign.tsx -> components/ui/button.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_people_feature_component_1c53f7",
+      "target": "file_file_lib_admin_validation_shared_ts_bwlac5",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/forms/leader-profile-form.tsx -> lib/admin/validation/shared.ts"
       ]
     },
     {
@@ -14811,6 +14926,22 @@
     },
     {
       "source": "file_file_components_admin_care_care_accordion_tsx_o4d9ux",
+      "target": "file_file_components_ui_button_tsx_oeuxi6",
+      "weight": 2,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 1,
+        "imports": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "components/admin/care/care-accordion.tsx -> components/ui/button.tsx"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_accordion_tsx_o4d9ux",
       "target": "file_file_lib_admin_care_accordion_ts_7aazcg",
       "weight": 23,
       "visual_weight": 23,
@@ -15543,18 +15674,19 @@
     {
       "source": "file_file_components_admin_groups_directory_tsx_qivs9f",
       "target": "bucket_bucket_home_domain_module_h6qg0x",
-      "weight": 15,
-      "visual_weight": 15,
+      "weight": 16,
+      "visual_weight": 16,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 13,
+        "imports": 14,
         "calls": 1,
         "contains": 1
       },
-      "raw_edge_count": 15,
+      "raw_edge_count": 16,
       "examples": [
         "components/admin/groups-directory.tsx -> lib/dashboard/badge-map.ts",
+        "components/admin/groups-directory.tsx -> lib/dashboard/group-list-tabs.ts",
         "components/admin/groups-directory.tsx -> lib/dashboard/groups-table-prefs.ts",
         "components/admin/groups-directory.tsx -> lib/dashboard/groups-table-sort.ts"
       ]
@@ -15637,15 +15769,15 @@
     {
       "source": "file_file_components_admin_groups_directory_tsx_qivs9f",
       "target": "file_file_lib_dashboard_group_status_ts_n4d1zp",
-      "weight": 8,
-      "visual_weight": 8,
+      "weight": 7,
+      "visual_weight": 7,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 7,
+        "imports": 6,
         "contains": 1
       },
-      "raw_edge_count": 8,
+      "raw_edge_count": 7,
       "examples": [
         "components/admin/groups-directory.tsx -> lib/dashboard/group-status.ts"
       ]
@@ -17378,15 +17510,15 @@
     {
       "source": "file_file_components_admin_settings_multiply_trigger_editor_tsx_1186t3",
       "target": "file_file_lib_admin_multiply_trigger_ts_i90dvl",
-      "weight": 12,
-      "visual_weight": 12,
+      "weight": 14,
+      "visual_weight": 14,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 11,
-        "calls": 1
+        "imports": 12,
+        "calls": 2
       },
-      "raw_edge_count": 12,
+      "raw_edge_count": 14,
       "examples": [
         "components/admin/settings/multiply-trigger-editor.tsx -> lib/admin/multiply-trigger.ts"
       ]
@@ -17409,15 +17541,15 @@
     {
       "source": "file_file_components_admin_settings_multiply_trigger_editor_tsx_1186t3",
       "target": "file_file_lib_utils_ts_1hfszh",
-      "weight": 3,
-      "visual_weight": 1.05,
+      "weight": 4,
+      "visual_weight": 1.4,
       "softened": true,
       "relation": "calls",
       "relation_counts": {
-        "calls": 2,
+        "calls": 3,
         "imports": 1
       },
-      "raw_edge_count": 3,
+      "raw_edge_count": 4,
       "examples": [
         "components/admin/settings/multiply-trigger-editor.tsx -> lib/utils.ts"
       ]
@@ -18185,15 +18317,15 @@
     {
       "source": "file_file_components_lg_admin_dashboard_dashboardclient_tsx_hbj0o9",
       "target": "bucket_bucket_home_shared_ui_primitive_55jz9s",
-      "weight": 24,
-      "visual_weight": 8.4,
+      "weight": 26,
+      "visual_weight": 9.1,
       "softened": true,
       "relation": "imports",
       "relation_counts": {
-        "imports": 12,
-        "imports_from": 12
+        "imports": 13,
+        "imports_from": 13
       },
-      "raw_edge_count": 24,
+      "raw_edge_count": 26,
       "examples": [
         "components/lg/admin/dashboard/DashboardClient.tsx -> components/lg/admin/dashboard/ActivityBand.tsx",
         "components/lg/admin/dashboard/DashboardClient.tsx -> components/lg/admin/dashboard/ActivityResetControl.tsx",
@@ -21641,16 +21773,17 @@
     {
       "source": "file_file_lib_dashboard_group_status_ts_n4d1zp",
       "target": "bucket_bucket_home_domain_module_h6qg0x",
-      "weight": 2,
-      "visual_weight": 2,
+      "weight": 3,
+      "visual_weight": 3,
       "softened": false,
-      "relation": "calls",
+      "relation": "contains",
       "relation_counts": {
-        "calls": 1,
-        "contains": 1
+        "contains": 2,
+        "calls": 1
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 3,
       "examples": [
+        "lib/dashboard/group-status.ts -> lib/dashboard/group-list-tabs.ts",
         "lib/dashboard/group-status.ts -> lib/dashboard/needs-attention.ts"
       ]
     },
@@ -23035,5 +23168,5 @@
       ]
     }
   ],
-  "built_at_commit": "5f089d72691c6e69ee93f43d4991722ca63dd79f"
+  "built_at_commit": "b8befa72944f74516b36791bbe5cf61003157855"
 }

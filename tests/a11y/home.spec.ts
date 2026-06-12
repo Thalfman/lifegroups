@@ -72,6 +72,7 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
       );
     expect(labelledBy).toEqual([
       "home-needs-attention",
+      "setup-recovery-checklist",
       "home-this-week",
       "home-snapshot",
       "exec-vital-signs",
@@ -141,7 +142,6 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
     await expect(home.getByText("Leader pipeline")).toHaveCount(0);
     await expect(home.getByText("Pipeline funnel")).toHaveCount(0);
     for (const href of [
-      "/admin/groups",
       "/admin/planning",
       "/admin/guests",
       "/admin/launch-planning",
@@ -149,6 +149,23 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
     ]) {
       await expect(home.locator(`a[href^="${href}"]`)).toHaveCount(0);
     }
+  });
+
+  test("setup checklist exposes guided recovery CTAs", async ({ page }) => {
+    const checklist = page.locator(
+      `${HOME} section[aria-labelledby="setup-recovery-checklist"]`
+    );
+    await expect(checklist).toBeVisible();
+    await expect(checklist.getByText("Setup checklist")).toBeVisible();
+    await expect(
+      checklist.getByRole("link", { name: /Import people/ })
+    ).toHaveAttribute("href", "/admin/super-admin#people-import");
+    await expect(
+      checklist.getByRole("link", { name: /Assign leaders/ })
+    ).toHaveAttribute("href", "/admin/groups?tab=needs_setup");
+    await expect(
+      checklist.getByRole("link", { name: /Assess health/ })
+    ).toHaveAttribute("href", "/admin/groups?tab=needs_health_check");
   });
 
   test("ranked next-actions queue rows carry contextual accessible names", async ({

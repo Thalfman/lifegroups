@@ -1358,6 +1358,7 @@ export function A11yHarnessClient() {
           guestsLive={false}
           scopeId={null}
           canResetActivity
+          isSuperAdmin
           hiddenNavAreas={HOME_DEFAULT_HIDDEN_NAV}
         />
       </Surface>

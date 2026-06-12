@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/lg/Card";
 import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
 import {
@@ -355,11 +355,18 @@ function RosterAssignRow({
         </div>
       </div>
       {noOptions ? (
-        <p className="m-0 font-sans text-xs text-ink3">
-          {kind === "leader"
-            ? "Every active leader and co-leader is already on this roster. Add a new leader from People."
-            : "Every active member is already on this roster. Add a new member from People."}
-        </p>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <p className="m-0 font-sans text-xs text-ink3">
+            {kind === "leader"
+              ? "Every active leader and co-leader is already on this roster."
+              : "Every active member is already on this roster."}
+          </p>
+          <Link href="/admin/people" className={buttonClassName("ghost", "sm")}>
+            {kind === "leader"
+              ? "Add leader in People"
+              : "Add member in People"}
+          </Link>
+        </div>
       ) : null}
       {state && !state.ok ? (
         <ul className="m-0 grid list-none gap-1.5 p-0">

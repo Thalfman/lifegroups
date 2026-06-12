@@ -31,4 +31,13 @@ describe("ProspectCreateForm — Full name accessibility wiring", () => {
     expect(html).toContain('id="prospect-full_name-error"');
     expect(html).toContain('role="alert"');
   });
+
+  it("disables Add prospect until a full name is entered", () => {
+    const html = renderToStaticMarkup(
+      <ProspectCreateForm categoryOptionsByAudience={OPTIONS} />
+    );
+
+    expect(html).toContain("Enter a full name to enable Add prospect.");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Add prospect<\/button>/);
+  });
 });

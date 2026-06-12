@@ -1,10 +1,10 @@
 # Graph Report - LifeGroups Product Surface (2026-06-12)
 
 ## Summary
-- Clean graph: 181 nodes · 1157 edges
-- Raw extraction collapsed: 3378 symbol nodes · 7728 symbol edges · 485 source files
+- Clean graph: 181 nodes · 1165 edges
+- Raw extraction collapsed: 3405 symbol nodes · 7783 symbol edges · 488 source files
 - File nodes preserved: 122
-- Module buckets: 59 buckets containing 363 lower-degree files
+- Module buckets: 59 buckets containing 366 lower-degree files
 - Self-edges removed after collapse.
 - Shared plumbing, shared UI primitive, and type/vocabulary edges are visually softened.
 
@@ -36,19 +36,19 @@
 - Auth: 7
 
 ## Top Hubs
-- Core Feature Component (262.85) - Feature Component, Core
+- Core Feature Component (262.5) - Feature Component, Core
 - Core Domain Module (211.1) - Domain Module, Core
 - Supabase Read Models (208.45) - Supabase Read Adapter, Core
-- Care Feature Component (200.75) - Feature Component, Care
+- Care Feature Component (201.1) - Feature Component, Care
 - Admin Forms Action Form (158.05) - Feature Component, Core
 - Admin Run Action (155) - RPC/Write Boundary, Core
 - Core Server Action (140.95) - Server Action, Core
+- Admin Validation Shared (131.05) - Validation, Core
 - Supabase Server (131) - Supabase Read Adapter, Core
-- Admin Validation Shared (130.05) - Validation, Core
 - Auth Session (129) - Auth/Session Boundary, Auth
 - Plan Feature Component (113.55) - Feature Component, Plan
 - Admin Metrics (108) - Domain Module, Core
-- People Feature Component (106.35) - Feature Component, People
+- People Feature Component (107.35) - Feature Component, People
 - Enums Types (100.05) - Type/Vocabulary, Shared
 - Care Domain Module (92) - Domain Module, Care
 - Auth Auth/Session Boundary (90.5) - Auth/Session Boundary, Auth
@@ -57,9 +57,9 @@
 - Calendar Occurrences (79.45) - Domain Module, Calendar
 - Dashboard Queries (79.45) - Domain Module, Home
 - Admin Launch Planning (78) - Domain Module, Plan
+- Home Domain Module (77.5) - Domain Module, Home
 - Admin Groups Group Detail Data (74) - Feature Component, Groups
 - Admin Check Ins (73.1) - Domain Module, Calendar
-- Dashboard Types (71.4) - Domain Module, Home
 
 ## Top Weighted Links
 - Core Feature Component -> Admin Forms Action Form: 54 symbol links
@@ -67,11 +67,11 @@
 - Dashboard Queries -> Supabase Read Models: 30 symbol links
 - Plan Server Action -> Admin Run Action: 28 symbol links
 - Care Feature Component -> Admin Forms Action Form: 26 symbol links
+- Admin Dashboard Dashboard Client -> Home Shared UI Primitive: 26 symbol links, softened
 - Core Server Action -> Auth Session: 25 symbol links
 - Plan Feature Component -> Admin Launch Planning: 25 symbol links
 - Home Shared UI Primitive -> Admin Dashboard Overview Primitives: 24 symbol links, softened
 - Admin Super Admin Console -> Core Feature Component: 24 symbol links
-- Admin Dashboard Dashboard Client -> Home Shared UI Primitive: 24 symbol links, softened
 - Admin Care Care Accordion -> Admin Care Accordion: 23 symbol links
 - People Feature Component -> Admin Forms Action Form: 20 symbol links
 - People Feature Component -> Admin Forms Field Styles: 20 symbol links

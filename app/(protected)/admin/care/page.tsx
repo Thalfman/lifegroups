@@ -377,6 +377,21 @@ export async function loadCarePageData({
                   ? "No leaders are flagged for attention right now."
                   : undefined
               }
+              emptyAction={
+                rosterFilter === "needs_attention"
+                  ? {
+                      href: "/admin/care?view=all-leaders",
+                      label: "Show all leaders",
+                    }
+                  : care.entries.length === 0
+                    ? {
+                        href: isSuperAdmin
+                          ? "/admin/super-admin#people-import"
+                          : "/admin/people",
+                        label: isSuperAdmin ? "Import people" : "Open People",
+                      }
+                    : undefined
+              }
             />
           </div>
         </div>
