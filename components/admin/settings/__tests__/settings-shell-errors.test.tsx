@@ -119,7 +119,7 @@ const COULD_NOT_LOAD =
 const NOT_CONFIGURED = "isn't configured in this environment yet";
 const RUBRIC_EDITOR = "Save rubric"; // HealthRubricEditor submit
 const GROUPS_EDITOR = "+ Add a group type"; // GroupsCatalogEditor create flow
-const MULTIPLY_EDITOR = "multiply-trigger-level"; // MultiplyTriggerEditor select
+const MULTIPLY_EDITOR = "multiply-trigger-level"; // MultiplyTriggerEditor scope picker
 
 describe("SettingsShell Care tab — rubric read errors (#469)", () => {
   it("renders the couldn't-load notice (never 'not configured') and no editor when the group rubric read fails", () => {

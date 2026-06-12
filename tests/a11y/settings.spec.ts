@@ -17,9 +17,9 @@ import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 // top: every Thresholds field is grouped by what it DRIVES ("Drives Care &
 // Home today" vs the "Drives hidden surfaces" disclosure), the care pair reads
 // as Care cadence (CONTEXT.md), the Groups tab's target counts say they are
-// tracking only, the Multiply trigger speaks Audience and labels Interest as a
-// people-count, and the per-group override summary echoes the canonical
-// health-status labels.
+// tracking only, the Multiply trigger uses searchable Audience/group-type
+// scopes and labels Interest as a people-count, and the per-group override
+// summary echoes the canonical health-status labels.
 //
 // The label/heading assertions go beyond axe deliberately: axe flags a MISSING
 // label, but "visible label" (a <label> with text the eye can read, tied to the
@@ -345,7 +345,7 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     );
   });
 
-  test("the Multiply trigger speaks Audience and labels Interest as a people-count (issue 478)", async ({
+  test("the Multiply trigger uses grouped searchable readiness scopes (issue 478)", async ({
     page,
   }) => {
     await page
@@ -355,21 +355,63 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     const level = panel.locator("#multiply-trigger-level");
     await expect(level).toBeVisible();
 
-    // The per-type tier is grouped under the CONTEXT.md term Audience — the
-    // internal "By type" phrasing must not surface.
-    expect(await level.locator('optgroup[label="Audience"]').count()).toBe(1);
-    expect(await level.locator('optgroup[label="By type"]').count()).toBe(0);
+    // The cascade tiers use the admin-facing terms from CONTEXT.md and avoid
+    // the old undifferentiated long select.
+    await expect(
+      level.getByText("Global default", { exact: true }).first()
+    ).toBeVisible();
+    await expect(level.getByText("Audience rules")).toBeVisible();
+    await expect(level.getByText("Group type overrides")).toBeVisible();
+    await expect(panel.getByLabel("Search scopes")).toBeVisible();
+    await expect(level.locator('optgroup[label="By type"]')).toHaveCount(0);
 
     // Interest is a people-count, never a letter: the pillar says so and the
     // threshold control is a number input named in people.
     await expect(
-      panel.getByText("Interest (people count)").first()
+      panel.getByText("Interest Funnel people count").first()
     ).toBeVisible();
     const interestMin = panel.getByLabel("Interest minimum people", {
       exact: true,
     });
     await expect(interestMin).toBeVisible();
     await expect(interestMin).toHaveAttribute("type", "number");
+
+    // Search filters by Audience/category labels, the filtered option is a real
+    // selected radio, and the compact chips expose inherited/overridden state.
+    await panel.getByLabel("Search scopes").fill("Women");
+    await expect(
+      level.getByRole("radio", { name: /^Women's 20-30s/i })
+    ).toBeVisible();
+    await expect(
+      level.getByRole("radio", { name: /^Men's 20-30s/i })
+    ).toHaveCount(0);
+
+    const womenCell = level.getByRole("radio", {
+      name: /^Women's 20-30s/i,
+    });
+    await womenCell.check();
+    await expect(womenCell).toBeChecked();
+    await expect(level.getByText("Inherits from Global").first()).toBeVisible();
+
+    await panel.getByLabel("Search scopes").fill("Men's audience");
+    const menAudience = level.getByRole("radio", {
+      name: /^Men's audience rule/i,
+    });
+    await menAudience.check();
+    await expect(menAudience).toBeChecked();
+    await expect(level.getByText("Overrides here").first()).toBeVisible();
+  });
+
+  test("axe finds no critical or serious violations on Multiply settings", async ({
+    page,
+  }) => {
+    await page
+      .locator(`${SETTINGS} [role="tab"]`, { hasText: "Multiply" })
+      .click();
+    await expect(page.locator("#multiply-trigger-level")).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).include(SETTINGS).analyze();
+    expectNoBlockingAxeViolations(results);
   });
 
   test("the per-group override summary echoes canonical health-status labels (issue 478)", async ({
