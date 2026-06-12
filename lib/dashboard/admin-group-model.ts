@@ -37,6 +37,7 @@ import type {
 } from "./types";
 import {
   GUEST_PIPELINE_STAGES,
+  type GroupHealthAssessmentRatingRow,
   type GuestDirectoryEntry,
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
@@ -146,6 +147,7 @@ export type DerivedGroupRow = {
   session: AttendanceSessionsRow | null;
   sessionStatus: AttendanceSessionStatus | "no_session";
   healthUpdate: GroupHealthUpdatesRow | null;
+  healthAssessmentRatings?: GroupHealthAssessmentRatingRow | null;
   followUpNeeded: boolean;
   leaderNames: string[];
   hasLeader: boolean;
@@ -434,8 +436,18 @@ function buildHealthSummary(rows: DerivedGroupRow[]): HealthSummary {
     watch: [],
     healthy: [],
   };
+  let notAssessed = 0;
+  let missingRequiredRatings = 0;
   for (const r of rows) {
     if (r.group.lifecycle_status === "closed") continue;
+    if (!r.healthAssessmentRatings) {
+      notAssessed += 1;
+    } else if (
+      r.healthAssessmentRatings.spiritual_growth_score === null ||
+      r.healthAssessmentRatings.group_question_score === null
+    ) {
+      missingRequiredRatings += 1;
+    }
     const bucket = pickHealthBucket(r);
     buckets[bucket].push(toHealthGroupRow(r));
   }
@@ -460,6 +472,8 @@ function buildHealthSummary(rows: DerivedGroupRow[]): HealthSummary {
       needs_follow_up: buckets.needs_follow_up.length,
       watch: buckets.watch.length,
       healthy: buckets.healthy.length,
+      not_assessed: notAssessed,
+      missing_required_ratings: missingRequiredRatings,
     },
   };
 }
@@ -547,6 +561,7 @@ export interface AdminGroupModelInput {
   memberships: GroupMembershipsRow[];
   sessions: AttendanceSessionsRow[];
   healthUpdates: GroupHealthUpdatesRow[];
+  healthAssessmentRatings?: GroupHealthAssessmentRatingRow[];
   leaders: GroupLeadersRow[];
   profiles: ProfilesRow[];
   metricSettings: GroupMetricSettingsRow[];
@@ -598,6 +613,7 @@ export function buildAdminGroupModel(
     memberships,
     sessions,
     healthUpdates,
+    healthAssessmentRatings,
     leaders,
     profiles,
     metricSettings,
@@ -628,6 +644,13 @@ export function buildAdminGroupModel(
     if (!existing || u.update_week > existing.update_week) {
       healthByGroup.set(u.group_id, u);
     }
+  }
+  const healthAssessmentRatingsByGroup = new Map<
+    string,
+    GroupHealthAssessmentRatingRow
+  >();
+  for (const rating of healthAssessmentRatings ?? []) {
+    healthAssessmentRatingsByGroup.set(rating.group_id, rating);
   }
   const membershipsByGroup = new Map<string, number>();
   for (const m of memberships) {
@@ -666,6 +689,8 @@ export function buildAdminGroupModel(
     });
     const effectiveHealth = effectiveHealthStatus(g, override);
     const healthUpdate = healthByGroup.get(g.id) ?? null;
+    const healthAssessmentRating =
+      healthAssessmentRatingsByGroup.get(g.id) ?? null;
     const session = sessionByGroup.get(g.id) ?? null;
     const sessionStatus = determineSessionStatus(session);
     const leaderNames = buildLeaderNames(g.id, leaders, profilesById);
@@ -729,6 +754,7 @@ export function buildAdminGroupModel(
       session,
       sessionStatus,
       healthUpdate,
+      healthAssessmentRatings: healthAssessmentRating,
       followUpNeeded: healthUpdate?.follow_up_needed ?? false,
       leaderNames,
       hasLeader,

@@ -12,6 +12,7 @@ import {
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
   fetchGroupCalendarEvents,
+  fetchGroupHealthAssessmentRatings,
   fetchGroupHealthRubricSetting,
   fetchGroupMetricSettings,
   fetchGroupsByIds,
@@ -25,6 +26,7 @@ import {
   fetchRecentAuditEvents,
   GROUP_CALENDAR_EVENT_COLUMNS,
   GROUP_COLUMNS,
+  GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS,
   GROUP_HEALTH_UPDATE_COLUMNS,
   GROUP_LEADER_COLUMNS,
   GROUP_MEMBERSHIP_COLUMNS,
@@ -382,6 +384,37 @@ describe("group_health_updates read column allowlist (#495)", () => {
     });
     expect(calls.get("group_health_updates")).toEqual([
       PINNED_GROUP_HEALTH_UPDATE_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── group_health_assessments ────────────────────────────────────────────────
+
+const PINNED_GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS = [
+  "group_id",
+  "spiritual_growth_score",
+  "group_question_score",
+] as const;
+
+describe("group_health_assessments rating read column allowlist", () => {
+  it("pins the exact allowlist for checklist rating-gap counts", () => {
+    expect([...GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS]).toEqual([
+      ...PINNED_GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS,
+    ]);
+  });
+
+  it("never selects '*'", () => {
+    expect(GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the rating read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchGroupHealthAssessmentRatings(client, {
+        periodMonth: "2026-06-01",
+      });
+    });
+    expect(calls.get("group_health_assessments")).toEqual([
+      PINNED_GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS.join(", "),
     ]);
   });
 });

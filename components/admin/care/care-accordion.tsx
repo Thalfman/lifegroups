@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
+import { buttonClassName } from "@/components/ui/button";
 import type {
   CareAccordionPane,
   CareGradeEntryBundle,
@@ -42,6 +44,13 @@ function leaderCountLabel(count: number): string {
   return `${count} leader${count === 1 ? "" : "s"}`;
 }
 
+function isHiddenArea(
+  hiddenNavAreas: readonly string[] | undefined,
+  href: string
+): boolean {
+  return hiddenNavAreas?.includes(href) ?? false;
+}
+
 function CarePane({
   pane,
   isSuperAdmin,
@@ -74,6 +83,25 @@ function CarePane({
       </summary>
 
       <div className="grid gap-2.5 px-4 pb-4 pt-1">
+        {pane.isUnassigned && pane.leaders.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-lineSoft bg-bg/70 px-3 py-2.5">
+            <p className="m-0 font-sans text-sm text-ink2">
+              These leaders need over-shepherd coverage.
+            </p>
+            {isSuperAdmin ? (
+              <Link
+                href="/admin/shepherd-care/over-shepherds"
+                className={buttonClassName("ghost", "sm")}
+              >
+                Assign coverage
+              </Link>
+            ) : (
+              <p className="m-0 font-sans text-sm text-ink3">
+                Ask a super admin to assign coverage.
+              </p>
+            )}
+          </div>
+        ) : null}
         {pane.leaders.length === 0 ? (
           <p className="m-0 font-sans text-sm italic text-ink3">
             {pane.isUnassigned
@@ -112,13 +140,21 @@ export function CareAccordion({
   panes,
   isSuperAdmin = false,
   gradeEntry,
+  hiddenNavAreas,
 }: {
   panes: CareAccordionPane[];
   isSuperAdmin?: boolean;
   // ADR 0023 — the inline grade editors' inputs; passed straight through to
   // each leader panel so the pure accordion model stays untouched.
   gradeEntry?: CareGradeEntryBundle;
+  hiddenNavAreas?: readonly string[];
 }) {
+  const hasAnyLeaders = panes.some((pane) => pane.leaders.length > 0);
+  const peopleHidden = isHiddenArea(hiddenNavAreas, "/admin/people");
+  const peopleHref = isSuperAdmin
+    ? "/admin/super-admin#people-import"
+    : "/admin/people";
+  const showPeopleCta = isSuperAdmin || !peopleHidden;
   return (
     <div className="grid gap-4">
       <p className="m-0 font-sans text-sm text-ink2">
@@ -126,14 +162,30 @@ export function CareAccordion({
       </p>
 
       <div className="grid gap-3">
-        {panes.map((pane) => (
-          <CarePane
-            key={pane.overShepherdId ?? "unassigned"}
-            pane={pane}
-            isSuperAdmin={isSuperAdmin}
-            gradeEntry={gradeEntry}
-          />
-        ))}
+        {!hasAnyLeaders ? (
+          <div className="grid justify-items-start gap-3 rounded-md border border-dashed border-line bg-surface px-4 py-4">
+            <p className="m-0 font-sans text-sm text-ink2">
+              No active leaders are available for care coverage yet.
+            </p>
+            {showPeopleCta ? (
+              <Link
+                href={peopleHref}
+                className={buttonClassName("ghost", "sm")}
+              >
+                {isSuperAdmin ? "Import people" : "Open People"}
+              </Link>
+            ) : null}
+          </div>
+        ) : (
+          panes.map((pane) => (
+            <CarePane
+              key={pane.overShepherdId ?? "unassigned"}
+              pane={pane}
+              isSuperAdmin={isSuperAdmin}
+              gradeEntry={gradeEntry}
+            />
+          ))
+        )}
       </div>
     </div>
   );

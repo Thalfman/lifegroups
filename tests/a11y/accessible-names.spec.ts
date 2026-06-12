@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 
 // Issue 257 — Admin Interaction Model req 4: repeated/interactive controls
@@ -55,6 +55,31 @@ function expectAllUnique(names: string[], label: string): void {
   ).toBe(names.length);
 }
 
+async function collectMenuActionNames(
+  page: Page,
+  surface: Locator,
+  actionLocator: (menu: Locator) => Locator
+): Promise<string[]> {
+  const names: string[] = [];
+  const openers = surface.getByRole("button", {
+    name: /^More actions for .+/,
+  });
+  const openerCount = await openers.count();
+
+  for (let i = 0; i < openerCount; i += 1) {
+    const opener = openers.nth(i);
+    await opener.click();
+    const menu = page.locator("[data-groups-action-menu]").last();
+    await expect(menu).toBeVisible();
+    const action = actionLocator(menu);
+    await expect(action).toBeVisible();
+    names.push(...(await accessibleNames(action)));
+    await opener.click();
+  }
+
+  return names;
+}
+
 test.describe("admin accessible names carry record context", () => {
   test.beforeEach(async ({ page }) => {
     await gotoHarness(page);
@@ -76,12 +101,24 @@ test.describe("admin accessible names carry record context", () => {
     page,
   }) => {
     const surface = page.locator('[data-a11y-surface="groups-directory"]');
-    // Edit + Calendar are the two repeated controls per group row (PRD req 1).
+    const moreActions = surface.getByRole("button", {
+      name: /^More actions for .+/,
+    });
+    expectAllUnique(
+      await accessibleNames(moreActions),
+      "groups directory More actions buttons"
+    );
+
+    // Edit + Calendar now live inside the per-row More menu, so open one menu
+    // before proving the nested actions still carry the group context.
+    await moreActions.first().click();
+    const menu = page.locator("[data-groups-action-menu]").last();
+    await expect(menu).toBeVisible();
     await expect(
-      surface.getByRole("button", { name: /^Edit .+/ }).first()
+      menu.getByRole("button", { name: /^Edit .+/ }).first()
     ).toBeVisible();
     await expect(
-      surface.getByRole("link", { name: /^Open .+ calendar/i }).first()
+      menu.getByRole("link", { name: /^Open .+ calendar/i }).first()
     ).toBeVisible();
   });
 
@@ -91,19 +128,28 @@ test.describe("admin accessible names carry record context", () => {
   test("repeated actions stay unique even when records collide", async ({
     page,
   }) => {
-    // Two active groups both named "Young Adults" — Edit + Calendar must differ.
+    // Two active groups both named "Young Adults" — More actions, Edit, and
+    // Calendar must differ by the stable meeting-day discriminator.
     const collisions = page.locator(
       '[data-a11y-surface="groups-directory-collisions"]'
     );
     expectAllUnique(
-      await accessibleNames(collisions.getByRole("button", { name: /^Edit / })),
-      "same-name group Edit buttons"
+      await accessibleNames(
+        collisions.getByRole("button", { name: /^More actions for .+/ })
+      ),
+      "same-name group More actions buttons"
     );
     expectAllUnique(
-      await accessibleNames(
-        collisions.getByRole("link", { name: /^Open .+ calendar/i })
+      await collectMenuActionNames(page, collisions, (menu) =>
+        menu.getByRole("button", { name: /^Edit / })
       ),
-      "same-name group Calendar links"
+      "same-name group Edit menu items"
+    );
+    expectAllUnique(
+      await collectMenuActionNames(page, collisions, (menu) =>
+        menu.getByRole("link", { name: /^Open .+ calendar/i })
+      ),
+      "same-name group Calendar menu links"
     );
 
     // A weekly group recurs on multiple dates — its calendar links must differ.

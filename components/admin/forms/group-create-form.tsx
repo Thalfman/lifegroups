@@ -57,6 +57,7 @@ export function GroupCreateForm({
   );
   const [frequency, setFrequency] = useState<MeetingFrequency>("weekly");
   const [showMore, setShowMore] = useState(false);
+  const [groupName, setGroupName] = useState("");
   // #398: the live audience selection drives which categories the picker offers
   // (only those with an active cell under that top type). "" = unset.
   const [audience, setAudience] = useState<GroupAudienceCategory | "">("");
@@ -69,6 +70,7 @@ export function GroupCreateForm({
     if (!state?.ok) return;
     setFrequency("weekly");
     setShowMore(false);
+    setGroupName("");
     setAudience("");
     onSaved?.();
   }, [state, onSaved]);
@@ -80,6 +82,7 @@ export function GroupCreateForm({
   }, [pending, onPendingChange]);
 
   const showParity = frequency === "biweekly";
+  const canSubmit = groupName.trim().length > 0;
 
   return (
     <form
@@ -103,6 +106,8 @@ export function GroupCreateForm({
             name="name"
             type="text"
             required
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
             autoComplete="off"
             className={fieldInputClassName}
             placeholder="Wednesday Westside"
@@ -339,7 +344,12 @@ export function GroupCreateForm({
         </div>
       </div>
       <div className="flex flex-wrap gap-2.5">
-        <Button type="submit" variant="primary" size="md" disabled={pending}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          disabled={pending || !canSubmit}
+        >
           {pending ? "Creating…" : "Create group"}
         </Button>
         {onCancel ? (
@@ -354,6 +364,11 @@ export function GroupCreateForm({
           </Button>
         ) : null}
       </div>
+      {!canSubmit ? (
+        <p className={fieldHintClassName}>
+          Enter a group name to enable Create group.
+        </p>
+      ) : null}
       <FormStatus state={state} successText="Group created." />
     </form>
   );

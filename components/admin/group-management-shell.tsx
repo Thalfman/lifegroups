@@ -3,6 +3,7 @@ import {
   EMPTY_CATEGORIES_BY_AUDIENCE,
   type CategoriesByAudience,
 } from "@/components/admin/forms/group-category-options";
+import type { GroupListTab } from "@/lib/dashboard/group-status";
 import type { MetricDefaults } from "@/lib/admin/metrics";
 import type { GroupHealthLetter } from "@/types/enums";
 import type {
@@ -74,6 +75,7 @@ export function GroupManagementShell({
   data,
   viewerId,
   isSuperAdmin = false,
+  initialTab,
 }: {
   data: GroupManagementData;
   // Signed-in profile id, threaded only to scope this browser's saved
@@ -82,6 +84,7 @@ export function GroupManagementShell({
   viewerId?: string | null;
   // SAD9: super-admin-only inline permanent delete of a group record.
   isSuperAdmin?: boolean;
+  initialTab?: GroupListTab;
 }) {
   const anyError =
     data.errors.groups ||
@@ -126,6 +129,7 @@ export function GroupManagementShell({
         watchGrade={data.metricDefaults.group_health_watch_grade}
         viewerId={viewerId}
         isSuperAdmin={isSuperAdmin}
+        initialTab={initialTab}
         categoriesByAudience={
           data.categoriesByAudience ?? EMPTY_CATEGORIES_BY_AUDIENCE
         }

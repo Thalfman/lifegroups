@@ -29,7 +29,10 @@ describe("group detail tab actions", () => {
     expect(ROSTER).toContain("assign one below");
   });
 
-  it("keeps a persistent People cross-link on the People tab", () => {
+  it("gates the People cross-link on nav visibility", () => {
+    expect(PAGE).toContain("loadHiddenNavAreas");
+    expect(PAGE).toContain("hiddenNavAreas={[...hiddenNavAreas]}");
+    expect(ROSTER).toContain("peopleHidden ? null");
     expect(ROSTER).toContain("Manage everyone in People →");
   });
 

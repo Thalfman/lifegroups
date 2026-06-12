@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { requireAdmin } from "@/lib/auth/session";
 import { isSuperAdminRole } from "@/lib/auth/roles";
+import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
 import { GroupHealthEditButton } from "@/components/admin/group-detail/group-health-edit-button";
 import { GroupRosterManager } from "@/components/admin/group-detail/group-roster-manager";
 import {
@@ -98,12 +99,15 @@ export default async function AdminGroupDetailPage({
   // health editor drawer.
   const isSuperAdmin = isSuperAdminRole(session.profile.role);
 
-  const detail = await loadGroupDetailData({
-    groupId,
-    tab,
-    periodMonth: currentPeriodMonthIso(),
-    todayIso: churchTodayIso(),
-  });
+  const [detail, hiddenNavAreas] = await Promise.all([
+    loadGroupDetailData({
+      groupId,
+      tab,
+      periodMonth: currentPeriodMonthIso(),
+      todayIso: churchTodayIso(),
+    }),
+    loadHiddenNavAreas(),
+  ]);
   if (detail.kind !== "ok") notFound();
   const { group, tabData } = detail;
 
@@ -158,6 +162,7 @@ export default async function AdminGroupDetailPage({
               groupId={groupId}
               groupName={group.name}
               data={tabData}
+              hiddenNavAreas={[...hiddenNavAreas]}
             />
           ) : null}
           {tabData.tab === "health" ? (

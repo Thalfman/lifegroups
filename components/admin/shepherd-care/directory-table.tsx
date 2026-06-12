@@ -2,7 +2,10 @@ import type {
   ActiveShepherdCoverageAssignmentSummary,
   ShepherdCareDirectoryEntry,
 } from "@/lib/supabase/read-models";
-import { CareDirectoryTable } from "./care-directory-table-base";
+import {
+  CareDirectoryTable,
+  type CareDirectoryEmptyAction,
+} from "./care-directory-table-base";
 
 const roleLabel: Record<string, string> = {
   leader: "Leader",
@@ -17,10 +20,12 @@ export function ShepherdCareDirectoryTable({
   entries,
   coverageByShepherdId,
   emptyText = "No leaders to show.",
+  emptyAction,
 }: {
   entries: ShepherdCareDirectoryEntry[];
   coverageByShepherdId: Map<string, ActiveShepherdCoverageAssignmentSummary>;
   emptyText?: string;
+  emptyAction?: CareDirectoryEmptyAction;
 }) {
   return (
     <CareDirectoryTable
@@ -29,6 +34,7 @@ export function ShepherdCareDirectoryTable({
       roleLabels={roleLabel}
       hrefForEntry={(entry) => `/admin/shepherd-care/${entry.profile.id}`}
       emptyText={emptyText}
+      emptyAction={emptyAction}
       extraColumn={{
         header: "Over-shepherd",
         render: (entry) => {

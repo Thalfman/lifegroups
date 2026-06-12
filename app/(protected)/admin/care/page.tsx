@@ -22,6 +22,7 @@ import {
 import { requireAdmin } from "@/lib/auth/session";
 import { isSuperAdminRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
 import {
   currentMinistryYear,
   currentPeriodMonthIso,
@@ -178,6 +179,7 @@ export async function loadCarePageData({
     loadAdminFollowUpsData(),
     loadCareData(today),
     loadCareAccordionEnrichmentSafe(ministryYear, periodMonthIso),
+    loadHiddenNavAreas(),
   ]);
 
   // The Notes feed starts NOW, concurrently with the batch: its content reads
@@ -200,8 +202,10 @@ export async function loadCarePageData({
   // doesn't surface as unhandled.
   void notesFeedPromise.catch(() => EMPTY_NOTES_FEED);
 
-  const [followUpsData, care, enrichment] = await batch;
+  const [followUpsData, care, enrichment, hiddenNavAreas] = await batch;
   const notesFeed = await notesFeedPromise;
+  const hiddenNavAreaList = [...hiddenNavAreas];
+  const peopleHidden = hiddenNavAreas.has("/admin/people");
 
   const ownerNameByShepherdId = new Map<string, string>();
   for (const a of care.assignments) {
@@ -334,6 +338,7 @@ export async function loadCarePageData({
           panes={accordionPanes}
           isSuperAdmin={isSuperAdmin}
           gradeEntry={enrichment.gradeEntry}
+          hiddenNavAreas={hiddenNavAreaList}
         />
       ),
     },
@@ -376,6 +381,23 @@ export async function loadCarePageData({
                 rosterFilter === "needs_attention"
                   ? "No leaders are flagged for attention right now."
                   : undefined
+              }
+              emptyAction={
+                rosterFilter === "needs_attention"
+                  ? {
+                      href: "/admin/care?view=all-leaders",
+                      label: "Show all leaders",
+                    }
+                  : care.entries.length === 0
+                    ? isSuperAdmin || !peopleHidden
+                      ? {
+                          href: isSuperAdmin
+                            ? "/admin/super-admin#people-import"
+                            : "/admin/people",
+                          label: isSuperAdmin ? "Import people" : "Open People",
+                        }
+                      : undefined
+                    : undefined
               }
             />
           </div>
