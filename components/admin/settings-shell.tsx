@@ -7,7 +7,7 @@ import {
   type SettingsTab,
 } from "@/components/admin/settings-tabs";
 import { PBadge } from "@/components/pastoral/atoms";
-import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
+import { SuperAdminScopeNotice } from "@/components/admin/super-admin-only-badge";
 import { PLinkButton } from "@/components/pastoral/button";
 import {
   buildOverrideRows,
@@ -276,8 +276,8 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
       <section className="grid gap-4">
         <SettingsSectionHeader
           eyebrow="Group types"
-          title="The group types you track"
-          description="Each group type pairs an audience with a category. Add one with the + button, set its target group count, then rename or remove it. Expand a type to see its groups (have X of Y counts active and launching) and edit one in place."
+          title="Group types (Audience + Category)"
+          description="Each group type pairs an Audience with a Category. Add one with the + button, set its tracking target, then rename or remove it. Expand a type to see its groups (have X of Y counts active and launching) and edit one in place."
         />
         {data.errors.groupCategories ? (
           <CouldNotLoad subject="Your group types" />
@@ -301,10 +301,11 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
 }
 
 // Multiply tab (#411 / ADR 0021): the multiplication trigger, configured through ONE
-// tiered control over the three-tier cascade — Global default → per-type (Audience)
-// → per-cell. A grouped dropdown picks which level you're configuring; the four
-// pillars then show, each either carrying its own value or inheriting its parent
-// (labelled by source) behind an Override toggle. Interest is a count at every level
+// tiered control over the three-tier cascade — Global default → per-type
+// (Audience) → per-cell. A grouped radio/search picker chooses which level
+// you're configuring; the four pillars then show, each either carrying its own
+// value or inheriting its parent (labelled by source) behind an Override toggle.
+// Interest is a count at every level
 // (never a letter). Each level saves only itself via its matching audited RPC. The
 // per-cell rows are built from the catalog + target reads, so a failure there
 // (errors.groupCategories) softens this editor too — otherwise it would render with
@@ -315,9 +316,9 @@ function MultiplyPanel({ data }: { data: SettingsShellData }) {
     <div className="grid gap-9">
       <section className="grid gap-4">
         <SettingsSectionHeader
-          eyebrow="Multiplication trigger"
-          title="When a group type is ready to multiply"
-          description="Configure the trigger across the cascade — the ministry-wide default, a whole type, or a single group type. Each pillar inherits the level above unless you override it; set only what differs. Interest is a count of people; capacity is a derived per-group-type issue; Group and Leader Health are A–F letters."
+          eyebrow="Readiness rule"
+          title="Ready in Multiply"
+          description="Configure the readiness rule across the cascade: the ministry-wide default, an Audience rule, or a single group type. Each pillar inherits the level above unless you override it; set only what differs. Interest is the Interest Funnel people count; Watch thresholds stay in Thresholds; Capacity is a derived per-group-type issue; Group and Leader Health are A-F letters."
         />
         {/* #469: each failing read names itself — a failed trigger read and a
             failed group-types read (which feeds the per-cell rows) soften this
@@ -369,7 +370,7 @@ function ThresholdsPanel({
         <SettingsSectionHeader
           eyebrow="Global metric defaults"
           title="The thresholds that flag warnings"
-          description="Ministry-wide defaults, grouped by what each one drives — the Care cadence and group-health thresholds drive Care and Home today; the capacity set only drives hidden surfaces."
+          description="Ministry-wide defaults, grouped by what each one drives. The Care cadence and Watch threshold drive Care and Home today; the capacity set only drives hidden surfaces."
         />
         <Card>
           <MetricDefaultsForm defaults={data.defaults} />
@@ -456,7 +457,11 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         title="Bulk people import"
         description="Tools for loading people in bulk."
       />
-      {isSuperAdmin ? <SuperAdminOnlyBadge /> : null}
+      {isSuperAdmin ? (
+        <SuperAdminScopeNotice>
+          Super Admin controls in this section are hidden from every other role.
+        </SuperAdminScopeNotice>
+      ) : null}
       <Card>
         <p className="m-0 mb-3.5 font-sans text-sm text-ink2">
           Bulk import stays in the Super Admin Console.{" "}

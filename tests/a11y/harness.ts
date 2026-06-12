@@ -1,5 +1,5 @@
 import type AxeBuilder from "@axe-core/playwright";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 // Shared helpers for the gated a11y harness specs (issues 257 + 258). Both the
 // accessible-names suite and the Settings suite boot the same /a11y-harness
@@ -33,4 +33,34 @@ export function expectNoBlockingAxeViolations(results: AxeResults): void {
     (v) => `${v.id} (${v.impact}): ${v.nodes.length} node(s)`
   );
   expect(summary, summary.join("\n")).toEqual([]);
+}
+
+export async function expectModalDialogSemantics(
+  page: Page,
+  dialog: Locator
+): Promise<void> {
+  await expect(dialog).toHaveAttribute("aria-modal", "true");
+
+  const semantics = await dialog.evaluate((node) => {
+    const labelledBy = node.getAttribute("aria-labelledby");
+    const labelText = labelledBy
+      ? (document.getElementById(labelledBy)?.textContent?.trim() ?? "")
+      : "";
+    const describedBy = node.getAttribute("aria-describedby");
+    const descriptionText = describedBy
+      ? (document.getElementById(describedBy)?.textContent?.trim() ?? "")
+      : null;
+    return { labelledBy, labelText, describedBy, descriptionText };
+  });
+
+  expect(semantics.labelledBy ?? "").toMatch(/\S/);
+  expect(semantics.labelText).not.toBe("");
+  if (semantics.describedBy !== null) {
+    expect(semantics.descriptionText).not.toBe("");
+  }
+
+  await page.keyboard.press("Tab");
+  expect(
+    await dialog.evaluate((node) => node.contains(document.activeElement))
+  ).toBe(true);
 }

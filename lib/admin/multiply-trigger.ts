@@ -55,7 +55,7 @@ export function saveTargetForLevel(level: TriggerLevel): SaveTarget {
   }
 }
 
-// Encode / decode a level to the string a <select> carries. "cell:<audience>:<id>"
+// Encode / decode a level to the string the picker carries. "cell:<audience>:<id>"
 // — the category id is a UUID (no colons), so a plain split is safe.
 export function encodeLevel(level: TriggerLevel): string {
   switch (level.kind) {

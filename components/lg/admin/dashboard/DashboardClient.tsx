@@ -17,7 +17,7 @@ import { NeedsAttentionArea } from "./NeedsAttentionArea";
 import { ThisWeekCard } from "./ThisWeekCard";
 import { ActivityBand } from "./ActivityBand";
 import { ActivityResetControl } from "./ActivityResetControl";
-import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
+import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
 import { PeriodSlicer } from "./PeriodSlicer";
 import { CollapsibleOverview } from "./CollapsibleOverview";
 
@@ -208,7 +208,7 @@ export function DashboardClient({
             <div className="flex flex-wrap items-center justify-end gap-3">
               {canResetActivity ? (
                 <div className="flex items-center gap-2">
-                  <SuperAdminOnlyBadge />
+                  <SuperAdminOnlyMark />
                   <ActivityResetControl
                     baselineOn={data.activity.resetBaselineOn}
                   />
