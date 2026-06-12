@@ -1,7 +1,12 @@
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+
+const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  outputFileTracingRoot: projectRoot,
   experimental: {
     // Short client-side Router Cache so navigating between admin surfaces —
     // and back/forward — renders the already-fetched RSC payload instantly

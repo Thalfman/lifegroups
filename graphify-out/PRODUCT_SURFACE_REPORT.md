@@ -1,12 +1,12 @@
 # Product Surface Graph Report
 
-Generated: 2026-06-12T01:28:38.500Z
+Generated: 2026-06-12T13:24:02.261Z
 
 ## Summary
 - Scope: product
 - Staged files: 488
-- Raw extraction: 3380 symbol nodes, 7740 symbol edges, 485 source files
-- Clean graph: 181 nodes, 1161 edges
+- Raw extraction: 3378 symbol nodes, 7728 symbol edges, 485 source files
+- Clean graph: 181 nodes, 1157 edges
 - Preserved file nodes: 122
 - Grouped lower-degree files: 363 files into 59 module buckets
 - Output: graphify-out
@@ -20,7 +20,7 @@ Generated: 2026-06-12T01:28:38.500Z
 - OK: package/lock metadata: 0
 
 ## Excluded Candidate Files
-- tests: 251
+- tests: 252
 - data-boundary-only generated types: 1
 
 ## Category Counts
@@ -52,7 +52,7 @@ Generated: 2026-06-12T01:28:38.500Z
 
 ## Product Hubs
 - Core Feature Component (262.85) - Feature Component, Core
-- Core Domain Module (212.1) - Domain Module, Core
+- Core Domain Module (211.1) - Domain Module, Core
 - Care Feature Component (200.75) - Feature Component, Care
 - Admin Forms Action Form (158.05) - Feature Component, Core
 - Core Server Action (140.95) - Server Action, Core
@@ -74,15 +74,15 @@ Generated: 2026-06-12T01:28:38.500Z
 - Supabase Read Models (208.45) - Supabase Read Adapter, Core
 - Admin Run Action (155) - RPC/Write Boundary, Core
 - Core Server Action (140.95) - Server Action, Core
-- Supabase Server (133) - Supabase Read Adapter, Core
-- Auth Session (131) - Auth/Session Boundary, Auth
+- Supabase Server (131) - Supabase Read Adapter, Core
+- Auth Session (129) - Auth/Session Boundary, Auth
 - Auth Auth/Session Boundary (90.5) - Auth/Session Boundary, Auth
 - Supabase Read Core (82) - Supabase Read Adapter, Core
 - Admin Rpc (71.25) - RPC/Write Boundary, Core
 - Supabase Reads Seam (56) - Supabase Read Adapter, Core
-- Care Server Action (52) - Server Action, Care
 - Plan Server Action (52) - Server Action, Plan
 - Auth Roles (47.45) - Auth/Session Boundary, Auth
+- Care Server Action (46) - Server Action, Care
 - Groups Server Action (42) - Server Action, Groups
 - Supabase Maintenance Reads (38) - Supabase Read Adapter, Core
 - Calendar Server Action (36) - Server Action, Calendar
@@ -101,7 +101,7 @@ Generated: 2026-06-12T01:28:38.500Z
 - Ui Button (24.5) - Shared UI Primitive, Shared
 - Lg Page Header (22.7) - Shared UI Primitive, Shared
 - Shared Church Time (22.25) - Shared Plumbing, Calendar
-- Shared Action Result (21.15) - Shared Plumbing, Shared
+- Shared Action Result (20.15) - Shared Plumbing, Shared
 - Ui Badge (19.65) - Shared UI Primitive, Shared
 - Shared Shared Plumbing (18.25) - Shared Plumbing, Shared
 - Admin Dashboard Dashboard Client (14.45) - Shared UI Primitive, Home
@@ -111,7 +111,7 @@ Generated: 2026-06-12T01:28:38.500Z
 - Groups Shared UI Primitive (10) - Shared UI Primitive, Groups
 
 ## Cross-Feature Coupling
-- Care <-> Core: 317 symbol links
+- Care <-> Core: 315 symbol links
   - Care Domain Module -> Core Domain Module (2)
   - Care Domain Module -> Admin Attention Reset (1)
   - Care Domain Module -> Supabase Read Core (3)
@@ -171,11 +171,11 @@ Generated: 2026-06-12T01:28:38.500Z
   - Multiply Feature Component -> Supabase Read Batch (1)
   - Multiply Feature Component -> Supabase Read Models (3)
   - Multiply Feature Component -> Supabase Reads Seam (3)
-- Auth <-> Care: 30 symbol links
+- Auth <-> Care: 28 symbol links
   - Care Feature Component -> Admin Private Notes Session (2)
   - Care Route/Page/Layout -> Auth Roles (6)
   - Care Route/Page/Layout -> Auth Session (10)
-  - Care Server Action -> Auth Session (4)
+  - Care Server Action -> Auth Session (2)
   - Admin Care Page -> Auth Roles (2)
 - Care <-> Home: 24 symbol links
   - Care Domain Module -> Dashboard Types (2)
@@ -187,7 +187,7 @@ Generated: 2026-06-12T01:28:38.500Z
 ## Grouped Module Buckets
 - Core Feature Component: 44 files, 123 symbols, degree 262.85
 - Care Feature Component: 37 files, 107 symbols, degree 200.75
-- Core Domain Module: 34 files, 189 symbols, degree 212.1
+- Core Domain Module: 34 files, 189 symbols, degree 211.1
 - Auth Auth/Session Boundary: 20 files, 61 symbols, degree 90.5
 - Plan Feature Component: 19 files, 90 symbols, degree 113.55
 - Shared Shared UI Primitive: 18 files, 40 symbols, degree 33.3
@@ -198,8 +198,8 @@ Generated: 2026-06-12T01:28:38.500Z
 - Home Domain Module: 8 files, 59 symbols, degree 69.45
 - Care Route/Page/Layout: 7 files, 19 symbols, degree 56.1
 - Calendar Feature Component: 7 files, 32 symbols, degree 48.8
-- Care Server Action: 6 files, 41 symbols, degree 52
 - Groups Feature Component: 6 files, 21 symbols, degree 48.75
+- Care Server Action: 6 files, 39 symbols, degree 46
 - Shared Shared Plumbing: 6 files, 14 symbols, degree 18.25
 - Core Observability/Security: 5 files, 56 symbols, degree 50
 - Plan Server Action: 4 files, 57 symbols, degree 52
