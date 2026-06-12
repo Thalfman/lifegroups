@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { buttonClassName } from "@/components/ui/button";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import type {
@@ -14,8 +12,9 @@ import type {
 // the placeholder grade/notes/prayer slots (see CareLeaderPanel). An Unassigned
 // pane catches Leaders with no active Over-Shepherd coverage. Since the
 // four-tab consolidation (#477) this region is also the home of coverage
-// triage — the Unassigned pane and the "Manage coverage →" link below are
-// what remains of the retired Coverage tab.
+// triage — the Unassigned pane is what remains of the retired Coverage tab
+// (coverage maintenance itself still resolves by direct URL under
+// /admin/shepherd-care/over-shepherds, off-nav per ADR 0008/0009).
 //
 // Built on native <details>/<summary> so the disclosure works without client
 // JS (and stays collapsed by default), matching the existing
@@ -122,21 +121,9 @@ export function CareAccordion({
 }) {
   return (
     <div className="grid gap-4">
-      {/* Coverage maintenance is NOT rebuilt here (#373 req 4): link out to the
-          existing over-shepherd coverage surface, which still resolves under
-          /admin/shepherd-care (ADR 0008/0009). Since #477 this link is the
-          coverage-management entry the retired Coverage tab used to carry. */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <p className="m-0 font-sans text-sm text-ink2">
-          Leaders grouped by their over-shepherd.
-        </p>
-        <Link
-          href="/admin/shepherd-care/over-shepherds"
-          className={buttonClassName("ghost", "sm", "whitespace-nowrap")}
-        >
-          Manage coverage →
-        </Link>
-      </div>
+      <p className="m-0 font-sans text-sm text-ink2">
+        Leaders grouped by their over-shepherd.
+      </p>
 
       <div className="grid gap-3">
         {panes.map((pane) => (

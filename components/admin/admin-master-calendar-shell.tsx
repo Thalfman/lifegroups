@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useDeferredValue,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { PButton } from "@/components/pastoral/button";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import {
@@ -205,25 +212,34 @@ export function AdminMasterCalendarShell({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [listAnchorDate, setListAnchorDate] = useState<string | null>(null);
 
+  const filters = useMemo<CalendarFilters>(
+    () => ({ groupFilter, typeFilter, statusFilter, dayFilter, leaderFilter }),
+    [groupFilter, typeFilter, statusFilter, dayFilter, leaderFilter]
+  );
+
+  // Defer the inputs that re-derive the occurrence set and re-render the whole
+  // month grid / list. The quick-view buttons and FilterBar controls stay
+  // bound to their urgent state for instant feedback, while the heavy
+  // filtering keys off the deferred copies and runs as a low-priority,
+  // interruptible render (low INP — same pattern as PeopleDirectory). The
+  // counts shown in the bar lag one deferred render, which is acceptable.
+  const deferredPlanningView = useDeferredValue(planningView);
+  const deferredFilters = useDeferredValue(filters);
+
   // The opinionated view narrows the set first (#331); the advanced filters
   // then compose on top of whatever view is active. When planningViews is off
   // (frozen /admin/calendar) this is a no-op pass-through of every occurrence.
   const viewScoped = useMemo(
     () =>
       planningViews
-        ? filterOccurrencesForView(occurrences, planningView, todayIso)
+        ? filterOccurrencesForView(occurrences, deferredPlanningView, todayIso)
         : occurrences,
-    [planningViews, occurrences, planningView, todayIso]
-  );
-
-  const filters = useMemo<CalendarFilters>(
-    () => ({ groupFilter, typeFilter, statusFilter, dayFilter, leaderFilter }),
-    [groupFilter, typeFilter, statusFilter, dayFilter, leaderFilter]
+    [planningViews, occurrences, deferredPlanningView, todayIso]
   );
 
   const filtered = useMemo(
-    () => filterCalendarOccurrences(viewScoped, filters),
-    [viewScoped, filters]
+    () => filterCalendarOccurrences(viewScoped, deferredFilters),
+    [viewScoped, deferredFilters]
   );
 
   const selected = useMemo(() => {
@@ -266,10 +282,12 @@ export function AdminMasterCalendarShell({
 
   // The list normally re-clips to the visible month; the "This week" view must
   // not clip (its ISO week can spill past the month — see calendarListRange).
+  // Keyed off the deferred view so the clipping always matches the deferred
+  // occurrence set it renders.
   const { fromIso: listFromIso, toIso: listToIso } = calendarListRange({
     monthIso,
     planningViews,
-    planningView,
+    planningView: deferredPlanningView,
   });
 
   const filterBar = (
@@ -301,7 +319,9 @@ export function AdminMasterCalendarShell({
   );
 
   // "By leader" renders its own group→leader layout and ignores month/list.
-  const isByLeader = planningViews && planningView === "by-leader";
+  // Deferred so the layout switch mounts with (and as lazily as) the deferred
+  // occurrence set it renders.
+  const isByLeader = planningViews && deferredPlanningView === "by-leader";
 
   return (
     <div style={{ display: "grid", gap: 16 }}>

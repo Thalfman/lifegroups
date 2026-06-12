@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
 import { Icon } from "@/components/lg/Icon";
 import { cn } from "@/lib/utils";
 import { buttonClassName } from "@/components/ui/button";
@@ -48,13 +48,23 @@ export function AuditWorkspace({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<AuditCategory | "all">("all");
 
-  const trimmed = query.trim().toLowerCase();
-  const filtering = trimmed.length > 0 || category !== "all";
+  // Defer the inputs that drive the filtered list re-render. The search box
+  // and category chips stay bound to their urgent state for instant feedback,
+  // while the filter keys off the deferred copies and runs as a low-priority,
+  // interruptible render — keeping typing snappy (low INP) on a long audit
+  // trail without a fixed debounce delay (same pattern as PeopleDirectory).
+  const deferredQuery = useDeferredValue(query);
+  const deferredCategory = useDeferredValue(category);
+  const listIsStale = query !== deferredQuery || category !== deferredCategory;
+
+  const trimmed = deferredQuery.trim().toLowerCase();
+  const filtering = trimmed.length > 0 || deferredCategory !== "all";
 
   const visible = useMemo(() => {
     if (!filtering) return entries;
     return entries.filter((entry) => {
-      if (category !== "all" && entry.category !== category) return false;
+      if (deferredCategory !== "all" && entry.category !== deferredCategory)
+        return false;
       if (trimmed) {
         const haystack =
           `${entry.summary} ${entry.actionLabel} ${entry.entityType} ${
@@ -64,7 +74,7 @@ export function AuditWorkspace({
       }
       return true;
     });
-  }, [entries, filtering, category, trimmed]);
+  }, [entries, filtering, deferredCategory, trimmed]);
 
   return (
     <section className="grid min-w-0 gap-4">
@@ -118,18 +128,22 @@ export function AuditWorkspace({
         })}
       </div>
 
-      {filtering ? (
-        <FilteredResults
-          visible={visible}
-          total={entries.length}
-          onClear={() => {
-            setQuery("");
-            setCategory("all");
-          }}
-        />
-      ) : (
-        fullList
-      )}
+      {/* While the deferred filter catches up, dim the (stale) list slightly
+          so fast typers see the lag instead of trusting outdated rows. */}
+      <div className={cn("min-w-0", listIsStale && "opacity-60")}>
+        {filtering ? (
+          <FilteredResults
+            visible={visible}
+            total={entries.length}
+            onClear={() => {
+              setQuery("");
+              setCategory("all");
+            }}
+          />
+        ) : (
+          fullList
+        )}
+      </div>
     </section>
   );
 }

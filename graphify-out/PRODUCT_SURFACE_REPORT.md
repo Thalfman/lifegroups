@@ -1,12 +1,12 @@
 # Product Surface Graph Report
 
-Generated: 2026-06-11T23:37:51.371Z
+Generated: 2026-06-12T01:28:38.500Z
 
 ## Summary
 - Scope: product
 - Staged files: 488
-- Raw extraction: 3380 symbol nodes, 7741 symbol edges, 485 source files
-- Clean graph: 181 nodes, 1162 edges
+- Raw extraction: 3380 symbol nodes, 7740 symbol edges, 485 source files
+- Clean graph: 181 nodes, 1161 edges
 - Preserved file nodes: 122
 - Grouped lower-degree files: 363 files into 59 module buckets
 - Output: graphify-out
@@ -98,7 +98,7 @@ Generated: 2026-06-11T23:37:51.371Z
 - Shared Shared UI Primitive (33.3) - Shared UI Primitive, Shared
 - Shared Uuid (27.4) - Shared Plumbing, Shared
 - Shared Validation Primitives (27.05) - Shared Plumbing, Shared
-- Ui Button (25.5) - Shared UI Primitive, Shared
+- Ui Button (24.5) - Shared UI Primitive, Shared
 - Lg Page Header (22.7) - Shared UI Primitive, Shared
 - Shared Church Time (22.25) - Shared Plumbing, Calendar
 - Shared Action Result (21.15) - Shared Plumbing, Shared

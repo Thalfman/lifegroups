@@ -39,8 +39,9 @@ passed lint → typecheck → unit suite → build → mapped a11y specs.
    `lg-m-sticky-submit`, `lg-m-noscrollx`, `lg-m-filterbar` (guests
    only), `lg-m-form-2up` (1), `lg-m-roster-row`/`lg-m-attbtn`
    (check-in), `lg-m-cal-*` (now 11px floor),
-   `lg-m-master-calendar-filters`, `lg-super-admin-workspace-tabs`.
-   No rule is orphaned yet, so none were deleted.
+   `lg-m-master-calendar-filters`. (`lg-super-admin-workspace-tabs` was
+   deleted when the super-admin rail switched to wrapping on mobile.)
+   No remaining rule is orphaned.
 3. **Compatibility wrappers.** `PButton`/`PLinkButton`/`Pill`/`PBadge`
    delegate to `components/ui/button.tsx` / `badge.tsx`. New code should
    import `Button`/`Badge` directly; collapse the wrappers when their

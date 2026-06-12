@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  startTransition,
   useEffect,
   useRef,
   useState,
@@ -90,7 +91,12 @@ export function SuperAdminConsole({
   }, []);
 
   function focusTab(id: string) {
-    setActiveId(id);
+    // The switch mounts a whole workspace panel; deferring it keeps the
+    // interaction's next paint fast (INP) while focus moves immediately —
+    // the tab buttons themselves always exist.
+    startTransition(() => {
+      setActiveId(id);
+    });
     // Move DOM focus to the newly selected tab so keyboard navigation tracks
     // the selection (roving tabindex).
     requestAnimationFrame(() => {
@@ -123,18 +129,19 @@ export function SuperAdminConsole({
       {banner}
       {statusRow}
 
-      {/* Keeps the tab rail available in long workspaces: it sticks just below
-          the TopBar (top-14 = its 56px height; z below the TopBar's z-sticky so
-          it slides under, never over). The page-background backing plus the
-          padding/negative-margin bleed stop content from peeking through around
-          the rail's rounded corners; net layout spacing is unchanged. */}
-      <div className="sticky top-14 z-[5] -my-2 bg-bg py-2">
-        {/* A segmented rail that wraps rather than clips at narrow widths.
-            w-fit keeps it compact on wide screens; the
-            lg-super-admin-workspace-tabs class lets it fill the row as a
-            single scrollable rail on mobile (globals.css). */}
+      {/* Keeps the tab rail available in long workspaces from md up: it sticks
+          just below the TopBar (top-14 = its 56px height; z below the TopBar's
+          z-sticky so it slides under, never over). The page-background backing
+          plus the padding/negative-margin bleed stop content from peeking
+          through around the rail's rounded corners; net layout spacing is
+          unchanged. On mobile the rail stays static so the wrapped multi-row
+          band can never sit stuck on top of content. */}
+      <div className="md:sticky md:top-14 md:z-[5] md:-my-2 md:bg-bg md:py-2">
+        {/* A segmented rail that wraps rather than clips at narrow widths —
+            all six tabs stay visible on a phone. w-fit keeps it compact on
+            wide screens, where it fits one row. */}
         <div
-          className="lg-super-admin-workspace-tabs flex w-fit max-w-full flex-wrap gap-1 rounded-lg border border-line bg-sidebar p-1"
+          className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg border border-line bg-sidebar p-1"
           role="tablist"
           aria-label="Super admin workspaces"
         >
@@ -152,7 +159,7 @@ export function SuperAdminConsole({
                 aria-selected={selected}
                 aria-controls={`super-admin-panel-${workspace.id}`}
                 tabIndex={selected ? 0 : -1}
-                onClick={() => setActiveId(workspace.id)}
+                onClick={() => startTransition(() => setActiveId(workspace.id))}
                 onKeyDown={(event) => onKeyDown(event, index)}
                 className={cn(
                   "cursor-pointer appearance-none rounded-pill border border-transparent bg-transparent px-4 py-2 font-sans text-sm font-medium leading-tight transition-colors duration-150",

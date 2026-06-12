@@ -186,7 +186,7 @@ onto these):
 
 1. **Over-Shepherds** _(default)_ — accordion grouped by Over-Shepherd:
    their covered Leaders with status badges, health grades, and last-care
-   timestamps; an Unassigned pane and "Manage coverage →" link on top.
+   timestamps; an Unassigned pane on top.
 2. **All leaders** — summary cards + the **Care Attention Queue** (ranked by
    overdue follow-ups, contact recency, health), then the flat roster with
    needs-attention filter chips. One tab to scan and act.
