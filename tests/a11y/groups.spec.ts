@@ -39,7 +39,7 @@ async function openActions(surface: Locator, groupLabel: string) {
 async function openEditDrawer(page: Page, groupLabel = GROUP_DOWNTOWN) {
   const surface = page.locator(SURFACE);
   await openActions(surface, groupLabel);
-  await surface.getByRole("button", { name: `Edit ${groupLabel}` }).click();
+  await page.getByRole("button", { name: `Edit ${groupLabel}` }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
 }
 
@@ -81,10 +81,10 @@ test.describe("groups directory editing surface", () => {
 
     await openActions(surface, GROUP_DOWNTOWN);
     await expect(
-      surface.getByRole("button", { name: EDIT_DOWNTOWN })
+      page.getByRole("button", { name: EDIT_DOWNTOWN })
     ).toBeVisible();
     await expect(
-      surface.getByRole("link", {
+      page.getByRole("link", {
         name: `Open ${GROUP_DOWNTOWN} calendar`,
       })
     ).toBeVisible();
@@ -121,7 +121,7 @@ test.describe("groups directory editing surface", () => {
   }) => {
     const surface = page.locator(SURFACE);
     const opener = await openActions(surface, GROUP_DOWNTOWN);
-    await surface.getByRole("button", { name: EDIT_DOWNTOWN }).click();
+    await page.getByRole("button", { name: EDIT_DOWNTOWN }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
     await page.keyboard.press("Escape");
@@ -158,7 +158,7 @@ test.describe("groups directory editing surface", () => {
     // Open and close the drawer; the narrowed view must survive the round trip
     // (the drawer is portaled out of the list, so the list never reflows).
     await openActions(surface, GROUP_DOWNTOWN);
-    await surface.getByRole("button", { name: EDIT_DOWNTOWN }).click();
+    await page.getByRole("button", { name: EDIT_DOWNTOWN }).click();
     await page.keyboard.press("Escape");
 
     await expect(search).toHaveValue("Downtown");
@@ -284,7 +284,7 @@ test.describe("groups directory editing surface", () => {
 
     await openActions(surface, GROUP_DOWNTOWN);
     await expect(
-      surface.getByRole("button", { name: EDIT_DOWNTOWN })
+      page.getByRole("button", { name: EDIT_DOWNTOWN })
     ).toBeVisible();
   });
 

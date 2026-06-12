@@ -72,8 +72,7 @@ export function buildSetupRecoveryChecklist(
     data.setupGaps.counts.noMembers;
   const setupGapCount = groupsHidden ? 0 : rawSetupGapCount;
   const healthNeedsCount =
-    data.healthSummary.counts.missing +
-    data.healthSummary.counts.needs_follow_up +
+    data.healthSummary.counts.not_assessed +
     data.healthSummary.counts.missing_required_ratings;
 
   const peopleNeedImport =

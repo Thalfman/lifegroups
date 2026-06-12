@@ -71,6 +71,13 @@ test.describe("group roster manager", () => {
     ).toBeVisible();
   });
 
+  test("hidden People nav suppresses People CTAs", async ({ page }) => {
+    const surface = page.locator(SURFACE);
+
+    await expect(surface.locator('a[href^="/admin/people"]')).toHaveCount(0);
+    await expect(surface.getByText("Manage everyone in People")).toHaveCount(0);
+  });
+
   test("axe finds no critical or serious violations", async ({ page }) => {
     const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
     expectNoBlockingAxeViolations(results);

@@ -767,6 +767,7 @@ const HOME_QUIET_DATA: AdminDashboardData = {
       needs_follow_up: 0,
       watch: 0,
       healthy: 0,
+      not_assessed: 0,
       missing_required_ratings: 0,
     },
   },
@@ -1214,6 +1215,7 @@ export function A11yHarnessClient() {
           groupId="roster-g-1"
           groupName="Riverside Young Adults"
           data={GROUP_ROSTER_DATA}
+          hiddenNavAreas={HOME_DEFAULT_HIDDEN_NAV}
         />
       </Surface>
 

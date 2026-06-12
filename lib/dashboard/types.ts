@@ -133,6 +133,7 @@ export interface HealthSummary {
   watch: HealthGroupRow[];
   healthy: HealthGroupRow[];
   counts: Record<HealthBucket, number> & {
+    not_assessed: number;
     missing_required_ratings: number;
   };
 }

@@ -356,7 +356,7 @@ describe("buildAdminGroupModel — latest Health Pulse by week", () => {
 });
 
 describe("buildAdminGroupModel — health assessment rating gaps", () => {
-  it("counts active groups missing required health ratings", () => {
+  it("separates unassessed groups from partial required health ratings", () => {
     const rated = group({ id: "rated", name: "Rated" });
     const partial = group({ id: "partial", name: "Partial" });
     const unassessed = group({ id: "unassessed", name: "Unassessed" });
@@ -386,7 +386,8 @@ describe("buildAdminGroupModel — health assessment rating gaps", () => {
       ],
     });
 
-    expect(model.healthSummary.counts.missing_required_ratings).toBe(2);
+    expect(model.healthSummary.counts.not_assessed).toBe(1);
+    expect(model.healthSummary.counts.missing_required_ratings).toBe(1);
   });
 });
 

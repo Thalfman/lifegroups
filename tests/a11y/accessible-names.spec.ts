@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 
 // Issue 257 — Admin Interaction Model req 4: repeated/interactive controls
@@ -56,8 +56,9 @@ function expectAllUnique(names: string[], label: string): void {
 }
 
 async function collectMenuActionNames(
+  page: Page,
   surface: Locator,
-  actionLocator: (surface: Locator) => Locator
+  actionLocator: (menu: Locator) => Locator
 ): Promise<string[]> {
   const names: string[] = [];
   const openers = surface.getByRole("button", {
@@ -68,7 +69,9 @@ async function collectMenuActionNames(
   for (let i = 0; i < openerCount; i += 1) {
     const opener = openers.nth(i);
     await opener.click();
-    const action = actionLocator(surface);
+    const menu = page.locator("[data-groups-action-menu]").last();
+    await expect(menu).toBeVisible();
+    const action = actionLocator(menu);
     await expect(action).toBeVisible();
     names.push(...(await accessibleNames(action)));
     await opener.click();
@@ -109,11 +112,13 @@ test.describe("admin accessible names carry record context", () => {
     // Edit + Calendar now live inside the per-row More menu, so open one menu
     // before proving the nested actions still carry the group context.
     await moreActions.first().click();
+    const menu = page.locator("[data-groups-action-menu]").last();
+    await expect(menu).toBeVisible();
     await expect(
-      surface.getByRole("button", { name: /^Edit .+/ }).first()
+      menu.getByRole("button", { name: /^Edit .+/ }).first()
     ).toBeVisible();
     await expect(
-      surface.getByRole("link", { name: /^Open .+ calendar/i }).first()
+      menu.getByRole("link", { name: /^Open .+ calendar/i }).first()
     ).toBeVisible();
   });
 
@@ -135,14 +140,14 @@ test.describe("admin accessible names carry record context", () => {
       "same-name group More actions buttons"
     );
     expectAllUnique(
-      await collectMenuActionNames(collisions, (surface) =>
-        surface.getByRole("button", { name: /^Edit / })
+      await collectMenuActionNames(page, collisions, (menu) =>
+        menu.getByRole("button", { name: /^Edit / })
       ),
       "same-name group Edit menu items"
     );
     expectAllUnique(
-      await collectMenuActionNames(collisions, (surface) =>
-        surface.getByRole("link", { name: /^Open .+ calendar/i })
+      await collectMenuActionNames(page, collisions, (menu) =>
+        menu.getByRole("link", { name: /^Open .+ calendar/i })
       ),
       "same-name group Calendar menu links"
     );

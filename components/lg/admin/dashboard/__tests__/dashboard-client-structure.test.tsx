@@ -262,6 +262,7 @@ const QUIET_DATA: AdminDashboardData = {
       needs_follow_up: 0,
       watch: 0,
       healthy: 0,
+      not_assessed: 0,
       missing_required_ratings: 0,
     },
   },

@@ -41,6 +41,7 @@ function launchRecoveryDashboard(): AdminDashboardData {
         needs_follow_up: 0,
         watch: 0,
         healthy: 0,
+        not_assessed: 16,
         missing_required_ratings: 0,
       },
     },
@@ -161,6 +162,7 @@ describe("buildSetupRecoveryChecklist", () => {
       noMembers: 0,
     };
     data.healthSummary.counts.missing = 0;
+    data.healthSummary.counts.not_assessed = 0;
     data.launchPlanning.currentParticipants = 24;
     data.shepherdCare.totalActiveShepherds = 8;
 
@@ -177,7 +179,7 @@ describe("buildSetupRecoveryChecklist", () => {
     });
   });
 
-  it("includes missing required ratings in the health step count", () => {
+  it("uses the Groups health-check tab counts for the health step", () => {
     const data = launchRecoveryDashboard();
     data.setupGaps.counts = {
       noCapacity: 0,
@@ -187,6 +189,7 @@ describe("buildSetupRecoveryChecklist", () => {
     };
     data.healthSummary.counts.missing = 0;
     data.healthSummary.counts.needs_follow_up = 0;
+    data.healthSummary.counts.not_assessed = 2;
     data.healthSummary.counts.missing_required_ratings = 3;
     data.launchPlanning.currentParticipants = 24;
     data.shepherdCare.totalActiveShepherds = 8;
@@ -199,7 +202,33 @@ describe("buildSetupRecoveryChecklist", () => {
       checklist.steps.find((step) => step.key === "assess_health")
     ).toMatchObject({
       status: "needs_action",
-      count: 3,
+      count: 5,
+    });
+  });
+
+  it("does not send weekly pulse work to the Groups health-check tab", () => {
+    const data = launchRecoveryDashboard();
+    data.setupGaps.counts = {
+      noCapacity: 0,
+      noLeader: 0,
+      noMeetingDayTime: 0,
+      noMembers: 0,
+    };
+    data.healthSummary.counts.missing = 4;
+    data.healthSummary.counts.needs_follow_up = 2;
+    data.healthSummary.counts.not_assessed = 0;
+    data.healthSummary.counts.missing_required_ratings = 0;
+    data.launchPlanning.currentParticipants = 24;
+    data.shepherdCare.totalActiveShepherds = 8;
+
+    const checklist = buildSetupRecoveryChecklist(data);
+
+    expect(checklist.show).toBe(false);
+    expect(
+      checklist.steps.find((step) => step.key === "assess_health")
+    ).toMatchObject({
+      status: "complete",
+      count: 0,
     });
   });
 

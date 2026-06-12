@@ -436,11 +436,13 @@ function buildHealthSummary(rows: DerivedGroupRow[]): HealthSummary {
     watch: [],
     healthy: [],
   };
+  let notAssessed = 0;
   let missingRequiredRatings = 0;
   for (const r of rows) {
     if (r.group.lifecycle_status === "closed") continue;
-    if (
-      !r.healthAssessmentRatings ||
+    if (!r.healthAssessmentRatings) {
+      notAssessed += 1;
+    } else if (
       r.healthAssessmentRatings.spiritual_growth_score === null ||
       r.healthAssessmentRatings.group_question_score === null
     ) {
@@ -470,6 +472,7 @@ function buildHealthSummary(rows: DerivedGroupRow[]): HealthSummary {
       needs_follow_up: buckets.needs_follow_up.length,
       watch: buckets.watch.length,
       healthy: buckets.healthy.length,
+      not_assessed: notAssessed,
       missing_required_ratings: missingRequiredRatings,
     },
   };

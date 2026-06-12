@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { A11yHarnessClient } from "./harness-client";
 
 // Gated test-only surface: present only when explicitly enabled, so it never
@@ -10,5 +11,9 @@ export default function A11yHarnessPage() {
   if (process.env.NEXT_PUBLIC_A11Y_HARNESS !== "1") {
     notFound();
   }
-  return <A11yHarnessClient />;
+  return (
+    <Suspense fallback={null}>
+      <A11yHarnessClient />
+    </Suspense>
+  );
 }

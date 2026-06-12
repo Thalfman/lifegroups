@@ -84,6 +84,7 @@ describe("demo seed → health buckets", () => {
       needs_follow_up: 1,
       watch: 1,
       healthy: 1,
+      not_assessed: 0,
       missing_required_ratings: 0,
     });
   });
