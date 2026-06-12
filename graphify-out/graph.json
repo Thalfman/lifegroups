@@ -5,7 +5,7 @@
     "name": "LifeGroups Product Surface Clean File/Module Graph",
     "kind": "clean-file-module",
     "raw_node_count": 3380,
-    "raw_edge_count": 7741,
+    "raw_edge_count": 7740,
     "raw_source_file_count": 485,
     "selected_file_count": 488,
     "preserved_file_node_count": 122,
@@ -13,7 +13,7 @@
     "grouped_file_count": 363,
     "target_min_nodes": 80,
     "target_max_nodes": 200,
-    "generated_at": "2026-06-11T23:37:51.347Z"
+    "generated_at": "2026-06-12T01:19:42.328Z"
   },
   "nodes": [
     {
@@ -1012,9 +1012,9 @@
       "color": "#59A14F",
       "file_type": "code",
       "raw_inbound_weight": 1,
-      "raw_outbound_weight": 36,
-      "degree": 34.05,
-      "size": 22.04
+      "raw_outbound_weight": 35,
+      "degree": 33.05,
+      "size": 21.91
     },
     {
       "id": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
@@ -4097,10 +4097,10 @@
       "feature_label": "Shared",
       "color": "#9C755F",
       "file_type": "code",
-      "raw_inbound_weight": 50,
+      "raw_inbound_weight": 49,
       "raw_outbound_weight": 2,
-      "degree": 25.5,
-      "size": 20.83
+      "degree": 24.5,
+      "size": 20.67
     },
     {
       "id": "file_file_components_lg_pageheader_tsx_l27hhv",
@@ -14876,21 +14876,6 @@
     },
     {
       "source": "file_file_components_admin_care_care_accordion_tsx_o4d9ux",
-      "target": "file_file_components_ui_button_tsx_oeuxi6",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": true,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "components/admin/care/care-accordion.tsx -> components/ui/button.tsx"
-      ]
-    },
-    {
-      "source": "file_file_components_admin_care_care_accordion_tsx_o4d9ux",
       "target": "file_file_lib_admin_care_accordion_ts_7aazcg",
       "weight": 23,
       "visual_weight": 23,
@@ -23115,5 +23100,5 @@
       ]
     }
   ],
-  "built_at_commit": "106a6a76dbe8cc8dc3541db336f5a01463edf440"
+  "built_at_commit": "993db5aa40bcf489596e225f431326b929b9028d"
 }

@@ -1,8 +1,8 @@
-# Graph Report - LifeGroups Product Surface (2026-06-11)
+# Graph Report - LifeGroups Product Surface (2026-06-12)
 
 ## Summary
-- Clean graph: 181 nodes · 1162 edges
-- Raw extraction collapsed: 3380 symbol nodes · 7741 symbol edges · 485 source files
+- Clean graph: 181 nodes · 1161 edges
+- Raw extraction collapsed: 3380 symbol nodes · 7740 symbol edges · 485 source files
 - File nodes preserved: 122
 - Module buckets: 59 buckets containing 363 lower-degree files
 - Self-edges removed after collapse.

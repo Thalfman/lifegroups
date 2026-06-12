@@ -325,8 +325,8 @@ export async function loadCarePageData({
     {
       // #373 — canonical Care view, the default landing tab: the Over-Shepherd
       // accordion (collapsed by default). Since #477 it also hosts coverage
-      // triage: the accordion region carries the Unassigned pane and the
-      // "Manage coverage →" link the retired Coverage tab used to hold.
+      // triage: the accordion region carries the Unassigned pane the retired
+      // Coverage tab used to hold.
       key: "over-shepherds",
       label: "Over-Shepherds",
       panel: (
