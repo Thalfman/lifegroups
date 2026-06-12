@@ -144,41 +144,51 @@ describe("The Follow-ups tab wires the shepherd-care buckets into the page (#334
   // Source-level guard: the Follow-ups tab must keep rendering area.dueSoon /
   // area.completed via CareItemList AND keep the generic AdminFollowUpsShell, so
   // the two follow-up sources both stay present and distinguishable.
-  const CARE_PAGE = readFileSync(
-    fileURLToPath(new URL("../care/page.tsx", import.meta.url)),
+  const CARE_WORKSPACE = readFileSync(
+    fileURLToPath(
+      new URL(
+        "../../../../components/admin/care/care-workspace.tsx",
+        import.meta.url
+      )
+    ),
     "utf8"
   );
 
   it("feeds area.dueSoon and area.completed into CareItemList", () => {
-    expect(CARE_PAGE).toMatch(/items=\{area\.dueSoon\}/);
-    expect(CARE_PAGE).toMatch(/items=\{area\.completed\}/);
+    expect(CARE_WORKSPACE).toMatch(/items=\{area\.dueSoon\}/);
+    expect(CARE_WORKSPACE).toMatch(/items=\{area\.completed\}/);
   });
 
   it("keeps the generic follow_ups queue (AdminFollowUpsShell) too", () => {
-    expect(CARE_PAGE).toContain("<AdminFollowUpsShell");
+    expect(CARE_WORKSPACE).toContain("<AdminFollowUpsShell");
   });
 
   it("labels the shepherd-care section so the two sources are distinguishable", () => {
     // #479 — the eyebrow says whose work this is in CONTEXT.md vocabulary
     // ("Leader", never "Shepherd" in user-facing copy).
-    expect(CARE_PAGE).toContain('eyebrow="Leader care"');
+    expect(CARE_WORKSPACE).toContain('eyebrow="Leader care"');
   });
 
   it("scopes the bucket labels to care follow-ups so they can't read as a global done count", () => {
     // The buckets must name themselves "care follow-ups" rather than a bare
     // "Completed (n)" / "Due soon (n)" that reads as a global count and
     // contradicts the generic queue's Done section right below.
-    expect(CARE_PAGE).toContain("Completed care follow-ups (");
-    expect(CARE_PAGE).toContain("Due-soon care follow-ups (");
-    expect(CARE_PAGE).not.toMatch(
+    expect(CARE_WORKSPACE).toContain("Completed care follow-ups (");
+    expect(CARE_WORKSPACE).toContain("Due-soon care follow-ups (");
+    expect(CARE_WORKSPACE).not.toMatch(
       />\s*Completed \(\{area\.completed\.length\}\)/
     );
   });
 });
 
 describe("The two follow-up queues read as a legible split (#479, copy only)", () => {
-  const CARE_PAGE = readFileSync(
-    fileURLToPath(new URL("../care/page.tsx", import.meta.url)),
+  const CARE_WORKSPACE = readFileSync(
+    fileURLToPath(
+      new URL(
+        "../../../../components/admin/care/care-workspace.tsx",
+        import.meta.url
+      )
+    ),
     "utf8"
   );
   const FOLLOW_UPS_SHELL = readFileSync(
@@ -192,7 +202,9 @@ describe("The two follow-up queues read as a legible split (#479, copy only)", (
   );
 
   it("the care section carries a subject-first heading", () => {
-    expect(CARE_PAGE).toContain('title="Care follow-ups — about your leaders"');
+    expect(CARE_WORKSPACE).toContain(
+      'title={"Care follow-ups \\u2014 about your leaders"}'
+    );
   });
 
   it("the general queue carries a subject-first heading", () => {
@@ -202,16 +214,18 @@ describe("The two follow-up queues read as a legible split (#479, copy only)", (
   });
 
   it("the tab opens with a one-line lede stating the split", () => {
-    expect(CARE_PAGE).toContain("Two queues live here");
-    expect(CARE_PAGE).toContain("care follow-ups are about your leaders");
-    expect(CARE_PAGE).toContain("general follow-ups cover groups and tasks");
+    expect(CARE_WORKSPACE).toContain("Two queues live here");
+    expect(CARE_WORKSPACE).toContain("care follow-ups are about your leaders");
+    expect(CARE_WORKSPACE).toContain(
+      "general follow-ups cover groups and tasks"
+    );
   });
 
   it("the tab badge is the combined open count across both queues", () => {
     // The badge must come from the shared pure helper (so the count's
     // definition of "open" and its failed-read suppression stay tested in
     // lib/admin/__tests__/care-area.test.ts) and must be wired onto the tab.
-    expect(CARE_PAGE).toContain("combinedOpenFollowUpCount({");
-    expect(CARE_PAGE).toContain("count: openFollowUpCount");
+    expect(CARE_WORKSPACE).toContain("combinedOpenFollowUpCount({");
+    expect(CARE_WORKSPACE).toContain("count: openFollowUpCount");
   });
 });

@@ -271,10 +271,7 @@ function hasRuleOverrides(
   rule: PerTypeReadinessRule | CellReadinessOverride | undefined
 ): boolean {
   return Boolean(
-    rule?.interest ??
-      rule?.capacity ??
-      rule?.groupHealth ??
-      rule?.leaderHealth
+    rule?.interest ?? rule?.capacity ?? rule?.groupHealth ?? rule?.leaderHealth
   );
 }
 
@@ -298,7 +295,10 @@ function TriggerLevelPicker({
   return (
     <div className="grid gap-2.5">
       <div className="grid max-w-[520px] gap-1.5">
-        <label id="multiply-trigger-level-label" className={fieldLabelClassName}>
+        <label
+          id="multiply-trigger-level-label"
+          className={fieldLabelClassName}
+        >
           Readiness rule scope
         </label>
         <p className="m-0 font-sans text-sm text-ink2">
@@ -488,7 +488,12 @@ function PillarControls({
     <div className="grid gap-3">
       {PILLAR_META.map(({ key, label }) => {
         const overridden = setToggle ? toggles[key] : true;
-        const status = pillarStatusLabel(key, parent, overridden, Boolean(setToggle));
+        const status = pillarStatusLabel(
+          key,
+          parent,
+          overridden,
+          Boolean(setToggle)
+        );
         return (
           <div
             key={key}
@@ -540,10 +545,7 @@ function pillarStatusLabel(
   return `Inherits from ${sourceLabel(parentSourceForPillar(pillar, parent))}`;
 }
 
-function parentSourceForPillar(
-  pillar: ReadinessPillarKey,
-  parent: ParentRule
-) {
+function parentSourceForPillar(pillar: ReadinessPillarKey, parent: ParentRule) {
   switch (pillar) {
     case "interest":
       return parent.interest.source;

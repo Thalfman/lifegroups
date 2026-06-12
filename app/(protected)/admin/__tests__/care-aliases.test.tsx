@@ -162,12 +162,32 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
   // #373 — the canonical Care surface defaults to the Over-Shepherd accordion
   // and renders it as a tab panel.
   it("the canonical Care view defaults to the over-shepherds accordion", () => {
+    const CARE_WORKSPACE = readFileSync(
+      fileURLToPath(
+        new URL(
+          "../../../../components/admin/care/care-workspace.tsx",
+          import.meta.url
+        )
+      ),
+      "utf8"
+    );
+
     expect(CARE_PAGE).toMatch(/initialTab = "over-shepherds"/);
-    expect(CARE_PAGE).toContain("<CareAccordion");
-    expect(CARE_PAGE).toContain("buildCareAccordion");
+    expect(CARE_PAGE).toContain("buildCareWorkspace");
+    expect(CARE_WORKSPACE).toContain("<CareAccordion");
+    expect(CARE_WORKSPACE).toContain("buildCareAccordion");
   });
 
   it("passes nav visibility into Care People CTAs", () => {
+    const CARE_WORKSPACE = readFileSync(
+      fileURLToPath(
+        new URL(
+          "../../../../components/admin/care/care-workspace.tsx",
+          import.meta.url
+        )
+      ),
+      "utf8"
+    );
     const CARE_ACCORDION = readFileSync(
       fileURLToPath(
         new URL(
@@ -179,8 +199,9 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
     );
 
     expect(CARE_PAGE).toContain("loadHiddenNavAreas");
-    expect(CARE_PAGE).toContain("hiddenNavAreas={hiddenNavAreaList}");
-    expect(CARE_PAGE).toContain("peopleHidden");
+    expect(CARE_PAGE).toContain("hiddenNavAreas: [...hiddenNavAreas]");
+    expect(CARE_WORKSPACE).toContain("hiddenNavAreas={hiddenNavAreas}");
+    expect(CARE_WORKSPACE).toContain("peopleHidden");
     expect(CARE_ACCORDION).toContain("showPeopleCta");
     expect(CARE_ACCORDION).toContain("hiddenNavAreas");
   });

@@ -41,12 +41,14 @@ vi.mock("next/navigation", () => ({
 }));
 
 import {
+  buildSettingsWorkspace,
   SettingsShell,
   type SettingsShellData,
 } from "@/components/admin/settings-shell";
 import { BUILT_IN_METRIC_DEFAULTS } from "@/lib/admin/metrics";
 import { BUILT_IN_READINESS_RULE } from "@/lib/admin/cell-readiness";
 import { EMPTY_CATEGORIES_BY_AUDIENCE } from "@/components/admin/forms/group-category-options";
+import { group, settings } from "@/lib/dashboard/group-fixtures";
 
 const NO_ERRORS: SettingsShellData["errors"] = {
   defaults: null,
@@ -120,6 +122,40 @@ const NOT_CONFIGURED = "isn't configured in this environment yet";
 const RUBRIC_EDITOR = "Save rubric"; // HealthRubricEditor submit
 const GROUPS_EDITOR = "+ Add a group type"; // GroupsCatalogEditor create flow
 const MULTIPLY_EDITOR = "multiply-trigger-level"; // MultiplyTriggerEditor scope picker
+describe("buildSettingsWorkspace", () => {
+  it("scopes Settings shell data into tab-specific models", () => {
+    const data = shellData({
+      groups: [group({ id: "group-1", category_id: "cat-1" })],
+      groupMetricSettings: [
+        settings({
+          group_id: "group-1",
+          manual_health_status_override: "watch",
+        }),
+      ],
+      errors: {
+        ...NO_ERRORS,
+        groups: "groups unavailable",
+        groupRubric: "group rubric unavailable",
+        readiness: "readiness unavailable",
+      },
+    });
+
+    const workspace = buildSettingsWorkspace(data);
+
+    expect(workspace.care.errors).toEqual({
+      groupRubric: "group rubric unavailable",
+      leaderRubric: null,
+    });
+    expect(workspace.groups.groupReferencesKnown).toBe(false);
+    expect(workspace.groups.categoryIdsWithGroups.has("cat-1")).toBe(true);
+    expect(workspace.multiply.readinessError).toBe("readiness unavailable");
+    expect(workspace.thresholds.settingsByGroupId.get("group-1")).toBe(
+      data.groupMetricSettings[0]
+    );
+    expect(workspace.thresholds.overrideRows).toHaveLength(1);
+    expect(workspace.system.isSuperAdmin).toBe(false);
+  });
+});
 
 describe("SettingsShell Care tab — rubric read errors (#469)", () => {
   it("renders the couldn't-load notice (never 'not configured') and no editor when the group rubric read fails", () => {
