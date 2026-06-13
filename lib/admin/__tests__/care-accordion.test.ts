@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCareAccordion,
   buildNoteStateByLeaderId,
+  countLeadersNeedingAttention,
   isNoteTransparencyGranted,
   resolveGroupGradeSeed,
   resolveGroupHealthByGroupId,
@@ -70,7 +71,8 @@ function assignment(
 function entry(
   id: string,
   fullName: string,
-  status: ShepherdCareStatus | null
+  status: ShepherdCareStatus | null,
+  needsAttention = false
 ): ShepherdCareDirectoryEntry {
   return {
     profile: {
@@ -93,7 +95,7 @@ function entry(
             created_at: `${TODAY}T00:00:00Z`,
             updated_at: `${TODAY}T00:00:00Z`,
           },
-    needs_attention: false,
+    needs_attention: needsAttention,
   };
 }
 
@@ -181,6 +183,28 @@ describe("buildCareAccordion", () => {
     const last = panes[panes.length - 1]!;
     expect(last.isUnassigned).toBe(true);
     expect(last.leaders).toEqual([]);
+  });
+
+  it("threads each Leader's needs-attention flag through from the directory entry", () => {
+    const panes = buildCareAccordion({
+      overShepherds: [overShepherd("os-1", "Olive Shepherd")],
+      assignments: [
+        assignment("ldr-1", "os-1", "Olive Shepherd"),
+        assignment("ldr-2", "os-1", "Olive Shepherd"),
+      ],
+      groupLeaders: [],
+      groups: [],
+      careEntries: [
+        entry("ldr-1", "Flagged Fran", "needs_follow_up", true),
+        entry("ldr-2", "Steady Sam", "doing_well", false),
+      ],
+    });
+
+    const leaders = panes.find((p) => p.overShepherdId === "os-1")!.leaders;
+    const byId = new Map(leaders.map((l) => [l.profileId, l.needsAttention]));
+    expect(byId.get("ldr-1")).toBe(true);
+    expect(byId.get("ldr-2")).toBe(false);
+    expect(countLeadersNeedingAttention(leaders)).toBe(1);
   });
 
   it("passes Leader Care Status straight through (null when no care profile)", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
   normalizeCareTabKey,
@@ -60,6 +60,48 @@ export function CareShell({
     setActive(target);
   }
 
+  // WAI-ARIA tabs keyboard pattern (roving tabindex): exactly one tab is in the
+  // Tab order at a time; Arrow keys move between tabs, Home/End jump to the
+  // ends, and selection follows focus (automatic activation). Without this a
+  // keyboard user lands on every tab one Tab-stop at a time and can't arrow
+  // across them — the behaviour assistive tech expects from a tablist.
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  function focusTabAt(index: number) {
+    const count = tabs.length;
+    if (count === 0) return;
+    // Wrap around both ends so Arrow keys cycle through the tabs.
+    const next = ((index % count) + count) % count;
+    const tab = tabs[next];
+    if (!tab) return;
+    setActive(tab.key);
+    tabRefs.current[next]?.focus();
+  }
+
+  function onTabKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number
+  ) {
+    switch (event.key) {
+      case "ArrowRight":
+        event.preventDefault();
+        focusTabAt(index + 1);
+        break;
+      case "ArrowLeft":
+        event.preventDefault();
+        focusTabAt(index - 1);
+        break;
+      case "Home":
+        event.preventDefault();
+        focusTabAt(0);
+        break;
+      case "End":
+        event.preventDefault();
+        focusTabAt(tabs.length - 1);
+        break;
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <div
@@ -67,15 +109,20 @@ export function CareShell({
         aria-label="Care sections"
         className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
       >
-        {tabs.map((tab) => (
+        {tabs.map((tab, index) => (
           <button
             key={tab.key}
+            ref={(el) => {
+              tabRefs.current[index] = el;
+            }}
             type="button"
             role="tab"
             id={`care-tab-${tab.key}`}
             aria-selected={active === tab.key}
             aria-controls={`care-panel-${tab.key}`}
+            tabIndex={active === tab.key ? 0 : -1}
             onClick={() => setActive(tab.key)}
+            onKeyDown={(event) => onTabKeyDown(event, index)}
             className={tabItemClassName(active === tab.key)}
           >
             {tab.label}

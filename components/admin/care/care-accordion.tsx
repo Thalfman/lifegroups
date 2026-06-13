@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
+import { DisclosureChevron } from "@/components/admin/care/disclosure-chevron";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
+import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
-import type {
-  CareAccordionPane,
-  CareGradeEntryBundle,
+import {
+  countLeadersNeedingAttention,
+  type CareAccordionPane,
+  type CareGradeEntryBundle,
 } from "@/lib/admin/care-accordion";
 
 // The canonical Care view (#373, ADR 0016): a collapsible accordion grouped by
@@ -21,27 +24,16 @@ import type {
 // Built on native <details>/<summary> so the disclosure works without client
 // JS (and stays collapsed by default), matching the existing
 // SuperAdminCollapsibleSection pattern. Coverage assignments are the backbone;
-// there are deliberately NO headcounts here — only a "N leaders" pane size so
-// the scan reads.
-
-function Chevron() {
-  return (
-    <span aria-hidden="true" className="inline-flex text-ink3">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <path
-          d="M4 2l4 4-4 4"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </span>
-  );
-}
+// there are deliberately NO membership headcounts here — only a "N leaders"
+// pane size and, when the directory flags any, a "N need attention" triage
+// roll-up, so a collapsed pane signals where the work is without expanding it.
 
 function leaderCountLabel(count: number): string {
   return `${count} leader${count === 1 ? "" : "s"}`;
+}
+
+function attentionLabel(count: number): string {
+  return `${count} ${count === 1 ? "needs" : "need"} attention`;
 }
 
 function isHiddenArea(
@@ -60,6 +52,10 @@ function CarePane({
   isSuperAdmin: boolean;
   gradeEntry?: CareGradeEntryBundle;
 }) {
+  // Triage roll-up so a collapsed pane signals where the work is (Job 1: "how
+  // are my leaders doing?"). Quiet when zero — the absence of a clay pill is the
+  // "all up to date" cue, keeping the scan free of noise.
+  const attentionCount = countLeadersNeedingAttention(pane.leaders);
   return (
     <details
       className={cn(
@@ -67,8 +63,8 @@ function CarePane({
         pane.isUnassigned ? "border-lineSoft" : "border-line"
       )}
     >
-      <summary className="flex cursor-pointer items-center gap-2.5 rounded-md px-4 py-3.5 transition-colors duration-150 hover:bg-surfaceAlt">
-        <Chevron />
+      <summary className="lg-sac-summary flex items-center gap-2.5 rounded-md px-4 py-3.5 transition-colors duration-150 hover:bg-surfaceAlt">
+        <DisclosureChevron />
         <span
           className={cn(
             "min-w-0 flex-1 font-sans text-base font-semibold [overflow-wrap:anywhere]",
@@ -77,6 +73,11 @@ function CarePane({
         >
           {pane.overShepherdName}
         </span>
+        {attentionCount > 0 ? (
+          <Badge tone={STATUS_TONES.followUp} dot className="shrink-0">
+            {attentionLabel(attentionCount)}
+          </Badge>
+        ) : null}
         <span className="whitespace-nowrap font-sans text-sm text-ink3">
           {leaderCountLabel(pane.leaders.length)}
         </span>

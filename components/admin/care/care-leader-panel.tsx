@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
+import { DisclosureChevron } from "@/components/admin/care/disclosure-chevron";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { NoteTransparencyToggle } from "@/components/admin/shepherd-care/note-transparency-toggle";
@@ -102,8 +104,9 @@ function GradesAndNotes({
 
   return (
     <details className="rounded-sm border border-lineSoft bg-bg/40">
-      <summary className="cursor-pointer rounded-sm px-3 py-2 font-sans text-sm font-semibold text-ink2 transition-colors duration-150 hover:bg-surfaceAlt">
-        Grades &amp; notes
+      <summary className="lg-sac-summary flex items-center gap-2 rounded-sm px-3 py-2 font-sans text-sm font-semibold text-ink2 transition-colors duration-150 hover:bg-surfaceAlt">
+        <DisclosureChevron />
+        <span>Grades &amp; notes</span>
       </summary>
       <div className="grid gap-4 px-3 pb-3.5 pt-1.5">
         <section className="grid gap-2">
@@ -192,12 +195,25 @@ export function CareLeaderPanel({
 
   return (
     <details className="rounded-sm border border-lineSoft bg-surface">
-      <summary className="flex cursor-pointer items-center justify-between gap-3 rounded-sm px-3.5 py-2.5 transition-colors duration-150 hover:bg-surfaceAlt">
-        <span className="grid min-w-0 gap-0.5">
+      <summary className="lg-sac-summary flex items-center gap-3 rounded-sm px-3.5 py-2.5 transition-colors duration-150 hover:bg-surfaceAlt">
+        <DisclosureChevron />
+        <span className="grid min-w-0 flex-1 gap-0.5">
           <span className="font-sans text-base font-semibold text-ink [overflow-wrap:anywhere]">
             {leader.fullName}
           </span>
           <span className="font-sans text-sm text-ink3">{groupLabel}</span>
+          {/* The roster's needs-attention flag, mirrored onto the Leader so a
+              roll-up pane that reads "2 need attention" points at exactly which
+              two when opened. Tone via badge, never a stripe (design system). */}
+          {leader.needsAttention ? (
+            <Badge
+              tone={STATUS_TONES.followUp}
+              dot
+              className="mt-0.5 justify-self-start"
+            >
+              Needs attention
+            </Badge>
+          ) : null}
         </span>
         {leader.careStatus ? (
           <ShepherdCareStatusBadge status={leader.careStatus} />
