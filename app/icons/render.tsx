@@ -52,7 +52,11 @@ export function renderAppIcon({
       width: size,
       height: size,
       headers: {
-        "Cache-Control": "public, max-age=31536000, immutable",
+        // Cacheable but updatable: these URLs are stable and unversioned, so
+        // `immutable` would strand an old logo/rendering in client and CDN
+        // caches for a year. A day's max-age with background revalidation lets
+        // a regenerated icon propagate.
+        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
       },
     }
   );
