@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { type ReactNode } from "react";
+import { type KeyboardEvent, type ReactNode, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   resolveMultiplyInitialTab,
@@ -35,6 +35,9 @@ export type MultiplyTab = {
 export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  // One ref per tab button so keyboard navigation can move DOM focus to the
+  // newly selected tab (the roving-tabindex half of the WAI-ARIA tabs pattern).
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // The active tab is driven by the URL's `?tab=` param (default "plan"), so a
   // deep-link from a Readiness-grid cell (`?tab=plan#seg-…`) always opens the
@@ -53,6 +56,39 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
     window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
   }
 
+  // Arrow / Home / End move between tabs (automatic activation: focus and
+  // selection move together, the right model for these few panels). Without
+  // this a keyboard user has to Tab through every tab button; the roving
+  // tabIndex below keeps the tablist a single Tab stop instead.
+  function onTabKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number
+  ) {
+    const last = tabs.length - 1;
+    let nextIndex: number;
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        nextIndex = index === last ? 0 : index + 1;
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        nextIndex = index === 0 ? last : index - 1;
+        break;
+      case "Home":
+        nextIndex = 0;
+        break;
+      case "End":
+        nextIndex = last;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    selectTab(tabs[nextIndex].key);
+    tabRefs.current[nextIndex]?.focus();
+  }
+
   return (
     <div className="grid gap-6">
       <div
@@ -60,19 +96,26 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
         aria-label="Multiply sections"
         className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
       >
-        {tabs.map((tab) => (
+        {tabs.map((tab, index) => (
           <button
             key={tab.key}
+            ref={(node) => {
+              tabRefs.current[index] = node;
+            }}
             type="button"
             role="tab"
             id={`multiply-tab-${tab.key}`}
             aria-selected={active === tab.key}
             aria-controls={`multiply-panel-${tab.key}`}
+            // Roving tabIndex: only the active tab is in the Tab order; the
+            // rest are reached with the arrow keys handled above.
+            tabIndex={active === tab.key ? 0 : -1}
             onClick={() => selectTab(tab.key)}
+            onKeyDown={(event) => onTabKeyDown(event, index)}
             className={cn(
-              "inline-flex cursor-pointer items-center rounded-pill px-3.5 py-2 font-sans text-base leading-tight transition-colors duration-150",
+              "inline-flex cursor-pointer items-center rounded-pill px-3.5 py-2 font-sans text-sm leading-tight transition-colors duration-150",
               active === tab.key
-                ? "bg-clay font-semibold text-white"
+                ? "bg-clay font-bold text-surface"
                 : "bg-transparent font-medium text-ink3 hover:bg-surfaceAlt hover:text-ink2"
             )}
           >
@@ -80,7 +123,7 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
             {typeof tab.count === "number" ? (
               <span
                 className={cn(
-                  "ml-[7px] text-2xs font-bold tabular-nums",
+                  "ml-2 text-xs font-bold tabular-nums",
                   active === tab.key ? "opacity-90" : "opacity-70"
                 )}
               >
