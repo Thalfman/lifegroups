@@ -69,14 +69,20 @@ passed lint → typecheck → unit suite → build → mapped a11y specs.
    when it grows, replace with a count aggregate — the counts are
    RLS-scoped (what the viewer may read), so a `SECURITY DEFINER`
    count RPC would have to re-encode the grant logic rather than lean
-   on RLS, which is why this wasn't done inline.
-10. **`LeaderGroupCard` is currently orphaned.** No route imports
-    `components/dashboard/leader-group-card.tsx` (the flag-gated leader
-    surface renders other components); it was restyled anyway so it lands
-    on-system when revived. Its hero overlays were re-tinted to `bg-ink/*`
-    for AA. Related gap: the a11y suite mounts admin surfaces only —
-    leader routes have no axe coverage, so add a leader spec in the PR
-    that flips `leader_surface`.
+   on RLS, which is why this wasn't done inline. The count-visibility
+   contract is now pinned by characterization tests (#546) in
+   `lib/admin/__tests__/care-accordion.test.ts` so a later aggregate
+   can't quietly drift from these semantics.
+10. **`LeaderGroupCard` removed (was orphaned dead code, #547).**
+    `components/dashboard/leader-group-card.tsx` was imported by no route
+    or live component — the live `/leader` surface renders its own
+    `GroupCard` inside `app/(protected)/leader/page.tsx` — so the
+    duplicate was deleted rather than carried as "ready to revive." Build
+    a richer leader group card (if ever wanted) from the live surface, not
+    from this file's git history. The leader-route a11y gap it flagged is
+    now closed: `tests/a11y/leader-routes.spec.ts` runs axe against the
+    real `/leader` dashboard, group Care, and group Calendar routes
+    (env-gated on seeded Leader auth — see #548).
 
 ## Guardrails now active
 

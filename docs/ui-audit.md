@@ -66,7 +66,7 @@ Side-stripe locations (P1, all must be restructured, not recolored):
 - `components/admin/follow-ups/follow-ups-shell.tsx`
 - `components/admin/guests/guest-card.tsx`, `components/admin/plan/prospect-board.tsx`
 - `components/admin/planning/planning-by-leader-list.tsx`
-- `components/dashboard/leader-group-card.tsx`, `components/leader/leader-follow-ups-section.tsx`
+- `components/dashboard/leader-group-card.tsx` (removed, #547), `components/leader/leader-follow-ups-section.tsx`
 
 ## Priority issues
 
