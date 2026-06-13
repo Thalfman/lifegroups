@@ -54,6 +54,9 @@ const LABEL =
   "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
 const INPUT =
   "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
+// Notes can run to 2000 chars; a single-line input hides all but a sliver of
+// that, so notes use a multi-line, vertically resizable variant of INPUT.
+const TEXTAREA = `${INPUT} min-h-[4.5rem] resize-y leading-normal`;
 const HINT = "m-0 mt-1 font-sans text-xs text-ink3";
 const CHECKBOX_LABEL = "flex items-center gap-2 font-sans text-sm text-ink";
 
@@ -501,13 +504,13 @@ function CandidateEditForm({
           <label htmlFor={fid("notes")} className={LABEL}>
             Notes
           </label>
-          <input
+          <textarea
             id={fid("notes")}
             name="notes"
-            type="text"
             maxLength={2000}
+            rows={3}
             defaultValue={c.notes ?? ""}
-            className={INPUT}
+            className={TEXTAREA}
           />
         </div>
         <div className="flex items-center gap-2.5">
@@ -705,12 +708,12 @@ function AddCandidateForm({
         <label htmlFor="mc-notes" className={LABEL}>
           Notes
         </label>
-        <input
+        <textarea
           id="mc-notes"
           name="notes"
-          type="text"
           maxLength={2000}
-          className={INPUT}
+          rows={3}
+          className={TEXTAREA}
         />
       </div>
       <div className="flex items-center gap-2.5">
