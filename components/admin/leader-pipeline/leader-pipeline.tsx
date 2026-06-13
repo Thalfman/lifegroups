@@ -22,6 +22,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import type { LeaderReadinessStage } from "@/types/enums";
+import { formatIsoDate } from "@/lib/shared/date";
 // Type-only: the data module itself is server-side, the import is erased at
 // build time.
 import type { PipelineMemberOption } from "@/components/admin/leader-pipeline/leader-pipeline-data";
@@ -32,6 +33,9 @@ const LABEL =
   "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
 const INPUT =
   "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
+// Notes can run to 2000 chars; a single-line input hides all but a sliver of
+// that, so notes use a multi-line, vertically resizable variant of INPUT.
+const TEXTAREA = `${INPUT} min-h-[4.5rem] resize-y leading-normal`;
 
 function StageBadge({ stage }: { stage: LeaderReadinessStage }) {
   const ready = stage === "ready_to_lead";
@@ -132,13 +136,13 @@ function ApprenticeEditForm({
           <label htmlFor={`ap-edit-notes-${a.id}`} className={LABEL}>
             Notes
           </label>
-          <input
+          <textarea
             id={`ap-edit-notes-${a.id}`}
             name="notes"
-            type="text"
             maxLength={2000}
+            rows={3}
             defaultValue={a.notes ?? ""}
-            className={INPUT}
+            className={TEXTAREA}
           />
         </div>
         <div className="flex items-center gap-2.5">
@@ -193,7 +197,9 @@ function ApprenticeRow({
         </strong>
         <span className="font-sans text-sm text-ink2">
           {a.groupName}
-          {a.expectedReadyOn ? ` · ready by ${a.expectedReadyOn}` : ""}
+          {a.expectedReadyOn
+            ? ` · ready by ${formatIsoDate(a.expectedReadyOn)}`
+            : ""}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2.5">
@@ -360,12 +366,12 @@ function AddApprenticeForm({
           <label htmlFor="ap-notes" className={LABEL}>
             Notes
           </label>
-          <input
+          <textarea
             id="ap-notes"
             name="notes"
-            type="text"
             maxLength={2000}
-            className={INPUT}
+            rows={3}
+            className={TEXTAREA}
           />
         </div>
       </div>

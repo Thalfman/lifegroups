@@ -157,7 +157,9 @@ export function MultiplyGridView({
                 <th
                   key={type}
                   scope="col"
-                  className="border-b border-line bg-surfaceAlt px-3.5 py-3 text-center font-sans text-xs font-semibold text-ink3"
+                  // Left-aligned to sit over the left-aligned, multi-line cell
+                  // content below (badge → coverage → blockers → plan link).
+                  className="border-b border-line bg-surfaceAlt px-3.5 py-3 text-left font-sans text-xs font-semibold text-ink3"
                 >
                   {TYPE_LABEL[type]}
                 </th>
