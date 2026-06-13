@@ -94,6 +94,12 @@ export type CareAccordionLeader = {
   // Leader Care Status — the pastoral "is there an issue / what's the next step"
   // signal on the person. null when no care profile exists yet.
   careStatus: ShepherdCareStatus | null;
+  // Whether the care directory flags this Leader for attention this week — the
+  // SAME per-tier staleness + status signal the All-leaders roster filters on
+  // (read-models' computeNeedsAttention), passed straight through. Surfaced so
+  // the collapsed-by-default accordion can roll up "N need attention" per
+  // Over-Shepherd, and mark the individual Leaders, without expanding a pane.
+  needsAttention: boolean;
   // At-a-glance, from the care directory row (no extra read): the spreadsheet's
   // "Last contact" and "Next step" (next touchpoint due). null when unset.
   lastContactAt: string | null;
@@ -112,6 +118,17 @@ export type CareAccordionPane = {
   isUnassigned: boolean;
   leaders: CareAccordionLeader[];
 };
+
+// How many Leaders in a pane the care directory flags for attention. This is a
+// triage roll-up (the surface's whole purpose), NOT a membership headcount —
+// the accordion still deliberately omits group/member counts. Lets the
+// collapsed pane summary show "N need attention" so the scan reads without
+// opening every Over-Shepherd.
+export function countLeadersNeedingAttention(
+  leaders: readonly CareAccordionLeader[]
+): number {
+  return leaders.reduce((n, leader) => n + (leader.needsAttention ? 1 : 0), 0);
+}
 
 export type BuildCareAccordionInput = {
   overShepherds: OverShepherdListRow[];
@@ -223,6 +240,7 @@ export function buildCareAccordion(
       groupNames: ledGroups.map((g) => g.name),
       ledGroups,
       careStatus: entry.care?.current_status ?? null,
+      needsAttention: entry.needs_attention,
       lastContactAt: entry.care?.last_contact_at ?? null,
       nextStepDue: entry.care?.next_touchpoint_due ?? null,
       leaderHealthGrade:
