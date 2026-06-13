@@ -1,4 +1,5 @@
 import type { GroupAudienceCategory } from "@/types/enums";
+import { cellKey } from "@/lib/admin/cell-coordinate";
 
 // Per-cell Interest tally — the pure core of the #399 rewrite (ADR 0016).
 //
@@ -23,15 +24,14 @@ export type InterestProspectRow = {
   desired_category_id: string | null;
 };
 
-// The canonical key for a desired cell: "<audience_category>:<category_id>". A
-// single string key makes the tally a flat Record the consumers can look a cell
-// up in directly. The same composer is used to read a count back out, so the
-// keying lives in one place.
+// A desired cell's interest key — the canonical Cell coordinate key (cellKey),
+// so the tally is a flat Record consumers index directly and the keying agrees
+// with every other per-cell map. The same composer reads a count back out.
 export function cellInterestKey(
   audienceCategory: GroupAudienceCategory,
   categoryId: string
 ): string {
-  return `${audienceCategory}:${categoryId}`;
+  return cellKey({ audience: audienceCategory, categoryId });
 }
 
 // A per-cell interest count map, keyed by cellInterestKey. A cell with no

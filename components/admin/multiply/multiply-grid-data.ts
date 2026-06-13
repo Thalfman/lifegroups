@@ -41,6 +41,7 @@ import {
 import { computeCellCapacityIssue } from "@/lib/admin/cell-capacity";
 import { rollUpGrades } from "@/lib/admin/multiplication-pillars";
 import { interestForCell } from "@/lib/admin/prospect-interest";
+import { cellKey } from "@/lib/admin/cell-coordinate";
 
 // The Multiply GRID surface's data (#403 / PRD §2.5). This loader replaces the old
 // per-type board loader (loadMultiplyData): the three boards folded into ONE grid
@@ -186,7 +187,10 @@ export async function buildMultiplyGridData(
       lifecycleStatus: g.lifecycle_status,
     }))
   )) {
-    haveByKey.set(`${row.audienceCategory}:${row.categoryId}`, row.have);
+    haveByKey.set(
+      cellKey({ audience: row.audienceCategory, categoryId: row.categoryId }),
+      row.have
+    );
   }
 
   // Categories that are applied to at least one top type (have an active cell).
@@ -210,7 +214,7 @@ export async function buildMultiplyGridData(
       audienceCategory: type,
       categoryId,
       active: cell.active,
-      have: haveByKey.get(`${type}:${categoryId}`) ?? 0,
+      have: haveByKey.get(cellKey({ audience: type, categoryId })) ?? 0,
       target: cell.target_count,
       override: decodeCellOverride(cell.trigger_overrides),
       inputs: {

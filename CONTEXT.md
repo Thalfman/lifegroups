@@ -139,6 +139,18 @@ signal. A category not applied to a type has no active cell there (blank on the
 Multiply grid).
 _Avoid_: Tile, slot, segment (the internal umbrella name, not this row).
 
+**Cell coordinate**:
+The bare identity of a Cell — the **Audience × `category_id`** pair that names
+which cell something belongs to, distinct from the live **Cell** unit (which
+also carries target, coverage, capacity, and readiness). The coordinate is what
+keys per-cell maps; it has **one canonical string form** (`cellKey`) so the
+grid, the interest tally, and the capacity read agree without translating
+between separators. Both coordinates are collision-safe (`category_id` is a UUID,
+Audience an enum), so the key format is an implementation detail behind the
+composer.
+_Avoid_: Cell (the derived unit, not its identity), cell key string (the
+encoding, not the coordinate), segment label (the display string).
+
 ### Interest funnel concepts
 
 **Interest Funnel**:

@@ -180,7 +180,7 @@ describe("buildMultiplicationView", () => {
   it("buckets only active, typed groups by type and passes typeOptions through", () => {
     const view = buildMultiplicationView([], GROUPS, [], TYPE_OPTIONS, TODAY);
     expect(view.typeOptions).toBe(TYPE_OPTIONS);
-    expect(view.groupsByType["men|c1"].map((g) => g.name)).toEqual([
+    expect(view.groupsByType["men:c1"].map((g) => g.name)).toEqual([
       "Alpha",
       "Beta",
     ]);
@@ -194,7 +194,7 @@ describe("buildMultiplicationView", () => {
       TYPE_OPTIONS,
       TODAY
     );
-    expect(view.groupsByType["men|c1"].map((g) => g.name)).toEqual(["Beta"]);
+    expect(view.groupsByType["men:c1"].map((g) => g.name)).toEqual(["Beta"]);
   });
 
   it("a type-only candidate removes no group from its type bucket", () => {
@@ -205,7 +205,7 @@ describe("buildMultiplicationView", () => {
       TYPE_OPTIONS,
       TODAY
     );
-    expect(view.groupsByType["men|c1"].map((g) => g.name)).toEqual([
+    expect(view.groupsByType["men:c1"].map((g) => g.name)).toEqual([
       "Alpha",
       "Beta",
     ]);

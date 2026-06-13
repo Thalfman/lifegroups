@@ -54,7 +54,7 @@ describe("buildMultiplyPlanData", () => {
       { audienceCategory: "men", categoryId: "c1", label: "20-30s" },
     ]);
     // The active, typed group feeds the "willing to multiply" picker.
-    expect(data.groupsByType["men|c1"]).toEqual([{ id: "g1", name: "Alpha" }]);
+    expect(data.groupsByType["men:c1"]).toEqual([{ id: "g1", name: "Alpha" }]);
   });
 
   it("blocks the planner on the first-precedence read (candidates) with the documented empty view", async () => {
@@ -109,6 +109,6 @@ describe("buildMultiplyPlanData", () => {
     expect(data.error).toBeNull();
     expect(data.typeOptions).toEqual([]);
     // …with the other sections still populated.
-    expect(data.groupsByType["men|c1"]).toEqual([{ id: "g1", name: "Alpha" }]);
+    expect(data.groupsByType["men:c1"]).toEqual([{ id: "g1", name: "Alpha" }]);
   });
 });
