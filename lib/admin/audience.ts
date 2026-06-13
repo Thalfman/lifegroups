@@ -10,6 +10,7 @@
 // point them at. There is now.
 
 import type { GroupAudienceCategory } from "@/types/enums";
+import { cellKey } from "@/lib/admin/cell-coordinate";
 
 // The three top types, in board / display order.
 export const AUDIENCE_CATEGORIES: readonly GroupAudienceCategory[] = [
@@ -54,9 +55,11 @@ export type GroupTypeRef = { id: string; name: string };
 
 // The stable key joining an audience + category into one map key, so the
 // server's `groupsByType` and the client's lookups agree without sharing state.
+// The canonical Cell coordinate key (cellKey): a "group type" in the planner's
+// vocabulary is the same (Audience × category) coordinate a cell is.
 export function groupTypeKey(
   audience: GroupAudienceCategory,
   categoryId: string
 ): string {
-  return `${audience}|${categoryId}`;
+  return cellKey({ audience, categoryId });
 }

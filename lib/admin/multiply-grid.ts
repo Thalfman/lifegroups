@@ -9,6 +9,7 @@ import {
   type PerTypeReadinessRule,
   type ReadinessRule,
 } from "@/lib/admin/cell-readiness";
+import { cellKey } from "@/lib/admin/cell-coordinate";
 
 // The Multiply matrix grid (#403 / PRD §2.5), as a pure data structure. This is
 // the slice that FOLDS the three per-type Multiply boards into ONE grid:
@@ -116,16 +117,6 @@ export function buildMultiplyHomeSummary(
   return { readyCells, activeCells };
 }
 
-// A cell key matching the per-cell input keying (single colon), so the loader and
-// the grid agree without juggling tuples. (The capacity read uses a DOUBLE-colon
-// key of its own — see cellKeyString — so the loader maps between them.)
-function cellKey(
-  audienceCategory: GroupAudienceCategory,
-  categoryId: string
-): string {
-  return `${audienceCategory}:${categoryId}`;
-}
-
 // Build the Multiply grid: for every catalog category, derive its three cells from
 // the cell inputs. A cell with no input row, or an input whose `active` flag is
 // false, renders BLANK (applied: false, readout: null) — the category is not
@@ -149,13 +140,18 @@ export function buildMultiplyGrid(
   // Index the cell inputs by `${audience_category}:${category_id}` for O(1) lookup.
   const inputByKey = new Map<string, GridCellInput>();
   for (const cell of cells) {
-    inputByKey.set(cellKey(cell.audienceCategory, cell.categoryId), cell);
+    inputByKey.set(
+      cellKey({ audience: cell.audienceCategory, categoryId: cell.categoryId }),
+      cell
+    );
   }
 
   const rows: MultiplyGridRow[] = categories.map((category) => {
     const cellsForRow = {} as Record<GroupAudienceCategory, MultiplyGridCell>;
     for (const type of GRID_TYPES) {
-      const input = inputByKey.get(cellKey(type, category.id));
+      const input = inputByKey.get(
+        cellKey({ audience: type, categoryId: category.id })
+      );
       const applied = input?.active ?? false;
 
       // Only an applied cell carries a readout; an unapplied cell stays blank, so

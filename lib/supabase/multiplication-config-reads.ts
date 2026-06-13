@@ -2,6 +2,7 @@ import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
 import { isAudienceCategory } from "@/lib/admin/audience";
+import { cellKey } from "@/lib/admin/cell-coordinate";
 import { fetchHealthRubric } from "./health-rubric-reads";
 import {
   tallyCellInterest,
@@ -187,9 +188,9 @@ export type CellKey = {
   categoryId: string | null;
 };
 
-// The per-cell active group sizes: keyed by a stable `${audience}::${categoryId}`
-// string so callers can index without juggling tuples. Each value is the array of
-// ACTIVE member counts of the active groups in that cell.
+// The per-cell active group sizes: keyed by the canonical Cell coordinate key
+// (cellKeyString → cellKey) so callers index without juggling tuples. Each value
+// is the array of ACTIVE member counts of the active groups in that cell.
 export type CellActiveGroupSizes = {
   // Stable key → the cell's active group sizes.
   byCell: Map<string, number[]>;
@@ -197,12 +198,14 @@ export type CellActiveGroupSizes = {
   keys: Map<string, CellKey>;
 };
 
-// Build the stable cell key string. Exported so the surface and tests agree.
+// The stable cell key string — the canonical Cell coordinate key (cellKey), with
+// a null category collapsed to "" (an uncategorized group is in no cell, so the
+// key is never matched). Exported so the surface and tests agree.
 export function cellKeyString(
   audience: GroupAudienceCategory,
   categoryId: string | null
 ): string {
-  return `${audience}::${categoryId ?? ""}`;
+  return cellKey({ audience, categoryId: categoryId ?? "" });
 }
 
 // Pure aggregator (exported for testing): bucket each ACTIVE group's active member
@@ -485,7 +488,7 @@ export function cellHealthKey(
   type: GroupAudienceCategory,
   categoryId: string
 ): string {
-  return `${type}:${categoryId}`;
+  return cellKey({ audience: type, categoryId });
 }
 
 // Pure bucketer (exported for testing): bucket each resolved group grade under its

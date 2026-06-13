@@ -2,6 +2,7 @@ import type {
   GroupAudienceCategory,
   GroupLifecycleStatus,
 } from "@/types/enums";
+import { cellKey } from "@/lib/admin/cell-coordinate";
 
 // Per-cell coverage — the pure "have X of Y" resolver (#400 / PRD §2.3). A cell
 // is (audience_category × category). For every ACTIVE cell it computes:
@@ -56,13 +57,6 @@ export type CellCoverage = {
   gap: number;
 };
 
-function cellKey(
-  audienceCategory: GroupAudienceCategory,
-  categoryId: string
-): string {
-  return `${audienceCategory}:${categoryId}`;
-}
-
 // Whether a group's lifecycle counts toward coverage X (active + launching).
 export function countsTowardCoverage(status: GroupLifecycleStatus): boolean {
   return COVERAGE_LIFECYCLE_STATES.has(status);
@@ -84,12 +78,18 @@ export function buildCellCoverage(
   // groups still reports have=0 (not absent).
   const haveByKey = new Map<string, number>();
   for (const cell of activeCells) {
-    haveByKey.set(cellKey(cell.audienceCategory, cell.categoryId), 0);
+    haveByKey.set(
+      cellKey({ audience: cell.audienceCategory, categoryId: cell.categoryId }),
+      0
+    );
   }
   for (const group of groups) {
     if (group.audienceCategory == null) continue;
     if (!countsTowardCoverage(group.lifecycleStatus)) continue;
-    const key = cellKey(group.audienceCategory, group.categoryId);
+    const key = cellKey({
+      audience: group.audienceCategory,
+      categoryId: group.categoryId,
+    });
     // Only count toward an ACTIVE cell — a group in an inactive/absent cell is
     // ignored (the key won't be present in the pre-seeded map).
     if (!haveByKey.has(key)) continue;
@@ -98,7 +98,12 @@ export function buildCellCoverage(
 
   return activeCells.map((cell) => {
     const have =
-      haveByKey.get(cellKey(cell.audienceCategory, cell.categoryId)) ?? 0;
+      haveByKey.get(
+        cellKey({
+          audience: cell.audienceCategory,
+          categoryId: cell.categoryId,
+        })
+      ) ?? 0;
     const target = cell.target;
     return {
       audienceCategory: cell.audienceCategory,
