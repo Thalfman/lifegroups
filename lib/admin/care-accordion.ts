@@ -426,6 +426,16 @@ export function resolveGroupGradeSeed(
 // author-only counts as leadership visibility. Counts still come from the
 // readable rows' subject_profile_id; the panel only shows them when granted.
 // Leaders absent from every input default to sealed/0 in buildCareAccordion.
+//
+// Count-visibility contract (#546): the subject-id inputs are ALREADY
+// RLS-scoped — care-accordion-reads.ts hands in only the subject_profile_id of
+// rows THIS viewer may read, so a sealed/author-private note, an admin Private
+// Care Note, or anyone else's sealed note simply never appears and cannot
+// inflate a count. Any future count aggregate (e.g. a SECURITY DEFINER count
+// RPC) MUST reproduce this: count only readable rows and keep the grant boolean
+// as the sole visibility signal — it must not lean on a broad grant to count
+// rows the viewer may not read. The contract is pinned by characterization
+// tests in lib/admin/__tests__/care-accordion.test.ts.
 export function buildNoteStateByLeaderId(args: {
   grantedSubjectIds: Iterable<string>;
   careNoteSubjectIds: string[];

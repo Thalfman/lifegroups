@@ -423,6 +423,62 @@ describe("buildNoteStateByLeaderId", () => {
   });
 });
 
+// #546 — characterize the count-visibility contract BEFORE any aggregation.
+// buildNoteStateByLeaderId is the SOLE place per-leader Care Note / Prayer
+// Request counts are derived, and its subject-id inputs are already RLS-scoped:
+// the reads layer (care-accordion-reads.ts) only ever hands it the
+// subject_profile_id of rows THIS viewer may read. These tests pin that
+// boundary so a later count aggregate (e.g. a SECURITY DEFINER count RPC)
+// cannot quietly leak sealed notes, admin Private Care Notes, or another
+// author's sealed rows — it must re-encode the same readable-only semantics.
+describe("buildNoteStateByLeaderId — count-visibility contract (#546)", () => {
+  it("counts only the readable rows handed in; an unreadable row (absent id) never inflates", () => {
+    // The viewer may read two of ldr-1's care notes; a third, sealed to a
+    // different author, was stripped by RLS upstream so its id is simply not
+    // in the input — and therefore cannot raise the count past the readable 2.
+    const map = buildNoteStateByLeaderId({
+      grantedSubjectIds: ["ldr-1"],
+      careNoteSubjectIds: ["ldr-1", "ldr-1"],
+      prayerSubjectIds: ["ldr-1"],
+    });
+    const state = map.get("ldr-1")!;
+    expect(state.careNoteCount).toBe(2);
+    expect(state.prayerCount).toBe(1);
+  });
+
+  it("an entirely-unreadable subject contributes nothing — no phantom leader, no count", () => {
+    // ldr-2 has notes, but none readable to this viewer and no grant, so the
+    // builder never hears about ldr-2 and cannot leak a count for them.
+    const map = buildNoteStateByLeaderId({
+      grantedSubjectIds: ["ldr-1"],
+      careNoteSubjectIds: ["ldr-1"],
+      prayerSubjectIds: [],
+    });
+    expect(map.has("ldr-2")).toBe(false);
+    expect(map.get("ldr-1")!.careNoteCount).toBe(1);
+  });
+
+  it("visibility tracks the grant, not row readability", () => {
+    const map = buildNoteStateByLeaderId({
+      grantedSubjectIds: ["granted"],
+      // "sealed" has readable (e.g. admin-authored) rows but no grant.
+      careNoteSubjectIds: ["sealed", "sealed"],
+      prayerSubjectIds: [],
+    });
+    // Granted leader is visible even with zero readable rows.
+    expect(map.get("granted")).toEqual<CareAccordionNoteState>({
+      transparency: "visible",
+      careNoteCount: 0,
+      prayerCount: 0,
+    });
+    // Readable-but-ungranted leader stays sealed; counts are still tallied,
+    // but the panel keeps them hidden until the transparency toggle flips.
+    const sealed = map.get("sealed")!;
+    expect(sealed.transparency).toBe("sealed");
+    expect(sealed.careNoteCount).toBe(2);
+  });
+});
+
 // #467 — the inline transparency toggle in the accordion renders from the
 // model's note state: granted (toggle "on", counts shown) vs sealed (toggle
 // "off"). isNoteTransparencyGranted is the single mapping the panel uses.
