@@ -1,12 +1,9 @@
 import "server-only";
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
-import type {
-  GroupHealthLetter,
-  GroupHealthOverrideScope,
-} from "@/types/enums";
 import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
+import { fetchGroupRubricGradeRow } from "@/lib/supabase/group-rubric-grade-reads";
 import { wrapError, type ReadResult } from "@/lib/supabase/read-core";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import {
@@ -14,30 +11,13 @@ import {
   type GroupRubricGrade,
 } from "@/lib/admin/group-rubric-grade";
 
-// Read side for the Group-Health Grade by rubric (#377 / ADR 0018, Pivot slice
-// 4). Admin-only data; these run behind the admin layout guard and the table's
-// admin-only RLS. A column-allowlisted read of the persisted grade for a group +
-// ministry year, decoded at the trust boundary and resolved through the pure
-// facade so the surface and the Multiplication pillar see one effective letter.
-//
-// The grade table is not in the generated supabase schema types, so its select
-// is cast in this one place — the same trust seam the other group-health reads
-// (lib/admin/group-health-read.ts) and admin RPCs use.
-
-const GRADE_COLUMNS =
-  "group_id, ministry_year, criterion_scores, computed_letter, " +
-  "override_letter, override_scope, override_period_month, updated_at";
-
-type PersistedRubricGrade = {
-  group_id: string;
-  ministry_year: number;
-  criterion_scores: Record<string, number> | null;
-  computed_letter: GroupHealthLetter | null;
-  override_letter: GroupHealthLetter | null;
-  override_scope: GroupHealthOverrideScope | null;
-  override_period_month: string | null;
-  updated_at: string | null;
-};
+// Model side for the Group-Health Grade by rubric (#377 / ADR 0018, Pivot slice
+// 4). Reads the configured group rubric + the persisted grade row (the latter
+// through the column-allowlisted reads seam,
+// lib/supabase/group-rubric-grade-reads) and recomputes the effective letter
+// live via the pure facade, so the surface and the Multiplication pillar see one
+// effective letter. Admin-only data, behind the admin layout guard and the
+// table's admin-only RLS.
 
 // A group's resolved rubric grade for a ministry year, plus the raw per-criterion
 // scores and last-saved timestamp the editor needs to pre-fill. `grade` is null
@@ -72,13 +52,11 @@ export async function getGroupRubricGrade(
     };
   const criteria = decodeRubricCriteria(rubricRes.data?.criteria ?? null);
 
-  const { data, error } = await (client as AppSupabaseClient)
-    .from("group_rubric_grades" as never)
-    .select(GRADE_COLUMNS as never)
-    .eq("group_id" as never, groupId as never)
-    .eq("ministry_year" as never, ministryYear as never)
-    .maybeSingle<PersistedRubricGrade>();
-
+  const { data, error } = await fetchGroupRubricGradeRow(
+    client,
+    groupId,
+    ministryYear
+  );
   if (error)
     return { data: null, error: wrapError("getGroupRubricGrade", error) };
 
