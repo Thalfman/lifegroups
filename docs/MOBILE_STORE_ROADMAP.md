@@ -4,7 +4,7 @@ Status: Draft tracking document
 Owner: Tom  
 Product: Fox Valley Church Life Groups  
 Primary strategy: Android first, iOS second  
-Last updated: 2026-06-12
+Last updated: 2026-06-13
 
 ## 1. Decision
 
@@ -24,30 +24,32 @@ Observed baseline:
 - Supabase Auth + Postgres + RLS
 - Role-based surfaces: Super Admin, Ministry Admin, Over-Shepherd, Leader
 - Mobile-aware CSS exists, including iOS input zoom prevention and mobile stacking helpers
-- No PWA manifest found yet
-- No service worker/offline strategy found yet
+- PWA manifest, icon set (192/512 + maskable), Apple touch icon, and mobile
+  viewport/theme metadata are now in place (Phase 1 — see below)
+- No service worker/offline strategy yet (intentionally deferred — not required
+  for installability or for the TWA path)
 - No Android shell found yet
 - No iOS shell found yet
 - No store metadata package found yet
 
 ## 3. Store strategy
 
-| Platform | Path | Target outcome | Risk |
-| --- | --- | --- | --- |
-| Google Play | PWA + Trusted Web Activity | Public or limited Play listing | Medium |
-| Apple App Store | Capacitor iOS shell | Approved app, preferably unlisted | Medium-high |
-| Web | Existing Vercel app | Remains canonical runtime | Low |
+| Platform        | Path                       | Target outcome                    | Risk        |
+| --------------- | -------------------------- | --------------------------------- | ----------- |
+| Google Play     | PWA + Trusted Web Activity | Public or limited Play listing    | Medium      |
+| Apple App Store | Capacitor iOS shell        | Approved app, preferably unlisted | Medium-high |
+| Web             | Existing Vercel app        | Remains canonical runtime         | Low         |
 
 ## 4. Key review risks
 
-| Risk | Platform | Why it matters | Mitigation |
-| --- | --- | --- | --- |
-| Just a website wrapper | Apple | Apple requires app-like utility beyond a repackaged website | Add native shell polish, launch screen, safe areas, offline/error states, app-specific review notes |
-| Login-gated app | Apple + Google | Reviewers need access | Create stable reviewer/demo accounts with fake seeded data |
-| Account deletion | Apple + Google | Required if users can create accounts or request account lifecycle changes | Add in-app deletion/request path and public web deletion page |
-| Sensitive ministry data | Apple + Google | Notes, prayer requests, and personal info require clear disclosures | Publish privacy policy and align store data forms |
-| Mobile UX debt | Apple + Google | Small text, contrast, and long mobile scroll can hurt review and adoption | Fix P0 accessibility/mobile issues before packaging |
-| TWA verification failure | Google | Failed Digital Asset Links causes browser UI fallback | Add `.well-known/assetlinks.json` after package/signing is known |
+| Risk                     | Platform       | Why it matters                                                             | Mitigation                                                                                          |
+| ------------------------ | -------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Just a website wrapper   | Apple          | Apple requires app-like utility beyond a repackaged website                | Add native shell polish, launch screen, safe areas, offline/error states, app-specific review notes |
+| Login-gated app          | Apple + Google | Reviewers need access                                                      | Create stable reviewer/demo accounts with fake seeded data                                          |
+| Account deletion         | Apple + Google | Required if users can create accounts or request account lifecycle changes | Add in-app deletion/request path and public web deletion page                                       |
+| Sensitive ministry data  | Apple + Google | Notes, prayer requests, and personal info require clear disclosures        | Publish privacy policy and align store data forms                                                   |
+| Mobile UX debt           | Apple + Google | Small text, contrast, and long mobile scroll can hurt review and adoption  | Fix P0 accessibility/mobile issues before packaging                                                 |
+| TWA verification failure | Google         | Failed Digital Asset Links causes browser UI fallback                      | Add `.well-known/assetlinks.json` after package/signing is known                                    |
 
 ## 5. Phase plan
 
@@ -75,15 +77,17 @@ Goal: Make the web app installable and ready for Android wrapping.
 
 Checklist:
 
-- [ ] Add `app/manifest.ts` or `public/manifest.webmanifest`
-- [ ] Add required app icons: 192x192 and 512x512 minimum
-- [ ] Add maskable icon
-- [ ] Add Apple touch icon
-- [ ] Add theme color and background color
-- [ ] Add viewport metadata with safe mobile behavior
+- [x] Add `app/manifest.ts` or `public/manifest.webmanifest` — `app/manifest.ts`
+- [x] Add required app icons: 192x192 and 512x512 minimum — generated from
+      `public/logo.png` via `next/og` (`app/icons/*`)
+- [x] Add maskable icon — `/icons/maskable` (logo inside the ~80% safe zone)
+- [x] Add Apple touch icon — `/icons/touch` (180x180, opaque background)
+- [x] Add theme color and background color — `#fbfaf4` (manifest + viewport)
+- [x] Add viewport metadata with safe mobile behavior — `viewport` export in
+      `app/layout.tsx` (`viewport-fit: cover`; user scaling left enabled for a11y)
 - [ ] Add app screenshots for documentation/testing
-- [ ] Run Lighthouse PWA checks
-- [ ] Verify install prompt behavior on Android Chrome
+- [ ] Run Lighthouse PWA checks (needs a deployed build + Chrome)
+- [ ] Verify install prompt behavior on Android Chrome (needs a deployed build)
 - [ ] Verify login flow works when launched from installed PWA
 
 Suggested manifest values:
@@ -153,7 +157,11 @@ Checklist:
 
 - [ ] Install Bubblewrap tooling locally
 - [ ] Initialize Android project from production manifest
-- [ ] Choose Android package name, likely `org.foxvalleychurch.lifegroups` or similar
+- [ ] Choose Android package name. Prefer a church-level, function-neutral
+      namespace (e.g. `org.foxvalleychurch.app`) over `...lifegroups`: the
+      package id is permanent once published, and the product is expected to
+      grow beyond Life Groups into other church functions. The display name can
+      still be "LifeGroups" today and change later.
 - [ ] Generate signing key
 - [ ] Build APK/AAB
 - [ ] Add Digital Asset Links at `/.well-known/assetlinks.json`
@@ -187,7 +195,9 @@ Goal: Build an iOS app shell that does not feel like a lazy website wrapper.
 Checklist:
 
 - [ ] Add Capacitor to repo or create `/mobile/ios-shell` workspace
-- [ ] Configure app id, app name, icon, splash screen
+- [ ] Configure app id, app name, icon, splash screen. As with Android, pick a
+      church-level, function-neutral bundle id (e.g. `org.foxvalleychurch.app`) —
+      the bundle id is permanent and should not be tied to "lifegroups"
 - [ ] Point shell to production web app or bundled web build, based on chosen architecture
 - [ ] Add native launch screen
 - [ ] Add safe-area styling checks
@@ -227,12 +237,12 @@ Acceptance gate:
 
 Create fake seeded data only. Do not expose real ministry data to reviewers.
 
-| Role | Needed? | Purpose |
-| --- | --- | --- |
-| Ministry Admin | Yes | Review Care, Plan, Multiply, Groups, People, Settings |
-| Over-Shepherd | Yes | Review coverage-scoped care surface |
-| Leader | Yes | Review leader group care/calendar surface |
-| Super Admin | Maybe | Avoid unless reviewer needs to see app configuration |
+| Role           | Needed? | Purpose                                               |
+| -------------- | ------- | ----------------------------------------------------- |
+| Ministry Admin | Yes     | Review Care, Plan, Multiply, Groups, People, Settings |
+| Over-Shepherd  | Yes     | Review coverage-scoped care surface                   |
+| Leader         | Yes     | Review leader group care/calendar surface             |
+| Super Admin    | Maybe   | Avoid unless reviewer needs to see app configuration  |
 
 Reviewer notes should explain:
 
