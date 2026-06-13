@@ -106,7 +106,7 @@ function CarePane({
           <p className="m-0 font-sans text-sm italic text-ink3">
             {pane.isUnassigned
               ? "Every leader has an over-shepherd."
-              : "No leaders covered yet."}
+              : "No leaders covered yet. Finish the people-to-leader-to-group setup first."}
           </p>
         ) : (
           pane.leaders.map((leader) => (

@@ -103,6 +103,14 @@ export function PeopleManagementShell({
   const apprenticeCount = pipeline.error
     ? undefined
     : pipeline.rollup.totalApprentices;
+  const hasGroupLeaderProfiles = data.profiles.some(
+    (p) => p.role === "leader" || p.role === "co_leader"
+  );
+  const hasAssignedGroupLeaders = data.groupLeaders.some((l) => l.active);
+  const showSetupPath =
+    !hasGroupLeaderProfiles ||
+    data.members.length === 0 ||
+    !hasAssignedGroupLeaders;
 
   const tabs: { key: PeopleTabKey; label: string; count?: number }[] = [
     { key: "directory", label: "Directory", count: directoryCount },
@@ -166,6 +174,13 @@ export function PeopleManagementShell({
           Interest Funnel →
         </Link>
       </p>
+
+      {showSetupPath ? (
+        <PeopleSetupPath
+          isSuperAdmin={isSuperAdmin}
+          onAddPerson={openAddPerson}
+        />
+      ) : null}
 
       <div
         role="tabpanel"
@@ -255,6 +270,58 @@ export function PeopleManagementShell({
 // Two-option segmented control choosing which kind of person the drawer adds.
 // A radiogroup (like the Groups card⇄table toggle) so the current kind is
 // announced and keyboard-reachable.
+function PeopleSetupPath({
+  isSuperAdmin,
+  onAddPerson,
+}: {
+  isSuperAdmin: boolean;
+  onAddPerson: () => void;
+}) {
+  return (
+    <aside className="rounded-md border border-line bg-surface px-4 py-3.5">
+      <div className="font-display text-lg font-medium text-ink">
+        Setup path
+      </div>
+      <p className="m-0 mt-1 font-sans text-sm text-ink2">
+        Import people, mark or assign leaders, then assign group leaders. Care
+        coverage becomes available after that chain is in place.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2.5 font-sans text-sm">
+        {isSuperAdmin ? (
+          <Link
+            href="/admin/super-admin#people-import"
+            className="font-semibold text-clay no-underline hover:underline"
+          >
+            Import people
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={onAddPerson}
+            className="cursor-pointer border-0 bg-transparent p-0 font-sans text-sm font-semibold text-clay hover:underline"
+          >
+            Add person
+          </button>
+        )}
+        <span className="text-ink3">-&gt;</span>
+        <Link
+          href="/admin/groups"
+          className="font-semibold text-clay no-underline hover:underline"
+        >
+          Assign group leaders
+        </Link>
+        <span className="text-ink3">-&gt;</span>
+        <Link
+          href="/admin/care"
+          className="font-semibold text-clay no-underline hover:underline"
+        >
+          Care coverage
+        </Link>
+      </div>
+    </aside>
+  );
+}
+
 function AddPersonKindToggle({
   value,
   onChange,

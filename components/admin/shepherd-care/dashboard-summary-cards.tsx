@@ -21,7 +21,7 @@ export function ShepherdCareDashboardSummaryCards({
 }) {
   const totalMeta =
     summary.totalActiveShepherds === 0
-      ? "No active leaders or co-leaders"
+      ? "Import or mark leaders to turn on care coverage"
       : `${summary.totalActiveShepherds} ${plural(summary.totalActiveShepherds, "leader / co-leader", "leaders + co-leaders")}`;
 
   const needsAttentionMeta =

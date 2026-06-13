@@ -198,6 +198,8 @@ describe("SettingsShell Groups tab — group-types read error (#469)", () => {
   it("opens the empty-seed editor when the reads succeeded with no group types", () => {
     const html = render(shellData(), "groups");
 
+    expect(html).toContain("Current group-type map");
+    expect(html).toContain("Expand an audience, then a group type");
     expect(html).toContain(GROUPS_EDITOR);
     expect(html).not.toContain(COULD_NOT_LOAD);
     expect(html).not.toContain(NOT_CONFIGURED);
@@ -230,6 +232,8 @@ describe("SettingsShell Multiply tab — trigger read errors (#469)", () => {
   it("opens the editor when the reads succeeded (built-in rule, no cells)", () => {
     const html = render(shellData(), "multiply");
 
+    expect(html).toContain("Current state");
+    expect(html).toContain("Edit this readiness rule");
     expect(html).toContain(MULTIPLY_EDITOR);
     expect(html).not.toContain(COULD_NOT_LOAD);
     expect(html).not.toContain(NOT_CONFIGURED);

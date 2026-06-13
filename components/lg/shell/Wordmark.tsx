@@ -19,7 +19,7 @@ export function Wordmark({ href = "/admin" }: { href?: string }) {
         <span className="font-display text-lg font-medium leading-[1.1] text-ink">
           Life Groups
         </span>
-        <span className="font-sans text-2xs uppercase tracking-[0.14em] text-ink3">
+        <span className="font-sans text-xs uppercase tracking-[0.14em] text-ink3">
           Fox Valley Church
         </span>
       </div>

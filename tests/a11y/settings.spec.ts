@@ -326,8 +326,9 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
       .click();
     const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
 
-    // Expand the first group-type row (a nested disclosure) to reveal its
+    // Expand the audience board, then the first group-type row, to reveal its
     // target control and the tracking-only helper.
+    await panel.locator("summary", { hasText: "Men's" }).first().click();
     await panel.locator("summary", { hasText: "20-30s" }).first().click();
     const targetInput = panel.getByLabel("Target for Men's 20-30s", {
       exact: true,
@@ -364,6 +365,10 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     await expect(level.getByText("Group type overrides")).toBeVisible();
     await expect(panel.getByLabel("Search scopes")).toBeVisible();
     await expect(level.locator('optgroup[label="By type"]')).toHaveCount(0);
+    await expect(panel.getByText("Current state")).toBeVisible();
+    await panel
+      .locator("summary", { hasText: "Edit this readiness rule" })
+      .click();
 
     // Interest is a people-count, never a letter: the pillar says so and the
     // threshold control is a number input named in people.

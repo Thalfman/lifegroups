@@ -393,9 +393,11 @@ describe("buildTopNextActions: why-it-matters rationale", () => {
     const why = Object.fromEntries(
       buildTopNextActions(d).map((a) => [a.key, a.why])
     );
-    expect(why.no_leader).toBe("Unled groups can't meet or grow.");
+    expect(why.no_leader).toBe(
+      "Import people, mark leaders, then assign them so care can start."
+    );
     expect(why.setup_gaps).toBe(
-      "Missing details keep a group from gathering well."
+      "Complete group setup so meeting rhythms and care coverage have a clear base."
     );
     expect(why.care_attention).toBe(
       "Leaders carry more when no one is checking in."

@@ -37,7 +37,7 @@ function UserPill({
         <span className="max-w-[200px] truncate font-sans text-sm font-semibold text-ink">
           {user.name}
         </span>
-        <span className="font-sans text-2xs tracking-wide text-ink3">
+        <span className="font-sans text-xs tracking-wide text-ink3">
           {roleLabel}
         </span>
       </div>
