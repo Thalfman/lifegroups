@@ -60,7 +60,7 @@ export function Sidebar({
             className={i > 0 ? "border-t border-line pt-3.5" : undefined}
           >
             {g.label ? (
-              <div className="px-2.5 py-1.5 text-2xs font-semibold uppercase tracking-[0.16em] text-ink3">
+              <div className="px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-ink3">
                 {g.label}
               </div>
             ) : null}

@@ -87,7 +87,9 @@ describe("PeopleDirectory role sections", () => {
   it("collapses to one aggregate empty section when no profiles match", () => {
     const html = renderDirectory([]);
     expect(sectionHeadings(html)).toEqual(["Leaders and oversight", "Members"]);
-    expect(html).toContain("No leaders or oversight roles match");
+    expect(html).toContain(
+      "Add people, mark leaders, then assign group leaders"
+    );
   });
 
   it("collapses to one aggregate section carrying the read error", () => {
@@ -102,5 +104,17 @@ describe("PeopleDirectory role sections", () => {
     expect(sectionHeadings(html)).toEqual(["Leaders and oversight", "Members"]);
     expect(html).toContain("load profiles: boom");
     expect(html).not.toContain("Ministry Admins");
+  });
+
+  it("keeps super-admin Delete behind a row disclosure", () => {
+    const html = renderDirectory(
+      [profile({ id: "p-lead", full_name: "Lena Leader", role: "leader" })],
+      { isSuperAdmin: true }
+    );
+
+    const more = html.indexOf('aria-label="More actions for Lena Leader"');
+    const inlineDelete = html.indexOf('data-testid="inline-delete"');
+    expect(more).toBeGreaterThanOrEqual(0);
+    expect(inlineDelete).toBeGreaterThan(more);
   });
 });

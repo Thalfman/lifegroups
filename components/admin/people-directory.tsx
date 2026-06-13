@@ -235,13 +235,13 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
             empty={
               props.errors.profiles
                 ? `Couldn't load profiles: ${props.errors.profiles}`
-                : trimmed || statusFilter !== "all"
+                : trimmed || deferredStatusFilter !== "active"
                   ? scope === "leaders"
                     ? "No leaders or co-leaders match the current filters."
                     : "No leaders or oversight roles match the current filters."
                   : scope === "leaders"
-                    ? "No leaders or co-leaders yet. Add one with “Add person”."
-                    : "No leaders or oversight roles yet. Add one with “Add person”."
+                    ? "No leaders or co-leaders yet. Add a person, mark them as a leader, then assign them to a group."
+                    : "No leaders or oversight roles yet. Add people, mark leaders, then assign group leaders."
             }
           >
             {null}
@@ -287,9 +287,9 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
             props.errors.members
               ? `Couldn't load members: ${props.errors.members}`
               : visibleMembers.length === 0
-                ? trimmed || statusFilter !== "all"
+                ? trimmed || deferredStatusFilter !== "active"
                   ? "No members match the current filters."
-                  : "No members yet. Add one with “Add person”."
+                  : "No members yet. Add people first, then assign leaders and groups so care coverage can turn on."
                 : null
           }
         >
@@ -392,7 +392,7 @@ function DirectorySection({
             {headerTitle}
           </h3>
           {countLabel ? (
-            <div className="font-sans text-2xs text-ink3">{countLabel}</div>
+            <div className="font-sans text-xs text-ink3">{countLabel}</div>
           ) : null}
         </div>
         <p className="m-0 mt-1.5 max-w-lede font-sans text-sm text-ink2">
@@ -456,6 +456,30 @@ function ViewPersonLink({ href, name }: { href: string; name: string }) {
     >
       View person →
     </LinkButton>
+  );
+}
+
+function SuperAdminRowDangerActions({
+  entityType,
+  id,
+  label,
+}: {
+  entityType: "profile" | "member";
+  id: string;
+  label: string;
+}) {
+  return (
+    <details className="relative inline-flex">
+      <summary
+        className="lg-sac-summary inline-flex rounded-pill border border-line bg-surface px-3 py-1.5 font-sans text-sm font-semibold text-ink2 hover:bg-surfaceAlt"
+        aria-label={`More actions for ${label}`}
+      >
+        More
+      </summary>
+      <div className="absolute right-0 top-[calc(100%+6px)] z-dropdown rounded-md border border-line bg-surface p-2 shadow-softLg">
+        <SuperAdminInlineDelete entityType={entityType} id={id} label={label} />
+      </div>
+    </details>
   );
 }
 
@@ -538,7 +562,7 @@ const ProfileRow = memo(function ProfileRow({
           name={profile.full_name}
         />
         {isSelf ? (
-          <span className="font-sans text-2xs italic text-ink3">
+          <span className="font-sans text-xs italic text-ink3">
             That&rsquo;s you
           </span>
         ) : (
@@ -557,7 +581,7 @@ const ProfileRow = memo(function ProfileRow({
               />
             ) : null}
             {isSuperAdmin ? (
-              <SuperAdminInlineDelete
+              <SuperAdminRowDangerActions
                 entityType="profile"
                 id={profile.id}
                 label={profile.full_name}
@@ -626,7 +650,7 @@ const MemberRow = memo(function MemberRow({
           />
         ) : null}
         {isSuperAdmin ? (
-          <SuperAdminInlineDelete
+          <SuperAdminRowDangerActions
             entityType="member"
             id={member.id}
             label={member.full_name}

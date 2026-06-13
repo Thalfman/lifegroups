@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 import {
   buildCareWorkspace,
   buildGroupNameByShepherdId,
@@ -9,7 +10,8 @@ import {
   type CareData,
 } from "@/components/admin/care/care-data";
 import { EMPTY_ADMIN_FOLLOW_UPS_DATA } from "@/components/admin/follow-ups/follow-ups-data";
-import { group } from "@/lib/dashboard/group-fixtures";
+import { group, profile } from "@/lib/dashboard/group-fixtures";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-reads";
 
 const TODAY = "2026-06-12";
 
@@ -76,6 +78,29 @@ function workspaceInput(
   };
 }
 
+function leaderEntry(id = "leader-1"): ShepherdCareDirectoryEntry {
+  return {
+    profile: profile({
+      id,
+      full_name: "Lena Leader",
+      email: "lena@example.com",
+      role: "leader",
+      status: "active",
+    }),
+    care: null,
+    needs_attention: false,
+  };
+}
+
+function tabMarkup(
+  workspace: ReturnType<typeof buildCareWorkspace>,
+  key: string
+): string {
+  const panel = workspace.tabs.find((tab) => tab.key === key)?.panel;
+  expect(panel).toBeDefined();
+  return renderToStaticMarkup(<>{panel}</>);
+}
+
 describe("buildCareWorkspace", () => {
   it("returns the canonical Care tabs from already-loaded data", () => {
     const workspace = buildCareWorkspace(workspaceInput());
@@ -99,6 +124,29 @@ describe("buildCareWorkspace", () => {
     );
 
     expect(workspace.errorBanner).not.toBeNull();
+  });
+
+  it("explains the setup chain when there are no active care leaders", () => {
+    const workspace = buildCareWorkspace(workspaceInput());
+    const html = tabMarkup(workspace, "over-shepherds");
+
+    expect(html).toContain("Care setup path");
+    expect(html).toContain(
+      "Care will turn on after people are imported, leaders are marked"
+    );
+  });
+
+  it("points to coverage setup when leaders exist but coverage is unassigned", () => {
+    const workspace = buildCareWorkspace(
+      workspaceInput({
+        isSuperAdmin: true,
+        care: careData({ entries: [leaderEntry()], assignments: [] }),
+      })
+    );
+    const html = tabMarkup(workspace, "all-leaders");
+
+    expect(html).toContain("Leaders exist, but coverage is not assigned yet");
+    expect(html).toContain("/admin/super-admin#coverage");
   });
 });
 

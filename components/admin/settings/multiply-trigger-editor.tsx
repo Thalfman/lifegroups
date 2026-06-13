@@ -205,19 +205,60 @@ export function MultiplyTriggerEditor({
         onChange={setSelected}
       />
 
-      <LevelForm
-        key={formKey}
-        action={action}
-        hiddenFields={hiddenFields}
-        payloadName={payloadName}
-        parent={parent}
-        seedFields={seed.fields}
-        seedToggles={seed.toggles}
-        saveLabel={saveLabel}
-        successText={successText}
-        note={note}
-      />
+      <ReadinessRuleSummary level={level} toggles={seed.toggles} />
+
+      <details className="rounded-md border border-line bg-surface px-4 py-3.5">
+        <summary className="lg-sac-summary flex flex-wrap items-center justify-between gap-3 font-sans text-sm font-semibold text-ink">
+          <span>Edit this readiness rule</span>
+          <span className="font-normal text-ink3">
+            Saves only the selected scope
+          </span>
+        </summary>
+        <div className="mt-4">
+          <LevelForm
+            key={formKey}
+            action={action}
+            hiddenFields={hiddenFields}
+            payloadName={payloadName}
+            parent={parent}
+            seedFields={seed.fields}
+            seedToggles={seed.toggles}
+            saveLabel={saveLabel}
+            successText={successText}
+            note={note}
+          />
+        </div>
+      </details>
     </div>
+  );
+}
+
+function ReadinessRuleSummary({
+  level,
+  toggles,
+}: {
+  level: TriggerLevel;
+  toggles: PillarToggles;
+}) {
+  const overrideCount =
+    (toggles.interest ? 1 : 0) +
+    (toggles.capacity ? 1 : 0) +
+    (toggles.groupHealth ? 1 : 0) +
+    (toggles.leaderHealth ? 1 : 0);
+  const detail =
+    level.kind === "global"
+      ? "The global default defines all four pillars for the ministry year."
+      : overrideCount === 0
+        ? "All four pillars inherit from the level above."
+        : `${overrideCount} of 4 pillars override the level above.`;
+
+  return (
+    <section className="grid gap-2 rounded-md border border-line bg-bg px-4 py-3.5">
+      <div className="font-display text-lg font-medium text-ink">
+        Current state
+      </div>
+      <p className="m-0 font-sans text-sm text-ink2">{detail}</p>
+    </section>
   );
 }
 

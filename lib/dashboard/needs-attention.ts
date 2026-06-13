@@ -174,8 +174,9 @@ export type TopNextAction = NeedsAttentionItem & {
 // derived purely — never references the live count. Tone is calm and pastoral
 // (req #323): it explains the cost of leaving the work undone without alarm.
 const TOP_ACTION_WHY: Record<string, string> = {
-  no_leader: "Unled groups can't meet or grow.",
-  setup_gaps: "Missing details keep a group from gathering well.",
+  no_leader: "Import people, mark leaders, then assign them so care can start.",
+  setup_gaps:
+    "Complete group setup so meeting rhythms and care coverage have a clear base.",
   care_attention: "Leaders carry more when no one is checking in.",
   health: "Regular checks keep a group's health from drifting unseen.",
   follow_ups: "Follow-ups close the loop on care already begun.",

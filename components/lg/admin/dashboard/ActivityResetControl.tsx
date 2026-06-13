@@ -60,16 +60,14 @@ export function ActivityResetControl({
         }}
       >
         {baselineOn ? (
-          <span style={{ fontFamily: fontSans, fontSize: 11.5, color: P.ink3 }}>
+          <span style={{ fontFamily: fontSans, fontSize: 12, color: P.ink3 }}>
             Reset {baselineOn} · counts climb from the next day
           </span>
         ) : null}
 
         {confirming ? (
           <>
-            <span
-              style={{ fontFamily: fontSans, fontSize: 11.5, color: P.ink2 }}
-            >
+            <span style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
               Reset counts to zero?
             </span>
             <form action={reset.formAction}>

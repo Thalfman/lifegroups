@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { AdminFollowUpsShell } from "@/components/admin/follow-ups/follow-ups-shell";
 import { CareItemList } from "@/components/admin/care/care-item-list";
 import { CareAccordion } from "@/components/admin/care/care-accordion";
@@ -73,6 +74,54 @@ export function buildGroupNameByShepherdId(
     out.set(leaderId, names.sort((a, b) => a.localeCompare(b)).join(", "));
   }
   return out;
+}
+
+function CareSetupNotice({
+  isSuperAdmin,
+  hasLeaders,
+  hasCoverage,
+}: {
+  isSuperAdmin: boolean;
+  hasLeaders: boolean;
+  hasCoverage: boolean;
+}) {
+  const nextHref = !hasLeaders
+    ? isSuperAdmin
+      ? "/admin/super-admin#people-import"
+      : "/admin/people"
+    : isSuperAdmin
+      ? "/admin/super-admin#coverage"
+      : "/admin/people";
+  const nextLabel = !hasLeaders
+    ? isSuperAdmin
+      ? "Import people"
+      : "Open People"
+    : isSuperAdmin
+      ? "Assign coverage"
+      : "Review leaders";
+
+  return (
+    <aside className="rounded-md border border-line bg-surface px-4 py-3.5">
+      <div className="font-display text-lg font-medium text-ink">
+        Care setup path
+      </div>
+      <p className="m-0 mt-1 font-sans text-sm text-ink2">
+        Care will turn on after people are imported, leaders are marked, group
+        leaders are assigned, and over-shepherd coverage is in place.
+      </p>
+      {!hasCoverage && hasLeaders ? (
+        <p className="m-0 mt-1 font-sans text-sm text-ink2">
+          Leaders exist, but coverage is not assigned yet.
+        </p>
+      ) : null}
+      <Link
+        href={nextHref}
+        className="mt-3 inline-flex font-sans text-sm font-semibold text-clay no-underline hover:underline"
+      >
+        {nextLabel} -&gt;
+      </Link>
+    </aside>
+  );
 }
 
 // Pure Care workspace composition: it accepts only already-loaded read models
@@ -158,6 +207,17 @@ export function buildCareWorkspace({
     groupHealthByGroupId: enrichment.groupHealthByGroupId,
     noteStateByLeaderId: enrichment.noteStateByLeaderId,
   });
+  const hasCareLeaders = care.entries.length > 0;
+  const hasCoverage = care.assignments.length > 0;
+  const showCareSetupNotice =
+    !hasCareLeaders || (care.assignmentsAvailable && !hasCoverage);
+  const careSetupNotice = showCareSetupNotice ? (
+    <CareSetupNotice
+      isSuperAdmin={isSuperAdmin}
+      hasLeaders={hasCareLeaders}
+      hasCoverage={hasCoverage}
+    />
+  ) : null;
 
   const errorBanner = care.error ? (
     <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
@@ -175,12 +235,15 @@ export function buildCareWorkspace({
       key: "over-shepherds",
       label: "Over-Shepherds",
       panel: (
-        <CareAccordion
-          panes={accordionPanes}
-          isSuperAdmin={isSuperAdmin}
-          gradeEntry={enrichment.gradeEntry}
-          hiddenNavAreas={hiddenNavAreas}
-        />
+        <div className="grid gap-5">
+          {careSetupNotice}
+          <CareAccordion
+            panes={accordionPanes}
+            isSuperAdmin={isSuperAdmin}
+            gradeEntry={enrichment.gradeEntry}
+            hiddenNavAreas={hiddenNavAreas}
+          />
+        </div>
       ),
     },
     {
@@ -189,6 +252,7 @@ export function buildCareWorkspace({
       count: care.entries.length,
       panel: (
         <div className="grid gap-5">
+          {careSetupNotice}
           <ShepherdCareDashboardSummaryCards
             summary={dashboard.summary}
             coverageAvailable={dashboard.coverageAvailable}

@@ -99,6 +99,8 @@ export function GroupsCatalogEditor({
   // A category shared across audiences now sits once under each board rather than
   // as N separate top-level rows; the shared rename still syncs across them.
   const boards = groupCellsByAudience(cells);
+  const totalTarget = cells.reduce((sum, cell) => sum + cell.target, 0);
+  const totalHave = cells.reduce((sum, cell) => sum + cell.have, 0);
 
   // Catalog label by id, so the "+ Add existing group" picker can show each
   // candidate's current cell (audience · category) — the admin is picking from
@@ -163,6 +165,13 @@ export function GroupsCatalogEditor({
 
   return (
     <div className="grid gap-6">
+      <GroupsCatalogSummary
+        groupTypeCount={cells.length}
+        activeGroupCount={activeGroups.length}
+        totalHave={totalHave}
+        totalTarget={totalTarget}
+      />
+
       <AddGroupTypeForm categories={categories} />
 
       <div className="grid gap-3">
@@ -226,6 +235,53 @@ function typeKey(
   categoryId: string | null
 ): string {
   return `${audience ?? ""}:${categoryId ?? ""}`;
+}
+
+function GroupsCatalogSummary({
+  groupTypeCount,
+  activeGroupCount,
+  totalHave,
+  totalTarget,
+}: {
+  groupTypeCount: number;
+  activeGroupCount: number;
+  totalHave: number;
+  totalTarget: number;
+}) {
+  return (
+    <section className="grid gap-3 rounded-md border border-line bg-bg px-4 py-3.5">
+      <div className="font-display text-lg font-medium text-ink">
+        Current group-type map
+      </div>
+      <div className="grid grid-cols-1 gap-2.5 font-sans text-sm text-ink2 md:grid-cols-3">
+        <SummaryMetric label="Group types" value={groupTypeCount} />
+        <SummaryMetric label="Active groups" value={activeGroupCount} />
+        <SummaryMetric
+          label="Coverage"
+          value={`${totalHave} of ${totalTarget}`}
+        />
+      </div>
+      <p className="m-0 font-sans text-sm text-ink3">
+        Expand an audience, then a group type, to rename, adjust targets, move
+        groups, or remove a type.
+      </p>
+    </section>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-sm border border-line bg-surface px-3 py-2">
+      <div className="font-sans text-sm font-semibold text-ink">{value}</div>
+      <div className="font-sans text-sm text-ink3">{label}</div>
+    </div>
+  );
 }
 
 // Cleanup for category labels applied to no active group type. Removing a
@@ -474,7 +530,7 @@ function AudienceBoard({
   const name = TYPE_LABEL[board.audienceCategory];
   const count = categoryCountLabel(board.cells.length);
   return (
-    <details className="rounded-md border border-lineSoft bg-surface" open>
+    <details className="rounded-md border border-lineSoft bg-surface">
       <summary
         className={cn("lg-sac-summary", SUMMARY_ROW)}
         aria-label={`${name} group types, ${count}`}

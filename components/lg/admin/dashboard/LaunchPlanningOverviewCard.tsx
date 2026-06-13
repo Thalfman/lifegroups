@@ -30,9 +30,9 @@ function RiskPill({ label, tone }: { label: string; tone: string }) {
         background: `${tone}22`,
         color: tone,
         fontFamily: fontSans,
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 600,
-        letterSpacing: 0.3,
+        letterSpacing: 0,
       }}
     >
       {label}
@@ -119,9 +119,9 @@ export function LaunchPlanningOverviewCard({
         <span
           style={{
             fontFamily: fontSans,
-            fontSize: 10,
+            fontSize: 12,
             textTransform: "uppercase",
-            letterSpacing: 1.3,
+            letterSpacing: 0,
             color: P.ink3,
             fontWeight: 600,
           }}
