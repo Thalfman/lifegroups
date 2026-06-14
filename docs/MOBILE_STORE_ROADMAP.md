@@ -117,9 +117,9 @@ Checklist:
 
 - [ ] Fix contrast carve-out until WCAG AA passes for normal text and primary buttons
 - [ ] Enforce readable mobile type floor
-- [ ] Add mobile viewport Playwright project
-- [ ] Add iPhone-sized smoke tests for login, Home, Care, Plan, Multiply, Leader surface
-- [ ] Add Android-sized smoke tests for the same surfaces
+- [x] Add mobile viewport Playwright project — `mobile-iphone` + `mobile-android` projects (#557)
+- [x] Add iPhone-sized smoke tests for login, Home, Care, Plan, Multiply, Leader surface — `tests/a11y/mobile-smoke.spec.ts` (#557)
+- [x] Add Android-sized smoke tests for the same surfaces — same spec runs on the Android-viewport project (#557)
 - [x] Add first-run orientation for Leaders and Over-Shepherds — one-time dismissible card, server-persisted (#560)
 - [x] Add network/offline error state that is app-like, not a browser error — `AppErrorState` + error boundaries + `OfflineBanner` (#559)
 - [ ] Confirm keyboard behavior on iOS Safari and Android Chrome
