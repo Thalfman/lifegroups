@@ -177,10 +177,11 @@ Two clarifications:
   (`invite-user`, `manage-test-auth-users`).
 - **No hard deletes** outside RPC bodies in normal workflows; operational tables
   use soft-deactivation.
-- **The most sensitive tables use explicit column allowlists** — the
-  shepherd-care reads select named columns, never `select("*")`. Constraining
-  the remaining broad `select("*")` reads (e.g. `profiles` / `members`) is still
-  **tracked debt**, not done (blueprint §G, P2.9).
+- **Every table read uses explicit column allowlists** — there are **no**
+  `select("*")` call sites. Shepherd-care, `profiles`, and `members` reads all
+  select named columns (via `SESSION_PROFILE_COLUMNS`, `PROFILE_COLUMNS`,
+  `MEMBER_COLUMNS`, or inline column lists). The former broad-read debt is
+  closed; keep it closed by adding only named-column reads.
 - Authorization is **role-based** — no Julian/Tom UUIDs or emails are hardcoded
   in code, migrations, or RLS.
 
