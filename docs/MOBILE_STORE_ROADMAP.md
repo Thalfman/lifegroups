@@ -237,6 +237,13 @@ Acceptance gate:
 
 Create fake seeded data only. Do not expose real ministry data to reviewers.
 
+> The synthetic dataset + idempotent seed routine is built (#572):
+> [`supabase/seed/reviewer_demo_seed.sql`](../supabase/seed/reviewer_demo_seed.sql),
+> documented in [`docs/store/reviewer-demo-seed.md`](store/reviewer-demo-seed.md).
+> It fills the Ministry Admin, Over-Shepherd, and Leader surfaces with
+> `@reviewerdemo.example` records; #564 provisions the matching reviewer Auth
+> users.
+
 | Role           | Needed? | Purpose                                               |
 | -------------- | ------- | ----------------------------------------------------- |
 | Ministry Admin | Yes     | Review Care, Plan, Multiply, Groups, People, Settings |
