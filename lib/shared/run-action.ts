@@ -122,12 +122,40 @@ export type WriteActionCore<Actor, V, T> = {
   mapRpcError: (raw: string) => string;
 };
 
+// Generic, detail-free message returned when an unexpected throw escapes a
+// pipeline stage. Internal error text never reaches the client.
+const UNHANDLED_EXCEPTION_MESSAGE = "Something went wrong. Please try again.";
+
 export async function runWriteAction<Actor, V, T>(
   core: WriteActionCore<Actor, V, T>,
   input: unknown
 ): Promise<ActionResult<T>> {
   const ctx = startActionLog(core.name);
 
+  // Top-level exception net. Every non-throwing branch below calls
+  // `ctx.finish(...)` itself; `finish` is idempotent (first call wins), so the
+  // `finally` is a pure safety net: if any stage (validate / guard / fields /
+  // RPC / mapRpcError / revalidatePath) throws unexpectedly, the catch returns
+  // a generic typed error (no detail leak) and the finally emits the single
+  // terminal `unhandled_exception` line that would otherwise be missing — the
+  // action log can never be left unfinished.
+  try {
+    return await runWriteActionPipeline(core, input, ctx);
+  } catch (error) {
+    // The catch is what converts the throw into a typed ActionResult; the
+    // finally records the log line. We don't log `error` detail to the client.
+    void error;
+    return { ok: false, errors: [UNHANDLED_EXCEPTION_MESSAGE] };
+  } finally {
+    ctx.finish("fail", { error_code: "unhandled_exception" });
+  }
+}
+
+async function runWriteActionPipeline<Actor, V, T>(
+  core: WriteActionCore<Actor, V, T>,
+  input: unknown,
+  ctx: ReturnType<typeof startActionLog>
+): Promise<ActionResult<T>> {
   const auth = await core.authenticate();
   if (!auth.ok) {
     ctx.finish("denied", { error_code: "auth_denied" });
