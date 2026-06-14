@@ -68,6 +68,8 @@ import {
   type GroupSetupCategory,
 } from "@/lib/dashboard/labels";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ScrollableTable } from "@/components/ui/scrollable-table";
 import {
   capacityStatus,
   effectiveCapacity,
@@ -664,16 +666,18 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
       </div>
 
       {visible.length === 0 ? (
-        <div
+        <EmptyState
+          variant="inline"
           className={cn(
-            "rounded-md border border-dashed border-line bg-surface px-6 py-[22px] text-center font-sans text-sm text-ink2 transition-opacity duration-150",
+            "rounded-md border border-dashed border-line bg-surface px-6 py-[22px] text-center text-ink2 transition-opacity duration-150",
             listIsStale && "opacity-60"
           )}
-        >
-          {trimmed
-            ? "No groups match your search on this tab. Clear the search to see the full list."
-            : EMPTY_TAB_COPY[deferredTab]}
-        </div>
+          title={
+            trimmed
+              ? "No groups match your search on this tab. Clear the search to see the full list."
+              : EMPTY_TAB_COPY[deferredTab]
+          }
+        />
       ) : deferredMode === "table" ? (
         <div
           className={cn(
@@ -1276,7 +1280,7 @@ function GroupsTable({
   );
   const headerPad = DENSITY_HEADER_CLASS[density];
   return (
-    <div className="overflow-x-auto">
+    <ScrollableTable>
       <table className="w-full border-collapse font-sans text-sm">
         <caption className="sr-only">
           Groups, with sortable columns for group, leader, setup, health grade,
@@ -1352,7 +1356,7 @@ function GroupsTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollableTable>
   );
 }
 

@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { shepherdCareInteractionTypeLabel } from "@/lib/dashboard/labels";
 import { formatIsoDate } from "@/lib/shared/date";
 import type { ShepherdCareInteractionsRow } from "@/types/database";
@@ -10,9 +11,11 @@ export function InteractionTimeline({
 }) {
   if (interactions.length === 0) {
     return (
-      <div className="py-5 font-sans text-sm text-ink3">
-        No interactions logged yet.
-      </div>
+      <EmptyState
+        variant="inline"
+        className="py-5"
+        title="No interactions logged yet."
+      />
     );
   }
   return (
