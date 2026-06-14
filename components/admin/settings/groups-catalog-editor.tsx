@@ -25,6 +25,7 @@ import {
 } from "@/components/admin/forms/action-form";
 import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
 import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
+import { cellKeyOf } from "@/lib/admin/cell-coordinate";
 import {
   groupCellsByAudience,
   resolveCategoryForLabel,
@@ -127,7 +128,7 @@ export function GroupsCatalogEditor({
   const activeGroups = groups.filter((g) => g.closed_at == null);
   const groupsByType = new Map<string, GroupsRow[]>();
   for (const g of activeGroups) {
-    const key = typeKey(g.audience_category, g.category_id);
+    const key = cellKeyOf(g.audience_category, g.category_id);
     const bucket = groupsByType.get(key);
     if (bucket) bucket.push(g);
     else groupsByType.set(key, [g]);
@@ -138,11 +139,11 @@ export function GroupsCatalogEditor({
   // catch-all keeps every group editable from this tab. Keyed off the cells
   // directly (the boards hold exactly these), so it's independent of grouping.
   const matchedKeys = new Set(
-    cells.map((c) => typeKey(c.audienceCategory, c.categoryId))
+    cells.map((c) => cellKeyOf(c.audienceCategory, c.categoryId))
   );
   const otherGroups = activeGroups
     .filter(
-      (g) => !matchedKeys.has(typeKey(g.audience_category, g.category_id))
+      (g) => !matchedKeys.has(cellKeyOf(g.audience_category, g.category_id))
     )
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -225,16 +226,6 @@ export function GroupsCatalogEditor({
       </EditingSurface>
     </div>
   );
-}
-
-// The (Audience × category) key a group and a group-type row share. A group with
-// no audience or category resolves to an empty-part key that matches no real
-// type row, so it lands in the "Other groups" catch-all.
-function typeKey(
-  audience: GroupAudienceCategory | null,
-  categoryId: string | null
-): string {
-  return `${audience ?? ""}:${categoryId ?? ""}`;
 }
 
 function GroupsCatalogSummary({
@@ -549,11 +540,11 @@ function AudienceBoard({
           <ul className="m-0 grid list-none gap-3 p-0">
             {board.cells.map((row) => (
               <GroupTypeRow
-                key={`${row.audienceCategory}:${row.categoryId}`}
+                key={cellKeyOf(row.audienceCategory, row.categoryId)}
                 row={row}
                 groups={
                   groupsByType.get(
-                    typeKey(row.audienceCategory, row.categoryId)
+                    cellKeyOf(row.audienceCategory, row.categoryId)
                   ) ?? []
                 }
                 allActiveGroups={allActiveGroups}

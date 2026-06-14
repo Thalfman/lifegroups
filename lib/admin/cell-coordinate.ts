@@ -17,6 +17,11 @@ import type { GroupAudienceCategory } from "@/types/enums";
 // (lib/admin/multiply-trigger.ts). That round-trips a global | type | cell UI
 // selection through a form value and parses it back — a tagged-union codec, a
 // different concept than a cell map key.
+//
+// Nullable parts live here too: a group with no Audience and/or no category is
+// uncategorized — in no cell — but still needs a stable key (e.g. to bucket it
+// into a catch-all next to the real cells). `cellKeyOf` owns that case, so the
+// `:` separator never has to be re-spelled at a call site that handles nulls.
 
 export type CellCoordinate = {
   audience: GroupAudienceCategory;
@@ -26,5 +31,24 @@ export type CellCoordinate = {
 // The canonical map-key string for a Cell coordinate — the single place the
 // encoding lives, so every per-cell map keys the same way.
 export function cellKey(coord: CellCoordinate): string {
-  return `${coord.audience}:${coord.categoryId}`;
+  return composeCellKey(coord.audience, coord.categoryId);
+}
+
+// Lenient sibling of `cellKey` for a possibly-uncategorized group. When both
+// parts are present this equals `cellKey({ audience, categoryId })`; a null part
+// yields an empty-part key that collides with NO real cell (real keys are
+// `enum:uuid`, both parts non-empty), so an uncategorized group lands in the
+// catch-all. The one home for the nullable encoding — callers that key nullable
+// parts route through here instead of re-spelling the separator.
+export function cellKeyOf(
+  audience: GroupAudienceCategory | null,
+  categoryId: string | null
+): string {
+  return composeCellKey(audience ?? "", categoryId ?? "");
+}
+
+// The shared composer both keyers build on, kept private so the separator is an
+// implementation detail of this module alone.
+function composeCellKey(audience: string, categoryId: string): string {
+  return `${audience}:${categoryId}`;
 }
