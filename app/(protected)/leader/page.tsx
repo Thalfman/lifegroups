@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { AddToHomeScreenButton } from "@/components/pwa/add-to-home-screen-button";
 import { cardClassName } from "@/components/lg/Card";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +69,7 @@ export default async function LeaderPage() {
         italic="space"
         lede="A place to care for the groups you lead — note how each is doing, how to pray for it, and keep its calendar."
         maxWidth={MAX_WIDTH}
+        actions={<AddToHomeScreenButton />}
       />
       <PageBody maxWidth={MAX_WIDTH}>
         {orientationSeen ? null : <FirstRunCard variant="leader" />}

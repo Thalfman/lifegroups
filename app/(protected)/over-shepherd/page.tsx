@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { AddToHomeScreenButton } from "@/components/pwa/add-to-home-screen-button";
 import { EmptyState } from "@/components/dashboard/cards";
 import { MyShepherdsTable } from "@/components/over-shepherd/my-shepherds-table";
 import { requireOverShepherd } from "@/lib/auth/session";
@@ -40,6 +41,7 @@ export default async function OverShepherdPage() {
         title="My Leaders"
         lede={lede}
         maxWidth={SHELL_MAX_WIDTH}
+        actions={<AddToHomeScreenButton />}
       />
       <PageBody maxWidth={SHELL_MAX_WIDTH}>{body}</PageBody>
     </LgAppShell>
