@@ -121,7 +121,7 @@ Checklist:
 - [ ] Add iPhone-sized smoke tests for login, Home, Care, Plan, Multiply, Leader surface
 - [ ] Add Android-sized smoke tests for the same surfaces
 - [x] Add first-run orientation for Leaders and Over-Shepherds — one-time dismissible card, server-persisted (#560)
-- [ ] Add network/offline error state that is app-like, not a browser error
+- [x] Add network/offline error state that is app-like, not a browser error — `AppErrorState` + error boundaries + `OfflineBanner` (#559)
 - [ ] Confirm keyboard behavior on iOS Safari and Android Chrome
 - [ ] Confirm drawer and sticky submit behavior on 375px width
 
