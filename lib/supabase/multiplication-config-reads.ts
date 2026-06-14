@@ -2,7 +2,7 @@ import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
 import { isAudienceCategory } from "@/lib/admin/audience";
-import { cellKey } from "@/lib/admin/cell-coordinate";
+import { cellKey, cellKeyOf } from "@/lib/admin/cell-coordinate";
 import { fetchHealthRubric } from "./health-rubric-reads";
 import {
   tallyCellInterest,
@@ -198,14 +198,16 @@ export type CellActiveGroupSizes = {
   keys: Map<string, CellKey>;
 };
 
-// The stable cell key string — the canonical Cell coordinate key (cellKey), with
-// a null category collapsed to "" (an uncategorized group is in no cell, so the
-// key is never matched). Exported so the surface and tests agree.
+// The stable cell key string — a typed alias over the canonical lenient keyer
+// (`cellKeyOf`): a null category collapses to an empty-part key, and an
+// uncategorized group is in no cell, so that key is never matched. The encoding
+// itself lives in `lib/admin/cell-coordinate.ts`; this narrows the signature to a
+// known Audience for the surface and tests that import it.
 export function cellKeyString(
   audience: GroupAudienceCategory,
   categoryId: string | null
 ): string {
-  return cellKey({ audience, categoryId: categoryId ?? "" });
+  return cellKeyOf(audience, categoryId);
 }
 
 // Pure aggregator (exported for testing): bucket each ACTIVE group's active member
