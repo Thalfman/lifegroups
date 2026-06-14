@@ -136,7 +136,7 @@ Goal: Prepare required policy surfaces before store submission.
 Checklist:
 
 - [ ] Add public privacy policy page
-- [ ] Add public support/contact page
+- [x] Add public support/contact page — `app/support/page.tsx` (#562)
 - [ ] Add account deletion or deletion request page
 - [ ] Link deletion/support/privacy from authenticated settings or account area
 - [x] Document data categories collected: name, email, role, group data, care notes, prayer requests, audit events, analytics if used — [`docs/store/data-inventory.md`](store/data-inventory.md)

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { LoginForm } from "@/app/login/login-form";
 
 export function SignInScreen() {
@@ -44,6 +45,16 @@ export function SignInScreen() {
             Colossians 1:28
           </p>
         </aside>
+
+        <p className="m-0 text-center font-sans text-sm text-ink3">
+          Need help?{" "}
+          <Link
+            href="/support"
+            className="font-medium text-sageDeep no-underline"
+          >
+            Contact support
+          </Link>
+        </p>
       </div>
     </main>
   );
