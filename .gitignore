@@ -2,6 +2,9 @@ node_modules
 .next
 out
 
+# Vitest coverage (non-blocking, opt-in via `npm run test:coverage`)
+/coverage
+
 # Playwright
 /test-results
 /playwright-report

@@ -128,7 +128,7 @@ export default async function AdminGroupDetailPage({
             ← Back to groups
           </Link>
 
-          <nav
+          <div
             role="tablist"
             aria-label="Group detail sections"
             className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
@@ -152,7 +152,7 @@ export default async function AdminGroupDetailPage({
                 </Link>
               );
             })}
-          </nav>
+          </div>
 
           {tabData.tab === "overview" ? (
             <OverviewTab data={tabData} group={group} groupId={groupId} />
