@@ -14,67 +14,67 @@ import {
 import {
   decideInstallAffordance,
   isIosSafari,
-  isStandalone,
   type BeforeInstallPromptEvent,
   type InstallAffordance,
 } from "@/lib/pwa/install";
+import {
+  clearDeferredPrompt,
+  getInstallSnapshot,
+  startInstallPromptCapture,
+  subscribeInstallPrompt,
+} from "@/lib/pwa/install-prompt-store";
 
 // A page-header action that helps people install the app to their Home Screen.
-// On Chrome/Edge it triggers the captured native install prompt; on iOS Safari
-// it opens a short guided modal (iOS has no programmatic install); everywhere
-// the app is already installed or install is unsupported it renders nothing.
-// Follows the OfflineBanner pattern: browser state is read in an effect with
-// cleaned-up listeners, and the component is invisible until that resolves.
+// On Chrome/Edge it triggers the native install prompt (captured app-wide by
+// install-prompt-store, since the one-shot `beforeinstallprompt` may fire before
+// this button mounts); on iOS Safari it opens a short guided modal (iOS has no
+// programmatic install); everywhere the app is already installed or install is
+// unsupported it renders nothing.
 export function AddToHomeScreenButton() {
   // Resolved once on mount. Until then we render nothing so the server and first
   // client render agree (no hydration mismatch) and we never flash a button an
   // installed/unsupported context shouldn't see.
   const [ready, setReady] = useState(false);
-  const [standalone, setStandalone] = useState(false);
   const [iosSafari, setIosSafari] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
     null
   );
+  const [installed, setInstalled] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
 
   useEffect(() => {
-    setStandalone(isStandalone());
-    setIosSafari(isIosSafari(navigator.userAgent));
-    setReady(true);
+    // Idempotent — the root PwaClientSetup normally starts this already; calling
+    // again guards the button working even if mounted in isolation.
+    startInstallPromptCapture();
+    setIosSafari(isIosSafari(navigator.userAgent, navigator.maxTouchPoints));
 
-    const onBeforeInstall = (event: Event) => {
-      // Stop Chrome's mini-infobar; we drive the prompt from the button instead.
-      event.preventDefault();
-      setDeferred(event as BeforeInstallPromptEvent);
+    const sync = () => {
+      const snapshot = getInstallSnapshot();
+      setDeferred(snapshot.deferred);
+      setInstalled(snapshot.installed);
+      if (snapshot.installed) setGuideOpen(false);
     };
-    const onInstalled = () => {
-      setDeferred(null);
-      setStandalone(true);
-      setGuideOpen(false);
-    };
-    window.addEventListener("beforeinstallprompt", onBeforeInstall);
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
+    sync();
+    setReady(true);
+    return subscribeInstallPrompt(sync);
   }, []);
 
   const promptNative = useCallback(async () => {
-    if (!deferred) return;
-    await deferred.prompt();
+    const { deferred: prompt } = getInstallSnapshot();
+    if (!prompt) return;
+    await prompt.prompt();
     try {
-      await deferred.userChoice;
+      await prompt.userChoice;
     } finally {
       // A deferred prompt can only be used once; drop it either way.
-      setDeferred(null);
+      clearDeferredPrompt();
     }
-  }, [deferred]);
+  }, []);
 
   if (!ready) return null;
 
   const affordance: InstallAffordance = decideInstallAffordance({
-    standalone,
+    standalone: installed,
     iosSafari,
     hasDeferredPrompt: deferred !== null,
   });

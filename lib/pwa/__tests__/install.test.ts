@@ -14,6 +14,10 @@ const UA = {
     "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
   iphoneChrome:
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0 Mobile/15E148 Safari/604.1",
+  // iPadOS desktop-class Safari and a real Mac Safari share this exact UA — only
+  // navigator.maxTouchPoints tells them apart.
+  macOrIpadSafari:
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
   androidChrome:
     "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
   desktopChrome:
@@ -33,6 +37,14 @@ describe("isIosSafari", () => {
   it("is false for non-iOS browsers", () => {
     expect(isIosSafari(UA.androidChrome)).toBe(false);
     expect(isIosSafari(UA.desktopChrome)).toBe(false);
+  });
+
+  it("treats a touch-capable Macintosh-UA Safari as iPadOS desktop mode", () => {
+    expect(isIosSafari(UA.macOrIpadSafari, 5)).toBe(true);
+  });
+
+  it("treats the same UA without touch points as a real Mac", () => {
+    expect(isIosSafari(UA.macOrIpadSafari, 0)).toBe(false);
   });
 });
 

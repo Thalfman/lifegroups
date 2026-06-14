@@ -20,12 +20,28 @@ export interface BeforeInstallPromptEvent extends Event {
  * (the Share menu → "Add to Home Screen") are accurate. iOS never fires
  * `beforeinstallprompt`, and the other iOS browsers (Chrome/Firefox/Edge/Opera)
  * surface installation through a different, in-app menu, so we exclude them.
+ *
+ * `maxTouchPoints` distinguishes desktop-class iPadOS Safari (which reports a
+ * "Macintosh" user-agent with no "iPad" token, identical to macOS Safari) from
+ * a real Mac: only the iPad exposes touch points. Pass `navigator.maxTouchPoints`.
  */
-export function isIosSafari(userAgent: string): boolean {
-  const isIos = /iphone|ipad|ipod/i.test(userAgent);
-  if (!isIos) return false;
-  const isOtherIosBrowser = /crios|fxios|edgios|opios|mercury/i.test(userAgent);
-  return !isOtherIosBrowser;
+export function isIosSafari(userAgent: string, maxTouchPoints = 0): boolean {
+  // Non-Safari iOS browsers describe a different install flow than our steps.
+  if (/crios|fxios|edgios|opios|mercury/i.test(userAgent)) return false;
+
+  const isClassicIos = /iphone|ipad|ipod/i.test(userAgent);
+
+  // iPadOS in its default desktop-class mode masquerades as a Mac; a
+  // touch-capable Mac-identifying Safari is really an iPad. Exclude desktop
+  // Chrome/Edge on macOS (which also carry a "Safari" token) and real Macs
+  // (no touch points).
+  const isMacSafari =
+    /macintosh/i.test(userAgent) &&
+    /safari/i.test(userAgent) &&
+    !/chrome|chromium|crios|edg/i.test(userAgent);
+  const isDesktopModeIpad = isMacSafari && maxTouchPoints > 1;
+
+  return isClassicIos || isDesktopModeIpad;
 }
 
 /**
