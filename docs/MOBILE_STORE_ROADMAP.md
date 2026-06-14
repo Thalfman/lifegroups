@@ -139,10 +139,10 @@ Checklist:
 - [ ] Add public support/contact page
 - [ ] Add account deletion or deletion request page
 - [ ] Link deletion/support/privacy from authenticated settings or account area
-- [ ] Document data categories collected: name, email, role, group data, care notes, prayer requests, audit events, analytics if used
-- [ ] Document data sharing: Supabase, Vercel Analytics, Vercel Speed Insights, email provider if used
-- [ ] Confirm no unnecessary device permissions are requested
-- [ ] Confirm push notifications are not used unless intentionally added later
+- [x] Document data categories collected: name, email, role, group data, care notes, prayer requests, audit events, analytics if used — [`docs/store/data-inventory.md`](store/data-inventory.md)
+- [x] Document data sharing: Supabase, Vercel Analytics, Vercel Speed Insights, email provider if used — [`docs/store/data-inventory.md`](store/data-inventory.md)
+- [x] Confirm no unnecessary device permissions are requested — none requested (data inventory §3)
+- [x] Confirm push notifications are not used unless intentionally added later — not used (data inventory §3)
 - [ ] Add reviewer notes explaining limited-audience ministry operations use
 
 Acceptance gate:
