@@ -89,13 +89,16 @@ test.describe("mobile smoke — public + harness (#557)", () => {
     }
 
     // The Care · Plan · Multiply nav spine renders (rendered by the sidebar
-    // surface). Several sidebars are mounted, so assert the first of each is in
-    // the DOM (attached, not necessarily painted — the sidebar may be visually
-    // collapsed behind a drawer at a phone width).
+    // surface). The desktop sidebar is display:none below the md breakpoint, so
+    // at a phone width its links sit in the DOM but outside the accessibility
+    // tree — include hidden so the role query still resolves them, and assert
+    // attachment (not paint, since the spine collapses behind a drawer here).
     const sidebar = page.locator('[data-a11y-surface="sidebar-active-state"]');
     for (const label of ["Care", "Plan", "Multiply"] as const) {
       await expect(
-        sidebar.getByRole("link", { name: label, exact: true }).first()
+        sidebar
+          .getByRole("link", { name: label, exact: true, includeHidden: true })
+          .first()
       ).toBeAttached();
     }
   });

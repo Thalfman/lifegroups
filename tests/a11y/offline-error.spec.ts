@@ -34,7 +34,8 @@ test.describe("offline / error state (#559)", () => {
 
   test("shows an offline status message", async ({ page }) => {
     const surface = page.locator(SURFACE);
-    await expect(surface.getByText(/you're offline/i)).toBeVisible();
+    // The banner copy uses a typographic apostrophe (You’re), so match either.
+    await expect(surface.getByText(/you[’']re offline/i)).toBeVisible();
   });
 
   test("axe finds no critical or serious violations", async ({ page }) => {
