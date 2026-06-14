@@ -22,3 +22,10 @@ export const rpcRequestOwnAccountDeletion = (
   args: { p_reason: string | null }
 ): Promise<UuidRpcResult> =>
   callUuidRpc(client, "request_own_account_deletion", args);
+
+// Records that the caller dismissed their first-run orientation card (#560).
+// Idempotent; raises insufficient_privilege with no active own profile.
+export const rpcMarkFirstRunOrientationSeen = (
+  client: AppSupabaseClient
+): Promise<UuidRpcResult> =>
+  callUuidRpc(client, "mark_first_run_orientation_seen");

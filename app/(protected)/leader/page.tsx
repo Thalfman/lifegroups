@@ -11,6 +11,8 @@ import {
   fetchLeaderGroupsByIds,
   type LeaderSafeGroupRow,
 } from "@/lib/supabase/read-models";
+import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
+import { FirstRunCard } from "@/components/orientation/first-run-card";
 
 export const dynamic = "force-dynamic";
 
@@ -32,17 +34,21 @@ export default async function LeaderPage() {
   };
   const MAX_WIDTH = 720;
 
+  const client = await createSupabaseServerClient();
+  // First-run welcome card (#560): shown until the leader dismisses it. A
+  // failed/absent read degrades to "seen" so it never nags on a flaky load.
+  const orientationSeen = client
+    ? await readFirstRunOrientationSeen(client)
+    : true;
+
   const groupIds = session.assignedGroupIds;
   let groups: LeaderSafeGroupRow[] = [];
-  if (groupIds.length > 0) {
-    const client = await createSupabaseServerClient();
-    if (client) {
-      const result = await fetchLeaderGroupsByIds(client, groupIds);
-      if (result.error) throw result.error;
-      groups = result.data ?? [];
-      // Stable, friendly ordering by name.
-      groups.sort((a, b) => a.name.localeCompare(b.name));
-    }
+  if (client && groupIds.length > 0) {
+    const result = await fetchLeaderGroupsByIds(client, groupIds);
+    if (result.error) throw result.error;
+    groups = result.data ?? [];
+    // Stable, friendly ordering by name.
+    groups.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   return (
@@ -55,6 +61,7 @@ export default async function LeaderPage() {
         maxWidth={MAX_WIDTH}
       />
       <PageBody maxWidth={MAX_WIDTH}>
+        {orientationSeen ? null : <FirstRunCard variant="leader" />}
         {groups.length === 0 ? (
           <EmptyState />
         ) : (

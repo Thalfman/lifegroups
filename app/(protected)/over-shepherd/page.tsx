@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/dashboard/cards";
 import { MyShepherdsTable } from "@/components/over-shepherd/my-shepherds-table";
 import { requireOverShepherd } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
+import { FirstRunCard } from "@/components/orientation/first-run-card";
 import { fetchOverShepherdCoverageForCaller } from "@/lib/over-shepherd/coverage";
 import { fetchOverShepherdCareDirectory } from "@/lib/over-shepherd/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
@@ -23,6 +25,11 @@ export const dynamic = "force-dynamic";
 export default async function OverShepherdPage() {
   const session = await requireOverShepherd();
   const client = await createSupabaseServerClient();
+  // First-run welcome card (#560): shown until the Over-Shepherd dismisses it.
+  // A failed/absent read degrades to "seen" so it never nags on a flaky load.
+  const orientationSeen = client
+    ? await readFirstRunOrientationSeen(client)
+    : true;
 
   const user = {
     name: session.profile.full_name,
@@ -92,5 +99,11 @@ export default async function OverShepherdPage() {
       ? "No Leaders are assigned to your care yet. A ministry admin will route coverage your way."
       : "The Leaders you cover, with their current care status.";
 
-  return shell(lede, <MyShepherdsTable entries={entries} />);
+  return shell(
+    lede,
+    <>
+      {orientationSeen ? null : <FirstRunCard variant="over_shepherd" />}
+      <MyShepherdsTable entries={entries} />
+    </>
+  );
 }
