@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { buttonClassName } from "@/components/ui/button";
+import { ScrollableTable } from "@/components/ui/scrollable-table";
 import { formatIsoDate } from "@/lib/shared/date";
 import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/read-models";
 import { ShepherdCareStatusBadge } from "./status-badge";
@@ -61,7 +62,7 @@ export function CareDirectoryTable({
     );
   }
   return (
-    <div className="overflow-x-auto rounded-sm border border-line">
+    <ScrollableTable className="rounded-sm border border-line">
       <table className="w-full border-collapse font-sans text-sm text-ink">
         <thead>
           <tr>
@@ -132,6 +133,6 @@ export function CareDirectoryTable({
           })}
         </tbody>
       </table>
-    </div>
+    </ScrollableTable>
   );
 }
