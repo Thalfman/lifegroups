@@ -1032,6 +1032,7 @@ export function A11yHarnessClient() {
         <OfflineBannerView />
         <AppErrorState
           title="This page didn't load"
+          headingLevel={3}
           message="Something interrupted the connection. Check your network and try again."
           action={
             <>

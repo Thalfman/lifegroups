@@ -43,6 +43,7 @@ set search_path = public, pg_temp
 as $$
 declare
   v_profile_id uuid;
+  v_orientation_id uuid;
 begin
   select id
     into v_profile_id
@@ -57,10 +58,13 @@ begin
 
   insert into public.first_run_orientations (profile_id)
   values (v_profile_id)
-  on conflict (profile_id) do nothing;
+  on conflict (profile_id) do nothing
+  returning id into v_orientation_id;
 
   -- Only audit a real first dismissal (FOUND is false when the conflict
-  -- skipped the insert), so a re-submit doesn't stack audit rows.
+  -- skipped the insert), so a re-submit doesn't stack audit rows. The audited
+  -- entity_id is the inserted first_run_orientations row id (captured above),
+  -- not the profile id, so the audit trail resolves to a real row in that table.
   if found then
     insert into public.audit_events
       (actor_profile_id, action, entity_type, entity_id, metadata)
@@ -68,7 +72,7 @@ begin
       v_profile_id,
       'account.mark_orientation_seen',
       'first_run_orientations',
-      v_profile_id,
+      v_orientation_id,
       '{}'::jsonb
     );
   end if;

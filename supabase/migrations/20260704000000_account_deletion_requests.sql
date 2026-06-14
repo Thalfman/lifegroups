@@ -90,6 +90,8 @@ declare
   v_reason text;
   v_has_reason boolean;
   v_request_id uuid;
+  v_assignments_deactivated integer;
+  v_coverage_deactivated integer;
 begin
   v_reason := nullif(btrim(coalesce(p_reason, '')), '');
   if v_reason is not null and char_length(v_reason) > 1000 then
@@ -136,6 +138,33 @@ begin
          updated_at = now()
    where id = v_profile_id;
 
+  -- Mirror admin_deactivate_profile's cascades so a self-deleted Leader /
+  -- Over-Shepherd doesn't linger as an active assignment in ministry surfaces
+  -- and metrics. We inline the same two updates rather than calling that RPC,
+  -- which is admin-gated and refuses a self-target.
+  with cleaned as (
+    update public.group_leaders
+       set active = false
+     where profile_id = v_profile_id
+       and active = true
+    returning 1
+  )
+  select count(*) into v_assignments_deactivated from cleaned;
+
+  with cleaned_coverage as (
+    update public.shepherd_coverage_assignments
+       set active = false,
+           ended_at = greatest(
+             current_date,
+             public.shepherd_coverage_assignments.assigned_at
+           ),
+           updated_at = now()
+     where shepherd_profile_id = v_profile_id
+       and active = true
+    returning 1
+  )
+  select count(*) into v_coverage_deactivated from cleaned_coverage;
+
   insert into public.account_deletion_requests (profile_id, reason, status)
   values (v_profile_id, v_reason, 'pending')
   returning id into v_request_id;
@@ -152,7 +181,11 @@ begin
     jsonb_build_object(
       'has_reason', v_has_reason,
       'before', jsonb_build_object('status', v_status),
-      'after', jsonb_build_object('status', 'inactive')
+      'after', jsonb_build_object('status', 'inactive'),
+      'deactivated_group_leader_assignments_count',
+        coalesce(v_assignments_deactivated, 0),
+      'deactivated_coverage_assignments_count',
+        coalesce(v_coverage_deactivated, 0)
     )
   );
 
