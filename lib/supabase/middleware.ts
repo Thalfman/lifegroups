@@ -6,13 +6,16 @@ import {
   passwordSetupCookieSetOptions,
   shouldRedirectToPasswordSetup,
 } from "@/lib/auth/password-setup";
-import { getSupabaseEnv } from "./config";
+import { getSupabaseEnvSafe } from "./config";
 
 export async function updateSupabaseSession(
   request: NextRequest
 ): Promise<NextResponse> {
   let response = NextResponse.next({ request });
-  const env = getSupabaseEnv();
+  // Degrade gracefully on a missing OR misconfigured env: this runs on nearly
+  // every request, so a thrown misconfig here would 500 the whole site
+  // (including /login). getSupabaseEnvSafe logs the misconfig and returns null.
+  const env = getSupabaseEnvSafe();
   if (!env) return response;
 
   const supabase = createServerClient(env.url, env.key, {

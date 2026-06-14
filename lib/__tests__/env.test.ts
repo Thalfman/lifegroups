@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getSupabaseEnv,
+  getSupabaseEnvSafe,
   getSupabaseUrlRaw,
   isSupabaseConfigured,
 } from "@/lib/env";
@@ -115,5 +116,60 @@ describe("getSupabaseUrlRaw", () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://public.supabase.co";
     process.env.SUPABASE_URL = "  https://server.supabase.co  ";
     expect(getSupabaseUrlRaw()).toBe("https://server.supabase.co");
+  });
+});
+
+describe("getSupabaseEnvSafe", () => {
+  const original: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    for (const name of SUPABASE_VARS) {
+      original[name] = process.env[name];
+      delete process.env[name];
+    }
+    // The resolver logs misconfigs; silence the expected noise in test output.
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    for (const name of SUPABASE_VARS) {
+      if (original[name] === undefined) delete process.env[name];
+      else process.env[name] = original[name];
+    }
+    vi.restoreAllMocks();
+  });
+
+  it("returns null (never throws) on the no-env demo path", () => {
+    expect(getSupabaseEnvSafe()).toBeNull();
+  });
+
+  it("resolves a fully-configured pair like getSupabaseEnv", () => {
+    process.env.SUPABASE_URL = "https://proj.supabase.co";
+    process.env.SUPABASE_PUBLISHABLE_KEY = "pk-123";
+    expect(getSupabaseEnvSafe()).toEqual({
+      url: "https://proj.supabase.co",
+      key: "pk-123",
+    });
+  });
+
+  it("degrades to null and logs when only a key is set (no site-wide throw)", () => {
+    process.env.SUPABASE_ANON_KEY = "anon-key";
+    expect(getSupabaseEnvSafe()).toBeNull();
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringMatching(/misconfigured environment/i)
+    );
+  });
+
+  it("degrades to null and logs on a malformed URL", () => {
+    process.env.SUPABASE_URL = "not-a-url";
+    process.env.SUPABASE_PUBLISHABLE_KEY = "pk-123";
+    expect(getSupabaseEnvSafe()).toBeNull();
+    expect(console.error).toHaveBeenCalledTimes(1);
+  });
+
+  it("isSupabaseConfigured stays a safe boolean on a half-config", () => {
+    process.env.SUPABASE_URL = "https://proj.supabase.co";
+    expect(() => isSupabaseConfigured()).not.toThrow();
+    expect(isSupabaseConfigured()).toBe(false);
   });
 });

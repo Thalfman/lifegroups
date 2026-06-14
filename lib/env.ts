@@ -76,8 +76,28 @@ export function getSupabaseEnv(): SupabaseEnv | null {
   return { url, key };
 }
 
+// Request-path resolver. Same resolution as `getSupabaseEnv`, but a
+// misconfiguration (half-config or malformed URL) is LOGGED and treated as
+// "not configured" (`null`) instead of thrown. The Supabase client and the
+// session-refresh middleware run on essentially every request; letting the
+// throw escape there would turn a one-variable misconfig into a site-wide 500
+// — including `/login`, the page an operator needs to recover. So the request
+// path degrades like the no-env demo mode, but the error message (which names
+// the offending variable, per #593) still surfaces loudly in the server logs.
+// The strict, throwing `getSupabaseEnv` stays for an explicit boot/build-time
+// assertion that wants to fail hard.
+export function getSupabaseEnvSafe(): SupabaseEnv | null {
+  try {
+    return getSupabaseEnv();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[supabase] ignoring misconfigured environment: ${message}`);
+    return null;
+  }
+}
+
 export function isSupabaseConfigured(): boolean {
-  return getSupabaseEnv() !== null;
+  return getSupabaseEnvSafe() !== null;
 }
 
 // The raw Supabase project URL (server-only name preferred), or undefined. Does

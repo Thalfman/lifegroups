@@ -4,4 +4,8 @@
 // so the Supabase client modules (`server.ts`, `middleware.ts`) and CSP layer
 // import a stable seam.
 export type { SupabaseEnv } from "@/lib/env";
-export { getSupabaseEnv, isSupabaseConfigured } from "@/lib/env";
+export {
+  getSupabaseEnv,
+  getSupabaseEnvSafe,
+  isSupabaseConfigured,
+} from "@/lib/env";
