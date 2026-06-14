@@ -349,7 +349,12 @@ describe("runAdminWriteAction", () => {
       expect(lastLog().ctx).toMatchObject({
         outcome: "fail",
         error_code: "unhandled_exception",
+        // The swallowed throw's detail is captured server-side (never returned
+        // to the client) so the failure stays diagnosable in the action log.
+        error_name: "Error",
+        error_message: expect.stringMatching(/^boom in /),
       });
+      expect(lastLog().ctx.error_stack).toEqual(expect.any(String));
     }
   );
 
