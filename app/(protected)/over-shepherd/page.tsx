@@ -25,11 +25,6 @@ export const dynamic = "force-dynamic";
 export default async function OverShepherdPage() {
   const session = await requireOverShepherd();
   const client = await createSupabaseServerClient();
-  // First-run welcome card (#560): shown until the Over-Shepherd dismisses it.
-  // A failed/absent read degrades to "seen" so it never nags on a flaky load.
-  const orientationSeen = client
-    ? await readFirstRunOrientationSeen(client)
-    : true;
 
   const user = {
     name: session.profile.full_name,
@@ -50,7 +45,13 @@ export default async function OverShepherdPage() {
     </LgAppShell>
   );
 
-  const coverageResult = await fetchOverShepherdCoverageForCaller(client);
+  // The first-run "seen" flag (#560) is independent of the coverage read, so
+  // fetch them in parallel rather than serially on first paint. A failed/absent
+  // orientation read degrades to "seen" so the card never nags on a flaky load.
+  const [orientationSeen, coverageResult] = await Promise.all([
+    client ? readFirstRunOrientationSeen(client) : Promise.resolve(true),
+    fetchOverShepherdCoverageForCaller(client),
+  ]);
 
   // Either backend read failing — surface one controlled empty state rather
   // than leaking a 500.

@@ -22,9 +22,12 @@ describe("reviewer demo seed — idempotency", () => {
     expect(lower).toContain("not exists");
   });
 
-  it("runs in a single transaction", () => {
-    expect(lower).toContain("begin;");
-    expect(lower.trimEnd().endsWith("commit;")).toBe(true);
+  it("has no explicit transaction wrapper (matches the sibling seeds)", () => {
+    // An unwrapped file is safe to feed to a runner that opens its own
+    // transaction; the sibling seeds (phase2_seed / multiplication_seed) follow
+    // the same convention.
+    expect(lower).not.toContain("begin;");
+    expect(lower).not.toContain("commit;");
   });
 });
 

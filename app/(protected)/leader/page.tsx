@@ -35,20 +35,29 @@ export default async function LeaderPage() {
   const MAX_WIDTH = 720;
 
   const client = await createSupabaseServerClient();
-  // First-run welcome card (#560): shown until the leader dismisses it. A
-  // failed/absent read degrades to "seen" so it never nags on a flaky load.
-  const orientationSeen = client
-    ? await readFirstRunOrientationSeen(client)
-    : true;
-
   const groupIds = session.assignedGroupIds;
+
+  // The first-run "seen" flag (#560) and the groups read are independent, so
+  // fetch them in parallel rather than paying two serial round-trips on first
+  // paint. A failed/absent orientation read degrades to "seen" so the card
+  // never nags on a flaky load.
+  let orientationSeen = true;
   let groups: LeaderSafeGroupRow[] = [];
-  if (client && groupIds.length > 0) {
-    const result = await fetchLeaderGroupsByIds(client, groupIds);
-    if (result.error) throw result.error;
-    groups = result.data ?? [];
-    // Stable, friendly ordering by name.
-    groups.sort((a, b) => a.name.localeCompare(b.name));
+  if (client) {
+    const [seen, groupsResult] = await Promise.all([
+      readFirstRunOrientationSeen(client),
+      groupIds.length > 0
+        ? fetchLeaderGroupsByIds(client, groupIds)
+        : Promise.resolve(null),
+    ]);
+    orientationSeen = seen;
+    if (groupsResult) {
+      if (groupsResult.error) throw groupsResult.error;
+      // Stable, friendly ordering by name.
+      groups = (groupsResult.data ?? [])
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
   }
 
   return (

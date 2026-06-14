@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { paperGrain } from "@/lib/pastoral";
-import { PSeal } from "@/components/pastoral/atoms";
+import { PublicPageShell } from "@/components/lg/PublicPageShell";
 import { getSupportContact, supportMailtoHref } from "@/lib/support/contact";
 
 export const metadata: Metadata = {
@@ -19,21 +18,7 @@ export default function SupportPage() {
   const contact = getSupportContact();
 
   return (
-    <div className="lg-m-noscrollx relative flex min-h-screen flex-col bg-bg font-sans text-ink">
-      <div aria-hidden="true" style={paperGrain} />
-
-      <header className="relative z-base border-b border-line bg-surface px-4 py-3 md:px-9 md:py-4">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-3 text-inherit no-underline"
-        >
-          <PSeal />
-          <div className="font-display text-md font-medium text-ink md:text-lg">
-            Fox Valley Church Life Groups
-          </div>
-        </Link>
-      </header>
-
+    <PublicPageShell>
       <main className="relative z-base mx-auto w-full max-w-[640px] flex-1 px-6 py-10 md:py-16">
         {/* The page kicker — the one tracked-uppercase voice per page. */}
         <div className="mb-3.5 font-sans text-2xs font-semibold uppercase tracking-[0.18em] text-clay">
@@ -131,6 +116,6 @@ export default function SupportPage() {
           </Link>
         </p>
       </main>
-    </div>
+    </PublicPageShell>
   );
 }

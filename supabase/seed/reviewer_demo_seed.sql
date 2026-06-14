@@ -30,8 +30,11 @@
 -- Supabase SQL editor, `supabase db push`, or
 --   psql "$DATABASE_URL" -f supabase/seed/reviewer_demo_seed.sql
 -- against the chosen demo project.
-
-begin;
+--
+-- No explicit transaction wrapper (matching phase2_seed.sql /
+-- multiplication_seed.sql): each statement is independently guarded, and an
+-- unwrapped file is safe to feed to runners that already open their own
+-- transaction (e.g. psql -1 / a db-push harness) without committing it early.
 
 -- 1. Category catalog -------------------------------------------------------
 insert into public.group_categories (label)
@@ -226,5 +229,3 @@ and not exists (
      and pr.subject_group_id = g.id
      and pr.body = 'Pray our new study lands well with the group.'
 );
-
-commit;

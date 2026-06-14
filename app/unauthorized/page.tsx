@@ -1,6 +1,4 @@
-import Link from "next/link";
-import { paperGrain } from "@/lib/pastoral";
-import { PSeal } from "@/components/pastoral/atoms";
+import { PublicPageShell } from "@/components/lg/PublicPageShell";
 import { PButton, PLinkButton } from "@/components/pastoral/button";
 import { logoutAction } from "@/app/(protected)/actions";
 import { getCurrentSession } from "@/lib/auth/session";
@@ -28,21 +26,7 @@ export default async function UnauthorizedPage({
   const hasLinkedProfile = !isUnavailable && session.kind === "authenticated";
 
   return (
-    <div className="lg-m-noscrollx relative flex min-h-screen flex-col bg-bg font-sans text-ink">
-      <div aria-hidden="true" style={paperGrain} />
-
-      <header className="relative z-base border-b border-line bg-surface px-4 py-3 md:px-9 md:py-4">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-3 text-inherit no-underline"
-        >
-          <PSeal />
-          <div className="font-display text-md font-medium text-ink md:text-lg">
-            Fox Valley Church Life Groups
-          </div>
-        </Link>
-      </header>
-
+    <PublicPageShell>
       <main className="relative z-base grid flex-1 place-items-center px-6 py-10">
         {/* Card anatomy: border, no shadow (the ghost border+shadow combo retires). */}
         <div className="w-full max-w-[520px] rounded-lg border border-line bg-surface p-7 md:p-11">
@@ -80,6 +64,6 @@ export default async function UnauthorizedPage({
           </div>
         </div>
       </main>
-    </div>
+    </PublicPageShell>
   );
 }

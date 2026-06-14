@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { paperGrain } from "@/lib/pastoral";
-import { PSeal } from "@/components/pastoral/atoms";
+import { PublicPageShell } from "@/components/lg/PublicPageShell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { readOwnNameState } from "@/lib/account/own-name";
 import { WelcomeForm } from "./welcome-form";
@@ -32,21 +30,7 @@ export default async function WelcomePage() {
   // the RPC re-checks pendingness itself, so submitting is always safe.
 
   return (
-    <div className="lg-m-noscrollx relative flex min-h-screen flex-col bg-bg font-sans text-ink">
-      <div aria-hidden="true" style={paperGrain} />
-
-      <header className="relative z-base border-b border-line bg-surface px-4 py-3 md:px-9 md:py-4">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-3 text-inherit no-underline"
-        >
-          <PSeal />
-          <div className="font-display text-md font-medium text-ink md:text-lg">
-            Fox Valley Church Life Groups
-          </div>
-        </Link>
-      </header>
-
+    <PublicPageShell>
       <main className="relative z-base grid flex-1 place-items-center px-6 py-10 md:py-20">
         <div className="w-full max-w-[420px]">
           {/* The page kicker — the one tracked-uppercase voice per page. */}
@@ -64,6 +48,6 @@ export default async function WelcomePage() {
           <WelcomeForm namePrefill={nameState?.prefill ?? ""} />
         </div>
       </main>
-    </div>
+    </PublicPageShell>
   );
 }
