@@ -40,8 +40,8 @@ async function signIn(
   password: string
 ): Promise<void> {
   await page.goto("/login", { waitUntil: "networkidle" });
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/login"));
 }
@@ -54,8 +54,8 @@ test.describe("mobile smoke — public + harness (#557)", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: /welcome back/i })
     ).toBeVisible();
-    await expect(page.getByLabel("Email")).toBeVisible();
-    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
     await expect(
       page.getByRole("link", { name: /contact support/i })
