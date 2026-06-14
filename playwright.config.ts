@@ -35,7 +35,35 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    // Desktop a11y suite (everything except the mobile smoke spec, which the
+    // mobile-viewport projects below own).
+    {
+      name: "chromium",
+      testIgnore: /mobile-smoke\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    // Mobile-viewport cross-surface smoke (#557). Chromium-based (CI installs
+    // only chromium) at an iPhone-sized and an Android-sized viewport, so an
+    // iPhone-class WebKit dependency never blocks the suite. They run ONLY the
+    // mobile smoke spec.
+    {
+      name: "mobile-iphone",
+      testMatch: /mobile-smoke\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 390, height: 844 },
+      },
+    },
+    {
+      name: "mobile-android",
+      testMatch: /mobile-smoke\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 412, height: 915 },
+      },
+    },
+  ],
   webServer: {
     command: webServerCommand,
     url: BASE_URL,

@@ -333,6 +333,23 @@ export interface TombstonesRow {
   restored_by: UUID | null;
 }
 
+// Self-service account-deletion requests (#563): one pending row per profile;
+// the profile is archived (inactive) on request and the permanent purge stays a
+// Super-Admin danger-zone action. Super-Admin-only SELECT RLS; writes only via
+// request_own_account_deletion. profile_id / processed_by are set-null on a
+// profile purge so the request is captured, not blocking, in the preflight.
+export interface AccountDeletionRequestsRow {
+  id: UUID;
+  profile_id: UUID | null;
+  reason: string | null;
+  status: "pending" | "completed" | "cancelled";
+  requested_at: Timestamp;
+  processed_at: Timestamp | null;
+  processed_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 // Phase SAC.1 (#159): Super-Admin-only platform config (feature flags + editable
 // copy). Mirrors the AppSettingsRow keyed-row shape but lives in its own table
 // with Super-Admin-only RLS, so the Ministry Admin can never read it.
@@ -965,6 +982,23 @@ export interface Database {
         Row: PlatformConfigRow;
         Insert: InsertOf<PlatformConfigRow, "id" | "created_at" | "updated_at">;
         Update: Partial<PlatformConfigRow>;
+        Relationships: [];
+      };
+      account_deletion_requests: {
+        Row: AccountDeletionRequestsRow;
+        Insert: InsertOf<
+          AccountDeletionRequestsRow,
+          | "id"
+          | "profile_id"
+          | "reason"
+          | "status"
+          | "requested_at"
+          | "processed_at"
+          | "processed_by"
+          | "created_at"
+          | "updated_at"
+        >;
+        Update: Partial<AccountDeletionRequestsRow>;
         Relationships: [];
       };
       group_metric_settings: {

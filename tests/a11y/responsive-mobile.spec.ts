@@ -32,6 +32,7 @@ const PHONE = { width: 375, height: 812 };
 // with no matching surface fails fast on the visibility assertion rather than
 // silently skipping.
 const SURFACE_IDS = [
+  "offline-error",
   "groups-directory",
   "groups-directory-collisions",
   "master-calendar-list",

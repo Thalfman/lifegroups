@@ -104,6 +104,8 @@ const M = {
   memberCare: "20260624000000_phase_care_member_list_foundation.sql",
   usage: "20260628000000_phase_usage_tracking.sql",
   appSettingsSeal: "20260629000000_seal_app_settings_to_admin.sql",
+  accountDeletion: "20260704000000_account_deletion_requests.sql",
+  firstRunOrientation: "20260705000000_first_run_orientation.sql",
 } as const;
 
 // Token bundles shared by a whole class.
@@ -371,6 +373,16 @@ const MATRIX: readonly RlsExpectation[] = [
     expect: SUPER,
     forbid: ["auth_is_admin"],
   },
+  // Self-service deletion requests: the danger-zone operator reviews them and
+  // performs the permanent purge; Ministry Admin is sealed out (#563).
+  {
+    table: "account_deletion_requests",
+    cls: "SUPER_ADMIN_ONLY",
+    authoritativeMigration: M.accountDeletion,
+    policyName: "account_deletion_requests_super_admin_read",
+    expect: SUPER,
+    forbid: ["auth_is_admin"],
+  },
 
   // --- LEADER_SCOPED: admins read all; a leader reads their group's rows. -----
   {
@@ -520,6 +532,13 @@ const MATRIX: readonly RlsExpectation[] = [
     table: "invite_redeem_throttle",
     cls: "NO_READ",
     authoritativeMigration: M.inviteThrottle,
+  },
+  // Per-user first-run orientation dismissals: read + written only via the
+  // SECURITY DEFINER RPCs, never SELECTed directly (#560).
+  {
+    table: "first_run_orientations",
+    cls: "NO_READ",
+    authoritativeMigration: M.firstRunOrientation,
   },
 ];
 

@@ -117,11 +117,11 @@ Checklist:
 
 - [ ] Fix contrast carve-out until WCAG AA passes for normal text and primary buttons
 - [ ] Enforce readable mobile type floor
-- [ ] Add mobile viewport Playwright project
-- [ ] Add iPhone-sized smoke tests for login, Home, Care, Plan, Multiply, Leader surface
-- [ ] Add Android-sized smoke tests for the same surfaces
-- [ ] Add first-run orientation for Leaders and Over-Shepherds
-- [ ] Add network/offline error state that is app-like, not a browser error
+- [x] Add mobile viewport Playwright project — `mobile-iphone` + `mobile-android` projects (#557)
+- [x] Add iPhone-sized smoke tests for login, Home, Care, Plan, Multiply, Leader surface — `tests/a11y/mobile-smoke.spec.ts` (#557)
+- [x] Add Android-sized smoke tests for the same surfaces — same spec runs on the Android-viewport project (#557)
+- [x] Add first-run orientation for Leaders and Over-Shepherds — one-time dismissible card, server-persisted (#560)
+- [x] Add network/offline error state that is app-like, not a browser error — `AppErrorState` + error boundaries + `OfflineBanner` (#559)
 - [ ] Confirm keyboard behavior on iOS Safari and Android Chrome
 - [ ] Confirm drawer and sticky submit behavior on 375px width
 
@@ -136,13 +136,13 @@ Goal: Prepare required policy surfaces before store submission.
 Checklist:
 
 - [ ] Add public privacy policy page
-- [ ] Add public support/contact page
-- [ ] Add account deletion or deletion request page
-- [ ] Link deletion/support/privacy from authenticated settings or account area
-- [ ] Document data categories collected: name, email, role, group data, care notes, prayer requests, audit events, analytics if used
-- [ ] Document data sharing: Supabase, Vercel Analytics, Vercel Speed Insights, email provider if used
-- [ ] Confirm no unnecessary device permissions are requested
-- [ ] Confirm push notifications are not used unless intentionally added later
+- [x] Add public support/contact page — `app/support/page.tsx` (#562)
+- [x] Add account deletion or deletion request page — `app/account-deletion/page.tsx` + in-app request on `app/(protected)/account` (#563)
+- [x] Link deletion/support/privacy from authenticated settings or account area — `app/(protected)/account` links support + deletion; the top-bar user pill links to it (#563)
+- [x] Document data categories collected: name, email, role, group data, care notes, prayer requests, audit events, analytics if used — [`docs/store/data-inventory.md`](store/data-inventory.md)
+- [x] Document data sharing: Supabase, Vercel Analytics, Vercel Speed Insights, email provider if used — [`docs/store/data-inventory.md`](store/data-inventory.md)
+- [x] Confirm no unnecessary device permissions are requested — none requested (data inventory §3)
+- [x] Confirm push notifications are not used unless intentionally added later — not used (data inventory §3)
 - [ ] Add reviewer notes explaining limited-audience ministry operations use
 
 Acceptance gate:
@@ -236,6 +236,13 @@ Acceptance gate:
 ## 6. Reviewer demo account plan
 
 Create fake seeded data only. Do not expose real ministry data to reviewers.
+
+> The synthetic dataset + idempotent seed routine is built (#572):
+> [`supabase/seed/reviewer_demo_seed.sql`](../supabase/seed/reviewer_demo_seed.sql),
+> documented in [`docs/store/reviewer-demo-seed.md`](store/reviewer-demo-seed.md).
+> It fills the Ministry Admin, Over-Shepherd, and Leader surfaces with
+> `@reviewerdemo.example` records; #564 provisions the matching reviewer Auth
+> users.
 
 | Role           | Needed? | Purpose                                               |
 | -------------- | ------- | ----------------------------------------------------- |

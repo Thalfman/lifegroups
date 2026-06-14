@@ -27,3 +27,32 @@ export function validateOwnFullName(input: unknown): OwnFullNameResult {
   }
   return { ok: true, value: trimmed };
 }
+
+// Optional free-text reason on an account-deletion request (#563). Empty /
+// missing is allowed (returns null); a present value is trimmed and capped to
+// match the char_length(...) <= 1000 check in request_own_account_deletion.
+export type DeletionReasonResult =
+  | { ok: true; value: string | null }
+  | { ok: false; error: string };
+
+const MAX_DELETION_REASON_LENGTH = 1000;
+
+export function validateDeletionReason(input: unknown): DeletionReasonResult {
+  if (input === null || input === undefined) {
+    return { ok: true, value: null };
+  }
+  if (typeof input !== "string") {
+    return { ok: false, error: "Enter a valid reason." };
+  }
+  const trimmed = input.trim();
+  if (trimmed.length === 0) {
+    return { ok: true, value: null };
+  }
+  if (trimmed.length > MAX_DELETION_REASON_LENGTH) {
+    return {
+      ok: false,
+      error: `Reason is too long (${MAX_DELETION_REASON_LENGTH} characters max).`,
+    };
+  }
+  return { ok: true, value: trimmed };
+}

@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/dashboard/cards";
 import { MyShepherdsTable } from "@/components/over-shepherd/my-shepherds-table";
 import { requireOverShepherd } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
+import { FirstRunCard } from "@/components/orientation/first-run-card";
 import { fetchOverShepherdCoverageForCaller } from "@/lib/over-shepherd/coverage";
 import { fetchOverShepherdCareDirectory } from "@/lib/over-shepherd/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
@@ -43,7 +45,13 @@ export default async function OverShepherdPage() {
     </LgAppShell>
   );
 
-  const coverageResult = await fetchOverShepherdCoverageForCaller(client);
+  // The first-run "seen" flag (#560) is independent of the coverage read, so
+  // fetch them in parallel rather than serially on first paint. A failed/absent
+  // orientation read degrades to "seen" so the card never nags on a flaky load.
+  const [orientationSeen, coverageResult] = await Promise.all([
+    client ? readFirstRunOrientationSeen(client) : Promise.resolve(true),
+    fetchOverShepherdCoverageForCaller(client),
+  ]);
 
   // Either backend read failing — surface one controlled empty state rather
   // than leaking a 500.
@@ -92,5 +100,11 @@ export default async function OverShepherdPage() {
       ? "No Leaders are assigned to your care yet. A ministry admin will route coverage your way."
       : "The Leaders you cover, with their current care status.";
 
-  return shell(lede, <MyShepherdsTable entries={entries} />);
+  return shell(
+    lede,
+    <>
+      {orientationSeen ? null : <FirstRunCard variant="over_shepherd" />}
+      <MyShepherdsTable entries={entries} />
+    </>
+  );
 }

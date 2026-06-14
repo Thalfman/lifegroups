@@ -15,6 +15,9 @@
 import { Suspense, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
+import { AppErrorState } from "@/components/lg/AppErrorState";
+import { OfflineBannerView } from "@/components/lg/OfflineBanner";
+import { Button, LinkButton } from "@/components/ui/button";
 import {
   CalendarOccurrenceEditor,
   type CalendarOccurrenceEditorActions,
@@ -1024,6 +1027,25 @@ export function A11yHarnessClient() {
   return (
     <main style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
       <h1>Admin accessible-name harness</h1>
+
+      <Surface id="offline-error" heading="Offline / error state (#559)">
+        <OfflineBannerView />
+        <AppErrorState
+          title="This page didn't load"
+          headingLevel={3}
+          message="Something interrupted the connection. Check your network and try again."
+          action={
+            <>
+              <Button type="button" variant="primary">
+                Try again
+              </Button>
+              <LinkButton href="/" variant="ghost">
+                Go to home
+              </LinkButton>
+            </>
+          }
+        />
+      </Surface>
 
       <Surface id="groups-directory" heading="Groups directory">
         <GroupsDirectory
