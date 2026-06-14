@@ -24,7 +24,8 @@
 -- request row is retained as history past that purge, but the optional free-text
 -- reason can carry personal data, so a trigger wipes it the moment profile_id is
 -- nulled by the purge — no user-supplied PII outlives the permanent deletion the
--- public deletion page promises.
+-- public deletion page promises — and finalizes a still-pending row to completed
+-- so the purge also clears it out of the Super-Admin review queue.
 --
 -- Fixed error tokens (mapped to friendly copy in the action layer):
 --   invalid_input, insufficient_privilege, forbidden_target,
@@ -56,17 +57,21 @@ create index idx_account_deletion_requests_status
   on public.account_deletion_requests (status, requested_at);
 
 comment on table public.account_deletion_requests is
-  'Self-service account-deletion requests (#563). One pending row per profile; the profile is archived (inactive) on request. The permanent purge stays a Super-Admin danger-zone action. Super-Admin-only SELECT; writes only via request_own_account_deletion. The free-text reason is wiped when the referenced profile is permanently purged (profile_id nulled).';
+  'Self-service account-deletion requests (#563). One pending row per profile; the profile is archived (inactive) on request. The permanent purge stays a Super-Admin danger-zone action. Super-Admin-only SELECT; writes only via request_own_account_deletion. When the referenced profile is permanently purged (profile_id nulled), a trigger wipes the free-text reason and finalizes a still-pending row to completed.';
 
 -- ---------------------------------------------------------------------------
--- Wipe the free-text reason when the referenced profile is permanently purged.
+-- Finalize the retained request when the referenced profile is permanently
+-- purged.
 -- ---------------------------------------------------------------------------
 -- The request row is kept as history (profile_id goes NULL under the FK's ON
 -- DELETE SET NULL), but the optional reason can carry personal data that must
--- not survive the permanent profile purge. This BEFORE UPDATE trigger fires
--- exactly when the SET NULL nulls profile_id during the parent profile delete,
--- and clears the reason in the same statement. It does not touch other updates.
-create or replace function public.account_deletion_requests_clear_reason_on_purge()
+-- not survive the permanent profile purge, and a still-`pending` row with a
+-- nulled profile would linger forever in the Super-Admin review queue. This
+-- BEFORE UPDATE trigger fires exactly when the SET NULL nulls profile_id during
+-- the parent profile delete: it wipes the reason and, for a request that was
+-- still pending, marks it completed (stamping processed_at) so the purge clears
+-- it out of the pending queue. It does not touch other updates.
+create or replace function public.account_deletion_requests_finalize_on_purge()
 returns trigger
 language plpgsql
 set search_path = public, pg_temp
@@ -74,21 +79,25 @@ as $$
 begin
   if new.profile_id is null and old.profile_id is not null then
     new.reason := null;
+    if new.status = 'pending' then
+      new.status := 'completed';
+      new.processed_at := now();
+    end if;
   end if;
   return new;
 end;
 $$;
 
-revoke all on function public.account_deletion_requests_clear_reason_on_purge() from public;
-revoke all on function public.account_deletion_requests_clear_reason_on_purge() from anon;
-revoke all on function public.account_deletion_requests_clear_reason_on_purge() from authenticated;
+revoke all on function public.account_deletion_requests_finalize_on_purge() from public;
+revoke all on function public.account_deletion_requests_finalize_on_purge() from anon;
+revoke all on function public.account_deletion_requests_finalize_on_purge() from authenticated;
 
-drop trigger if exists trg_account_deletion_requests_clear_reason_on_purge
+drop trigger if exists trg_account_deletion_requests_finalize_on_purge
   on public.account_deletion_requests;
-create trigger trg_account_deletion_requests_clear_reason_on_purge
+create trigger trg_account_deletion_requests_finalize_on_purge
   before update of profile_id on public.account_deletion_requests
   for each row
-  execute function public.account_deletion_requests_clear_reason_on_purge();
+  execute function public.account_deletion_requests_finalize_on_purge();
 
 -- ---------------------------------------------------------------------------
 -- RLS: Super-Admin-only SELECT; no INSERT/UPDATE/DELETE policies (RPC-only).

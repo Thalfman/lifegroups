@@ -65,22 +65,25 @@ describe("#563 migration — account_deletion_requests table", () => {
     );
   });
 
-  it("wipes the free-text reason when the profile is permanently purged", () => {
-    // The retained request row outlives the purge (profile_id SET NULL); the
-    // user-supplied reason can carry PII, so a BEFORE UPDATE trigger clears it
-    // the moment the purge nulls profile_id — no PII outlives the deletion.
+  it("finalizes the retained request when the profile is permanently purged", () => {
+    // The retained request row outlives the purge (profile_id SET NULL). A
+    // BEFORE UPDATE trigger fires when the purge nulls profile_id and (a) wipes
+    // the free-text reason so no PII outlives the deletion, and (b) marks a
+    // still-pending row completed so it leaves the Super-Admin review queue.
     expect(sql.lower).toContain(
-      "create trigger trg_account_deletion_requests_clear_reason_on_purge"
+      "create trigger trg_account_deletion_requests_finalize_on_purge"
     );
     expect(sql.lower).toContain("before update of profile_id");
     const body = functionBody(
       sql,
-      "account_deletion_requests_clear_reason_on_purge"
+      "account_deletion_requests_finalize_on_purge"
     );
     expect(body).toContain(
       "new.profile_id is null and old.profile_id is not null"
     );
     expect(body).toContain("new.reason := null");
+    expect(body).toContain("new.status := 'completed'");
+    expect(body).toContain("new.processed_at := now()");
   });
 });
 
