@@ -137,8 +137,8 @@ Checklist:
 
 - [ ] Add public privacy policy page
 - [x] Add public support/contact page — `app/support/page.tsx` (#562)
-- [ ] Add account deletion or deletion request page
-- [ ] Link deletion/support/privacy from authenticated settings or account area
+- [x] Add account deletion or deletion request page — `app/account-deletion/page.tsx` + in-app request on `app/(protected)/account` (#563)
+- [x] Link deletion/support/privacy from authenticated settings or account area — `app/(protected)/account` links support + deletion; the top-bar user pill links to it (#563)
 - [x] Document data categories collected: name, email, role, group data, care notes, prayer requests, audit events, analytics if used — [`docs/store/data-inventory.md`](store/data-inventory.md)
 - [x] Document data sharing: Supabase, Vercel Analytics, Vercel Speed Insights, email provider if used — [`docs/store/data-inventory.md`](store/data-inventory.md)
 - [x] Confirm no unnecessary device permissions are requested — none requested (data inventory §3)

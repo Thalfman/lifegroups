@@ -12,3 +12,13 @@ export const rpcSetOwnFullName = (
   client: AppSupabaseClient,
   args: { p_full_name: string }
 ): Promise<UuidRpcResult> => callUuidRpc(client, "set_own_full_name", args);
+
+// Requests deletion of the caller's OWN account (#563): archives their profile
+// (revoking access) and records a pending deletion request. Raises
+// invalid_input / insufficient_privilege / forbidden_target /
+// deletion_already_requested.
+export const rpcRequestOwnAccountDeletion = (
+  client: AppSupabaseClient,
+  args: { p_reason: string | null }
+): Promise<UuidRpcResult> =>
+  callUuidRpc(client, "request_own_account_deletion", args);

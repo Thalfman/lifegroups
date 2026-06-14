@@ -104,6 +104,7 @@ const M = {
   memberCare: "20260624000000_phase_care_member_list_foundation.sql",
   usage: "20260628000000_phase_usage_tracking.sql",
   appSettingsSeal: "20260629000000_seal_app_settings_to_admin.sql",
+  accountDeletion: "20260704000000_account_deletion_requests.sql",
 } as const;
 
 // Token bundles shared by a whole class.
@@ -368,6 +369,16 @@ const MATRIX: readonly RlsExpectation[] = [
     cls: "SUPER_ADMIN_ONLY",
     authoritativeMigration: M.attentionReset,
     policyName: "attention_reset_snapshots_super_admin_read",
+    expect: SUPER,
+    forbid: ["auth_is_admin"],
+  },
+  // Self-service deletion requests: the danger-zone operator reviews them and
+  // performs the permanent purge; Ministry Admin is sealed out (#563).
+  {
+    table: "account_deletion_requests",
+    cls: "SUPER_ADMIN_ONLY",
+    authoritativeMigration: M.accountDeletion,
+    policyName: "account_deletion_requests_super_admin_read",
     expect: SUPER,
     forbid: ["auth_is_admin"],
   },

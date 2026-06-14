@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Avatar } from "../Avatar";
 import { ROLE_LABELS, type UserRole } from "@/lib/auth/roles";
 
@@ -31,7 +32,11 @@ function UserPill({
 }) {
   const roleLabel = ROLE_LABELS[user.role] ?? user.role;
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
+    <Link
+      href="/account"
+      aria-label="Your account"
+      className="flex min-w-0 items-center gap-2.5 rounded-sm text-inherit no-underline outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-sage"
+    >
       <Avatar name={user.name} size={28} tone="sage" />
       <div className="hidden min-w-0 flex-col leading-tight md:flex">
         <span className="max-w-[200px] truncate font-sans text-sm font-semibold text-ink">
@@ -41,6 +46,6 @@ function UserPill({
           {roleLabel}
         </span>
       </div>
-    </div>
+    </Link>
   );
 }

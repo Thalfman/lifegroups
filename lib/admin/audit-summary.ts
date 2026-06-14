@@ -36,6 +36,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "super_admin.set_platform_config": "Updated platform config",
   // ADR 0025 self-service: an invitee chose their display name.
   "account.set_own_full_name": "Chose their name",
+  // #563 self-service: a user requested deletion of their own account.
+  "account.request_deletion": "Requested account deletion",
   // Phase 5C.0 guest pipeline + follow-up actions.
   "admin.create_guest": "Added guest",
   "admin.update_guest_pipeline": "Updated guest pipeline",
