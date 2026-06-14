@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRequireLeaderActor, mockCreateClient, mockRevalidatePath } = vi.hoisted(
-  () => ({
+const { mockRequireLeaderActor, mockCreateClient, mockRevalidatePath } =
+  vi.hoisted(() => ({
     mockRequireLeaderActor: vi.fn(),
     mockCreateClient: vi.fn(),
     mockRevalidatePath: vi.fn(),
-  }),
-);
+  }));
 
 vi.mock("@/lib/auth/session", () => ({
   requireLeaderActor: mockRequireLeaderActor,
@@ -20,12 +19,18 @@ vi.mock("next/cache", () => ({
   revalidatePath: mockRevalidatePath,
 }));
 
-const logCalls: { level: "info" | "warn" | "error"; ctx: Record<string, unknown> }[] = [];
+const logCalls: {
+  level: "info" | "warn" | "error";
+  ctx: Record<string, unknown>;
+}[] = [];
 vi.mock("@/lib/observability/logger", () => ({
   log: {
-    info: (ctx: Record<string, unknown>) => logCalls.push({ level: "info", ctx }),
-    warn: (ctx: Record<string, unknown>) => logCalls.push({ level: "warn", ctx }),
-    error: (ctx: Record<string, unknown>) => logCalls.push({ level: "error", ctx }),
+    info: (ctx: Record<string, unknown>) =>
+      logCalls.push({ level: "info", ctx }),
+    warn: (ctx: Record<string, unknown>) =>
+      logCalls.push({ level: "warn", ctx }),
+    error: (ctx: Record<string, unknown>) =>
+      logCalls.push({ level: "error", ctx }),
   },
 }));
 
@@ -45,7 +50,7 @@ function authOk(assignedGroupIds = [GROUP_ID]) {
 type Payload = { group_id: string };
 
 function baseSpec(
-  overrides: Partial<LeaderWriteActionSpec<Payload, { id: string }>> = {},
+  overrides: Partial<LeaderWriteActionSpec<Payload, { id: string }>> = {}
 ): LeaderWriteActionSpec<Payload, { id: string }> {
   return {
     name: "leader.test.action",
@@ -77,20 +82,31 @@ describe("runLeaderWriteAction", () => {
   it("returns the auth error and logs denied when the actor is rejected", async () => {
     mockRequireLeaderActor.mockResolvedValue({ ok: false, error: "sign in" });
 
-    const result = await runLeaderWriteAction(baseSpec(), undefined, { group_id: GROUP_ID });
+    const result = await runLeaderWriteAction(baseSpec(), undefined, {
+      group_id: GROUP_ID,
+    });
 
     expect(result).toEqual({ ok: false, errors: ["sign in"] });
-    expect(lastLog().ctx).toMatchObject({ outcome: "denied", error_code: "auth_denied" });
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "denied",
+      error_code: "auth_denied",
+    });
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 
   it("bails from the pre-validation guardRaw with a denied outcome", async () => {
     const spec = baseSpec({
-      guardRaw: () => ({ ok: false, error: "not your group", code: "not_assigned" }),
+      guardRaw: () => ({
+        ok: false,
+        error: "not your group",
+        code: "not_assigned",
+      }),
       validate: vi.fn(),
     });
 
-    const result = await runLeaderWriteAction(spec, undefined, { group_id: GROUP_ID });
+    const result = await runLeaderWriteAction(spec, undefined, {
+      group_id: GROUP_ID,
+    });
 
     expect(result).toEqual({ ok: false, errors: ["not your group"] });
     expect(lastLog().ctx).toMatchObject({
@@ -126,7 +142,9 @@ describe("runLeaderWriteAction", () => {
       }),
     });
 
-    const result = await runLeaderWriteAction(spec, undefined, { group_id: GROUP_ID });
+    const result = await runLeaderWriteAction(spec, undefined, {
+      group_id: GROUP_ID,
+    });
 
     expect(result).toEqual({ ok: false, errors: ["not assigned"] });
     expect(lastLog().ctx).toMatchObject({
@@ -141,9 +159,14 @@ describe("runLeaderWriteAction", () => {
   it("fails closed when the supabase client is not configured", async () => {
     mockCreateClient.mockResolvedValue(null);
 
-    const result = await runLeaderWriteAction(baseSpec(), undefined, { group_id: GROUP_ID });
+    const result = await runLeaderWriteAction(baseSpec(), undefined, {
+      group_id: GROUP_ID,
+    });
 
-    expect(result).toEqual({ ok: false, errors: ["Database is not configured."] });
+    expect(result).toEqual({
+      ok: false,
+      errors: ["Database is not configured."],
+    });
     expect(lastLog().ctx).toMatchObject({
       outcome: "fail",
       error_code: "supabase_not_configured",
@@ -154,14 +177,21 @@ describe("runLeaderWriteAction", () => {
 
   it("maps the RPC error token to the pastoral leader message", async () => {
     const spec = baseSpec({
-      rpc: async () => ({ data: null, error: { message: "not_leader_of_group" } }),
+      rpc: async () => ({
+        data: null,
+        error: { message: "not_leader_of_group" },
+      }),
     });
 
-    const result = await runLeaderWriteAction(spec, undefined, { group_id: GROUP_ID });
+    const result = await runLeaderWriteAction(spec, undefined, {
+      group_id: GROUP_ID,
+    });
 
     expect(result).toEqual({
       ok: false,
-      errors: ["Only the assigned leader or co-leader can submit this group's check-in."],
+      errors: [
+        "Only the assigned leader or co-leader can submit this group's check-in.",
+      ],
     });
     expect(lastLog().ctx).toMatchObject({
       outcome: "fail",
@@ -173,10 +203,15 @@ describe("runLeaderWriteAction", () => {
   it("returns the no-data message when the RPC yields no id", async () => {
     const spec = baseSpec({ rpc: async () => ({ data: null, error: null }) });
 
-    const result = await runLeaderWriteAction(spec, undefined, { group_id: GROUP_ID });
+    const result = await runLeaderWriteAction(spec, undefined, {
+      group_id: GROUP_ID,
+    });
 
     expect(result).toEqual({ ok: false, errors: ["nothing saved"] });
-    expect(lastLog().ctx).toMatchObject({ outcome: "fail", error_code: "rpc_no_data" });
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "fail",
+      error_code: "rpc_no_data",
+    });
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 
@@ -187,11 +222,15 @@ describe("runLeaderWriteAction", () => {
       result: (id) => ({ id }),
     });
 
-    const result = await runLeaderWriteAction(spec, undefined, { group_id: GROUP_ID });
+    const result = await runLeaderWriteAction(spec, undefined, {
+      group_id: GROUP_ID,
+    });
 
     expect(result).toEqual({ ok: true, value: { id: NEW_ID } });
     expect(mockRevalidatePath).toHaveBeenCalledWith("/leader");
-    expect(mockRevalidatePath).toHaveBeenCalledWith(`/leader/${GROUP_ID}/checkin`);
+    expect(mockRevalidatePath).toHaveBeenCalledWith(
+      `/leader/${GROUP_ID}/checkin`
+    );
     expect(lastLog().ctx).toMatchObject({
       outcome: "ok",
       actor_profile_id: PROFILE_ID,
@@ -206,8 +245,57 @@ describe("runLeaderWriteAction", () => {
       result: (id) => ({ session_id: id }),
     };
 
-    const result = await runLeaderWriteAction(spec, undefined, { group_id: GROUP_ID });
+    const result = await runLeaderWriteAction(spec, undefined, {
+      group_id: GROUP_ID,
+    });
 
     expect(result).toEqual({ ok: true, value: { session_id: NEW_ID } });
+  });
+
+  // Exception safety net (shared runner try/catch/finally) on the leader surface.
+  const GENERIC_ERROR = "Something went wrong. Please try again.";
+
+  it.each([
+    [
+      "validator",
+      baseSpec({
+        validate: () => {
+          throw new Error("boom in validate");
+        },
+      }),
+    ],
+    [
+      "rpc call",
+      baseSpec({
+        rpc: async () => {
+          throw new Error("boom in rpc");
+        },
+      }),
+    ],
+  ])(
+    "catches a throw from the %s and returns a generic unhandled_exception error",
+    async (_stage, spec) => {
+      const result = await runLeaderWriteAction(spec, undefined, {
+        group_id: GROUP_ID,
+      });
+
+      expect(result).toEqual({ ok: false, errors: [GENERIC_ERROR] });
+      expect(lastLog().ctx).toMatchObject({
+        outcome: "fail",
+        error_code: "unhandled_exception",
+      });
+    }
+  );
+
+  it("does not emit an unhandled_exception line on the success path", async () => {
+    const result = await runLeaderWriteAction(baseSpec(), undefined, {
+      group_id: GROUP_ID,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(lastLog().ctx).toMatchObject({ outcome: "ok" });
+    expect(
+      logCalls.some((c) => c.ctx.error_code === "unhandled_exception")
+    ).toBe(false);
   });
 });

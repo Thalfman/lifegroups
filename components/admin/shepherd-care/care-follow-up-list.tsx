@@ -1,4 +1,5 @@
 import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { CareFollowUpStatusControls } from "@/components/admin/shepherd-care/care-follow-up-status-controls";
 import { shepherdCareFollowUpStatusLabel } from "@/lib/dashboard/labels";
 import { formatIsoDate } from "@/lib/shared/date";
@@ -37,7 +38,11 @@ export function CareFollowUpList({
 }) {
   if (followUps.length === 0) {
     return (
-      <div className="py-5 font-sans text-sm text-ink3">No follow-ups yet.</div>
+      <EmptyState
+        variant="inline"
+        className="py-5"
+        title="No follow-ups yet."
+      />
     );
   }
   const ordered = sortFollowUpsByUrgency(followUps, todayIso);

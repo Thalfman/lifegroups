@@ -301,6 +301,100 @@ describe("runAdminWriteAction", () => {
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 
+  // Exception safety net (lib/shared/run-action.ts try/catch/finally). An
+  // unexpected throw from any stage must become a generic typed error and a
+  // single terminal `unhandled_exception` log line — never an uncaught 500 or
+  // an unfinished action log.
+  const GENERIC_ERROR = "Something went wrong. Please try again.";
+
+  it.each([
+    [
+      "validator",
+      baseSpec({
+        validate: () => {
+          throw new Error("boom in validate");
+        },
+      }),
+    ],
+    [
+      "guard",
+      baseSpec({
+        guard: () => {
+          throw new Error("boom in guard");
+        },
+      }),
+    ],
+    [
+      "fields builder",
+      baseSpec({
+        fields: async () => {
+          throw new Error("boom in fields");
+        },
+      }),
+    ],
+    [
+      "rpc call",
+      baseSpec({
+        rpc: async () => {
+          throw new Error("boom in rpc");
+        },
+      }),
+    ],
+  ])(
+    "catches a throw from the %s and returns a generic error with an unhandled_exception log",
+    async (_stage, spec) => {
+      const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+      expect(result).toEqual({ ok: false, errors: [GENERIC_ERROR] });
+      expect(lastLog().ctx).toMatchObject({
+        outcome: "fail",
+        error_code: "unhandled_exception",
+        // The swallowed throw's detail is captured server-side (never returned
+        // to the client) so the failure stays diagnosable in the action log.
+        error_name: "Error",
+        error_message: expect.stringMatching(/^boom in /),
+      });
+      expect(lastLog().ctx.error_stack).toEqual(expect.any(String));
+    }
+  );
+
+  it("catches a throw from revalidatePath after the write and still finishes the log once", async () => {
+    // Once-only so the throwing implementation can't leak into later tests
+    // (vi.clearAllMocks resets call history, not implementations).
+    mockRevalidatePath.mockImplementationOnce(() => {
+      throw new Error("boom in revalidate");
+    });
+
+    const result = await runAdminWriteAction(baseSpec(), undefined, {
+      name: "x",
+    });
+
+    expect(result).toEqual({ ok: false, errors: [GENERIC_ERROR] });
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "fail",
+      error_code: "unhandled_exception",
+    });
+    // The terminal line is emitted exactly once (idempotent finish).
+    const finals = logCalls.filter(
+      (c) => c.ctx.error_code === "unhandled_exception"
+    );
+    expect(finals).toHaveLength(1);
+  });
+
+  it("does not let the safety-net finally overwrite a normal success log", async () => {
+    const result = await runAdminWriteAction(baseSpec(), undefined, {
+      name: "x",
+    });
+
+    expect(result).toEqual({ ok: true, value: { id: NEW_ID } });
+    // The success line wins; the finally's finish() is a no-op, so no
+    // unhandled_exception line is emitted.
+    expect(lastLog().ctx).toMatchObject({ outcome: "ok" });
+    expect(
+      logCalls.some((c) => c.ctx.error_code === "unhandled_exception")
+    ).toBe(false);
+  });
+
   it("uses a custom reader and threads raw into revalidate and okFields", async () => {
     const read = vi.fn(() => ({ name: "x", group_id: "g-9" }));
     const revalidate = vi.fn(

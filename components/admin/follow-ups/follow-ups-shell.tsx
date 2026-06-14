@@ -34,6 +34,7 @@ import {
 import { FollowUpCreateForm } from "./follow-up-create-form";
 import { FollowUpStatusControls } from "./follow-up-status-controls";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // Design-system form field classes (docs/design-direction.md §4 Forms):
 // tracked-uppercase survives in form field labels; inputs are full-width,
@@ -367,25 +368,25 @@ export function AdminFollowUpsShell({
         ) : null}
 
         {filtered.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-line bg-bg px-6 py-7 text-center">
-            <div className="font-display text-lg font-medium text-ink">
-              {followUps.length === 0
+          <EmptyState
+            title={
+              followUps.length === 0
                 ? // While the create drawer is open the "No follow-ups yet"
                   // prompt is redundant (the form is already open), so it is
                   // replaced with a quieter in-progress note (#267).
                   drawer.isOpen
                   ? "Creating your first follow-up…"
                   : "No follow-ups yet"
-                : "No follow-ups match these filters"}
-            </div>
-            <p className="m-0 mt-2 font-sans text-sm leading-normal text-ink2">
-              {followUps.length === 0
+                : "No follow-ups match these filters"
+            }
+            description={
+              followUps.length === 0
                 ? drawer.isOpen
                   ? "Fill in the details in the panel and save to create it."
                   : "Use Add follow-up to create the first one. Tie it to a guest, member, or group — and add a note if helpful."
-                : "Adjust the filters — or add a new follow-up."}
-            </p>
-          </div>
+                : "Adjust the filters — or add a new follow-up."
+            }
+          />
         ) : (
           <div className="grid gap-7">
             {FOLLOW_UP_STATUS_ORDER.map((status) => {

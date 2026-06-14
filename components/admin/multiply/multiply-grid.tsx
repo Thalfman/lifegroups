@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { ScrollableTable } from "@/components/ui/scrollable-table";
 import { PLinkButton } from "@/components/pastoral/button";
 import type { ReadinessPillarKey } from "@/lib/admin/cell-readiness";
 import {
@@ -143,7 +144,7 @@ export function MultiplyGridView({
           Edit multiplication trigger →
         </PLinkButton>
       </div>
-      <div className="overflow-x-auto rounded-md border border-line bg-surface">
+      <ScrollableTable className="rounded-md border border-line bg-surface">
         <table className="w-full border-collapse">
           <thead>
             <tr>
@@ -186,7 +187,7 @@ export function MultiplyGridView({
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollableTable>
     </div>
   );
 }

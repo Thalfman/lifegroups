@@ -94,6 +94,13 @@ the production function list still shows exactly `invite-user` and
 `redeem-invite` (Dashboard → Edge Functions, or the MCP `list_edge_functions`
 tool).
 
+A committed test enforces this allowlist in CI:
+`lib/security/__tests__/edge-functions-allowlist.test.ts` parses
+`supabase/config.toml` and fails if `manage-test-auth-users` is ever enabled, or
+if the set of non-disabled functions drifts from exactly `invite-user` +
+`redeem-invite`. Update that test's `PRODUCTION_FUNCTIONS` list deliberately if
+the production set is ever meant to change.
+
 ## When something goes wrong
 
 - A failed `db push` leaves the failed migration unrecorded — fix the SQL,

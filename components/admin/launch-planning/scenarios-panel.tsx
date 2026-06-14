@@ -4,6 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import { PButton } from "@/components/pastoral/button";
+import { ScrollableTable } from "@/components/ui/scrollable-table";
 
 // Both scenario forms are only mounted behind a click (create / select-to-edit)
 // and never render on the server, so keep their code out of this route's First
@@ -464,7 +465,7 @@ function ScenarioComparisonTable({
         <h2 style={titleStyle}>Scenario comparison</h2>
       </header>
 
-      <div style={{ overflowX: "auto" }}>
+      <ScrollableTable>
         <table
           style={{
             width: "100%",
@@ -600,7 +601,7 @@ function ScenarioComparisonTable({
             </tr>
           </tbody>
         </table>
-      </div>
+      </ScrollableTable>
     </div>
   );
 }

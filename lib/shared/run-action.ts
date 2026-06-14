@@ -122,12 +122,64 @@ export type WriteActionCore<Actor, V, T> = {
   mapRpcError: (raw: string) => string;
 };
 
+// Generic, detail-free message returned when an unexpected throw escapes a
+// pipeline stage. Internal error text never reaches the client.
+const UNHANDLED_EXCEPTION_MESSAGE = "Something went wrong. Please try again.";
+
+// Capture an unexpected throw as structured log fields (server-side only — these
+// land in the action log, never in the ActionResult returned to the client).
+// Before the exception net existed, an uncaught throw propagated to Next.js,
+// which logged the stack; now that the net swallows it, we must record the same
+// detail here or production write failures become undiagnosable.
+function unhandledExceptionFields(error: unknown): FinishFields {
+  if (error instanceof Error) {
+    return {
+      error_name: error.name,
+      error_message: error.message,
+      error_stack: error.stack,
+    };
+  }
+  return { error_message: String(error) };
+}
+
 export async function runWriteAction<Actor, V, T>(
   core: WriteActionCore<Actor, V, T>,
   input: unknown
 ): Promise<ActionResult<T>> {
   const ctx = startActionLog(core.name);
 
+  // Top-level exception net. Every non-throwing branch below calls
+  // `ctx.finish(...)` itself; `finish` is idempotent (first call wins), so the
+  // `finally` is a pure safety net: if any stage (validate / guard / fields /
+  // RPC / mapRpcError / revalidatePath) throws unexpectedly, the catch returns
+  // a generic typed error (no detail leak) and the finally emits the single
+  // terminal `unhandled_exception` line that would otherwise be missing — the
+  // action log can never be left unfinished.
+  let exceptionFields: FinishFields | undefined;
+  try {
+    return await runWriteActionPipeline(core, input, ctx);
+  } catch (error) {
+    // The catch converts the throw into a generic typed ActionResult (no detail
+    // reaches the client); the finally records the terminal log line, stamped
+    // with the error's name/message/stack so the swallowed throw stays
+    // diagnosable in server logs.
+    exceptionFields = unhandledExceptionFields(error);
+    return { ok: false, errors: [UNHANDLED_EXCEPTION_MESSAGE] };
+  } finally {
+    // On the non-throwing paths the pipeline already called `finish`, so this is
+    // an idempotent no-op and `exceptionFields` is unused.
+    ctx.finish("fail", {
+      error_code: "unhandled_exception",
+      ...exceptionFields,
+    });
+  }
+}
+
+async function runWriteActionPipeline<Actor, V, T>(
+  core: WriteActionCore<Actor, V, T>,
+  input: unknown,
+  ctx: ReturnType<typeof startActionLog>
+): Promise<ActionResult<T>> {
   const auth = await core.authenticate();
   if (!auth.ok) {
     ctx.finish("denied", { error_code: "auth_denied" });

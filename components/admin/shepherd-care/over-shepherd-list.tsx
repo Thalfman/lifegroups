@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { OverShepherdListRow } from "@/lib/supabase/read-models";
 import { OverShepherdArchiveButton } from "@/components/admin/shepherd-care/over-shepherd-archive-button";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ScrollableTable } from "@/components/ui/scrollable-table";
 
 const TH =
   "border-b border-line bg-sidebar px-3 py-2.5 text-left font-sans text-xs font-medium text-ink3";
@@ -19,13 +21,15 @@ export function OverShepherdList({
 }) {
   if (overShepherds.length === 0) {
     return (
-      <div className="px-3 py-8 text-center font-sans text-sm text-ink3">
-        No over-shepherds yet.
-      </div>
+      <EmptyState
+        variant="inline"
+        className="px-3 py-8 text-center"
+        title="No over-shepherds yet."
+      />
     );
   }
   return (
-    <div className="overflow-x-auto rounded-sm border border-line">
+    <ScrollableTable className="rounded-sm border border-line">
       <table className="w-full border-collapse font-sans text-sm text-ink">
         <thead>
           <tr>
@@ -89,6 +93,6 @@ export function OverShepherdList({
           })}
         </tbody>
       </table>
-    </div>
+    </ScrollableTable>
   );
 }
