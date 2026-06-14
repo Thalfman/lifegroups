@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildSecurityHeaders } from "./lib/security/headers";
 
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +32,19 @@ const nextConfig: NextConfig = {
       dynamic: 30,
       static: 180,
     },
+  },
+  // Defense-in-depth HTTP security headers on every response. The CSP is
+  // emitted report-only (see lib/security/headers.ts) — it reports violations
+  // without blocking, so it can ship without breaking Next's inline styles or
+  // the Vercel analytics scripts. Flipping CSP to enforcing is a separate
+  // decision (docs/REPO_SWEEP_PLAN.md §8 Q1).
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: buildSecurityHeaders(),
+      },
+    ];
   },
   // ADR 0010 surface-budget consolidation: the Capacity board and Multiplication
   // surfaces were folded into Launch planning. Keep saved links / bookmarks
