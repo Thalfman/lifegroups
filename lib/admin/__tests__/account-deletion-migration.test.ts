@@ -64,6 +64,24 @@ describe("#563 migration — account_deletion_requests table", () => {
       /create policy[^;]*on public\.account_deletion_requests[^;]*for (insert|update|delete)/
     );
   });
+
+  it("wipes the free-text reason when the profile is permanently purged", () => {
+    // The retained request row outlives the purge (profile_id SET NULL); the
+    // user-supplied reason can carry PII, so a BEFORE UPDATE trigger clears it
+    // the moment the purge nulls profile_id — no PII outlives the deletion.
+    expect(sql.lower).toContain(
+      "create trigger trg_account_deletion_requests_clear_reason_on_purge"
+    );
+    expect(sql.lower).toContain("before update of profile_id");
+    const body = functionBody(
+      sql,
+      "account_deletion_requests_clear_reason_on_purge"
+    );
+    expect(body).toContain(
+      "new.profile_id is null and old.profile_id is not null"
+    );
+    expect(body).toContain("new.reason := null");
+  });
 });
 
 describe("#563 migration — request_own_account_deletion", () => {
