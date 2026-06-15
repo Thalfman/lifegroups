@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildShepherdCareDetailData,
+  resolveShepherdCareSpine,
   type ShepherdCareDetailOptions,
   type ShepherdCareDetailReads,
 } from "@/components/admin/shepherd-care/shepherd-care-detail-data";
@@ -337,6 +338,51 @@ describe("buildShepherdCareDetailData", () => {
     expect(data.gradeReadFailedGroupIds).toEqual(new Set(["g-2"]));
     expect(data.gradeByGroupId.has("g-1")).toBe(true);
     expect(data.groupRubricReadFailed).toBe(false);
+  });
+
+  it("resolves the header spine from the single profile read", async () => {
+    const result = await resolveShepherdCareSpine(detailReads(), PROFILE_ID);
+    expect(result).toEqual({
+      kind: "ok",
+      spine: { profileFullName: "Avery Leader", profileRole: "leader" },
+    });
+  });
+
+  it("404s the spine for a missing, wrong-role, or inactive subject (matching the body)", async () => {
+    expect(
+      await resolveShepherdCareSpine(
+        detailReads({ fetchProfile: async () => ok(null) }),
+        PROFILE_ID
+      )
+    ).toEqual({ kind: "not_found" });
+    expect(
+      await resolveShepherdCareSpine(
+        detailReads({
+          fetchProfile: async () => ok({ ...PROFILE, role: "member" } as never),
+        }),
+        PROFILE_ID
+      )
+    ).toEqual({ kind: "not_found" });
+    expect(
+      await resolveShepherdCareSpine(
+        detailReads({
+          fetchProfile: async () =>
+            ok({ ...PROFILE, status: "archived" } as never),
+        }),
+        PROFILE_ID
+      )
+    ).toEqual({ kind: "not_found" });
+  });
+
+  it("renders (not 404s) on a transient profile-read error, deferring to the body's error banner", async () => {
+    const result = await resolveShepherdCareSpine(
+      detailReads({ fetchProfile: async () => fail("profile boom") }),
+      PROFILE_ID
+    );
+    expect(result).toEqual({
+      kind: "ok",
+      spine: { profileFullName: "Unknown", profileRole: "—" },
+    });
   });
 
   it("skips every grade read in the Jun/Jul off-season", async () => {

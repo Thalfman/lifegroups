@@ -192,6 +192,64 @@ export function supabaseShepherdCareDetailReads(
   });
 }
 
+// The header spine: the identity that titles the page and decides 404, resolved
+// from the single profile read before the heavy body bundle streams in
+// (repo-sweep #605). Kept deliberately in step with buildDetailCore's profile
+// handling below: a transient profile-read error is NOT a 404 — it renders the
+// page with a placeholder title and lets the streamed body surface the same
+// error banner buildDetailCore produces, rather than 404-ing a leader who exists.
+export type ShepherdCareSpine = {
+  profileFullName: string;
+  profileRole: string;
+};
+
+export type ShepherdCareSpineResult =
+  | { kind: "ok"; spine: ShepherdCareSpine }
+  | { kind: "not_found" }
+  | { kind: "db_unavailable" };
+
+export async function resolveShepherdCareSpine(
+  reads: ShepherdCareDetailReads,
+  profileId: string
+): Promise<{ kind: "ok"; spine: ShepherdCareSpine } | { kind: "not_found" }> {
+  const profile = await reads.fetchProfile(profileId);
+  if (profile.error) {
+    return {
+      kind: "ok",
+      spine: { profileFullName: "Unknown", profileRole: "—" },
+    };
+  }
+  if (!profile.data) return { kind: "not_found" };
+  // Only leaders / co-leaders are valid care targets, and only while active —
+  // the exact gate buildDetailCore applies, so the spine and body agree on 404.
+  if (profile.data.role !== "leader" && profile.data.role !== "co_leader") {
+    return { kind: "not_found" };
+  }
+  if (profile.data.status !== "active") return { kind: "not_found" };
+  return {
+    kind: "ok",
+    spine: {
+      profileFullName: profile.data.full_name,
+      profileRole: profile.data.role,
+    },
+  };
+}
+
+// Binds the live client (or reports db_unavailable) and resolves only the spine
+// (one profile read). The page awaits this before rendering so notFound() /
+// db-unavailable behavior is unchanged; the heavy body bundle streams in
+// afterwards via loadShepherdCareDetailData.
+export async function loadShepherdCareDetailSpine(
+  profileId: string
+): Promise<ShepherdCareSpineResult> {
+  const client = await createSupabaseServerClient();
+  if (!client) return { kind: "db_unavailable" };
+  return resolveShepherdCareSpine(
+    supabaseShepherdCareDetailReads(client),
+    profileId
+  );
+}
+
 // The detail spine. Subject resolution decides 404 vs render; every other read
 // degrades to its empty value with the failure surfaced through `error` (the
 // page-level banner) — never a silent false zero on a section that did load.
