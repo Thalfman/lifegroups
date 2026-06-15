@@ -35,14 +35,10 @@ import { FollowUpCreateForm } from "./follow-up-create-form";
 import { FollowUpStatusControls } from "./follow-up-status-controls";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { EmptyState } from "@/components/ui/empty-state";
-
-// Design-system form field classes (docs/design-direction.md §4 Forms):
-// tracked-uppercase survives in form field labels; inputs are full-width,
-// rounded-sm, line-bordered, with the global focus ring.
-const FIELD_LABEL =
-  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
-const FIELD_INPUT =
-  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
+import {
+  fieldLabelClassName as FIELD_LABEL,
+  fieldInputBaseClassName as FIELD_INPUT,
+} from "@/components/admin/forms/field-styles";
 
 export type AdminFollowUpsData = {
   followUps: AdminFollowUpEntry[];
