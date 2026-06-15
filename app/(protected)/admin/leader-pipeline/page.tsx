@@ -1,4 +1,5 @@
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
+import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
 import { requireAdmin } from "@/lib/auth/session";
 import { loadLeaderPipelineData } from "@/components/admin/leader-pipeline/leader-pipeline-data";
 import { LeaderPipeline } from "@/components/admin/leader-pipeline/leader-pipeline";
@@ -12,6 +13,7 @@ export default async function AdminLeaderPipelinePage() {
 
   return (
     <>
+      <FrozenSurfaceBanner />
       <PageHeader
         eyebrow="People"
         title="Leader"

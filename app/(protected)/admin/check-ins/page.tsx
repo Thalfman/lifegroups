@@ -5,6 +5,7 @@
 // dropped from priority 20 to 65 in the attention queue. See
 // docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
 import { CheckInReviewShell } from "@/components/admin/check-in-review-shell";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -17,7 +18,9 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const EMPTY_DATA: (meetingWeek: string) => WeeklyReviewData = (meetingWeek) => ({
+const EMPTY_DATA: (meetingWeek: string) => WeeklyReviewData = (
+  meetingWeek
+) => ({
   meetingWeek,
   rows: [],
   summary: {
@@ -58,6 +61,7 @@ export default async function AdminCheckInsPage({
 
   return (
     <>
+      <FrozenSurfaceBanner />
       <PageHeader
         eyebrow="Check-ins"
         title="Check-ins"

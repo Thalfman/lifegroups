@@ -11,6 +11,11 @@
 // decision (see docs/REPO_SWEEP_PLAN.md §8 Q1) and is out of scope here. The
 // builder is split out from next.config so its values are unit-testable.
 
+// Relative (not the `@/` alias) on purpose: this module is imported by
+// `next.config.ts`, whose transpile context resolves relative paths but not the
+// tsconfig `@/*` alias.
+import { getSupabaseUrlRaw } from "../env";
+
 export type HttpHeader = { key: string; value: string };
 
 // The third parties the app actually talks to, so the report-only CSP doesn't
@@ -27,9 +32,7 @@ const VERCEL_VITALS_ORIGIN = "https://vitals.vercel-insights.com";
  * preview / CI builds) — the CSP then simply omits the Supabase entries.
  */
 export function getSupabaseOrigin(): string | null {
-  const url =
-    process.env.SUPABASE_URL?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const url = getSupabaseUrlRaw();
   if (!url) return null;
   try {
     return new URL(url).origin;

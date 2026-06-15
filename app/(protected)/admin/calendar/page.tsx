@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth/session";
+import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
 import { PlanningView } from "@/components/admin/planning/planning-view";
 import { monthBounds } from "@/lib/calendar/occurrences";
 import { churchMonthIso } from "@/lib/shared/church-time";
@@ -31,10 +32,13 @@ export default async function AdminCalendarPage({
   const monthIso = pickMonthParam(params.month) ?? churchMonthIso();
 
   return (
-    <PlanningView
-      monthIso={monthIso}
-      viewerId={session.profile.id}
-      initialTab="calendar"
-    />
+    <>
+      <FrozenSurfaceBanner />
+      <PlanningView
+        monthIso={monthIso}
+        viewerId={session.profile.id}
+        initialTab="calendar"
+      />
+    </>
   );
 }

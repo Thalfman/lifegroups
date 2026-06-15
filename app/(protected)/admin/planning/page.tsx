@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth/session";
+import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
 import { PlanningView } from "@/components/admin/planning/planning-view";
 import { monthBounds } from "@/lib/calendar/occurrences";
 import { churchMonthIso } from "@/lib/shared/church-time";
@@ -32,14 +33,17 @@ export default async function AdminPlanningPage({
   const monthIso = pickMonthParam(params.month) ?? churchMonthIso();
 
   return (
-    <PlanningView
-      monthIso={monthIso}
-      viewerId={session.profile.id}
-      initialTab="calendar"
-      // Canonical Planning entry owns the #331 opinionated saved views; the
-      // frozen /admin/calendar alias does NOT pass this, so it keeps its
-      // pre-#331 calendar behavior (ADR 0013 freeze).
-      planningViews
-    />
+    <>
+      <FrozenSurfaceBanner />
+      <PlanningView
+        monthIso={monthIso}
+        viewerId={session.profile.id}
+        initialTab="calendar"
+        // Canonical Planning entry owns the #331 opinionated saved views; the
+        // frozen /admin/calendar alias does NOT pass this, so it keeps its
+        // pre-#331 calendar behavior (ADR 0013 freeze).
+        planningViews
+      />
+    </>
   );
 }

@@ -35,5 +35,22 @@ export default defineConfig({
       // from in-progress work, so keep the runner to the real tree.
       "**/.claude/**",
     ],
+    // Coverage is opt-in (`npm run test:coverage`) and intentionally
+    // **non-blocking** — no thresholds gate CI. It exists only to surface
+    // coverage gaps; enforcing a floor is a deliberate later decision.
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "lcov"],
+      reportsDirectory: "./coverage",
+      include: ["app/**", "components/**", "lib/**", "middleware.ts"],
+      exclude: [
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.d.ts",
+        "tests/**",
+        "types/**",
+      ],
+    },
   },
 });

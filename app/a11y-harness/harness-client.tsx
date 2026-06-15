@@ -17,6 +17,7 @@ import { useSearchParams } from "next/navigation";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
 import { AppErrorState } from "@/components/lg/AppErrorState";
 import { OfflineBannerView } from "@/components/lg/OfflineBanner";
+import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
 import { Button, LinkButton } from "@/components/ui/button";
 import {
   CalendarOccurrenceEditor,
@@ -1027,6 +1028,13 @@ export function A11yHarnessClient() {
   return (
     <main style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
       <h1>Admin accessible-name harness</h1>
+
+      <Surface
+        id="frozen-surface-banner"
+        heading="Frozen surface banner (#596)"
+      >
+        <FrozenSurfaceBanner />
+      </Surface>
 
       <Surface id="offline-error" heading="Offline / error state (#559)">
         <OfflineBannerView />

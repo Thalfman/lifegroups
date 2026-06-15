@@ -336,12 +336,9 @@ function TriggerLevelPicker({
   return (
     <div className="grid gap-2.5">
       <div className="grid max-w-[520px] gap-1.5">
-        <label
-          id="multiply-trigger-level-label"
-          className={fieldLabelClassName}
-        >
+        <span id="multiply-trigger-level-label" className={fieldLabelClassName}>
           Readiness rule scope
-        </label>
+        </span>
         <p className="m-0 font-sans text-sm text-ink2">
           Choose where to configure Ready in Multiply: the global default, an
           Audience rule, or one group type (Audience + Category).

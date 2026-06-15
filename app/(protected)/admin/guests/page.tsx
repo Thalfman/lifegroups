@@ -5,6 +5,7 @@
 // intact. No new work here without an EXT.1 spec. See
 // docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
 import { GuestsManagementShell } from "@/components/admin/guests/guests-shell";
 import { loadGuestsData } from "@/components/admin/guests/guests-data";
 import { requireAdmin } from "@/lib/auth/session";
@@ -19,6 +20,7 @@ export default async function AdminGuestsPage() {
 
   return (
     <>
+      <FrozenSurfaceBanner />
       <PageHeader
         eyebrow="Guests"
         title="Guests"

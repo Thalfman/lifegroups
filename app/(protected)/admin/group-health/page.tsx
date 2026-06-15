@@ -1,4 +1,5 @@
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
 import { requireAdmin } from "@/lib/auth/session";
 import { loadGroupHealthData } from "@/components/admin/group-health/group-health-data";
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
@@ -18,6 +19,7 @@ export default async function GroupHealthPage() {
   if (view.status === "no-db") {
     return (
       <>
+        <FrozenSurfaceBanner />
         <PageHeader eyebrow="Groups" title="Group health" />
         <PageBody>
           <p className="font-sans text-base text-ink2">
@@ -31,6 +33,7 @@ export default async function GroupHealthPage() {
   if (view.status === "error") {
     return (
       <>
+        <FrozenSurfaceBanner />
         <PageHeader eyebrow="Groups" title="Group health" />
         <PageBody>
           <p className="font-sans text-base text-rose">
@@ -43,6 +46,7 @@ export default async function GroupHealthPage() {
 
   return (
     <>
+      <FrozenSurfaceBanner />
       <PageHeader
         eyebrow="Groups"
         title="Group health"

@@ -80,11 +80,12 @@ typed shape to a stateful client **shell**. There are two paths:
 - **Read path.** A cookie-authenticated server client (`@supabase/ssr`, set up
   in `lib/supabase/`) runs every query through **Row Level Security**, scoped to
   the signed-in user. Reads go through the **reads seam** (ADR 0015) so tests can
-  inject in-memory adapters instead of a live database. The most sensitive
-  tables (e.g. shepherd-care) use explicit **column allowlists** (named columns,
-  not `select("*")`) — the target pattern; constraining the remaining broad
-  `select("*")` reads on `profiles` / `members` (e.g. `lib/auth/session.ts`) is
-  still **tracked debt**, not done. Reads **degrade gracefully** — a failed read
+  inject in-memory adapters instead of a live database. Every table read uses
+  explicit **column allowlists** (named columns, never `select("*")`) — there
+  are no `select("*")` call sites, and the `profiles` / `members` reads (e.g.
+  `lib/auth/session.ts` via `SESSION_PROFILE_COLUMNS`) select named columns like
+  the rest. The former broad-read debt is closed; keep it that way by adding only
+  named-column reads. Reads **degrade gracefully** — a failed read
   suppresses derived output rather than reporting a false zero. Public preview
   routes never call Supabase; they render typed demo data.
 
@@ -114,9 +115,9 @@ These are hard rules. Violating one is a P0 (see `AGENTS.md` and the README
 - **No hard deletes** in normal workflows. **Archive** (soft — `archived_at` /
   status flags) is the default way anything leaves a surface. Permanent deletion
   is Super-Admin-only, writes a tombstone, and lives in the danger zone.
-- **Sensitive tables use explicit column allowlists**, not `select("*")` — the
-  target pattern; the remaining broad `profiles` / `members` reads are known,
-  tracked debt, not a green light to add more.
+- **Every table read uses explicit column allowlists**, not `select("*")` —
+  there are no `select("*")` call sites (including `profiles` / `members`). This
+  is a satisfied invariant: keep it green by adding only named-column reads.
 - **Authorization is role-based.** No Julian/Tom UUIDs or emails are hardcoded
   in code, migrations, or RLS — gate on `profiles.role`.
 - **Respect the two visibility exceptions:** the Ministry Admin's **Private Care

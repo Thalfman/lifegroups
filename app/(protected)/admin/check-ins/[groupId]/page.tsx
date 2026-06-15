@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
 import { CheckInDetailShell } from "@/components/admin/check-in-detail-shell";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -65,6 +66,7 @@ export default async function AdminCheckInDetailPage({
 
   return (
     <>
+      <FrozenSurfaceBanner />
       <PageHeader
         eyebrow="Check-in detail"
         title={data.group?.name ?? "Group"}
