@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { ScrollableTable } from "@/components/ui/scrollable-table";
 import { PLinkButton } from "@/components/pastoral/button";
 import type { ReadinessPillarKey } from "@/lib/admin/cell-readiness";
 import {
   GRID_TYPES,
   type MultiplyGrid,
   type MultiplyGridCell,
+  type MultiplyGridRow,
 } from "@/lib/admin/multiply-grid";
 import { segmentAnchorId, segmentLabel } from "@/lib/admin/multiplication";
 import type { GroupAudienceCategory } from "@/types/enums";
@@ -18,6 +18,12 @@ import type { GroupAudienceCategory } from "@/types/enums";
 // into one matrix. Server component, pure render. Styled as a DataTable: 12px
 // sentence-case ink3 header row, 13px cells, lineSoft row separators, mono
 // figures.
+//
+// Mobile-first (#567): a 3-column matrix can't be read on a 375px phone without
+// horizontal scroll, so at base the grid renders as a stack of category cards —
+// each card lists only that category's APPLIED top types, one per labelled block.
+// At `md`+ the matrix table takes over, visually identical to before. Both views
+// render from the same `grid`, so behavior and data are unchanged.
 
 const TYPE_LABEL: Record<GroupAudienceCategory, string> = {
   men: "Men's",
@@ -44,10 +50,53 @@ function ReadinessBadge({ ready }: { ready: boolean }) {
   );
 }
 
-// One grid cell. A not-applied cell renders BLANK (an empty, muted cell). An
-// applied cell shows its readiness badge, the `have X of Y` coverage, when not
-// ready a compact list of the pillars holding it back, and a deep-link into the
-// Plan tab filtered to this cell's audience × category segment (#403 / ADR 0022).
+// The inner content of an applied cell: readiness badge, `have X of Y` coverage,
+// the held-back-by line when not ready, and the deep-link into the Plan tab for
+// this cell's segment. Shared by the desktop table cell and the mobile card so
+// both read identically.
+function GridCellContent({
+  cell,
+  categoryLabel,
+}: {
+  cell: MultiplyGridCell;
+  categoryLabel: string;
+}) {
+  const typeLabel = TYPE_LABEL[cell.audienceCategory];
+  if (!cell.applied || !cell.readout) return null;
+  const { signal, coverage } = cell.readout;
+  const blockers = signal.blockers.map((b) => BLOCKER_LABEL[b]).join(", ");
+  // Same key the planner buckets candidates by, so the anchor lands on this
+  // cell's segment in the Plan tab when one exists.
+  const planHref = `/admin/multiply?tab=plan#${segmentAnchorId(
+    segmentLabel(cell.audienceCategory, categoryLabel)
+  )}`;
+  return (
+    <div className="flex flex-col items-start gap-1.5">
+      <ReadinessBadge ready={signal.ready} />
+      <span
+        className="font-mono text-xs text-ink2"
+        aria-label={`have ${coverage.have} of ${coverage.target}`}
+      >
+        have {coverage.have} of {coverage.target}
+      </span>
+      {!signal.ready && signal.blockers.length > 0 && (
+        <span className="font-sans text-xs text-ink3">
+          Held back by: {blockers}.
+        </span>
+      )}
+      <Link
+        href={planHref}
+        aria-label={`View the plan for ${typeLabel} · ${categoryLabel}`}
+        className="font-sans text-xs text-clay underline hover:text-clayDeep"
+      >
+        View plan →
+      </Link>
+    </div>
+  );
+}
+
+// One desktop table cell. A not-applied cell renders BLANK (an empty, muted
+// cell); an applied cell shows the shared content above.
 function GridCell({
   cell,
   categoryLabel,
@@ -68,38 +117,45 @@ function GridCell({
     );
   }
 
-  const { signal, coverage } = cell.readout;
-  const blockers = signal.blockers.map((b) => BLOCKER_LABEL[b]).join(", ");
-  // Same key the planner buckets candidates by, so the anchor lands on this
-  // cell's segment in the Plan tab when one exists.
-  const planHref = `/admin/multiply?tab=plan#${segmentAnchorId(
-    segmentLabel(cell.audienceCategory, categoryLabel)
-  )}`;
-
   return (
     <td className={`${CELL} text-left`}>
-      <div className="flex flex-col items-start gap-1.5">
-        <ReadinessBadge ready={signal.ready} />
-        <span
-          className="font-mono text-xs text-ink2"
-          aria-label={`have ${coverage.have} of ${coverage.target}`}
-        >
-          have {coverage.have} of {coverage.target}
-        </span>
-        {!signal.ready && signal.blockers.length > 0 && (
-          <span className="font-sans text-xs text-ink3">
-            Held back by: {blockers}.
-          </span>
-        )}
-        <Link
-          href={planHref}
-          aria-label={`View the plan for ${typeLabel} · ${categoryLabel}`}
-          className="font-sans text-xs text-clay underline hover:text-clayDeep"
-        >
-          View plan →
-        </Link>
-      </div>
+      <GridCellContent cell={cell} categoryLabel={categoryLabel} />
     </td>
+  );
+}
+
+// One category as a stacked card (mobile). Lists only the APPLIED top types so
+// the card stays readable at 375px; a category with no applied types still
+// renders, naming that nothing is applied yet (mirrors the blank desktop row).
+function GridCategoryCard({ row }: { row: MultiplyGridRow }) {
+  const applied = GRID_TYPES.map((type) => row.cells[type]).filter(
+    (cell) => cell.applied && cell.readout
+  );
+  return (
+    <li className="grid gap-3 rounded-md border border-line bg-surface p-3.5">
+      <h3 className="m-0 font-sans text-sm font-semibold text-ink">
+        {row.label}
+      </h3>
+      {applied.length === 0 ? (
+        <p className="m-0 font-sans text-xs text-ink3">
+          Not applied to any top type yet.
+        </p>
+      ) : (
+        <div className="grid gap-3">
+          {applied.map((cell) => (
+            <div
+              key={cell.audienceCategory}
+              className="grid gap-1.5 border-t border-lineSoft pt-3 first:border-t-0 first:pt-0"
+            >
+              <span className="font-sans text-xs font-semibold text-ink3">
+                {TYPE_LABEL[cell.audienceCategory]}
+              </span>
+              <GridCellContent cell={cell} categoryLabel={row.label} />
+            </div>
+          ))}
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -144,7 +200,17 @@ export function MultiplyGridView({
           Edit multiplication trigger →
         </PLinkButton>
       </div>
-      <ScrollableTable className="rounded-md border border-line bg-surface">
+
+      {/* Mobile: a stack of category cards (only applied types listed), so the
+          grid is readable at 375px without horizontal scroll. Hidden at md+. */}
+      <ul className="m-0 grid list-none gap-3 p-0 md:hidden">
+        {grid.rows.map((row) => (
+          <GridCategoryCard key={row.categoryId} row={row} />
+        ))}
+      </ul>
+
+      {/* Desktop (md+): the matrix table, visually identical to before. */}
+      <div className="hidden overflow-x-auto rounded-md border border-line bg-surface md:block">
         <table className="w-full border-collapse">
           <thead>
             <tr>
@@ -187,7 +253,7 @@ export function MultiplyGridView({
             ))}
           </tbody>
         </table>
-      </ScrollableTable>
+      </div>
     </div>
   );
 }
