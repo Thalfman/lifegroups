@@ -1,11 +1,5 @@
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { FlatCompat } from "@eslint/eslintrc";
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import jsxA11y from "eslint-plugin-jsx-a11y";
-
-const compat = new FlatCompat({
-  baseDirectory: dirname(fileURLToPath(import.meta.url)),
-});
 
 const eslintConfig = [
   {
@@ -20,15 +14,34 @@ const eslintConfig = [
       "test-results/**",
     ],
   },
-  ...compat.extends("next/core-web-vitals"),
+  // Next 16 / eslint-config-next 16 ships a native flat config, so it is spread
+  // directly instead of through the legacy `FlatCompat` shim (which the new
+  // config breaks). This already registers the `jsx-a11y` plugin (with a few
+  // rules at `warn`).
+  ...nextCoreWebVitals,
   // Catch a11y regressions (icon-only buttons without a label, missing alt
   // text, invalid ARIA, …) at author time, not just in the Playwright + axe
-  // runtime suite. The flat-config recommended preset is scoped to the JSX/TSX
-  // surfaces and runs as `error` so `npm run lint` stays at 0 warnings.
+  // runtime suite. We upgrade the full recommended preset to `error` on the
+  // JSX/TSX surfaces so `npm run lint` stays at 0 warnings. The plugin is
+  // already registered by `nextCoreWebVitals` above, so we only set rules here
+  // (redefining the plugin would throw a flat-config "cannot redefine" error).
   {
     files: ["**/*.{jsx,tsx}"],
-    plugins: { "jsx-a11y": jsxA11y },
     rules: jsxA11y.flatConfigs.recommended.rules,
+  },
+  // eslint-config-next 16 bundles eslint-plugin-react-hooks v6, whose
+  // recommended set adds two rules that did not exist under the Next 15
+  // toolchain and that the current code was never written against:
+  //   - react-hooks/refs              (~82 hits: writing ref.current in render)
+  //   - react-hooks/set-state-in-effect (~21 hits: setState inside an effect)
+  // Adopting them is a behavioral React refactor across many components, kept
+  // OUT of the behavior-preserving Next 16 bump and tracked as a follow-up
+  // (#632). Every other react-hooks v6 rule stays on. Re-enable these there.
+  {
+    rules: {
+      "react-hooks/refs": "off",
+      "react-hooks/set-state-in-effect": "off",
+    },
   },
 ];
 

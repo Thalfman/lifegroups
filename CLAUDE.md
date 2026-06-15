@@ -69,7 +69,8 @@ types/                Hand-rolled Supabase row types + enums (the trust boundary
 supabase/             migrations/ (schema + RLS), seed/, functions/ (Edge), dev/
 tests/                a11y/ Playwright specs + harness, stubs/
 docs/                 adr/ (decisions), architecture/, agents/, plans/
-middleware.ts         Refreshes the Supabase session cookie on every request
+proxy.ts              Refreshes the Supabase session cookie on every request
+                        (Next 16's renamed `middleware` convention)
 ```
 
 ## Architecture & data flow

@@ -10,7 +10,7 @@ import { Client } from "pg";
 //
 // SECURITY / SCOPE: this is harness-only DDL against a LOCAL CLI stack, like the
 // fixture provisioning in support/fixtures.ts. It is never imported by any app
-// runtime path (`app/**`, `lib/**`, `middleware.ts`) — `pg` is a devDependency.
+// runtime path (`app/**`, `lib/**`, `proxy.ts`) — `pg` is a devDependency.
 // The trigger it installs is dropped again in the same test's teardown.
 
 /**

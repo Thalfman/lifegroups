@@ -33,7 +33,7 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { METRIC_DEFAULTS_CACHE_TAG } from "@/lib/supabase/cached-config";
 
 // Settings writes fan out to every surface that reads thresholds.
@@ -176,8 +176,11 @@ export async function adminUpdateMetricDefaults(
     input
   );
   // metric_defaults is cached cross-request (lib/supabase/cached-config.ts);
-  // bust the tag so the saved values are reflected on the next read.
-  if (result.ok) revalidateTag(METRIC_DEFAULTS_CACHE_TAG);
+  // bust the tag so the saved values are reflected on the next read. This is a
+  // Server Action, so use Next 16's `updateTag` (immediate expiration +
+  // read-your-own-writes) rather than `revalidateTag(tag, "max")`, which would
+  // serve stale thresholds on the first post-save navigation.
+  if (result.ok) updateTag(METRIC_DEFAULTS_CACHE_TAG);
   return result;
 }
 
@@ -245,7 +248,7 @@ export async function adminResetMetricDefaults(
     undefined
   );
   // Resetting rewrites metric_defaults; bust the cache tag (see above).
-  if (result.ok) revalidateTag(METRIC_DEFAULTS_CACHE_TAG);
+  if (result.ok) updateTag(METRIC_DEFAULTS_CACHE_TAG);
   return result;
 }
 
