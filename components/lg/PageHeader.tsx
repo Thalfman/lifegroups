@@ -19,7 +19,13 @@ export function PageHeader({
 }) {
   return (
     <div
-      className="mx-auto w-full px-4 pb-4 pt-[22px] md:px-10 md:pb-6 md:pt-9"
+      // Responsive scale (repo-sweep #606): the page chrome no longer jumps
+      // straight from phone (px-4) to desktop (md:px-10) — the `sm:` step adds a
+      // small-tablet / landscape gradation at 640px so the gutters and the
+      // display title ramp across 375 → 640 → 768 instead of in one leap. Every
+      // surface renders through PageHeader/PageBody, so this is the shared
+      // foundation for further per-surface `sm:` adoption. Light palette only.
+      className="mx-auto w-full px-4 pb-4 pt-[22px] sm:px-6 sm:pb-5 sm:pt-7 md:px-10 md:pb-6 md:pt-9"
       style={{ maxWidth }}
     >
       <div className="flex flex-wrap items-end justify-between gap-7">
@@ -30,14 +36,14 @@ export function PageHeader({
               {eyebrow}
             </div>
           ) : null}
-          <h1 className="m-0 font-display text-3xl font-normal text-ink md:text-4xl">
+          <h1 className="m-0 font-display text-3xl font-normal text-ink sm:text-[2.0625rem] md:text-4xl">
             {title}
             {italic ? (
               <span className="italic text-ink2"> {italic}</span>
             ) : null}
           </h1>
           {lede ? (
-            <p className="mb-0 mt-3 max-w-lede font-sans text-base text-ink2">
+            <p className="mb-0 mt-3 max-w-lede font-sans text-base text-ink2 sm:text-md">
               {lede}
             </p>
           ) : null}
@@ -62,7 +68,9 @@ export function PageBody({
 }) {
   return (
     <div
-      className="mx-auto w-full px-4 pb-8 md:px-10 md:pb-16"
+      // Matches PageHeader's `sm:` gutter gradation so the body content box
+      // tracks the header across 375 → 640 → 768 (repo-sweep #606).
+      className="mx-auto w-full px-4 pb-8 sm:px-6 sm:pb-12 md:px-10 md:pb-16"
       style={{ maxWidth, ...style }}
     >
       {children}

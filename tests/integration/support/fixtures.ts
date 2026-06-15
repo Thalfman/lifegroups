@@ -51,6 +51,13 @@ export interface Fixtures {
   readonly leader: Tier;
   /** The Leader's care profile id (anchor for the SC.4 private care note). */
   readonly leaderCareProfileId: string;
+  /**
+   * A dedicated active leader used ONLY as the care-note subject in the
+   * atomic-rollback proof (#625). Kept out of the tiered set so the forced
+   * audit-insert failure keyed on this subject can never perturb the
+   * success-path / visibility tests.
+   */
+  readonly rollbackSubjectProfileId: string;
   /** Tear down everything this run created (service-client, local stack only). */
   readonly teardown: () => Promise<void>;
 }
@@ -188,6 +195,28 @@ export async function provisionFixtures(
   }
   const leaderCareProfileId = careProfileRow.id as string;
 
+  // A standalone active leader used only as the atomic-rollback subject (#625).
+  // It needs no Auth user or client — the RPC only requires an active
+  // leader/co_leader profile to reach the care_notes insert. Tracked in
+  // createdProfileIds so teardown removes it in FK-safe order.
+  const { data: rollbackSubjectRow, error: rollbackSubjectErr } = await service
+    .from("profiles")
+    .insert({
+      email: `rollback-subject.${RUN_ID}@lifegroups.local`,
+      full_name: "Integ Rollback Subject",
+      role: "leader",
+      status: "active",
+    })
+    .select("id")
+    .single();
+  if (rollbackSubjectErr) {
+    throw new Error(
+      `rollback-subject profile insert failed: ${rollbackSubjectErr.message}`
+    );
+  }
+  const rollbackSubjectProfileId = rollbackSubjectRow.id as string;
+  createdProfileIds.push(rollbackSubjectProfileId);
+
   const teardown = async (): Promise<void> => {
     // Local, disposable scaffolding only. Order matters for FK restricts:
     // care/coverage rows before profiles, profiles before auth users.
@@ -240,6 +269,7 @@ export async function provisionFixtures(
     overShepherd,
     leader,
     leaderCareProfileId,
+    rollbackSubjectProfileId,
     teardown,
   };
 }

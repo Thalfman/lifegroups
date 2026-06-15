@@ -12,7 +12,55 @@ import {
 
 type ProfileRow = { id: string; email: string; role: string; status: string };
 
-const REMOVABLE_ROLES = new Set(["ministry_admin", "leader", "co_leader"]);
+const REMOVABLE_ROLES = new Set([
+  "ministry_admin",
+  "over_shepherd",
+  "leader",
+  "co_leader",
+]);
+
+async function deactivateOverShepherdLinks(
+  client: ReturnType<typeof makeServiceClient>,
+  email: string,
+  dryRun: boolean,
+  log: (line: string) => void
+): Promise<void> {
+  // The Over-Shepherd is bridged to a roster row by email; coverage assignments
+  // reference that roster row. Deactivate both (soft — no hard delete) so the
+  // seeded /over-shepherd surface goes empty, mirroring how leaders are removed.
+  const { data: roster, error } = await client
+    .from("over_shepherds")
+    .select("id")
+    .ilike("email", email);
+  if (error) throw new Error(`over_shepherds lookup failed: ${error.message}`);
+  const rosterIds = (roster ?? []).map((r) => (r as { id: string }).id);
+  if (rosterIds.length === 0) {
+    log(`  over_shepherds: no roster row for this email`);
+    return;
+  }
+  if (dryRun) {
+    log(
+      `  coverage/over_shepherds: would deactivate ${rosterIds.length} roster row(s) + their coverage`
+    );
+    return;
+  }
+  // Only end CURRENTLY-active coverage. Filtering to active rows leaves any
+  // prior ended_at untouched (no historical-date corruption) and makes repeated
+  // cleanup idempotent — a second run matches nothing.
+  const { error: covErr } = await client
+    .from("shepherd_coverage_assignments")
+    .update({ active: false, ended_at: new Date().toISOString().slice(0, 10) })
+    .in("over_shepherd_id", rosterIds)
+    .eq("active", true);
+  if (covErr) throw new Error(`coverage deactivate failed: ${covErr.message}`);
+  const { error: rosterErr } = await client
+    .from("over_shepherds")
+    .update({ active: false, archived_at: new Date().toISOString() })
+    .in("id", rosterIds);
+  if (rosterErr)
+    throw new Error(`over_shepherds deactivate failed: ${rosterErr.message}`);
+  log(`  coverage/over_shepherds: deactivated`);
+}
 
 function isDryRun(): boolean {
   return process.argv.slice(2).includes("--dry-run");
@@ -22,21 +70,24 @@ async function archiveTestGroup(
   client: ReturnType<typeof makeServiceClient>,
   key: "A" | "B",
   dryRun: boolean,
-  log: (line: string) => void,
+  log: (line: string) => void
 ): Promise<void> {
   const name = TEST_GROUP_SPECS[key].name;
   const { data: rows, error } = await client
     .from("groups")
     .select("id, lifecycle_status")
     .eq("name", name);
-  if (error) throw new Error(`groups lookup failed for ${name}: ${error.message}`);
+  if (error)
+    throw new Error(`groups lookup failed for ${name}: ${error.message}`);
   const matches = (rows ?? []) as { id: string; lifecycle_status: string }[];
   if (matches.length === 0) {
     log(`  group[${name}]: not present`);
     return;
   }
   if (matches.length > 1) {
-    log(`  group[${name}]: SKIP — ambiguous (${matches.length} rows). Resolve manually.`);
+    log(
+      `  group[${name}]: SKIP — ambiguous (${matches.length} rows). Resolve manually.`
+    );
     return;
   }
   const group = matches[0];
@@ -45,7 +96,8 @@ async function archiveTestGroup(
     .select("id")
     .eq("group_id", group.id)
     .eq("active", true);
-  if (lErr) throw new Error(`group_leaders count failed for ${name}: ${lErr.message}`);
+  if (lErr)
+    throw new Error(`group_leaders count failed for ${name}: ${lErr.message}`);
   if ((leaders ?? []).length > 0) {
     log(`  group[${name}]: SKIP — still has active leaders attached`);
     return;
@@ -62,7 +114,8 @@ async function archiveTestGroup(
     .from("groups")
     .update({ lifecycle_status: "closed", closed_at: new Date().toISOString() })
     .eq("id", group.id);
-  if (updErr) throw new Error(`group archive failed for ${name}: ${updErr.message}`);
+  if (updErr)
+    throw new Error(`group archive failed for ${name}: ${updErr.message}`);
   log(`  group[${name}]: archived`);
 }
 
@@ -80,17 +133,19 @@ async function main(): Promise<number> {
   const safeLog = (line: string) => console.log(redact(line, secrets));
 
   safeLog(
-    `remove-test-auth-users: target=${safeHost(env.supabaseUrl)} remote=${env.isRemoteSupabase} dryRun=${dryRun}`,
+    `remove-test-auth-users: target=${safeHost(env.supabaseUrl)} remote=${env.isRemoteSupabase} dryRun=${dryRun}`
   );
 
   const candidates = env.specs.filter((s) =>
-    (KNOWN_TEST_EMAILS as readonly string[]).includes(s.email),
+    (KNOWN_TEST_EMAILS as readonly string[]).includes(s.email)
   );
   const skipped = env.specs.filter(
-    (s) => !(KNOWN_TEST_EMAILS as readonly string[]).includes(s.email),
+    (s) => !(KNOWN_TEST_EMAILS as readonly string[]).includes(s.email)
   );
   for (const s of skipped) {
-    safeLog(`SKIP ${s.key}: env email '${s.email}' is not in KNOWN_TEST_EMAILS`);
+    safeLog(
+      `SKIP ${s.key}: env email '${s.email}' is not in KNOWN_TEST_EMAILS`
+    );
   }
 
   const client = makeServiceClient(env);
@@ -133,15 +188,22 @@ async function main(): Promise<number> {
         continue;
       }
 
+      if (profile.role === "over_shepherd") {
+        await deactivateOverShepherdLinks(client, spec.email, dryRun, safeLog);
+      }
+
       if (dryRun) {
-        safeLog(`  profile: would deactivate (status=inactive, auth_user_id=null)`);
+        safeLog(
+          `  profile: would deactivate (status=inactive, auth_user_id=null)`
+        );
         safeLog(`  group_leaders: would deactivate all rows for this profile`);
       } else {
         const { error: glErr } = await client
           .from("group_leaders")
           .update({ active: false })
           .eq("profile_id", profile.id);
-        if (glErr) throw new Error(`group_leaders deactivate failed: ${glErr.message}`);
+        if (glErr)
+          throw new Error(`group_leaders deactivate failed: ${glErr.message}`);
         safeLog(`  group_leaders: deactivated`);
 
         const { error: pErr } = await client
