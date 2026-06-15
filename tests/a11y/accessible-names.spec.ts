@@ -254,8 +254,9 @@ test.describe("admin accessible names carry record context", () => {
     }
   });
 
-  // The axe gate (and its color-contrast palette carve-out, a PRD Non-Goal)
-  // lives in ./harness so this suite and the Settings suite stay in lockstep.
+  // The axe gate lives in ./harness so this suite and the Settings suite stay
+  // in lockstep. `color-contrast` is blocking — the old palette carve-out was
+  // retired once the ink/clay/sage/rose/blue ramps were deepened to clear AA.
   test("axe finds no critical or serious violations", async ({ page }) => {
     const results = await new AxeBuilder({ page }).analyze();
     expectNoBlockingAxeViolations(results);
