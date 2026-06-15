@@ -19,13 +19,27 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import { adminRpc } from "@/lib/admin/rpc";
+import { adminRpc, type AdminUuidRpcArgs } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH = "/admin/people";
 
 // ----- 1. adminCreateLeaderProfile ----------------------------------------
 
 type CreateLeaderPayload = { full_name: string; email: string; phone?: string };
+
+// Type-pinned RPC-args mapping (issue #636): the input is pinned to the
+// validator's output type (CreateLeaderPayload) and the return to the RPC's
+// declared p_* args, so a validator field rename that desyncs from the args
+// fails `npm run typecheck` instead of silently shipping the wrong shape to the
+// SECURITY DEFINER RPC. The explicit per-field spelling stays the eyeball-able
+// write-side trust boundary — this only pins its two ends.
+const createLeaderRpcArgs = (
+  value: CreateLeaderPayload
+): AdminUuidRpcArgs["admin_create_leader_profile"] => ({
+  p_full_name: value.full_name,
+  p_email: value.email,
+  p_phone: value.phone ?? null,
+});
 
 const CREATE_LEADER_SPEC: AdminWriteActionSpec<
   CreateLeaderPayload,
@@ -39,11 +53,7 @@ const CREATE_LEADER_SPEC: AdminWriteActionSpec<
   }),
   okFields: (_value, id) => ({ new_profile_id: id }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_leader_profile", {
-      p_full_name: value.full_name,
-      p_email: value.email,
-      p_phone: value.phone ?? null,
-    }),
+    adminRpc(client, "admin_create_leader_profile", createLeaderRpcArgs(value)),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The leader was not created. Please try again.",
 };
