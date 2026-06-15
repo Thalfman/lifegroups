@@ -123,10 +123,13 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
   const reset = useActionForm<AttentionResetSuccess>(
     RESET_ACTION[surface.surface]
   );
-  const revert = useActionForm<AttentionResetRevertSuccess>(
-    superAdminResetAttentionRevert,
-    { resetOnSuccess: true }
-  );
+  // Pull formRef out of the returned object: reading a ref member during render
+  // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
+  // on the object. The rest keeps the `revert.state` / `.pending` call sites.
+  const { formRef: revertFormRef, ...revert } =
+    useActionForm<AttentionResetRevertSuccess>(superAdminResetAttentionRevert, {
+      resetOnSuccess: true,
+    });
   // A single useActionForm shared by every per-entity revert row below, gated by
   // one RESTORE input for the surface (typing it once enables all rows).
   const entityRevert = useActionForm<AttentionResetRevertSuccess>(
@@ -233,7 +236,7 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
 
       {snapshot ? (
         <form
-          ref={revert.formRef}
+          ref={revertFormRef}
           action={revert.formAction}
           className={RECOVERY_PANEL_CLASS}
         >

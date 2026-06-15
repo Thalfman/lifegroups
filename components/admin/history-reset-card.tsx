@@ -87,10 +87,14 @@ function CategoryResetRow({
   const reset = useActionForm<HistoryResetSuccess>(
     superAdminResetHistoryCategory
   );
-  const revert = useActionForm<HistoryResetRevertSuccess>(
-    superAdminResetHistoryCategoryRevert,
-    { resetOnSuccess: true }
-  );
+  // Pull formRef out of the returned object: reading a ref member during render
+  // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
+  // on the object. The rest keeps the `revert.state` / `.pending` call sites.
+  const { formRef: revertFormRef, ...revert } =
+    useActionForm<HistoryResetRevertSuccess>(
+      superAdminResetHistoryCategoryRevert,
+      { resetOnSuccess: true }
+    );
   const [confirm, setConfirm] = useState("");
   const [restoreConfirm, setRestoreConfirm] = useState("");
 
@@ -182,7 +186,7 @@ function CategoryResetRow({
         // Recovery treatment: a sage-accented panel so the undo control reads
         // as the safety net, distinct from the reset above.
         <form
-          ref={revert.formRef}
+          ref={revertFormRef}
           action={revert.formAction}
           className="grid gap-2 rounded-sm border border-sage bg-sageSoft px-3 py-2.5"
         >
