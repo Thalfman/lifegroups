@@ -307,7 +307,7 @@ surfaces, warm ink"). Light-only is intentional; do not add dark mode as
 - Responsive type scale + `sm:` breakpoint adoption (Later).
 - Suspense streaming for detail routes (Later).
 - Deliberate dependency-major upgrade PR: Next 16, tailwind-merge 3, lucide 1,
-  `@supabase/ssr` 0.12 (Later).
+  `@supabase/ssr` 0.12 (Later) — _decision: take now, one PR per major (#608)._
 - Schema/index/RLS changes only after measured slow queries, Supabase advisor
   output, or concrete security-review evidence (Later).
 
@@ -515,6 +515,9 @@ DENY` (or frame-ancestors CSP), `X-Content-Type-Options: nosniff`,
 - **Acceptance:** Per-tier RLS visibility asserted against seeded Supabase; an
   action write asserts a persisted row + audit row. Majors upgraded with green
   build/test/a11y.
+- **Decision:** RLS harness runs on a **local Supabase CLI stack**, opt-in/
+  scheduled off the default lane (#607); dependency majors land **one PR per
+  major** (#608 → #611–#614).
 - **Risk:** Medium–high. **Order:** 19.
 
 ---
@@ -609,10 +612,18 @@ resolved by inspection):
    lucide 1, `@supabase/ssr` 0.12) upgrade in scope soon, or should the sweep
    stay on the current majors and only clear the dev-chain advisory? (Affects
    whether Task 19's upgrade is scheduled or deferred.)
+   **✅ Resolved (2026-06-15):** take the majors now, **one PR per major**
+   (tracked under #608 → children #611–#614). No runtime exposure today (the
+   dev-chain advisory was already cleared by vitest 3, #584) — staying-current
+   work.
 3. **RLS test harness infra.** Standing up per-tier RLS integration tests needs
    a seeded Supabase target (local CLI stack or an ephemeral project) in CI. Is
    provisioning that infra acceptable, or should RLS stay covered by review +
    migration discipline for now? (Affects the "Later" test work.)
+   **✅ Resolved (2026-06-15):** provision a **local Supabase CLI stack**, seeded
+   via existing tooling, run **opt-in/scheduled off the deterministic default
+   lane** (like the #597 smoke); no production secrets. An ephemeral/staging
+   cloud target stays a documented future option (tracked under #607).
 4. **Seeded-auth smoke target.** Should the optional route-smoke workflow target
    a production-like staging environment only, or also support a local Supabase
    when developers have seeded test accounts? (Affects Task 16 scope.)
