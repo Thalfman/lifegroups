@@ -22,12 +22,22 @@ const LEADER_EMAIL = process.env.A11Y_LEADER_EMAIL;
 const LEADER_PASSWORD = process.env.A11Y_LEADER_PASSWORD;
 const LEADER_CREDS = Boolean(LEADER_EMAIL && LEADER_PASSWORD);
 
+const OVER_SHEPHERD_EMAIL = process.env.A11Y_OVER_SHEPHERD_EMAIL;
+const OVER_SHEPHERD_PASSWORD = process.env.A11Y_OVER_SHEPHERD_PASSWORD;
+const OVER_SHEPHERD_CREDS = Boolean(
+  OVER_SHEPHERD_EMAIL && OVER_SHEPHERD_PASSWORD
+);
+
 const ADMIN_SKIP =
   "Set A11Y_ADMIN_EMAIL + A11Y_ADMIN_PASSWORD (npm run seed:test-auth) and " +
   "serve the app against a local seeded Supabase to exercise admin routing.";
 const LEADER_SKIP =
   "Set A11Y_LEADER_EMAIL + A11Y_LEADER_PASSWORD (npm run seed:test-auth) and " +
   "serve the app against a local seeded Supabase to exercise leader routing.";
+const OVER_SHEPHERD_SKIP =
+  "Set A11Y_OVER_SHEPHERD_EMAIL + A11Y_OVER_SHEPHERD_PASSWORD (npm run " +
+  "seed:test-auth) and serve against a local seeded Supabase to exercise " +
+  "over-shepherd routing.";
 
 async function signIn(
   page: Page,
@@ -44,7 +54,12 @@ async function signIn(
 test.describe("seeded-auth route smoke — anonymous boundary", () => {
   // No creds needed: an unauthenticated visit to a protected route must land on
   // /login. This is the floor of the ladder and is always safe to assert.
-  for (const path of ["/admin", "/admin/super-admin", "/leader"] as const) {
+  for (const path of [
+    "/admin",
+    "/admin/super-admin",
+    "/over-shepherd",
+    "/leader",
+  ] as const) {
     test(`anonymous ${path} redirects to /login`, async ({ page }) => {
       await page.goto(path, { waitUntil: "networkidle" });
       await expect(page).toHaveURL(/\/login(\?|$)/);
@@ -86,6 +101,35 @@ test.describe("seeded-auth route smoke — Ministry Admin routing", () => {
       page.getByRole("heading", { level: 1, name: /you don.t have access/i })
     ).toBeVisible();
   });
+});
+
+test.describe("seeded-auth route smoke — Over-Shepherd routing boundary", () => {
+  // The Over-Shepherd sits between the Ministry Admin and the Leader. They land
+  // on their own surface and, being below the admin tier, must be turned away
+  // from the admin and Super Admin surfaces. Gated on over-shepherd creds, so it
+  // skips cleanly until the seed tooling provisions an over-shepherd auth user.
+  test.beforeEach(async ({ page }) => {
+    test.skip(!OVER_SHEPHERD_CREDS, OVER_SHEPHERD_SKIP);
+    await signIn(page, OVER_SHEPHERD_EMAIL!, OVER_SHEPHERD_PASSWORD!);
+  });
+
+  test("an Over-Shepherd lands on their own surface", async ({ page }) => {
+    const response = await page.goto("/over-shepherd", {
+      waitUntil: "networkidle",
+    });
+    expect(response?.status(), "/over-shepherd should respond 200").toBe(200);
+    await expect(page).toHaveURL(/\/over-shepherd(\?|\/|$)/);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  });
+
+  for (const path of ["/admin", "/admin/super-admin"] as const) {
+    test(`an Over-Shepherd cannot reach ${path}`, async ({ page }) => {
+      // Downward-visibility ladder: the admin surfaces are above the
+      // Over-Shepherd, so the gate redirects to /unauthorized.
+      await page.goto(path, { waitUntil: "networkidle" });
+      await expect(page).toHaveURL(/\/unauthorized(\?|$)/);
+    });
+  }
 });
 
 test.describe("seeded-auth route smoke — Leader routing boundary", () => {

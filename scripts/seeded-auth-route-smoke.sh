@@ -68,18 +68,34 @@ log "Local stack: $SUPABASE_URL_LOCAL"
 # --- 2. Apply the operational seed -------------------------------------------
 # `supabase start` applies migrations under supabase/migrations/. The seeded
 # auth tooling links profiles that the operational seed provides, so apply it
-# here. Idempotent enough for repeated runs in a fresh CI stack.
-log "Applying supabase/seed/phase2_seed.sql..."
-psql "$DB_URL_LOCAL" -v ON_ERROR_STOP=1 -f supabase/seed/phase2_seed.sql >/dev/null
+# here. phase2_seed.sql inserts fixed-email rows into unique columns, so a
+# second apply against the SAME stack would abort on conflict. Make the step
+# rerunnable: skip the apply when the seed is already present (a known seeded
+# profile email), so a failed-then-retried local run — or a second attempt
+# against a still-running stack — doesn't fall over before the auth users are
+# seeded. (CI uses a fresh stack each run, where the guard is simply a no-op.)
+SEED_MARKER_EMAIL="avery.bennett@example.org"
+if psql "$DB_URL_LOCAL" -tAc \
+  "select 1 from profiles where email = '$SEED_MARKER_EMAIL' limit 1" \
+  2>/dev/null | grep -q 1; then
+  log "phase2 seed already present — skipping re-apply (rerunnable)."
+else
+  log "Applying supabase/seed/phase2_seed.sql..."
+  psql "$DB_URL_LOCAL" -v ON_ERROR_STOP=1 -f supabase/seed/phase2_seed.sql >/dev/null
+fi
 
 # --- 3. Seed throwaway Auth users via the existing test-auth tooling ----------
 # scripts/seed-test-auth-users.ts requires ENABLE_TEST_AUTH_USERS=true, a local
 # URL, a service-role key, and the TEST_* email/password pairs. The emails are
 # pinned to KNOWN_TEST_EMAILS in scripts/test-auth-shared.ts; the passwords come
 # from the workflow env (or sensible local defaults below).
-export ENABLE_TEST_AUTH_USERS="true"
+# SECURITY: the service-role key must NEVER reach the Next runtime that
+# Playwright builds and serves in step 4 (repo invariant: no service-role key in
+# the Next runtime). So the privileged seed env — the service-role key and the
+# ENABLE_TEST_AUTH_USERS gate — is passed INLINE to the seed command below and is
+# never `export`ed into the shell, so the later `npx playwright test` / Next
+# webServer cannot inherit it.
 export NEXT_PUBLIC_SUPABASE_URL="$SUPABASE_URL_LOCAL"
-export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY_LOCAL"
 
 export TEST_ADMIN_EMAIL="${TEST_ADMIN_EMAIL:-test.admin@lifegroups.local}"
 export TEST_ADMIN_PASSWORD="${TEST_ADMIN_PASSWORD:-route-smoke-admin-pw}"
@@ -91,7 +107,9 @@ export TEST_COLEADER_EMAIL="${TEST_COLEADER_EMAIL:-test.coleader@lifegroups.loca
 export TEST_COLEADER_PASSWORD="${TEST_COLEADER_PASSWORD:-route-smoke-coleader-pw}"
 
 log "Seeding test auth users..."
-npm run --silent seed:test-auth
+ENABLE_TEST_AUTH_USERS="true" \
+  SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY_LOCAL" \
+  npm run --silent seed:test-auth
 
 # --- 4. Run the seeded-auth route smoke --------------------------------------
 # Serve the app against the local stack with the harness enabled, then run only
