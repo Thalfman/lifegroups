@@ -177,7 +177,9 @@ export async function adminUpdateMetricDefaults(
   );
   // metric_defaults is cached cross-request (lib/supabase/cached-config.ts);
   // bust the tag so the saved values are reflected on the next read.
-  if (result.ok) revalidateTag(METRIC_DEFAULTS_CACHE_TAG);
+  // Next 16 requires a cache-life profile as the second arg; "max" reproduces
+  // the prior single-arg full on-demand purge (see Next's revalidate-tag note).
+  if (result.ok) revalidateTag(METRIC_DEFAULTS_CACHE_TAG, "max");
   return result;
 }
 
@@ -245,7 +247,7 @@ export async function adminResetMetricDefaults(
     undefined
   );
   // Resetting rewrites metric_defaults; bust the cache tag (see above).
-  if (result.ok) revalidateTag(METRIC_DEFAULTS_CACHE_TAG);
+  if (result.ok) revalidateTag(METRIC_DEFAULTS_CACHE_TAG, "max");
   return result;
 }
 

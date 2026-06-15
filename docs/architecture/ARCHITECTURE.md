@@ -80,7 +80,8 @@ backwards compatibility; the `/staff` surface was removed.
   - `server.ts` — cookie-aware `createSupabaseServerClient()` for
     Server Components and Server Actions.
   - `middleware.ts` — `updateSupabaseSession()` refreshes auth cookies
-    on every request. Wired via the root `middleware.ts`.
+    on every request. Wired via the root `proxy.ts` (Next 16's renamed
+    `middleware` convention).
   - Both return `null` when env vars are missing so the build never
     fails on unset secrets.
 - **Session helpers** in `lib/auth/`:

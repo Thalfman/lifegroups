@@ -47,8 +47,9 @@ function walk(dir: string, acc: string[]): string[] {
 }
 
 // Repo-root runtime entrypoints (outside the scanned dirs) that run on every
-// request — middleware especially — must be covered too.
-const ROOT_RUNTIME_FILES = ["middleware.ts"]
+// request — the proxy (Next 16's renamed middleware) especially — must be
+// covered too.
+const ROOT_RUNTIME_FILES = ["proxy.ts"]
   .map((f) => `${REPO_ROOT}${f}`)
   .filter((p) => existsSync(p));
 
@@ -59,9 +60,9 @@ const sourceFiles = [
 const rel = (abs: string) => abs.slice(REPO_ROOT.length).replace(/\\/g, "/");
 
 describe("SC.4 no-leak — private-note tables are referenced only by the creator readers", () => {
-  it("scans a non-trivial number of source files, including root middleware (sanity)", () => {
+  it("scans a non-trivial number of source files, including the root proxy (sanity)", () => {
     expect(sourceFiles.length).toBeGreaterThan(50);
-    expect(sourceFiles.some((f) => f.endsWith("middleware.ts"))).toBe(true);
+    expect(sourceFiles.some((f) => f.endsWith("proxy.ts"))).toBe(true);
   });
 
   it("no runtime source outside the allowlist names either private-note table", () => {

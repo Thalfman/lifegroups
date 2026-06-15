@@ -9,7 +9,7 @@ import { resolve } from "node:path";
 //
 // SECURITY: the service-role key here is used ONLY by the test harness to
 // provision fixtures against a LOCAL stack. It is never imported into any app
-// runtime path (`app/**`, `lib/**`, `middleware.ts`). The Next runtime keeps
+// runtime path (`app/**`, `lib/**`, `proxy.ts`). The Next runtime keeps
 // its no-service-role-key invariant; this is setup tooling, like
 // scripts/seed-test-auth-users.ts.
 
