@@ -15,8 +15,8 @@ import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 //      own `overflow-x: auto` scroll region (the standard fix for wide data
 //      tables), which clips at the wrapper and is therefore allowed.
 //   2. axe finds no critical/serious violations at the mobile viewport, so the
-//      collapsed-to-one-column layouts stay accessible (palette contrast stays
-//      the one documented non-blocking carve-out).
+//      collapsed-to-one-column layouts stay accessible (palette contrast is
+//      blocking too — the old non-blocking carve-out has been retired).
 //
 // Coverage of a new harness surface is split: the axe pass scans the whole
 // harness, so a new surface joins it automatically; the per-surface overflow
