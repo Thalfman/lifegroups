@@ -3,15 +3,18 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { makeServiceClient } from "./support/clients";
 import { resolveIntegrationEnv, type IntegrationEnv } from "./support/env";
 import { provisionFixtures, type Fixtures } from "./support/fixtures";
+import { runSql } from "./support/sql";
 
 // (b) The action-pipeline half of issue #607: a write that goes through a
 // narrow SECURITY DEFINER RPC persists its row AND writes a paired
 // `audit_events` row IN THE SAME TRANSACTION.
 //
-// The transactional pairing is the load-bearing invariant. We assert it two
-// ways: the row + audit row both exist after a successful write, and — the real
-// proof of atomicity — when the RPC RAISES, NEITHER row is left behind (a
-// non-transactional pairing would leak one without the other).
+// The transactional pairing is the load-bearing invariant. We assert it three
+// ways: the row + audit row both exist after a successful write; a body rejected
+// at VALIDATION writes nothing (the pre-insert raise path); and — the real proof
+// of atomicity (#625) — when the RPC fails AFTER the care_notes insert but at
+// the audit_events insert, NEITHER row survives. A non-transactional pairing
+// would leak the note without its audit row; the rollback proves it does not.
 
 const probe = resolveIntegrationEnv();
 const suite = probe.kind === "ready" ? describe : describe.skip;
@@ -75,10 +78,11 @@ suite(
       expect(JSON.stringify(audit.metadata)).not.toContain(body);
     });
 
-    it("a RAISED RPC leaves NEITHER the row NOR an audit row (atomic rollback)", async () => {
-      // Drive the RPC to its `invalid_input` raise with a whitespace-only body.
-      // If the audit insert were a separate statement (not the same transaction),
-      // a partial write could leak an audit row; the rollback proves it does not.
+    it("a body rejected at VALIDATION writes nothing (pre-insert raise path)", async () => {
+      // A whitespace-only body is rejected by the RPC's `invalid_input` guard
+      // BEFORE the care_notes insert, so nothing is ever written. This proves the
+      // validation-raise path, NOT transactional pairing (the insert is never
+      // reached) — the atomic-rollback proof below covers the post-insert case.
       // Service client (RLS-bypassing) reads the unsealed truth on both tables.
       const service = makeServiceClient(serviceEnv);
 
@@ -111,9 +115,90 @@ suite(
         .select("id")
         .eq("entity_type", "care_notes")
         .eq("action", "admin.care_note.write");
-      // No new rows on either table: the whole transaction rolled back.
+      // No new rows on either table: validation rejected before any write.
       expect((afterNotes.data ?? []).length).toBe(beforeNoteCount);
       expect((afterAudit.data ?? []).length).toBe(beforeAuditCount);
+    });
+
+    // The load-bearing atomicity proof (#625). A whitespace body raises at
+    // validation, never reaching the insert — so it cannot show that the
+    // care_notes insert and the paired audit_events insert live in ONE
+    // transaction. Here we force a failure AFTER the care_notes insert, at the
+    // audit insert, with a TEST-ONLY trigger keyed to a dedicated subject. A
+    // non-transactional pairing would leave the note row behind; the rollback
+    // proves the note row is gone too.
+    describe("atomic rollback when the audit insert fails mid-transaction", () => {
+      const triggerName = "_it625_fail_audit_insert";
+      const functionName = "public._it625_fail_audit_insert";
+
+      beforeAll(async () => {
+        if (probe.kind !== "ready") return;
+        // BEFORE INSERT on audit_events: raise only for this run's rollback
+        // subject, so the trigger can never disturb any other test's writes.
+        await runSql(`
+          create or replace function ${functionName}()
+            returns trigger language plpgsql as $fn$
+          begin
+            if new.action = 'admin.care_note.write'
+               and new.metadata->>'subject_profile_id'
+                   = '${fx.rollbackSubjectProfileId}' then
+              raise exception 'it625_forced_audit_failure';
+            end if;
+            return new;
+          end;
+          $fn$;
+          drop trigger if exists ${triggerName} on public.audit_events;
+          create trigger ${triggerName}
+            before insert on public.audit_events
+            for each row execute function ${functionName}();
+        `);
+      });
+
+      afterAll(async () => {
+        if (probe.kind !== "ready") return;
+        await runSql(`
+          drop trigger if exists ${triggerName} on public.audit_events;
+          drop function if exists ${functionName}();
+        `);
+      });
+
+      it("leaves NEITHER the care_notes row NOR the audit row behind", async () => {
+        const service = makeServiceClient(serviceEnv);
+        const subjectId = fx.rollbackSubjectProfileId;
+
+        // Sanity: the forced-failure subject starts with no note and no audit
+        // row, so any leak below is unambiguous.
+        const beforeNotes = await service
+          .from("care_notes")
+          .select("id")
+          .eq("subject_profile_id", subjectId);
+        expect((beforeNotes.data ?? []).length).toBe(0);
+
+        const write = await fx.ministryAdmin.client.rpc(
+          "admin_write_care_note",
+          { p_subject_profile_id: subjectId, p_body: "Rollback proof body" }
+        );
+        // The trigger raised on the audit insert; PostgREST surfaces the error.
+        expect(write.error).not.toBeNull();
+        expect(write.data).toBeNull();
+
+        // The care_notes insert succeeded first, then the audit insert raised.
+        // If the two were not one transaction, the note row would survive. It
+        // must NOT — assert both tables are clean for this subject.
+        const afterNotes = await service
+          .from("care_notes")
+          .select("id")
+          .eq("subject_profile_id", subjectId);
+        expect((afterNotes.data ?? []).length).toBe(0);
+
+        const afterAudit = await service
+          .from("audit_events")
+          .select("id, metadata")
+          .eq("entity_type", "care_notes")
+          .eq("action", "admin.care_note.write")
+          .filter("metadata->>subject_profile_id", "eq", subjectId);
+        expect((afterAudit.data ?? []).length).toBe(0);
+      });
     });
 
     it("a non-admin without coverage cannot drive the RPC write (guard rejects)", async () => {
