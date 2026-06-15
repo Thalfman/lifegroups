@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
@@ -251,12 +252,14 @@ export async function buildMultiplyGridData(
 export async function loadMultiplyGridData(
   now: Date = new Date()
 ): Promise<MultiplyGridData> {
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    return {
-      ...EMPTY_MULTIPLY_GRID_DATA,
-      ministryYear: currentMinistryYear(now),
-    };
-  }
-  return buildMultiplyGridData(supabaseMultiplyGridReads(client), now);
+  return measureReadBundle("multiply_grid", async () => {
+    const client = await createSupabaseServerClient();
+    if (!client) {
+      return {
+        ...EMPTY_MULTIPLY_GRID_DATA,
+        ministryYear: currentMinistryYear(now),
+      };
+    }
+    return buildMultiplyGridData(supabaseMultiplyGridReads(client), now);
+  });
 }
