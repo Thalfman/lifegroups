@@ -108,19 +108,27 @@ export function resolveIntegrationEnv(): IntegrationEnvResult {
   if (!anonKey)
     missing.push("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or anon key)");
   if (!serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+  // We are PAST the opt-in gate: RUN_RLS_INTEGRATION=true means the operator
+  // explicitly asked to exercise RLS (the scheduled/manual workflow). A missing
+  // credential or a non-local URL here is a broken harness setup, NOT the
+  // credential-free default lane — so FAIL loudly instead of skipping, which
+  // would let the RLS workflow exit 0 (green) without exercising any RLS if
+  // `supabase status` parsing drifts or a key goes unset.
   if (missing.length > 0) {
-    return {
-      kind: "skip",
-      reason: `RLS integration harness skipped: missing ${missing.join(", ")}.`,
-    };
+    throw new Error(
+      `RLS integration harness is opted in (RUN_RLS_INTEGRATION=true) but ` +
+        `misconfigured: missing ${missing.join(", ")}. Refusing to skip — fix ` +
+        `the local stack/credentials or unset RUN_RLS_INTEGRATION.`
+    );
   }
 
   if (!hostIsLocal(supabaseUrl)) {
-    return {
-      kind: "skip",
-      reason:
-        "RLS integration harness refuses a non-local Supabase URL; it only runs against a local CLI stack (localhost / 127.0.0.1).",
-    };
+    throw new Error(
+      `RLS integration harness is opted in (RUN_RLS_INTEGRATION=true) but the ` +
+        `Supabase URL '${supabaseUrl}' is not local. It only runs against a ` +
+        `local CLI stack (localhost / 127.0.0.1); refusing to skip or to touch ` +
+        `a non-local project.`
+    );
   }
 
   return {
