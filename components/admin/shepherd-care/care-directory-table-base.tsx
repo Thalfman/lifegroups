@@ -144,6 +144,7 @@ export function CareDirectoryTable({
                   <td className={TD}>
                     {entry.needs_attention ? (
                       <span
+                        role="img"
                         title="Needs attention"
                         className="inline-block h-2.5 w-2.5 rounded-pill bg-clay"
                         aria-label="Needs attention"
@@ -190,10 +191,16 @@ function CareDirectoryCard({
           >
             {entry.profile.full_name}
           </Link>
-          <div className="text-xs text-ink3">{entry.profile.email}</div>
+          {/* Emails are unbroken tokens; allow them to wrap anywhere so a long
+              address stays readable instead of clipping under the mobile
+              overflow-x rule (#567 review). */}
+          <div className="text-xs text-ink3 [overflow-wrap:anywhere]">
+            {entry.profile.email}
+          </div>
         </div>
         {entry.needs_attention ? (
           <span
+            role="img"
             title="Needs attention"
             className="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-pill bg-clay"
             aria-label="Needs attention"

@@ -172,27 +172,42 @@ test.describe("mobile smoke — responsive directories + grid (#567)", () => {
     }
   });
 
-  test("the harness never forces horizontal page scroll", async ({ page }) => {
+  // Measure each reshaped surface's OWN box rather than the whole harness page:
+  // the harness mounts every surface, including intentionally-wide ones (e.g.
+  // the master-calendar month grid) that live in their own overflow-x:auto
+  // region and are excluded from the per-surface audit. A page-level scrollWidth
+  // check would be hostage to those; the contract #567 actually adds is that
+  // these four stacked surfaces never overflow their own content box at phone
+  // width. A 1px slack absorbs sub-pixel rounding (matches responsive-mobile).
+  async function expectStackedSurfacesDoNotOverflow(page: Page): Promise<void> {
+    for (const { id } of STACKED_SURFACES) {
+      const surface = page.locator(`[data-a11y-surface="${id}"]`);
+      await expect(surface, `surface "${id}" should render`).toBeVisible();
+      const overflow = await surface.evaluate(
+        (el) =>
+          (el as HTMLElement).scrollWidth - (el as HTMLElement).clientWidth
+      );
+      expect(
+        overflow,
+        `surface "${id}" overflows its content box by ${overflow}px (forces ` +
+          `horizontal scroll at phone width)`
+      ).toBeLessThanOrEqual(1);
+    }
+  }
+
+  test("the stacked surfaces never overflow their box at phone width", async ({
+    page,
+  }) => {
     await gotoHarness(page);
-    const overflowing = await page.evaluate(
-      () => document.documentElement.scrollWidth > window.innerWidth
-    );
-    expect(
-      overflowing,
-      "no surface should widen the page past the viewport"
-    ).toBe(false);
+    await expectStackedSurfacesDoNotOverflow(page);
   });
 
-  test("no horizontal page scroll at the 375px floor", async ({ page }) => {
+  test("the stacked surfaces never overflow their box at the 375px floor", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoHarness(page);
-    const overflowing = await page.evaluate(
-      () => document.documentElement.scrollWidth > window.innerWidth
-    );
-    expect(
-      overflowing,
-      "the directories + grid must not force horizontal scroll at 375px"
-    ).toBe(false);
+    await expectStackedSurfacesDoNotOverflow(page);
   });
 });
 
