@@ -72,6 +72,14 @@ import type {
   MultiplyReadinessDashboardSummary,
 } from "@/lib/dashboard/types";
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
+import { ShepherdCareDirectoryTable } from "@/components/admin/shepherd-care/directory-table";
+import { MultiplyGridView } from "@/components/admin/multiply/multiply-grid";
+import { buildMultiplyGrid } from "@/lib/admin/multiply-grid";
+import { BUILT_IN_READINESS_RULE } from "@/lib/admin/cell-readiness";
+import type {
+  ActiveShepherdCoverageAssignmentSummary,
+  ShepherdCareDirectoryEntry,
+} from "@/lib/supabase/read-models";
 import { SuperAdminCollapsibleSection } from "@/components/admin/super-admin-collapsible-section";
 import { SuperAdminSectionAnchors } from "@/components/admin/super-admin-section-anchors";
 import { Sidebar } from "@/components/lg/shell/Sidebar";
@@ -617,6 +625,110 @@ const GROUP_HEALTH_ROWS: GroupHealthOverviewRow[] = [
     attendance_declining: false,
   },
 ];
+
+// Care directory (#567 mobile stacking). Two leaders — one flagged for
+// attention, one not — so the mobile-smoke spec can assert the stacked card
+// layout renders at 375px without horizontal scroll, and the desktop table
+// renders at md+. The admin variant carries the "Over-shepherd" coverage
+// column, so its extra-column path is exercised too.
+const CARE_DIRECTORY_ENTRIES: ShepherdCareDirectoryEntry[] = [
+  {
+    profile: {
+      id: "care-dir-1",
+      full_name: "Anderson Lee",
+      email: "anderson@example.test",
+      role: "leader",
+      status: "active",
+    },
+    care: {
+      id: "care-row-1",
+      shepherd_profile_id: "care-dir-1",
+      current_status: "needs_follow_up",
+      last_contact_at: "2026-05-05",
+      next_touchpoint_due: "2026-05-20",
+      archived_at: null,
+      created_at: STAMP,
+      updated_at: STAMP,
+    },
+    needs_attention: true,
+  },
+  {
+    profile: {
+      id: "care-dir-2",
+      full_name: "Bryant Cole",
+      email: "bryant@example.test",
+      role: "co_leader",
+      status: "active",
+    },
+    care: {
+      id: "care-row-2",
+      shepherd_profile_id: "care-dir-2",
+      current_status: "doing_well",
+      last_contact_at: "2026-05-12",
+      next_touchpoint_due: null,
+      archived_at: null,
+      created_at: STAMP,
+      updated_at: STAMP,
+    },
+    needs_attention: false,
+  },
+];
+
+const CARE_DIRECTORY_COVERAGE = new Map<
+  string,
+  ActiveShepherdCoverageAssignmentSummary
+>([
+  [
+    "care-dir-1",
+    {
+      id: "cov-1",
+      shepherd_profile_id: "care-dir-1",
+      over_shepherd_id: "os-1",
+      assigned_at: STAMP,
+      over_shepherd: { id: "os-1", full_name: "Omar Castillo", active: true },
+    },
+  ],
+]);
+
+// Multiply readiness grid (#567 mobile stacking). A small grid with one
+// category applied to two top types (one ready, one held back) so the mobile-
+// smoke spec can assert the stacked category cards render at 375px while the
+// matrix table renders at md+. Built with the same pure builder the live
+// surface uses, so the readout shape can't drift from production.
+const MULTIPLY_GRID = buildMultiplyGrid(
+  [{ id: "cat-2030", label: "20-30s" }],
+  [
+    {
+      audienceCategory: "men",
+      categoryId: "cat-2030",
+      active: true,
+      have: 2,
+      target: 2,
+      override: {},
+      inputs: {
+        interestCount: 5,
+        capacityIssue: false,
+        groupHealth: "B",
+        leaderHealth: "B",
+      },
+    },
+    {
+      audienceCategory: "women",
+      categoryId: "cat-2030",
+      active: true,
+      have: 1,
+      target: 2,
+      override: {},
+      inputs: {
+        interestCount: 0,
+        capacityIssue: true,
+        groupHealth: null,
+        leaderHealth: null,
+      },
+    },
+  ],
+  BUILT_IN_READINESS_RULE
+);
 
 const SETTINGS_DATA: SettingsShellData = {
   defaults: DEMO_METRIC_DEFAULTS,
@@ -1345,6 +1457,23 @@ export function A11yHarnessClient() {
           groupQuestionLabel="Group engagement — leader-reported (1–5)"
           watchGrade="C"
         />
+      </Surface>
+
+      {/* Care directory (#567). The admin "All leaders" roster — a stack of
+          leader cards at base, the dense table at md+. Mounted so the mobile-
+          smoke spec can assert no horizontal scroll at 375px. */}
+      <Surface id="care-directory" heading="Care directory (all leaders)">
+        <ShepherdCareDirectoryTable
+          entries={CARE_DIRECTORY_ENTRIES}
+          coverageByShepherdId={CARE_DIRECTORY_COVERAGE}
+        />
+      </Surface>
+
+      {/* Multiply readiness grid (#567). Stacked category cards at base, the
+          matrix table at md+ — mounted so the mobile-smoke spec can assert the
+          grid is readable at 375px without horizontal scroll. */}
+      <Surface id="multiply-readiness-grid" heading="Multiply readiness grid">
+        <MultiplyGridView grid={MULTIPLY_GRID} ministryYear={2026} />
       </Surface>
 
       {/* #469: the toggle swaps the ONE Settings instance to the read-error

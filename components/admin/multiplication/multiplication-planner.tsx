@@ -42,18 +42,18 @@ import type {
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
 } from "@/types/enums";
+import {
+  fieldLabelClassName as LABEL,
+  fieldInputBaseClassName as INPUT,
+} from "@/components/admin/forms/field-styles";
 
 // Capacity & Multiplication #184: a same-group apprentice the candidate can be
 // linked to. `label` already includes the readiness stage for the picker.
 export type ApprenticeOption = { id: string; label: string };
 
-// Design-system form field classes (12px uppercase label → full-width input
-// with the global focus ring), plus the small shared helper-text and
-// checkbox-label styles the planner's forms repeat.
-const LABEL =
-  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
-const INPUT =
-  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
+// The planner's forms repeat a couple of small shared bits beyond the field
+// input/label: a textarea variant for long notes plus helper-text and
+// checkbox-label styles.
 // Notes can run to 2000 chars; a single-line input hides all but a sliver of
 // that, so notes use a multi-line, vertically resizable variant of INPUT.
 const TEXTAREA = `${INPUT} min-h-[4.5rem] resize-y leading-normal`;

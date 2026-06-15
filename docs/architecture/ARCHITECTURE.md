@@ -38,7 +38,7 @@ shape. The full enumeration lives in `app/`.
 
 - **Public** (no auth): `/`, `/login`, `/forgot-password`,
   `/reset-password`, `/unauthorized`, `/welcome`, `/support`,
-  `/account-deletion`, and `/invite/[token]` (self-signup invite
+  `/account-deletion`, `/privacy`, and `/invite/[token]` (self-signup invite
   redemption). `/a11y-harness` is a build-time test route gated behind
   `NEXT_PUBLIC_A11Y_HARNESS` and never ships in a normal build.
 - **Protected** (under `app/(protected)/`):

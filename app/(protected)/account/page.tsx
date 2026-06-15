@@ -103,6 +103,14 @@ export default async function AccountPage() {
                   How account deletion works
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/privacy"
+                  className="font-sans text-base font-medium text-sageDeep no-underline"
+                >
+                  Privacy policy
+                </Link>
+              </li>
             </ul>
           </section>
 

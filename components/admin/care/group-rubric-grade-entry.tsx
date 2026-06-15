@@ -13,6 +13,10 @@ import type {
   GroupHealthLetter,
   GroupHealthOverrideScope,
 } from "@/types/enums";
+import {
+  fieldLabelTextClassName as FIELD_LABEL,
+  fieldInputBaseClassName,
+} from "@/components/admin/forms/field-styles";
 
 // Care Group-Health Grade entry (#377 / ADR 0018, Pivot slice 4). A grader scores
 // a group against the configured Health Rubric — one 0–100 input per criterion —
@@ -27,12 +31,9 @@ const LETTERS: GroupHealthLetter[] = ["A", "B", "C", "D", "F"];
 const WRAP =
   "grid gap-3 rounded-sm border border-lineSoft bg-surface px-3.5 py-3";
 
-// Form field labels keep the tracked-uppercase voice (the one place it
-// survives); `lg-m-input` is the shared mobile input shim.
-const FIELD_LABEL =
-  "font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
-const FIELD_INPUT =
-  "lg-m-input w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base leading-snug text-ink";
+// `lg-m-input` is the shared mobile input shim; `leading-snug` keeps the small
+// numeric score inputs tight. Both wrap the shared field-input base.
+const FIELD_INPUT = `lg-m-input ${fieldInputBaseClassName} leading-snug`;
 
 export function GroupRubricGradeEntry({
   groupId,

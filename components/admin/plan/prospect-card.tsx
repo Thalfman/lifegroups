@@ -27,13 +27,12 @@ import {
 } from "@/lib/admin/prospect-next-step";
 import type { ProspectBoardEntry } from "@/lib/supabase/prospect-reads";
 import type { PlanGroupOption } from "@/components/admin/plan/plan-data";
+import { fieldInputBaseClassName as INPUT } from "@/components/admin/forms/field-styles";
 
-// Design-system form field classes (12px uppercase label → full-width input
-// with the global focus ring). Shared by the card's three collapsed editors.
+// A tighter label than the shared field label (mb-0.5 vs mb-1.5) so the card's
+// three collapsed editors stay compact; the input adopts the shared base.
 const LABEL =
   "mb-0.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
-const INPUT =
-  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
 
 // All states a Prospect can be moved to (the four-state funnel). The card
 // offers exactly the legal targets for its current state, with a group picker

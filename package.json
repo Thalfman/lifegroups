@@ -14,6 +14,7 @@
     "typecheck": "npm run verify:toolchain && tsc --noEmit",
     "test": "vitest",
     "test:run": "npm run verify:toolchain && vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:coverage": "npm run verify:toolchain && vitest run --coverage",
     "test:a11y": "npm run verify:toolchain && playwright test",
     "seed:test-auth": "tsx scripts/seed-test-auth-users.ts",
@@ -33,7 +34,7 @@
     "next": "^15.5.18",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "tailwind-merge": "^2.5.5"
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",

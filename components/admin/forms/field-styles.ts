@@ -100,11 +100,18 @@ export const fieldLabelTextClassName =
   "font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
 export const fieldLabelClassName = `mb-1.5 block ${fieldLabelTextClassName}`;
 
-// Input / textarea: full width, 14px text, line border, rounded-sm, surface
-// bg; the focus ring comes from the global standard in globals.css, and the
-// global mobile guard holds every form control at 16px (no iOS zoom).
-export const fieldInputClassName =
-  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink placeholder:text-ink3";
+// Input / textarea base: full width, 14px text, line border, rounded-sm,
+// surface bg; the focus ring comes from the global standard in globals.css, and
+// the global mobile guard holds every form control at 16px (no iOS zoom). This
+// placeholder-free base lets primitives (`components/ui/input.tsx`) and the few
+// surfaces that don't paint a placeholder compose the same field look without
+// re-declaring the string locally.
+export const fieldInputBaseClassName =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
+
+// Input / textarea: the base plus the muted placeholder ink. The canonical
+// field-input class string imported across forms.
+export const fieldInputClassName = `${fieldInputBaseClassName} placeholder:text-ink3`;
 
 // Selects share the input look; native appearance stays.
 export const fieldSelectClassName = fieldInputClassName;

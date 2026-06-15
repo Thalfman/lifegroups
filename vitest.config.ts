@@ -34,6 +34,12 @@ export default defineConfig({
       // Scanning them double-runs the suite and surfaces unrelated failures
       // from in-progress work, so keep the runner to the real tree.
       "**/.claude/**",
+      // The RLS / action-pipeline integration harness (issue #607) needs a live
+      // local Supabase CLI stack + seeded auth, so it is OPT-IN / SCHEDULED and
+      // lives off this deterministic default lane. It runs under its own runner
+      // (`vitest.integration.config.ts` / `npm run test:integration`); excluding
+      // it here keeps `npm run test:run` green with no stack or credentials.
+      "tests/integration/**",
     ],
     // Coverage is opt-in (`npm run test:coverage`) and intentionally
     // **non-blocking** — no thresholds gate CI. It exists only to surface

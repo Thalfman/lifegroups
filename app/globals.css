@@ -209,6 +209,21 @@
     overflow-x: hidden;
   }
 
+  /* Readable mobile type floor (#558) ------------------------------------
+     `text-base` is the body/UI reading size in the fixed-rem type scale
+     (tailwind.config `fontSize`), tuned for the desktop at 14px. On a phone
+     that sits at the low end of comfortable reading and reads as a "tiny
+     text" review/adoption risk (MOBILE_STORE_ROADMAP Phase 2). This floors
+     body copy to a minimum of 15px on small viewports — `max()` so it only
+     ever raises, never shrinks — without rescaling the document (a
+     responsive type scale is #606, deliberately NOT done here) and without
+     touching the smaller scale steps (sm/xs/2xs), which are deliberate
+     label/chip/caption sizes rather than body copy. Light palette only —
+     no dark-mode rules. */
+  .text-base {
+    font-size: max(0.875rem, 15px);
+  }
+
   .lg-m-noscrollx {
     max-width: 100vw !important;
     overflow-x: hidden !important;

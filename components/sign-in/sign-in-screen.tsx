@@ -54,6 +54,13 @@ export function SignInScreen() {
           >
             Contact support
           </Link>
+          {" · "}
+          <Link
+            href="/privacy"
+            className="font-medium text-sageDeep no-underline"
+          >
+            Privacy policy
+          </Link>
         </p>
       </div>
     </main>
