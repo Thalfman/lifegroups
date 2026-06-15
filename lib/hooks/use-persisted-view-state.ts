@@ -42,11 +42,15 @@ export function usePersistedViewState<T>(options: {
 
   // Hold the latest callbacks in refs so the restore effect can key off the
   // storage key alone and fire exactly once per key, without re-running every
-  // time the parent re-creates these closures.
+  // time the parent re-creates these closures. The refs are written in an effect
+  // (not during render) so react-hooks/refs stays satisfied; the only reader is
+  // the restore effect below, which runs after this one on every render.
   const restoreRef = useRef(restore);
-  restoreRef.current = restore;
   const validateRef = useRef(validate);
-  validateRef.current = validate;
+  useEffect(() => {
+    restoreRef.current = restore;
+    validateRef.current = validate;
+  });
 
   const [hydrated, setHydrated] = useState(false);
   // The last value we wrote (or read), so the persist effect can skip

@@ -29,16 +29,6 @@ const eslintConfig = [
     files: ["**/*.{jsx,tsx}"],
     rules: jsxA11y.flatConfigs.recommended.rules,
   },
-  // eslint-config-next 16 bundles eslint-plugin-react-hooks v6, whose
-  // recommended set adds `react-hooks/refs` (~82 hits: writing ref.current in
-  // render). Adopting it is a behavioral React refactor across many components,
-  // sliced after `set-state-in-effect` and tracked under #632; re-enable it
-  // there. Every other react-hooks v6 rule (incl. set-state-in-effect) is on.
-  {
-    rules: {
-      "react-hooks/refs": "off",
-    },
-  },
 ];
 
 export default eslintConfig;

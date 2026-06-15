@@ -120,6 +120,11 @@ export function AdminMasterCalendarShell({
       // Only persist the view as a real preference once the user has toggled
       // it; otherwise leave it null so a return visit re-runs the responsive
       // default instead of inheriting an auto-selected mobile "list".
+      // userToggledRef must stay a ref (the mount-once media-query effect reads
+      // it without re-subscribing), and it only ever flips false→true alongside
+      // a setViewMode call, so this render-time read is consistent with the
+      // committed viewMode rather than the impure read the rule guards against.
+      // eslint-disable-next-line react-hooks/refs
       viewMode: viewModePreferenceToPersist(viewMode, userToggledRef.current),
       groupFilter,
       typeFilter,
