@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
@@ -468,10 +469,16 @@ export async function buildShepherdCareDetailData(
 export async function loadShepherdCareDetailData(
   options: ShepherdCareDetailOptions
 ): Promise<ShepherdCareDetailResult> {
-  const client = await createSupabaseServerClient();
-  if (!client) return { kind: "db_unavailable" };
-  return buildShepherdCareDetailData(
-    supabaseShepherdCareDetailReads(client),
-    options
+  return measureReadBundle(
+    "shepherd_care_detail",
+    async () => {
+      const client = await createSupabaseServerClient();
+      if (!client) return { kind: "db_unavailable" };
+      return buildShepherdCareDetailData(
+        supabaseShepherdCareDetailReads(client),
+        options
+      );
+    },
+    (result) => ({ result_kind: result.kind })
   );
 }

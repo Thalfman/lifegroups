@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
@@ -601,7 +602,13 @@ export async function buildGroupDetailData(
 export async function loadGroupDetailData(
   options: GroupDetailOptions
 ): Promise<GroupDetailResult> {
-  const client = await createSupabaseServerClient();
-  if (!client) return { kind: "db_unavailable" };
-  return buildGroupDetailData(supabaseGroupDetailReads(client), options);
+  return measureReadBundle(
+    "group_detail",
+    async () => {
+      const client = await createSupabaseServerClient();
+      if (!client) return { kind: "db_unavailable" };
+      return buildGroupDetailData(supabaseGroupDetailReads(client), options);
+    },
+    (result) => ({ result_kind: result.kind })
+  );
 }

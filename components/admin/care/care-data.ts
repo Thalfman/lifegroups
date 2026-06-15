@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
@@ -199,9 +200,11 @@ export async function buildCareData(
 // Binds the live client (or returns the documented empty shape when the DB is
 // not configured) and runs the pure assembly. The calling page is unchanged.
 export async function loadCareData(todayIso: string): Promise<CareData> {
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    return emptyCareData("Database is not configured in this environment.");
-  }
-  return buildCareData(supabaseCareReads(client), { todayIso });
+  return measureReadBundle("care_dashboard", async () => {
+    const client = await createSupabaseServerClient();
+    if (!client) {
+      return emptyCareData("Database is not configured in this environment.");
+    }
+    return buildCareData(supabaseCareReads(client), { todayIso });
+  });
 }
