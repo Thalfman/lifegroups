@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildGroupDetailData,
+  buildGroupTabData,
+  resolveGroupSpine,
   type GroupDetailOptions,
   type GroupDetailReads,
 } from "@/components/admin/groups/group-detail-data";
@@ -157,6 +159,50 @@ function options(
     ...extra,
   };
 }
+
+// The streaming route (repo-sweep #605) loads the spine and the per-tab data
+// through these split helpers so the tab can render behind a Suspense boundary.
+// buildGroupDetailData (covered below) composes both, but assert the split
+// contract directly since the route now depends on it.
+describe("split loaders (spine / tab)", () => {
+  it("resolveGroupSpine returns the group, or null when none is found", async () => {
+    expect(await resolveGroupSpine(detailReads(), GROUP_ID)).toMatchObject({
+      id: GROUP_ID,
+    });
+    expect(
+      await resolveGroupSpine(
+        detailReads({ fetchGroupsByIds: async () => ok([]) }),
+        GROUP_ID
+      )
+    ).toBeNull();
+  });
+
+  it("resolveGroupSpine throws to the route error boundary on a failed read", async () => {
+    await expect(
+      resolveGroupSpine(
+        detailReads({ fetchGroupsByIds: async () => fail("spine boom") }),
+        GROUP_ID
+      )
+    ).rejects.toThrow("spine boom");
+  });
+
+  it("buildGroupTabData runs only the requested tab against a resolved group", async () => {
+    let healthCalled = false;
+    const tabData = await buildGroupTabData(
+      detailReads({
+        fetchGroupHealthOverview: async () => {
+          healthCalled = true;
+          return ok(HEALTH_ROW as never);
+        },
+      }),
+      GROUP as never,
+      options("follow-ups")
+    );
+    expect(tabData.tab).toBe("follow-ups");
+    // The spine is not re-read and the non-requested tab's reads never fire.
+    expect(healthCalled).toBe(false);
+  });
+});
 
 describe("buildGroupDetailData", () => {
   it("yields the 404 shape when the group read succeeds but finds nothing", async () => {

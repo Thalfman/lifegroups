@@ -26,9 +26,13 @@ import { isSuperAdminRole } from "@/lib/auth/roles";
 import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
 import { GroupHealthEditButton } from "@/components/admin/group-detail/group-health-edit-button";
 import { GroupRosterManager } from "@/components/admin/group-detail/group-roster-manager";
+import { Suspense } from "react";
+import { DetailTabPanelSkeleton } from "@/components/lg/DetailPageSkeleton";
 import {
-  loadGroupDetailData,
+  loadGroupSpine,
+  loadGroupTabData,
   type GroupAttendanceTabData,
+  type GroupDetailOptions,
   type GroupDetailTab,
   type GroupEventsTabData,
   type GroupFollowUpsTabData,
@@ -99,17 +103,22 @@ export default async function AdminGroupDetailPage({
   // health editor drawer.
   const isSuperAdmin = isSuperAdminRole(session.profile.role);
 
-  const [detail, hiddenNavAreas] = await Promise.all([
-    loadGroupDetailData({
-      groupId,
-      tab,
-      periodMonth: currentPeriodMonthIso(),
-      todayIso: churchTodayIso(),
-    }),
+  // Resolve only the spine synchronously: it decides 404 and titles the page,
+  // so it must complete before anything renders. The heavy per-tab reads are
+  // deferred into the Suspense boundary below and stream in after the header +
+  // tab bar paint (repo-sweep #605).
+  const [spine, hiddenNavAreas] = await Promise.all([
+    loadGroupSpine(groupId),
     loadHiddenNavAreas(),
   ]);
-  if (detail.kind !== "ok") notFound();
-  const { group, tabData } = detail;
+  if (spine.kind !== "ok") notFound();
+  const { group } = spine;
+  const tabOptions: GroupDetailOptions = {
+    groupId,
+    tab,
+    periodMonth: currentPeriodMonthIso(),
+    todayIso: churchTodayIso(),
+  };
 
   return (
     <>
@@ -154,31 +163,63 @@ export default async function AdminGroupDetailPage({
             })}
           </div>
 
-          {tabData.tab === "overview" ? (
-            <OverviewTab data={tabData} group={group} groupId={groupId} />
-          ) : null}
-          {tabData.tab === "people" ? (
-            <GroupRosterManager
+          <Suspense key={tab} fallback={<DetailTabPanelSkeleton />}>
+            <GroupTabPanel
+              group={group}
               groupId={groupId}
-              groupName={group.name}
-              data={tabData}
+              options={tabOptions}
+              isSuperAdmin={isSuperAdmin}
               hiddenNavAreas={[...hiddenNavAreas]}
             />
-          ) : null}
-          {tabData.tab === "health" ? (
-            <HealthTab data={tabData} isSuperAdmin={isSuperAdmin} />
-          ) : null}
-          {tabData.tab === "attendance" ? (
-            <AttendanceTab data={tabData} groupId={groupId} />
-          ) : null}
-          {tabData.tab === "follow-ups" ? (
-            <FollowUpsTab data={tabData} />
-          ) : null}
-          {tabData.tab === "events" ? (
-            <EventsTab data={tabData} groupId={groupId} group={group} />
-          ) : null}
+          </Suspense>
         </div>
       </PageBody>
+    </>
+  );
+}
+
+// The streamed tab panel: runs only the active tab's reads, behind the route's
+// Suspense boundary, so the spine + tab bar paint first. Keeping notFound() on
+// the spine alone means a failed tab read still degrades gracefully inside the
+// tab (the tab data shapes carry their own read-failure states), exactly as
+// before — it never 404s a group whose spine loaded.
+async function GroupTabPanel({
+  group,
+  groupId,
+  options,
+  isSuperAdmin,
+  hiddenNavAreas,
+}: {
+  group: GroupsRow;
+  groupId: string;
+  options: GroupDetailOptions;
+  isSuperAdmin: boolean;
+  hiddenNavAreas: string[];
+}) {
+  const tabData = await loadGroupTabData(group, options);
+  return (
+    <>
+      {tabData.tab === "overview" ? (
+        <OverviewTab data={tabData} group={group} groupId={groupId} />
+      ) : null}
+      {tabData.tab === "people" ? (
+        <GroupRosterManager
+          groupId={groupId}
+          groupName={group.name}
+          data={tabData}
+          hiddenNavAreas={hiddenNavAreas}
+        />
+      ) : null}
+      {tabData.tab === "health" ? (
+        <HealthTab data={tabData} isSuperAdmin={isSuperAdmin} />
+      ) : null}
+      {tabData.tab === "attendance" ? (
+        <AttendanceTab data={tabData} groupId={groupId} />
+      ) : null}
+      {tabData.tab === "follow-ups" ? <FollowUpsTab data={tabData} /> : null}
+      {tabData.tab === "events" ? (
+        <EventsTab data={tabData} groupId={groupId} group={group} />
+      ) : null}
     </>
   );
 }

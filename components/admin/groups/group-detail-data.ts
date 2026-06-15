@@ -559,56 +559,100 @@ async function buildEventsTab(
   return { tab: "events", occurrences };
 }
 
-// Pure assembly: the spine first (subject resolution decides 404 — and, as
-// before the seam, a failed spine read throws to the route error boundary),
-// then ONLY the requested tab's reads. Every fail-closed path is reachable
-// from a test through an in-memory `reads` adapter.
+// Pure spine read: subject resolution decides 404. As before the seam, a failed
+// spine read throws to the route error boundary.
+export async function resolveGroupSpine(
+  reads: GroupDetailReads,
+  groupId: string
+): Promise<GroupsRow | null> {
+  const groupResult = await reads.fetchGroupsByIds([groupId]);
+  if (groupResult.error) throw groupResult.error;
+  return (groupResult.data ?? [])[0] ?? null;
+}
+
+// Pure per-tab assembly: ONLY the requested tab's reads, given an
+// already-resolved group. Every fail-closed path is reachable from a test
+// through an in-memory `reads` adapter.
+export async function buildGroupTabData(
+  reads: GroupDetailReads,
+  group: GroupsRow,
+  options: GroupDetailOptions
+): Promise<GroupDetailTabData> {
+  switch (options.tab) {
+    case "overview":
+      return buildOverviewTab(reads, group, options.periodMonth);
+    case "people":
+      return buildPeopleTab(reads, group);
+    case "health":
+      return buildHealthTab(reads, group, options.periodMonth);
+    case "attendance":
+      return buildAttendanceTab(reads, group);
+    case "follow-ups":
+      return buildFollowUpsTab(reads, group);
+    case "events":
+      return buildEventsTab(reads, group, options.todayIso);
+  }
+}
+
+// Pure assembly composing the spine then the requested tab (kept for the
+// in-memory reads-seam tests; the live route now loads spine and tab through
+// the split loaders below so it can stream the tab behind a Suspense boundary).
 export async function buildGroupDetailData(
   reads: GroupDetailReads,
   options: GroupDetailOptions
 ): Promise<GroupDetailData> {
-  const groupResult = await reads.fetchGroupsByIds([options.groupId]);
-  if (groupResult.error) throw groupResult.error;
-  const group = (groupResult.data ?? [])[0];
+  const group = await resolveGroupSpine(reads, options.groupId);
   if (!group) return { kind: "not_found" };
-
-  let tabData: GroupDetailTabData;
-  switch (options.tab) {
-    case "overview":
-      tabData = await buildOverviewTab(reads, group, options.periodMonth);
-      break;
-    case "people":
-      tabData = await buildPeopleTab(reads, group);
-      break;
-    case "health":
-      tabData = await buildHealthTab(reads, group, options.periodMonth);
-      break;
-    case "attendance":
-      tabData = await buildAttendanceTab(reads, group);
-      break;
-    case "follow-ups":
-      tabData = await buildFollowUpsTab(reads, group);
-      break;
-    case "events":
-      tabData = await buildEventsTab(reads, group, options.todayIso);
-      break;
-  }
+  const tabData = await buildGroupTabData(reads, group, options);
   return { kind: "ok", group, tabData };
 }
 
-// Binds the live client (or reports db_unavailable when the DB is not
-// configured) and runs the pure assembly. The calling page stays guard →
-// load → render.
-export async function loadGroupDetailData(
+// The page-facing spine result: the group (for the header + 404 decision) plus
+// the no-database case the load wrapper reports when Supabase env vars are
+// absent. Loaded synchronously so the route can 404 before it streams anything.
+export type GroupSpineResult =
+  | { kind: "ok"; group: GroupsRow }
+  | { kind: "not_found" }
+  | { kind: "db_unavailable" };
+
+// Binds the live client and resolves only the spine (one fast group read). The
+// page awaits this before rendering, so notFound() / db-unavailable behavior is
+// unchanged; the heavy per-tab reads stream in afterwards via loadGroupTabData.
+export async function loadGroupSpine(
+  groupId: string
+): Promise<GroupSpineResult> {
+  const client = await createSupabaseServerClient();
+  if (!client) return { kind: "db_unavailable" };
+  const group = await resolveGroupSpine(
+    supabaseGroupDetailReads(client),
+    groupId
+  );
+  if (!group) return { kind: "not_found" };
+  return { kind: "ok", group };
+}
+
+// Binds the live client and runs ONLY the requested tab's reads against the
+// already-resolved group. Called inside the route's Suspense boundary so the
+// heaviest reads stream in after the spine + tab bar have painted. The group is
+// passed in (resolved by loadGroupSpine) so this never re-reads the spine.
+export async function loadGroupTabData(
+  group: GroupsRow,
   options: GroupDetailOptions
-): Promise<GroupDetailResult> {
+): Promise<GroupDetailTabData> {
   return measureReadBundle(
     "group_detail",
     async () => {
       const client = await createSupabaseServerClient();
-      if (!client) return { kind: "db_unavailable" };
-      return buildGroupDetailData(supabaseGroupDetailReads(client), options);
+      // The spine already proved the client binds for this request; if it
+      // somehow does not, surface it to the route error boundary rather than
+      // silently degrading every tab read.
+      if (!client) throw new Error("group_detail: Supabase client unavailable");
+      return buildGroupTabData(
+        supabaseGroupDetailReads(client),
+        group,
+        options
+      );
     },
-    (result) => ({ result_kind: result.kind })
+    (tabData) => ({ result_kind: "ok", tab: tabData.tab })
   );
 }

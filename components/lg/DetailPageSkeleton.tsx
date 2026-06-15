@@ -59,11 +59,22 @@ export function DetailPageSkeleton() {
         </div>
 
         {/* Active tab panel — a tall card. */}
-        <div className="flex flex-col gap-4">
-          <Bar style={{ height: 220, borderRadius: 14 }} />
-          <Bar style={{ height: 160, borderRadius: 14 }} />
-        </div>
+        <DetailTabPanelSkeleton />
       </div>
+    </div>
+  );
+}
+
+// Just the active-tab panel (the tall content card), for an in-page Suspense
+// boundary where the PageHeader + tab bar have already painted and only the
+// streamed tab content is still loading (repo-sweep #605). Wrapped in
+// role="status" so the streamed-in transition is announced.
+export function DetailTabPanelSkeleton() {
+  return (
+    <div role="status" aria-live="polite" className="flex flex-col gap-4">
+      <span className="sr-only">Loading…</span>
+      <Bar style={{ height: 220, borderRadius: 14 }} />
+      <Bar style={{ height: 160, borderRadius: 14 }} />
     </div>
   );
 }
