@@ -8,23 +8,21 @@
 // Leader Care Status (pastoral signal) and the Health Pulse (self-report). It
 // feeds the Multiplication "Leader Health" pillar.
 //
-// Pure: no DB, no I/O. It REUSES the shared rubric engine (computeGrade) and the
-// shared override resolver (resolveGrade) — no second engine, no new math. The
-// only thing this module owns is the ordering: compute the rubric letter, then
-// apply any active override, so a caller learns one function rather than wiring
-// computeGrade + resolveGrade together at every call site.
+// Pure: no DB, no I/O. It is a thin named facade over the shared grade-resolution
+// core (lib/admin/rubric-grade-core.ts) — no second engine, no new math. The core
+// owns the ordering (compute the rubric letter, then apply any active override,
+// then key the Ministry Year); this facade owns only the Leader-Health letter
+// typing and the echoed-back ministry year, so the Leader-Health Grade and the
+// symmetric Group-Health Grade resolve a (scores, override, period) input
+// identically while reading distinctly at the call site.
 
 import type { LeaderHealthLetter } from "@/types/enums";
-import {
-  computeGrade,
-  type Rubric,
-  type RubricScores,
-} from "@/lib/admin/health-rubric";
-import {
-  resolveGrade,
-  type GradeOverride,
-  type ResolvedGrade,
+import type { Rubric, RubricScores } from "@/lib/admin/health-rubric";
+import type {
+  GradeOverride,
+  ResolvedGrade,
 } from "@/lib/admin/group-health-override";
+import { resolveRubricGrade } from "@/lib/admin/rubric-grade-core";
 
 // The override carried into the facade — the same shape the group grade uses
 // (letter + scope + the period the override was set for). The override scope
@@ -71,19 +69,22 @@ export function resolveLeaderGrade(args: {
 }): ResolvedLeaderGrade {
   const { rubric, scores, override, ministryYear, currentPeriodMonth } = args;
 
-  // Engine roll-up. We do NOT pass the override into computeGrade — the override
-  // precedence + scope expiry lives in resolveGrade, the single resolver shared
-  // with the group grade, so a "this_month" override that has expired correctly
-  // falls back to the computed letter (computeGrade has no notion of expiry).
-  const computed = computeGrade(rubric, scores);
-
-  const resolved = resolveGrade(computed.letter, override, currentPeriodMonth);
+  // The shared core owns the roll-up + scope-aware override precedence (a
+  // "this_month" override that has expired falls back to the computed letter).
+  // The Leader-Health Grade keys on the ministryYear the caller already resolved,
+  // so we echo it back rather than re-deriving it from the period month.
+  const resolved = resolveRubricGrade({
+    rubric,
+    scores,
+    override,
+    periodMonth: currentPeriodMonth,
+  });
 
   return {
-    numeric: computed.numeric,
+    numeric: resolved.numeric,
     letter: resolved.effective_letter,
     computed_letter: resolved.computed_letter,
-    overridden: resolved.is_overridden,
+    overridden: resolved.overridden,
     override_scope: resolved.override_scope,
     ministry_year: ministryYear,
   };

@@ -2,29 +2,23 @@
 // module that produces the ONE grade a grader sees when they score a group
 // against the configured Health Rubric, keyed to the current Ministry Year.
 //
-// It composes — never re-implements — the two existing pure modules:
-//   • computeGrade (lib/admin/health-rubric.ts) — the weighted criterion roll-up
-//     to a fluid A–F band, renormalizing over the criteria actually scored.
-//   • resolveGrade (lib/admin/group-health-override.ts) — the this-month /
-//     until-cleared override precedence over that computed letter.
-// The math lives in those two; this module owns only the *ordering* (compute the
-// rubric letter first, then apply the override) and the ministry-year keying, so
-// a caller learns one function instead of re-assembling the pair (and the
-// ministry-year lookup) at each call site. Pure: no DB, no I/O.
+// It is a thin named facade over the shared grade-resolution core
+// (lib/admin/rubric-grade-core.ts), which composes — never re-implements — the
+// weighted criterion roll-up, the scope-aware override precedence, and the
+// ministry-year keying. This facade owns only the Group-Health letter typing and
+// its optional-period_month override convenience; the Leader-Health Grade has a
+// symmetric facade over the same core, so the two distinct concepts read
+// distinctly at the call site while sharing one tested resolution. Pure: no DB,
+// no I/O.
 
 import type { GroupHealthLetter } from "@/types/enums";
-import {
-  computeGrade,
-  type Rubric,
-  type RubricBands,
-  type RubricScores,
-  BUILT_IN_RUBRIC_BANDS,
+import type {
+  Rubric,
+  RubricBands,
+  RubricScores,
 } from "@/lib/admin/health-rubric";
-import {
-  resolveGrade,
-  type GradeOverrideScope,
-} from "@/lib/admin/group-health-override";
-import { ministryYearOf } from "@/lib/admin/ministry-year";
+import type { GradeOverrideScope } from "@/lib/admin/group-health-override";
+import { resolveRubricGrade } from "@/lib/admin/rubric-grade-core";
 
 // A manual override of the letter under one of the existing scopes. The
 // period_month it was set for is consulted only for "this_month" expiry; an
@@ -82,43 +76,24 @@ export type GroupRubricGrade = {
 export function resolveGroupRubricGrade(
   input: GroupRubricGradeInput
 ): GroupRubricGrade {
-  const {
+  const { rubric, scores, override = null, periodMonth, bands } = input;
+
+  // A freshly-set override defaults its period_month to the resolution period;
+  // the read path passes the STORED month so an expired this-month override
+  // correctly falls back to the computed letter (the core / resolveGrade owns
+  // that expiry rule).
+  return resolveRubricGrade({
     rubric,
     scores,
-    override = null,
+    override:
+      override === null
+        ? null
+        : {
+            letter: override.letter,
+            scope: override.scope,
+            period_month: override.period_month ?? periodMonth,
+          },
     periodMonth,
-    bands = BUILT_IN_RUBRIC_BANDS,
-  } = input;
-
-  // Step 1 — the rubric roll-up. We pass NO override into computeGrade and let
-  // resolveGrade own the scope-aware precedence below, so the this-month /
-  // until-cleared expiry is decided in exactly one place.
-  const computed = computeGrade(rubric, scores, undefined, bands);
-
-  // Step 2 — scope-aware override precedence over the computed letter.
-  const resolved = resolveGrade(
-    computed.letter,
-    override === null
-      ? null
-      : {
-          letter: override.letter,
-          scope: override.scope,
-          period_month: override.period_month ?? periodMonth,
-        },
-    periodMonth
-  );
-
-  // Step 3 — key it to the Ministry Year the period falls in (Aug–May).
-  const ministryYear = ministryYearOf(
-    new Date(`${periodMonth}T00:00:00.000Z`)
-  ).year;
-
-  return {
-    numeric: computed.numeric,
-    computed_letter: resolved.computed_letter,
-    effective_letter: resolved.effective_letter,
-    overridden: resolved.is_overridden,
-    override_scope: resolved.override_scope,
-    ministry_year: ministryYear,
-  };
+    bands,
+  });
 }

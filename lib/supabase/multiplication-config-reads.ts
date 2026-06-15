@@ -9,16 +9,17 @@ import {
   type CellInterestTally,
   type InterestProspectRow,
 } from "@/lib/admin/prospect-interest";
-import {
-  resolveGrade,
-  type GradeOverrideScope,
+import type {
+  GradeOverride,
+  GradeOverrideScope,
 } from "@/lib/admin/group-health-override";
 import {
-  computeGrade,
   decodeRubricCriteria,
   type Rubric,
   type RubricScores,
 } from "@/lib/admin/health-rubric";
+import { resolveGroupRubricGrade } from "@/lib/admin/group-rubric-grade";
+import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
 
 // Multiplication config + per-cell read models (#380, updated #401/#403). Reads
 // that feed the Multiply surface:
@@ -401,31 +402,23 @@ function decodeScores(raw: unknown): RubricScores {
   return out;
 }
 
-// Resolve a grade row to its effective A–F letter for the period (exported for
-// testing): roll the stored scores up against the current rubric via the shared
-// engine, then apply any active override under its scope (the this-month expiry
-// pivots on the override's own stored month, never the current period). Null when
-// nothing is scored and no override is active.
-export function effectiveGradeLetter(
-  rubric: Rubric,
-  scores: RubricScores,
-  override: Pick<
+// Decode a stored grade row's override columns into the structured override the
+// grade facades consume, or null when no override is set. The this-month expiry
+// pivots on the override's own stored month (falling back to the period only when
+// the row never recorded one), never the current period.
+function rowGradeOverride(
+  row: Pick<
     GradeScoreFields,
     "override_letter" | "override_scope" | "override_period_month"
   >,
   periodMonthIso: string
-): GroupHealthLetter | null {
-  const computed = computeGrade(rubric, scores);
-  const activeOverride =
-    override.override_letter && override.override_scope
-      ? {
-          letter: override.override_letter,
-          scope: override.override_scope,
-          period_month: override.override_period_month ?? periodMonthIso,
-        }
-      : null;
-  return resolveGrade(computed.letter, activeOverride, periodMonthIso)
-    .effective_letter;
+): GradeOverride | null {
+  if (!row.override_letter || !row.override_scope) return null;
+  return {
+    letter: row.override_letter,
+    scope: row.override_scope,
+    period_month: row.override_period_month ?? periodMonthIso,
+  };
 }
 
 type GroupGradeJoinRow = GradeScoreFields & {
@@ -614,24 +607,25 @@ export async function fetchCellHealthGrades(
       type: row.group?.audience_category ?? null,
       categoryId: row.group?.category_id ?? null,
       isClosed: row.group?.lifecycle_status === "closed",
-      letter: effectiveGradeLetter(
-        groupRubric,
-        decodeScores(row.criterion_scores),
-        row,
-        periodMonthIso
-      ),
+      letter: resolveGroupRubricGrade({
+        rubric: groupRubric,
+        scores: decodeScores(row.criterion_scores),
+        override: rowGradeOverride(row, periodMonthIso),
+        periodMonth: periodMonthIso,
+      }).effective_letter,
     })
   );
 
   const leaderGrades: ResolvedCellLeaderGrade[] = (leaderRes.data ?? []).map(
     (row) => ({
       cells: leaderCellsByProfile.get(row.profile_id) ?? new Set(),
-      letter: effectiveGradeLetter(
-        leaderRubric,
-        decodeScores(row.criterion_scores),
-        row,
-        periodMonthIso
-      ),
+      letter: resolveLeaderGrade({
+        rubric: leaderRubric,
+        scores: decodeScores(row.criterion_scores),
+        override: rowGradeOverride(row, periodMonthIso),
+        ministryYear,
+        currentPeriodMonth: periodMonthIso,
+      }).letter,
     })
   );
 

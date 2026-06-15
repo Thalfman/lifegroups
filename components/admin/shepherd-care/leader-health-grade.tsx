@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminSetLeaderRubricGrade } from "@/app/(protected)/admin/shepherd-care/leader-grade-actions";
-import {
-  computeGrade,
-  type Rubric,
-  type RubricCriterion,
-} from "@/lib/admin/health-rubric";
+import type { Rubric, RubricCriterion } from "@/lib/admin/health-rubric";
+import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
+import type { GradeOverrideScope } from "@/lib/admin/group-health-override";
 import type {
   GroupHealthOverrideScope,
   LeaderHealthLetter,
@@ -97,13 +95,28 @@ export function LeaderHealthGradeEditor({
   }
 
   const rubric: Rubric = { criteria };
-  // Live rubric letter — the SAME computeGrade the server recomputes with, so the
-  // preview never lies about what will be persisted.
-  const computed = computeGrade(rubric, scores);
   const hasOverride = overrideLetter !== "";
-  const effectiveLetter = hasOverride
-    ? (overrideLetter as LeaderHealthLetter)
-    : computed.letter;
+  // Live preview through the SAME Leader-Health facade the server recomputes
+  // with, so the preview never lies about what will be persisted. The override
+  // is being set FOR the current period, so key the resolution to a stable
+  // first-of-month in this ministry year and judge the override against that
+  // same month — a freshly-set "this month" override therefore reads as active.
+  const previewPeriodMonth = `${ministryYear ?? 0}-08-01`;
+  const resolved = resolveLeaderGrade({
+    rubric,
+    scores,
+    override: hasOverride
+      ? {
+          letter: overrideLetter as LeaderHealthLetter,
+          scope: overrideScope as GradeOverrideScope,
+          period_month: previewPeriodMonth,
+        }
+      : null,
+    ministryYear: ministryYear ?? 0,
+    currentPeriodMonth: previewPeriodMonth,
+  });
+  const computedLetter = resolved.computed_letter;
+  const effectiveLetter = resolved.letter;
 
   const scoresJson = JSON.stringify(scores);
   const noRubric = criteria.length === 0;
@@ -200,9 +213,9 @@ export function LeaderHealthGradeEditor({
         >
           {effectiveLetter ?? "—"}
         </span>
-        {hasOverride && computed.letter ? (
+        {hasOverride && computedLetter ? (
           <span className="font-sans text-xs text-blue">
-            (overridden — rubric says {computed.letter})
+            (overridden — rubric says {computedLetter})
           </span>
         ) : null}
       </div>
