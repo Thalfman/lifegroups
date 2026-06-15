@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { adminCreateGroup } from "@/app/(protected)/admin/groups/actions";
 import { cn } from "@/lib/utils";
 import {
@@ -64,15 +65,21 @@ export function GroupCreateForm({
 
   // useActionForm resets the <form> element on success; the local UI state
   // (frequency select, expanded "More details") lives in React, so reset it too.
-  // In the drawer, `onSaved` then closes it — the form unmounts, so the reset
-  // above is moot there but harmless.
-  useEffect(() => {
-    if (!state?.ok) return;
+  // Derived during render rather than in an effect to avoid the cascading-render
+  // smell. In the drawer, `onSaved` then closes it — the form unmounts, so the
+  // reset is moot there but harmless.
+  useValueChange(state, (next) => {
+    if (!next?.ok) return;
     setFrequency("weekly");
     setShowMore(false);
     setGroupName("");
     setAudience("");
-    onSaved?.();
+  });
+
+  // onSaved is a parent notification (drawer close + refresh), so it stays in a
+  // post-commit effect.
+  useEffect(() => {
+    if (state?.ok) onSaved?.();
   }, [state, onSaved]);
 
   // Mirror the in-flight state up so the drawer keeps itself open until the

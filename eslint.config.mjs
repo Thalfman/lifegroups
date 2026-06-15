@@ -29,20 +29,6 @@ const eslintConfig = [
     files: ["**/*.{jsx,tsx}"],
     rules: jsxA11y.flatConfigs.recommended.rules,
   },
-  // eslint-config-next 16 bundles eslint-plugin-react-hooks v6, whose
-  // recommended set adds two rules that did not exist under the Next 15
-  // toolchain and that the current code was never written against:
-  //   - react-hooks/refs              (~82 hits: writing ref.current in render)
-  //   - react-hooks/set-state-in-effect (~21 hits: setState inside an effect)
-  // Adopting them is a behavioral React refactor across many components, kept
-  // OUT of the behavior-preserving Next 16 bump and tracked as a follow-up
-  // (#632). Every other react-hooks v6 rule stays on. Re-enable these there.
-  {
-    rules: {
-      "react-hooks/refs": "off",
-      "react-hooks/set-state-in-effect": "off",
-    },
-  },
 ];
 
 export default eslintConfig;

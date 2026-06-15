@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveLaunchPlanningScenario,
@@ -409,9 +410,12 @@ export function EditScenarioForm({
   // resync the checkbox so a subsequent "Save scenario" submit doesn't
   // silently clear is_current with a stale unchecked value.
   const [makeCurrent, setMakeCurrent] = useState<boolean>(scenario.is_current);
-  useEffect(() => {
-    setMakeCurrent(scenario.is_current);
-  }, [scenario.is_current]);
+  // Resync the checkbox when the prop changes after a server revalidation.
+  // Derived during render rather than in an effect to avoid the
+  // cascading-render smell.
+  useValueChange(scenario.is_current, (isCurrent) => {
+    setMakeCurrent(isCurrent);
+  });
 
   return (
     <div style={{ display: "grid", gap: 18 }}>

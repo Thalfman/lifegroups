@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import type { FormEvent } from "react";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { PButton } from "@/components/pastoral/button";
 import { Icon } from "@/components/lg/Icon";
 import {
@@ -137,9 +138,10 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
 
   // useActionForm resets the <form> on success; role/group are React state.
   // Also clear any stale named-link UI so a copied link doesn't linger after
-  // the email path resets the form.
-  useEffect(() => {
-    if (state?.ok) {
+  // the email path resets the form. Derived during render rather than in an
+  // effect to avoid the cascading-render smell.
+  useValueChange(state, (next) => {
+    if (next?.ok) {
       setRole("leader");
       setGroupId("");
       setNamedLink(null);
@@ -147,7 +149,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
       setNamedLinkError(null);
       setNamedLinkCopied(false);
     }
-  }, [state]);
+  });
 
   function handleCopyNamedLink() {
     if (!namedLink) return;

@@ -7,9 +7,10 @@
 // recovery panel re-imports tombstoned rows (#315). Every mutation is re-gated
 // and re-validated server-side in the RPC; the client gating is only UX.
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PButton } from "@/components/pastoral/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import {
   superAdminPermanentDelete,
   superAdminPermanentDeletePreflight,
@@ -61,9 +62,13 @@ export function PermanentDeleteCard({
   const preflight = useActionForm<DeletionPreflight>(
     superAdminPermanentDeletePreflight
   );
-  const del = useActionForm<PermanentDeleteSuccess>(superAdminPermanentDelete, {
-    resetOnSuccess: true,
-  });
+  // Pull formRef out of the returned object: reading a ref member during render
+  // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
+  // on the object. The rest keeps the `del.state` / `.pending` call sites.
+  const { formRef: delFormRef, ...del } = useActionForm<PermanentDeleteSuccess>(
+    superAdminPermanentDelete,
+    { resetOnSuccess: true }
+  );
 
   const [entityType, setEntityType] = useState(targets[0]?.entityType ?? "");
   const [selectedId, setSelectedId] = useState("");
@@ -74,22 +79,23 @@ export function PermanentDeleteCard({
     [targets, entityType]
   );
 
-  // A new target selection invalidates the prior confirm phrase.
-  useEffect(() => {
+  // A new target selection invalidates the prior confirm phrase. Derived during
+  // render rather than in an effect to avoid the cascading-render smell.
+  useValueChange(`${entityType}\u0000${selectedId}`, () => {
     setConfirm("");
-  }, [entityType, selectedId]);
+  });
 
   // After a successful delete the targeted row is gone — clear the selection
   // and confirm so the form can't be re-submitted against the now-missing row.
-  // Depend on the state object (not the extracted boolean, which stays true
-  // across consecutive successes and would skip the reset on a second delete).
+  // Track the state object (not the extracted boolean, which stays true across
+  // consecutive successes and would skip the reset on a second delete).
   const delState = del.state;
-  useEffect(() => {
-    if (delState?.ok) {
+  useValueChange(delState, (next) => {
+    if (next?.ok) {
       setSelectedId("");
       setConfirm("");
     }
-  }, [delState]);
+  });
 
   // The preflight result only describes the row it was run for. Stamped with its
   // target, so a report for a previously-selected row is discarded the moment
@@ -179,11 +185,7 @@ export function PermanentDeleteCard({
         {report ? <PreflightReport report={report} /> : null}
 
         {/* Confirm + delete. */}
-        <form
-          ref={del.formRef}
-          action={del.formAction}
-          className="grid gap-2.5"
-        >
+        <form ref={delFormRef} action={del.formAction} className="grid gap-2.5">
           <input type="hidden" name="entityType" value={entityType} />
           <input type="hidden" name="id" value={selectedId} />
           <div>
@@ -314,23 +316,27 @@ function TombstoneRecovery({ tombstones }: { tombstones: RecentTombstone[] }) {
 }
 
 function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
-  const restore = useActionForm<TombstoneRestoreSuccess>(
-    superAdminRestoreTombstone,
-    { resetOnSuccess: true }
-  );
+  // Pull formRef out of the returned object: reading a ref member during render
+  // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
+  // on the object. The rest keeps the `restore.state` / `.pending` call sites.
+  const { formRef: restoreFormRef, ...restore } =
+    useActionForm<TombstoneRestoreSuccess>(superAdminRestoreTombstone, {
+      resetOnSuccess: true,
+    });
   const [confirm, setConfirm] = useState("");
-  // Depend on the state object, not the extracted boolean (which stays true
-  // across consecutive successes and would skip clearing on a later restore).
+  // Track the state object, not the extracted boolean (which stays true across
+  // consecutive successes and would skip clearing on a later restore). Derived
+  // during render rather than in an effect to avoid the cascading-render smell.
   const restoreState = restore.state;
-  useEffect(() => {
-    if (restoreState?.ok) setConfirm("");
-  }, [restoreState]);
+  useValueChange(restoreState, (next) => {
+    if (next?.ok) setConfirm("");
+  });
   const matches = confirm.trim() === TOMBSTONE_RESTORE_CONFIRM_PHRASE;
   const alreadyRestored = tombstone.restoredAt !== null;
 
   return (
     <form
-      ref={restore.formRef}
+      ref={restoreFormRef}
       action={restore.formAction}
       className="grid gap-2 rounded-sm border border-line bg-surface px-3 py-2.5"
     >

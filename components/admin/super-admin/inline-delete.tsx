@@ -48,15 +48,20 @@ export function SuperAdminInlineDelete({
   const revalidatePath = path ?? pathname ?? "";
   const [open, setOpen] = useState(false);
 
-  const preflight = useActionForm<DeletionPreflight>(
-    superAdminPermanentDeletePreflight
+  // Pull formRef out of each returned object: reading a ref member during render
+  // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
+  // on the object. The rest keeps the `.state` / `.pending` call sites; the refs
+  // themselves are read only from the effect/handlers below.
+  const { formRef: preflightFormRef, ...preflight } =
+    useActionForm<DeletionPreflight>(superAdminPermanentDeletePreflight);
+  const { formRef: delFormRef, ...del } = useActionForm<PermanentDeleteSuccess>(
+    superAdminInlineDelete
   );
-  const del = useActionForm<PermanentDeleteSuccess>(superAdminInlineDelete);
 
   // Preview the delete the moment the popover opens — keyed on `open`, so it
   // fires once per open and not on the re-renders the preflight state triggers.
   useEffect(() => {
-    if (open) preflight.formRef.current?.requestSubmit();
+    if (open) preflightFormRef.current?.requestSubmit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -97,7 +102,7 @@ export function SuperAdminInlineDelete({
 
       {/* Hidden preflight form — auto-submitted on open via requestSubmit. */}
       <form
-        ref={preflight.formRef}
+        ref={preflightFormRef}
         action={preflight.formAction}
         className="hidden"
       >
@@ -119,11 +124,11 @@ export function SuperAdminInlineDelete({
             pending={preflight.pending}
             failed={preflightFailed}
             report={report}
-            onRetry={() => preflight.formRef.current?.requestSubmit()}
+            onRetry={() => preflightFormRef.current?.requestSubmit()}
           />
 
           <form
-            ref={del.formRef}
+            ref={delFormRef}
             action={del.formAction}
             className="flex items-center gap-2"
           >

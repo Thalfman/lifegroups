@@ -35,7 +35,15 @@ export function AddToHomeScreenButton() {
   // client render agree (no hydration mismatch) and we never flash a button an
   // installed/unsupported context shouldn't see.
   const [ready, setReady] = useState(false);
-  const [iosSafari, setIosSafari] = useState(false);
+  // UA-derived and stable for the component's life, so it is read once via a
+  // lazy initializer rather than set in the effect. SSR-guarded: the server
+  // renders nothing until `ready` flips on the client, so the server/client
+  // difference never reaches the DOM.
+  const [iosSafari] = useState(() =>
+    typeof navigator === "undefined"
+      ? false
+      : isIosSafari(navigator.userAgent, navigator.maxTouchPoints)
+  );
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
     null
   );
@@ -46,7 +54,6 @@ export function AddToHomeScreenButton() {
     // Idempotent — the root PwaClientSetup normally starts this already; calling
     // again guards the button working even if mounted in isolation.
     startInstallPromptCapture();
-    setIosSafari(isIosSafari(navigator.userAgent, navigator.maxTouchPoints));
 
     const sync = () => {
       const snapshot = getInstallSnapshot();
@@ -55,6 +62,10 @@ export function AddToHomeScreenButton() {
       if (snapshot.installed) setGuideOpen(false);
     };
     sync();
+    // Reveal only after mounting + the initial sync from the client-only
+    // install-prompt store, so server and first-client render agree. This is a
+    // mount flag, not the derivable cascading-render the rule targets.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReady(true);
     return subscribeInstallPrompt(sync);
   }, []);

@@ -8,8 +8,9 @@
 // stays disabled until the exact phrase is typed, and the phrase is re-checked
 // server-side in the action.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { PButton } from "@/components/pastoral/button";
 import {
   superAdminResetHistoryCategory,
@@ -86,19 +87,23 @@ function CategoryResetRow({
   const reset = useActionForm<HistoryResetSuccess>(
     superAdminResetHistoryCategory
   );
-  const revert = useActionForm<HistoryResetRevertSuccess>(
-    superAdminResetHistoryCategoryRevert,
-    { resetOnSuccess: true }
-  );
+  // Pull formRef out of the returned object: reading a ref member during render
+  // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
+  // on the object. The rest keeps the `revert.state` / `.pending` call sites.
+  const { formRef: revertFormRef, ...revert } =
+    useActionForm<HistoryResetRevertSuccess>(
+      superAdminResetHistoryCategoryRevert,
+      { resetOnSuccess: true }
+    );
   const [confirm, setConfirm] = useState("");
   const [restoreConfirm, setRestoreConfirm] = useState("");
 
   // Clear the controlled restore field after a successful revert so an
   // accidental resubmit doesn't immediately trip target_not_empty.
   const revertOk = revert.state?.ok;
-  useEffect(() => {
-    if (revertOk) setRestoreConfirm("");
-  }, [revertOk]);
+  useValueChange(revertOk, (ok) => {
+    if (ok) setRestoreConfirm("");
+  });
 
   const meta = HISTORY_RESET_CATEGORY_META[category.category];
   const nothingToReset = category.count === 0;
@@ -181,7 +186,7 @@ function CategoryResetRow({
         // Recovery treatment: a sage-accented panel so the undo control reads
         // as the safety net, distinct from the reset above.
         <form
-          ref={revert.formRef}
+          ref={revertFormRef}
           action={revert.formAction}
           className="grid gap-2 rounded-sm border border-sage bg-sageSoft px-3 py-2.5"
         >

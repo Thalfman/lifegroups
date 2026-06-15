@@ -101,7 +101,12 @@ function GroupHealthEditorBody({
 }) {
   const router = useRouter();
   const [dirty, setDirty] = useState(false);
-  const ratings = useActionForm(adminSetGroupHealthRatings);
+  // Pull formRef out of the returned object: reading a ref member during render
+  // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
+  // on the object. The rest keeps the `ratings.state` / `.pending` call sites.
+  const { formRef: ratingsFormRef, ...ratings } = useActionForm(
+    adminSetGroupHealthRatings
+  );
   const recompute = useActionForm(adminRecomputeGroupHealthAssessment);
 
   // A successful save closes the drawer and refreshes the list so the new grade
@@ -127,7 +132,7 @@ function GroupHealthEditorBody({
     <>
       <form
         id={formId}
-        ref={ratings.formRef}
+        ref={ratingsFormRef}
         action={ratings.formAction}
         onChange={markDirty}
         className="grid gap-4"

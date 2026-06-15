@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import {
   useCallback,
   useDeferredValue,
-  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { fieldInputClassName } from "@/components/admin/forms/field-styles";
 import {
   capacityCategory,
@@ -156,9 +156,11 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     DEFAULT_GROUPS_TABLE_DENSITY
   );
 
-  useEffect(() => {
-    setTab(initialTab);
-  }, [initialTab]);
+  // Resync the active tab when the prop changes. Derived during render rather
+  // than in an effect to avoid the cascading-render smell.
+  useValueChange(initialTab, (tab) => {
+    setTab(tab);
+  });
 
   usePersistedViewState<GroupsViewSnapshot>({
     surface: "groups",

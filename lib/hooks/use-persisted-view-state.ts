@@ -6,6 +6,7 @@ import {
   serializePreference,
   viewPreferenceKey,
 } from "@/lib/admin/view-preferences";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 
 /**
  * Remember an admin surface's filter / view selection across reloads and
@@ -41,21 +42,29 @@ export function usePersistedViewState<T>(options: {
 
   // Hold the latest callbacks in refs so the restore effect can key off the
   // storage key alone and fire exactly once per key, without re-running every
-  // time the parent re-creates these closures.
+  // time the parent re-creates these closures. The refs are written in an effect
+  // (not during render) so react-hooks/refs stays satisfied; the only reader is
+  // the restore effect below, which runs after this one on every render.
   const restoreRef = useRef(restore);
-  restoreRef.current = restore;
   const validateRef = useRef(validate);
-  validateRef.current = validate;
+  useEffect(() => {
+    restoreRef.current = restore;
+    validateRef.current = validate;
+  });
 
   const [hydrated, setHydrated] = useState(false);
   // The last value we wrote (or read), so the persist effect can skip
   // redundant writes when the snapshot object is new-by-identity but equal.
   const lastWritten = useRef<string | null>(null);
 
+  // Re-arm hydration when the storage key (a scope change) changes, derived
+  // during render so the restore effect can do its external read without a
+  // synchronous setState in the effect body.
+  useValueChange(key, () => setHydrated(false));
+
   // Restore once per storage key (a scope change re-runs it).
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setHydrated(false);
     let raw: string | null = null;
     try {
       raw = window.localStorage.getItem(key);
@@ -67,6 +76,9 @@ export function usePersistedViewState<T>(options: {
       lastWritten.current = raw;
       restoreRef.current(saved);
     }
+    // Marking hydration complete after the client-only localStorage read is an
+    // external-system sync, not the derivable cascading-render the rule targets.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHydrated(true);
   }, [key]);
 

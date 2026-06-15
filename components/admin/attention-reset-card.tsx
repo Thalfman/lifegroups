@@ -8,9 +8,10 @@
 // snapshot first and is audited; the undo controls live in visually separated
 // recovery panels, mirroring the Reset-by-category card.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PButton } from "@/components/pastoral/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import {
   superAdminResetCareAttention,
   superAdminResetHealthAttention,
@@ -122,10 +123,13 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
   const reset = useActionForm<AttentionResetSuccess>(
     RESET_ACTION[surface.surface]
   );
-  const revert = useActionForm<AttentionResetRevertSuccess>(
-    superAdminResetAttentionRevert,
-    { resetOnSuccess: true }
-  );
+  // Pull formRef out of the returned object: reading a ref member during render
+  // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
+  // on the object. The rest keeps the `revert.state` / `.pending` call sites.
+  const { formRef: revertFormRef, ...revert } =
+    useActionForm<AttentionResetRevertSuccess>(superAdminResetAttentionRevert, {
+      resetOnSuccess: true,
+    });
   // A single useActionForm shared by every per-entity revert row below, gated by
   // one RESTORE input for the surface (typing it once enables all rows).
   const entityRevert = useActionForm<AttentionResetRevertSuccess>(
@@ -136,14 +140,16 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
   const [restoreConfirm, setRestoreConfirm] = useState("");
   const [entityRestoreConfirm, setEntityRestoreConfirm] = useState("");
 
+  // Clear the controlled restore fields after a successful revert (derived
+  // during render rather than in an effect to avoid the cascading-render smell).
   const revertOk = revert.state?.ok;
-  useEffect(() => {
-    if (revertOk) setRestoreConfirm("");
-  }, [revertOk]);
+  useValueChange(revertOk, (ok) => {
+    if (ok) setRestoreConfirm("");
+  });
   const entityRevertOk = entityRevert.state?.ok;
-  useEffect(() => {
-    if (entityRevertOk) setEntityRestoreConfirm("");
-  }, [entityRevertOk]);
+  useValueChange(entityRevertOk, (ok) => {
+    if (ok) setEntityRestoreConfirm("");
+  });
 
   const meta = ATTENTION_RESET_SURFACE_META[surface.surface];
   const phrase = CONFIRM_PHRASE[surface.surface];
@@ -230,7 +236,7 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
 
       {snapshot ? (
         <form
-          ref={revert.formRef}
+          ref={revertFormRef}
           action={revert.formAction}
           className={RECOVERY_PANEL_CLASS}
         >

@@ -46,9 +46,16 @@ export function LoginForm() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const nextValue = params.get("next");
+    /* eslint-disable react-hooks/set-state-in-effect --
+       Client-only one-shot read of the statically prerendered page's URL. These
+       values cannot be known until mount (no per-request server render), and
+       deriving them via a lazy initializer would cause a hydration mismatch — so
+       deferring the read to a mount effect is the correct hydration-safe
+       pattern, not the cascading-render smell the rule targets. */
     setNext(nextValue && isSafeNextPath(nextValue) ? nextValue : null);
     setResetOk(params.get("reset") === "ok");
     setInvitedOk(params.get("invited") === "1");
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   return (

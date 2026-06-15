@@ -58,11 +58,16 @@ export function SuperAdminConsole({
 
   // Read the latest workspaces/aliases from refs so the hash listener can stay a
   // mount-once effect: it must apply the URL hash on load and on hashchange, but
-  // never re-snap the operator's manual tab choice on an unrelated re-render.
+  // never re-snap the operator's manual tab choice on an unrelated re-render. The
+  // refs are written in an effect (not during render) so react-hooks/refs stays
+  // satisfied; the only reader is the hashchange effect below, which runs after
+  // this one and reads them only on async hash events.
   const workspacesRef = useRef(workspaces);
-  workspacesRef.current = workspaces;
   const aliasesRef = useRef(hashAliases);
-  aliasesRef.current = hashAliases;
+  useEffect(() => {
+    workspacesRef.current = workspaces;
+    aliasesRef.current = hashAliases;
+  });
 
   useEffect(() => {
     function applyHash() {

@@ -52,7 +52,10 @@ export function GroupRubricGradeEntry({
   initialOverrideLetter: GroupHealthLetter | null;
   initialOverrideScope: GroupHealthOverrideScope | null;
 }) {
-  const form = useActionForm(adminSetGroupRubricGrade);
+  // Pull formRef out of the returned object: reading a ref member during render
+  // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
+  // on the object. The rest keeps the `form.state` / `.pending` call sites.
+  const { formRef, ...form } = useActionForm(adminSetGroupRubricGrade);
 
   const [scores, setScores] = useState<Record<string, string>>(() => {
     const out: Record<string, string> = {};
@@ -118,7 +121,7 @@ export function GroupRubricGradeEntry({
 
   return (
     <form
-      ref={form.formRef}
+      ref={formRef}
       action={form.formAction}
       className={WRAP}
       aria-label={`Group-Health Grade for ${groupName}`}

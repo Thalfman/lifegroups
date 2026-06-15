@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { adminCreateProspect } from "@/app/(protected)/admin/plan/actions";
 import {
   useActionForm,
@@ -67,13 +68,23 @@ export function ProspectCreateForm({
   // desired cell and be miscounted into it. Depends on `state` (a fresh object
   // each submit) so a back-to-back success clears again, mirroring the group
   // forms' reset effect.
-  useEffect(() => {
-    if (!state?.ok) return;
+  // Reset the controlled selects and raise the success flag on a fresh
+  // successful create. Derived during render rather than in an effect to avoid
+  // the cascading-render smell.
+  useValueChange(state, (next) => {
+    if (!next?.ok) return;
     setFullName("");
     setAudience("");
     setCategoryId("");
     setFullNameError(undefined);
     setShowSuccess(true);
+  });
+
+  // Auto-dismiss the success flash after 5s. Keyed on the action result so a
+  // back-to-back success restarts the window; the only setState here lives in
+  // the timer callback, not the effect body.
+  useEffect(() => {
+    if (!state?.ok) return;
     const timer = setTimeout(() => setShowSuccess(false), 5000);
     return () => clearTimeout(timer);
   }, [state]);

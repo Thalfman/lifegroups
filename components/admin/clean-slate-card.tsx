@@ -7,8 +7,9 @@
 // server-side in the action. The recovery controls (revert / export / import)
 // live in a visually separated panel so they never read as part of the wipe.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, buttonClassName } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import {
   superAdminCleanSlateWipe,
   superAdminCleanSlateRevert,
@@ -190,14 +191,17 @@ function CleanSlateRecovery({
 }: {
   snapshot: CleanSlateLatestSnapshot | null;
 }) {
-  const revert = useActionForm<CleanSlateRevertSuccess>(
-    superAdminCleanSlateRevert,
-    { resetOnSuccess: true }
-  );
-  const importForm = useActionForm<CleanSlateImportSuccess>(
-    superAdminCleanSlateImport,
-    { resetOnSuccess: true }
-  );
+  // Pull formRef out of each returned object: reading a ref member during render
+  // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
+  // on the object. The rest keeps the `.state` / `.pending` call sites.
+  const { formRef: revertFormRef, ...revert } =
+    useActionForm<CleanSlateRevertSuccess>(superAdminCleanSlateRevert, {
+      resetOnSuccess: true,
+    });
+  const { formRef: importFormRef, ...importForm } =
+    useActionForm<CleanSlateImportSuccess>(superAdminCleanSlateImport, {
+      resetOnSuccess: true,
+    });
   const [revertConfirm, setRevertConfirm] = useState("");
   const [importConfirm, setImportConfirm] = useState("");
 
@@ -205,14 +209,16 @@ function CleanSlateRecovery({
   // controlled confirm fields must be cleared by hand. Clearing both after a
   // successful restore stops an accidental immediate resubmit (which would hit
   // target_not_empty and read like a fresh failure).
+  // Derived during render rather than in an effect to avoid the cascading-render
+  // smell.
   const revertOk = revert.state?.ok;
   const importOk = importForm.state?.ok;
-  useEffect(() => {
-    if (revertOk) setRevertConfirm("");
-  }, [revertOk]);
-  useEffect(() => {
-    if (importOk) setImportConfirm("");
-  }, [importOk]);
+  useValueChange(revertOk, (ok) => {
+    if (ok) setRevertConfirm("");
+  });
+  useValueChange(importOk, (ok) => {
+    if (ok) setImportConfirm("");
+  });
 
   const revertMatches =
     revertConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;
@@ -255,7 +261,7 @@ function CleanSlateRecovery({
 
       {/* Revert + Export row. */}
       <form
-        ref={revert.formRef}
+        ref={revertFormRef}
         action={revert.formAction}
         className="grid gap-2.5"
       >
@@ -313,7 +319,7 @@ function CleanSlateRecovery({
 
       {/* Import-from-file. */}
       <form
-        ref={importForm.formRef}
+        ref={importFormRef}
         action={importForm.formAction}
         className="grid gap-2.5"
       >
