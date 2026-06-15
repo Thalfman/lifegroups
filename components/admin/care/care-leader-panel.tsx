@@ -248,7 +248,7 @@ export function CareLeaderPanel({
           )}
         </Slot>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
           <Slot label="Group-Health Grade">
             {leader.ledGroups.length === 0 ? (
               <span className={MUTED_TEXT}>No active group.</span>

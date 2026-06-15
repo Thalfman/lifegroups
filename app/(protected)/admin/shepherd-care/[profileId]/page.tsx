@@ -4,7 +4,9 @@ import {
   cardHeadingClassName as SECTION_HEADING,
 } from "@/components/lg/Card";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
+import { DetailTabPanelSkeleton } from "@/components/lg/DetailPageSkeleton";
 import { CoverageAssignmentForm } from "@/components/admin/shepherd-care/coverage-assignment-form";
 import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
@@ -17,7 +19,10 @@ import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
 import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail-tabs";
 import { GroupRubricGradeEntry } from "@/components/admin/care/group-rubric-grade-entry";
 import { requireAdmin } from "@/lib/auth/session";
-import { loadShepherdCareDetailData } from "@/components/admin/shepherd-care/shepherd-care-detail-data";
+import {
+  loadShepherdCareDetailData,
+  loadShepherdCareDetailSpine,
+} from "@/components/admin/shepherd-care/shepherd-care-detail-data";
 import {
   currentMinistryYear,
   currentPeriodMonthIso,
@@ -65,17 +70,14 @@ export default async function AdminShepherdCareDetailPage({
   // ministry year, so the grade controls are suppressed then.
   const ministryYear = currentMinistryYear();
 
-  // All reads live behind the reads seam (ADR 0015): the loader binds the live
-  // client once and runs the pure buildShepherdCareDetailData assembly, so this
-  // page is guard → load → shell.
-  const detail = await loadShepherdCareDetailData({
-    profileId,
-    creatorProfileId,
-    canReadPrivateNotes: actorRole === "ministry_admin",
-    ministryYear,
-  });
-  if (detail.kind === "not_found") notFound();
-  if (detail.kind === "db_unavailable") {
+  // Resolve only the spine synchronously (one profile read): it titles the
+  // header and decides 404, so it must complete before anything renders. The
+  // heavy body bundle (care profile, interactions, rubric grades, the grant-
+  // gated Care Notes ladder, and the ministry_admin-only Private Care Note) is
+  // deferred into the Suspense boundary below and streams in after the header +
+  // back link paint (repo-sweep #605).
+  const spine = await loadShepherdCareDetailSpine(profileId);
+  if (spine.kind === "db_unavailable") {
     return (
       <>
         <PageHeader
@@ -93,6 +95,77 @@ export default async function AdminShepherdCareDetailPage({
           </Link>
         </PageBody>
       </>
+    );
+  }
+  if (spine.kind === "not_found") notFound();
+
+  const tabRaw = (await searchParams)?.tab;
+  const tabParam = Array.isArray(tabRaw) ? tabRaw[0] : tabRaw;
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Care"
+        title={spine.spine.profileFullName}
+        lede="Care notes here are admin-only. They never appear on leader or member surfaces."
+      />
+      <PageBody>
+        <div className="grid gap-5">
+          <div>
+            <Link
+              href="/admin/care"
+              className="font-sans text-sm text-ink2 underline hover:text-ink"
+            >
+              ← Back to Care
+            </Link>
+          </div>
+          <Suspense key={profileId} fallback={<DetailTabPanelSkeleton />}>
+            <ShepherdCareDetailBody
+              profileId={profileId}
+              creatorProfileId={creatorProfileId}
+              actorRole={actorRole}
+              ministryYear={ministryYear}
+              tabParam={tabParam}
+            />
+          </Suspense>
+        </div>
+      </PageBody>
+    </>
+  );
+}
+
+// The streamed body: runs the full detail bundle behind the route's Suspense
+// boundary, so the header + back link paint first. The spine already proved the
+// leader exists and is a valid care target, so a not_found here is a defensive
+// re-check (e.g. the row vanished mid-request); db_unavailable is unreachable
+// once the spine bound the client. The SC.4 boundary is carried in unchanged:
+// canReadPrivateNotes = actorRole === "ministry_admin", and the Private note tab
+// is built only then — never a super-admin path.
+async function ShepherdCareDetailBody({
+  profileId,
+  creatorProfileId,
+  actorRole,
+  ministryYear,
+  tabParam,
+}: {
+  profileId: string;
+  creatorProfileId: string;
+  actorRole: string | null;
+  ministryYear: number | null;
+  tabParam: string | undefined;
+}) {
+  const detail = await loadShepherdCareDetailData({
+    profileId,
+    creatorProfileId,
+    canReadPrivateNotes: actorRole === "ministry_admin",
+    ministryYear,
+  });
+  if (detail.kind === "not_found") notFound();
+  if (detail.kind === "db_unavailable") {
+    return (
+      <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
+        The database is not configured in this environment.
+      </p>
     );
   }
 
@@ -125,9 +198,6 @@ export default async function AdminShepherdCareDetailPage({
         })
       : null;
 
-  const tabRaw = (await searchParams)?.tab;
-  const tabParam = Array.isArray(tabRaw) ? tabRaw[0] : tabRaw;
-
   const assignedGroupLabel =
     detail.ledGroups.length > 0
       ? detail.ledGroups.map((g) => g.name).join(", ")
@@ -149,7 +219,7 @@ export default async function AdminShepherdCareDetailPage({
   const overviewPanel = (
     <div className="grid gap-5">
       <section className={CARD} aria-label="Care summary">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] md:gap-[18px]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] md:gap-[18px]">
           <div>
             <span className={LABEL}>Role</span>
             <div className={VALUE}>{roleLabel}</div>
@@ -424,30 +494,13 @@ export default async function AdminShepherdCareDetailPage({
 
   return (
     <>
-      <PageHeader
-        eyebrow="Care"
-        title={detail.profileFullName}
-        lede="Care notes here are admin-only. They never appear on leader or member surfaces."
-      />
-      <PageBody>
-        <div className="grid gap-5">
-          <div>
-            <Link
-              href="/admin/care"
-              className="font-sans text-sm text-ink2 underline hover:text-ink"
-            >
-              ← Back to Care
-            </Link>
-          </div>
-          {detail.error ? (
-            <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
-              {detail.error}
-            </p>
-          ) : null}
+      {detail.error ? (
+        <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
+          {detail.error}
+        </p>
+      ) : null}
 
-          <LeaderDetailTabs tabs={tabs} initialKey={tabParam} />
-        </div>
-      </PageBody>
+      <LeaderDetailTabs tabs={tabs} initialKey={tabParam} />
     </>
   );
 }

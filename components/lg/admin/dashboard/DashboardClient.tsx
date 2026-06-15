@@ -165,7 +165,7 @@ export function DashboardClient({
           />
 
           <CollapsibleOverview scopeId={scopeId}>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <LeaderCareOverviewCard summary={data.shepherdCare} />
               {showLaunchPlanning ? (
                 <LaunchPlanningOverviewCard
@@ -175,7 +175,7 @@ export function DashboardClient({
               ) : null}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <HealthDistributionCard counts={data.healthSummary.counts} />
               {/* The pivot areas' overview cards (#470): the Interest Funnel
                   takes the slot the frozen Guests placeholder held, and

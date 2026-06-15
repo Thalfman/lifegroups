@@ -58,7 +58,7 @@ export function CareNoteWriteForm({
         {label}s are private to you by default. Ministry leadership can only
         read them if this person&apos;s transparency toggle is turned on.
       </p>
-      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
+      <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
         <div className="col-span-full">
           <label htmlFor={`${idPrefix}-body`} className={FIELD_LABEL}>
             {label} (max 4000 chars)

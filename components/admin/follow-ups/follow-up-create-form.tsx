@@ -89,7 +89,7 @@ export function FollowUpCreateForm({
         group, member, guest — and assign someone if you want them to own it.
         Notes are optional and capped at 1000 characters each.
       </p>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:items-end md:gap-3.5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:items-end md:gap-3.5">
         <div>
           <label htmlFor="fu-title" className={FIELD_LABEL}>
             Title

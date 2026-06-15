@@ -44,7 +44,7 @@ export function ProspectBoardView({
     <div className="grid gap-5">
       <DueTasks dueTasks={dueTasks} />
 
-      <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-[repeat(auto-fit,minmax(240px,1fr))] md:gap-4">
+      <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-[repeat(auto-fit,minmax(240px,1fr))] md:gap-4">
         {board.columns.map((col) => {
           const tone = STATE_TONES[col.state];
           return (
