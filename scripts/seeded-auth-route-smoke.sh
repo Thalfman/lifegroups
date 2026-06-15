@@ -105,6 +105,8 @@ export TEST_LEADER2_EMAIL="${TEST_LEADER2_EMAIL:-test.leader2@lifegroups.local}"
 export TEST_LEADER2_PASSWORD="${TEST_LEADER2_PASSWORD:-route-smoke-leader2-pw}"
 export TEST_COLEADER_EMAIL="${TEST_COLEADER_EMAIL:-test.coleader@lifegroups.local}"
 export TEST_COLEADER_PASSWORD="${TEST_COLEADER_PASSWORD:-route-smoke-coleader-pw}"
+export TEST_OVERSHEPHERD_EMAIL="${TEST_OVERSHEPHERD_EMAIL:-test.overshepherd@lifegroups.local}"
+export TEST_OVERSHEPHERD_PASSWORD="${TEST_OVERSHEPHERD_PASSWORD:-route-smoke-overshepherd-pw}"
 
 log "Seeding test auth users..."
 ENABLE_TEST_AUTH_USERS="true" \
@@ -124,6 +126,8 @@ export A11Y_ADMIN_EMAIL="$TEST_ADMIN_EMAIL"
 export A11Y_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD"
 export A11Y_LEADER_EMAIL="$TEST_LEADER1_EMAIL"
 export A11Y_LEADER_PASSWORD="$TEST_LEADER1_PASSWORD"
+export A11Y_OVER_SHEPHERD_EMAIL="$TEST_OVERSHEPHERD_EMAIL"
+export A11Y_OVER_SHEPHERD_PASSWORD="$TEST_OVERSHEPHERD_PASSWORD"
 
 # Playwright builds + serves the app itself (webServer in playwright.config.ts),
 # inlining NEXT_PUBLIC_A11Y_HARNESS at build time. Pass CI=1 so it builds the

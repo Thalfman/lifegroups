@@ -5,8 +5,9 @@ name: Seeded-auth route smoke
 # needs no Supabase. It stands up a LOCAL seeded Supabase CLI stack (free, no
 # production secrets), seeds throwaway Auth users via the existing
 # `npm run seed:test-auth` tooling, and smokes the authenticated role routes:
-# Ministry Admin (Care/Plan/Multiply), Leader, the unauthorized boundary, and
-# mobile viewports. It exercises the role-routing regressions the unit suite
+# Ministry Admin (Care/Plan/Multiply), Over-Shepherd, Leader, the unauthorized
+# boundary, and mobile viewports. It exercises the role-routing regressions the
+# unit suite
 # (in-memory reads seam) and the harness-only a11y suite can't catch.
 #
 # Coordinates with #607 (RLS / action-pipeline integration harness): that work

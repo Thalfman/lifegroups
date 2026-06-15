@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 
 export const KNOWN_TEST_EMAILS = [
   "test.admin@lifegroups.local",
+  "test.overshepherd@lifegroups.local",
   "test.leader1@lifegroups.local",
   "test.leader2@lifegroups.local",
   "test.coleader@lifegroups.local",
@@ -11,15 +12,28 @@ export const KNOWN_TEST_EMAILS = [
 
 export type KnownTestEmail = (typeof KNOWN_TEST_EMAILS)[number];
 
+export type TestUserKey =
+  | "admin"
+  | "overshepherd"
+  | "leader1"
+  | "leader2"
+  | "coleader";
+
 export type TestUserSpec = {
-  key: "admin" | "leader1" | "leader2" | "coleader";
+  key: TestUserKey;
   emailVar: string;
   passwordVar: string;
   expectedEmail: KnownTestEmail;
   fullName: string;
-  role: "ministry_admin" | "leader" | "co_leader";
+  role: "ministry_admin" | "over_shepherd" | "leader" | "co_leader";
   groupKey: "A" | "B" | null;
   groupRole: "leader" | "co_leader" | null;
+  /**
+   * For an Over-Shepherd: the leader spec this user actively covers, so the
+   * seeded `/over-shepherd` surface renders a real (non-empty) roster instead
+   * of an empty state. `null` for every non-Over-Shepherd spec.
+   */
+  coversLeaderKey: TestUserKey | null;
 };
 
 export const TEST_USER_SPECS: TestUserSpec[] = [
@@ -32,6 +46,7 @@ export const TEST_USER_SPECS: TestUserSpec[] = [
     role: "ministry_admin",
     groupKey: null,
     groupRole: null,
+    coversLeaderKey: null,
   },
   {
     key: "leader1",
@@ -42,6 +57,7 @@ export const TEST_USER_SPECS: TestUserSpec[] = [
     role: "leader",
     groupKey: "A",
     groupRole: "leader",
+    coversLeaderKey: null,
   },
   {
     key: "leader2",
@@ -52,6 +68,7 @@ export const TEST_USER_SPECS: TestUserSpec[] = [
     role: "leader",
     groupKey: "B",
     groupRole: "leader",
+    coversLeaderKey: null,
   },
   {
     key: "coleader",
@@ -62,6 +79,20 @@ export const TEST_USER_SPECS: TestUserSpec[] = [
     role: "co_leader",
     groupKey: "A",
     groupRole: "co_leader",
+    coversLeaderKey: null,
+  },
+  {
+    // Ordered AFTER the leaders so leader1's profile exists when the seed wires
+    // up this Over-Shepherd's coverage over it.
+    key: "overshepherd",
+    emailVar: "TEST_OVERSHEPHERD_EMAIL",
+    passwordVar: "TEST_OVERSHEPHERD_PASSWORD",
+    expectedEmail: "test.overshepherd@lifegroups.local",
+    fullName: "Test Over-Shepherd",
+    role: "over_shepherd",
+    groupKey: null,
+    groupRole: null,
+    coversLeaderKey: "leader1",
   },
 ];
 
@@ -139,7 +170,8 @@ function classifyUrlIsRemote(rawUrl: string): boolean {
   } catch {
     return true;
   }
-  if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false;
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1")
+    return false;
   if (host.endsWith(".supabase.internal")) return false;
   return true;
 }
@@ -150,14 +182,14 @@ function isTruthyEnv(v: string | undefined): boolean {
 
 export type GuardError = { fatal: true; message: string };
 
-export function preflight(opts: { requireConfirmRemove?: boolean } = {}):
-  | { ok: true; env: RuntimeEnv }
-  | { ok: false; errors: string[] } {
+export function preflight(
+  opts: { requireConfirmRemove?: boolean } = {}
+): { ok: true; env: RuntimeEnv } | { ok: false; errors: string[] } {
   const errors: string[] = [];
 
   if (!isTruthyEnv(process.env.ENABLE_TEST_AUTH_USERS)) {
     errors.push(
-      "Refusing to run: set ENABLE_TEST_AUTH_USERS=true in your local environment to opt in.",
+      "Refusing to run: set ENABLE_TEST_AUTH_USERS=true in your local environment to opt in."
     );
   }
 
@@ -171,7 +203,9 @@ export function preflight(opts: { requireConfirmRemove?: boolean } = {}):
     errors.push("Refusing to run: SUPABASE_SERVICE_ROLE_KEY is empty.");
   }
 
-  const resolvedSpecs: Array<TestUserSpec & { email: string; password: string }> = [];
+  const resolvedSpecs: Array<
+    TestUserSpec & { email: string; password: string }
+  > = [];
   for (const spec of TEST_USER_SPECS) {
     const email = (process.env[spec.emailVar] ?? "").trim().toLowerCase();
     const password = process.env[spec.passwordVar] ?? "";
@@ -183,31 +217,38 @@ export function preflight(opts: { requireConfirmRemove?: boolean } = {}):
     }
     if (email && !(KNOWN_TEST_EMAILS as readonly string[]).includes(email)) {
       errors.push(
-        `Refusing to run: ${spec.emailVar} must be one of the known test emails (${spec.expectedEmail}).`,
+        `Refusing to run: ${spec.emailVar} must be one of the known test emails (${spec.expectedEmail}).`
       );
     }
     resolvedSpecs.push({ ...spec, email, password });
   }
 
   const isProduction = process.env.NODE_ENV === "production";
-  const allowRemote = isTruthyEnv(process.env.ALLOW_TEST_USERS_ON_REMOTE_SUPABASE);
-  const isRemoteSupabase = supabaseUrl ? classifyUrlIsRemote(supabaseUrl) : true;
+  const allowRemote = isTruthyEnv(
+    process.env.ALLOW_TEST_USERS_ON_REMOTE_SUPABASE
+  );
+  const isRemoteSupabase = supabaseUrl
+    ? classifyUrlIsRemote(supabaseUrl)
+    : true;
 
   if (isProduction && !allowRemote) {
     errors.push(
-      "Refusing to run: NODE_ENV=production and ALLOW_TEST_USERS_ON_REMOTE_SUPABASE is not set.",
+      "Refusing to run: NODE_ENV=production and ALLOW_TEST_USERS_ON_REMOTE_SUPABASE is not set."
     );
   }
 
   if (isRemoteSupabase && !allowRemote) {
     errors.push(
-      "Refusing to run: Supabase URL is not local. Set ALLOW_TEST_USERS_ON_REMOTE_SUPABASE=true to intentionally target a remote project.",
+      "Refusing to run: Supabase URL is not local. Set ALLOW_TEST_USERS_ON_REMOTE_SUPABASE=true to intentionally target a remote project."
     );
   }
 
-  if (opts.requireConfirmRemove && !isTruthyEnv(process.env.CONFIRM_REMOVE_TEST_AUTH_USERS)) {
+  if (
+    opts.requireConfirmRemove &&
+    !isTruthyEnv(process.env.CONFIRM_REMOVE_TEST_AUTH_USERS)
+  ) {
     errors.push(
-      "Refusing to run: CONFIRM_REMOVE_TEST_AUTH_USERS=true is required to run the cleanup.",
+      "Refusing to run: CONFIRM_REMOVE_TEST_AUTH_USERS=true is required to run the cleanup."
     );
   }
 
@@ -248,7 +289,10 @@ export function redact(message: string, secrets: Set<string>): string {
     const escaped = secret.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     out = out.replace(new RegExp(escaped, "g"), "[REDACTED]");
   }
-  out = out.replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED_JWT]");
+  out = out.replace(
+    /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
+    "[REDACTED_JWT]"
+  );
   return out;
 }
 
@@ -262,14 +306,18 @@ export function safeHost(url: string): string {
 
 export async function findAuthUserByEmail(
   client: SupabaseClient,
-  email: string,
+  email: string
 ): Promise<{ id: string; email: string | null } | null> {
   const target = email.toLowerCase();
   let page = 1;
   const perPage = 200;
   for (;;) {
-    const { data, error } = await client.auth.admin.listUsers({ page, perPage });
-    if (error) throw new Error(`listUsers failed on page ${page}: ${error.message}`);
+    const { data, error } = await client.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+    if (error)
+      throw new Error(`listUsers failed on page ${page}: ${error.message}`);
     const users = data?.users ?? [];
     const match = users.find((u) => (u.email ?? "").toLowerCase() === target);
     if (match) return { id: match.id, email: match.email ?? null };
