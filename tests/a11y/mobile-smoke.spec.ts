@@ -60,9 +60,12 @@ test.describe("mobile smoke — public + harness (#557)", () => {
     await expect(
       page.getByRole("link", { name: /contact support/i })
     ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /privacy policy/i })
+    ).toBeVisible();
   });
 
-  test("public support and account-deletion pages render their headings", async ({
+  test("public support, account-deletion, and privacy pages render their headings", async ({
     page,
   }) => {
     await page.goto("/support");
@@ -73,6 +76,11 @@ test.describe("mobile smoke — public + harness (#557)", () => {
     await page.goto("/account-deletion");
     await expect(
       page.getByRole("heading", { level: 1, name: "Account deletion" })
+    ).toBeVisible();
+
+    await page.goto("/privacy");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Privacy policy" })
     ).toBeVisible();
   });
 
