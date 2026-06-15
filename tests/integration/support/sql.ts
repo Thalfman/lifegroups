@@ -23,13 +23,36 @@ export function localDbUrl(): string {
   return override || "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 }
 
+/** True only for a loopback Postgres host. */
+function hostIsLocal(rawUrl: string): boolean {
+  try {
+    const host = new URL(rawUrl).hostname.toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Run one or more SQL statements against the local stack and resolve when done.
  * Opens and closes its own connection so callers don't manage a pool. Throws on
  * any SQL error (e.g. a forced trigger raise) so the spec surfaces a clear cause.
+ *
+ * REFUSES a non-local connection string. `resolveIntegrationEnv()` only proves
+ * the Supabase API URL is local; `SUPABASE_DB_URL` is a separate override, so
+ * guard it here too — this harness installs DDL (a trigger + function), which
+ * must never touch a staging/production `audit_events` table.
  */
 export async function runSql(sql: string): Promise<void> {
-  const client = new Client({ connectionString: localDbUrl() });
+  const url = localDbUrl();
+  if (!hostIsLocal(url)) {
+    throw new Error(
+      "Refusing to run integration DDL: SUPABASE_DB_URL is not a local " +
+        "Postgres host (expected localhost / 127.0.0.1 / ::1). This harness " +
+        "installs a test-only trigger and must never touch a remote database."
+    );
+  }
+  const client = new Client({ connectionString: url });
   await client.connect();
   try {
     await client.query(sql);

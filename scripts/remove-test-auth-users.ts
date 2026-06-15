@@ -44,10 +44,14 @@ async function deactivateOverShepherdLinks(
     );
     return;
   }
+  // Only end CURRENTLY-active coverage. Filtering to active rows leaves any
+  // prior ended_at untouched (no historical-date corruption) and makes repeated
+  // cleanup idempotent — a second run matches nothing.
   const { error: covErr } = await client
     .from("shepherd_coverage_assignments")
     .update({ active: false, ended_at: new Date().toISOString().slice(0, 10) })
-    .in("over_shepherd_id", rosterIds);
+    .in("over_shepherd_id", rosterIds)
+    .eq("active", true);
   if (covErr) throw new Error(`coverage deactivate failed: ${covErr.message}`);
   const { error: rosterErr } = await client
     .from("over_shepherds")
