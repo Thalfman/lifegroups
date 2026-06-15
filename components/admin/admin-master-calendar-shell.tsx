@@ -166,6 +166,10 @@ export function AdminMasterCalendarShell({
     if (userToggledRef.current) return;
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(max-width: 720px)");
+    // Initial sync from a client-only media-query subscription, gated behind
+    // hydration + the user-toggle ref so it never fights SSR markup. This is an
+    // external-system sync, not the derivable cascading-render the rule targets.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mq.matches) setViewMode(responsiveViewMode(true, defaultViewMode));
     const onChange = (e: MediaQueryListEvent) => {
       if (userToggledRef.current) return;

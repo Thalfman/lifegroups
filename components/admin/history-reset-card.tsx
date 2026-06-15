@@ -8,8 +8,9 @@
 // stays disabled until the exact phrase is typed, and the phrase is re-checked
 // server-side in the action.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { PButton } from "@/components/pastoral/button";
 import {
   superAdminResetHistoryCategory,
@@ -96,9 +97,9 @@ function CategoryResetRow({
   // Clear the controlled restore field after a successful revert so an
   // accidental resubmit doesn't immediately trip target_not_empty.
   const revertOk = revert.state?.ok;
-  useEffect(() => {
-    if (revertOk) setRestoreConfirm("");
-  }, [revertOk]);
+  useValueChange(revertOk, (ok) => {
+    if (ok) setRestoreConfirm("");
+  });
 
   const meta = HISTORY_RESET_CATEGORY_META[category.category];
   const nothingToReset = category.count === 0;

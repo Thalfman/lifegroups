@@ -7,8 +7,9 @@
 // two-step click-confirm (it changes what the band shows for the whole admin
 // team); the server action is hard-gated to super_admin regardless.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { PButton } from "@/components/pastoral/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import {
   superAdminResetActivity,
   superAdminClearActivityReset,
@@ -35,9 +36,9 @@ export function ActivityResetControl({
   // the submitting form mid-action (the page revalidates and re-renders with the
   // new baseline). Mirrors the attention-reset card's revert-on-success effect.
   const resetOk = reset.state?.ok;
-  useEffect(() => {
-    if (resetOk) setConfirming(false);
-  }, [resetOk]);
+  useValueChange(resetOk, (ok) => {
+    if (ok) setConfirming(false);
+  });
 
   const busy = reset.pending || clear.pending;
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { adminChangeLeaderRole } from "@/app/(protected)/admin/people/actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
@@ -45,12 +46,15 @@ export function ChangeLeaderRoleForm({
   const [newRole, setNewRole] = useState<LeaderRole>(otherRole);
   const downgrade = isRoleDowngrade(currentRole, newRole);
 
-  useEffect(() => {
-    if (state?.ok) {
+  // Collapse the form and re-seed the target role on a fresh successful save.
+  // Derived during render rather than in an effect to avoid the cascading-render
+  // smell.
+  useValueChange(state, (next) => {
+    if (next?.ok) {
       setOpen(false);
       setNewRole(otherRole);
     }
-  }, [state, otherRole]);
+  });
 
   // The destructive direction (role downgrade) carries an explicit confirm step,
   // consistent with the deactivate buttons' window.confirm guard.

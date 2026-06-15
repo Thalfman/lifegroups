@@ -6,6 +6,7 @@ import {
   serializePreference,
   viewPreferenceKey,
 } from "@/lib/admin/view-preferences";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 
 /**
  * Remember an admin surface's filter / view selection across reloads and
@@ -52,10 +53,14 @@ export function usePersistedViewState<T>(options: {
   // redundant writes when the snapshot object is new-by-identity but equal.
   const lastWritten = useRef<string | null>(null);
 
+  // Re-arm hydration when the storage key (a scope change) changes, derived
+  // during render so the restore effect can do its external read without a
+  // synchronous setState in the effect body.
+  useValueChange(key, () => setHydrated(false));
+
   // Restore once per storage key (a scope change re-runs it).
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setHydrated(false);
     let raw: string | null = null;
     try {
       raw = window.localStorage.getItem(key);
@@ -67,6 +72,9 @@ export function usePersistedViewState<T>(options: {
       lastWritten.current = raw;
       restoreRef.current(saved);
     }
+    // Marking hydration complete after the client-only localStorage read is an
+    // external-system sync, not the derivable cascading-render the rule targets.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHydrated(true);
   }, [key]);
 

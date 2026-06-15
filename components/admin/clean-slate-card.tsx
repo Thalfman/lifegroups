@@ -7,8 +7,9 @@
 // server-side in the action. The recovery controls (revert / export / import)
 // live in a visually separated panel so they never read as part of the wipe.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, buttonClassName } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import {
   superAdminCleanSlateWipe,
   superAdminCleanSlateRevert,
@@ -205,14 +206,16 @@ function CleanSlateRecovery({
   // controlled confirm fields must be cleared by hand. Clearing both after a
   // successful restore stops an accidental immediate resubmit (which would hit
   // target_not_empty and read like a fresh failure).
+  // Derived during render rather than in an effect to avoid the cascading-render
+  // smell.
   const revertOk = revert.state?.ok;
   const importOk = importForm.state?.ok;
-  useEffect(() => {
-    if (revertOk) setRevertConfirm("");
-  }, [revertOk]);
-  useEffect(() => {
-    if (importOk) setImportConfirm("");
-  }, [importOk]);
+  useValueChange(revertOk, (ok) => {
+    if (ok) setRevertConfirm("");
+  });
+  useValueChange(importOk, (ok) => {
+    if (ok) setImportConfirm("");
+  });
 
   const revertMatches =
     revertConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;

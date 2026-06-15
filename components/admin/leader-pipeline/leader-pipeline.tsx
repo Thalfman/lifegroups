@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { PButton, PLinkButton } from "@/components/pastoral/button";
 import {
   adminAdvanceApprenticeStage,
@@ -236,14 +237,15 @@ function AddApprenticeForm({
   const [displayName, setDisplayName] = useState("");
   const memberOptions = memberOptionsByGroup[groupId] ?? NO_MEMBER_OPTIONS;
   // React resets the uncontrolled fields once the create lands; mirror that
-  // for the controlled trio so the form clears as one.
-  useEffect(() => {
-    if (state?.ok) {
+  // for the controlled trio so the form clears as one. Derived during render
+  // rather than in an effect to avoid the cascading-render smell.
+  useValueChange(state, (next) => {
+    if (next?.ok) {
       setGroupId("");
       setMemberId("");
       setDisplayName("");
     }
-  }, [state]);
+  });
   if (availableGroups.length === 0) {
     return (
       <div className="grid justify-items-start gap-2">

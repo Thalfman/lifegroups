@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { adminCreateLeaderProfile } from "@/app/(protected)/admin/people/actions";
 import {
   fieldHintClassName,
@@ -36,11 +37,19 @@ export function LeaderProfileForm({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
 
-  useEffect(() => {
-    if (!state?.ok) return;
+  // Reset the controlled fields on a fresh successful create (the <form> reset
+  // only clears uncontrolled inputs). Derived during render rather than in an
+  // effect to avoid the cascading-render smell.
+  useValueChange(state, (next) => {
+    if (!next?.ok) return;
     setFullName("");
     setEmail("");
-    onSaved?.();
+  });
+
+  // onSaved is a parent notification (drawer close + refresh), so it stays in a
+  // post-commit effect.
+  useEffect(() => {
+    if (state?.ok) onSaved?.();
   }, [state, onSaved]);
 
   useEffect(() => {
