@@ -23,14 +23,14 @@ import { AttentionResetEntityButton } from "@/components/admin/attention-reset-e
 import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
 import { PButton } from "@/components/pastoral/button";
 import { cn } from "@/lib/utils";
+import {
+  fieldLabelClassName as FIELD_LABEL,
+  fieldInputBaseClassName,
+} from "@/components/admin/forms/field-styles";
 
-// Design-system form field classes (§4 Forms): tracked-uppercase survives in
-// form field labels; inputs are full-width, rounded-sm, line-bordered, with
-// the global focus ring. `lg-m-input` keeps the ≥16px mobile font guard.
-const FIELD_LABEL =
-  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
-const FIELD_INPUT =
-  "lg-m-input w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
+// `lg-m-input` prefixes the shared field-input base so this drawer keeps the
+// ≥16px mobile font guard on its controls.
+const FIELD_INPUT = `lg-m-input ${fieldInputBaseClassName}`;
 
 export function GroupHealthEditorDrawer({
   row,

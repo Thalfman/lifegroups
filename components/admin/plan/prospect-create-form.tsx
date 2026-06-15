@@ -10,13 +10,10 @@ import {
 import { FULL_NAME_REQUIRED_MESSAGE } from "@/lib/admin/validation/prospect-form-client";
 import type { GroupAudienceCategory } from "@/types/enums";
 import type { CategoryOptionsByAudience } from "@/lib/supabase/group-categories-reads";
-
-// Design-system form field classes (12px uppercase label → full-width input
-// with the global focus ring).
-const LABEL =
-  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
-const INPUT =
-  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
+import {
+  fieldLabelClassName as LABEL,
+  fieldInputBaseClassName as INPUT,
+} from "@/components/admin/forms/field-styles";
 
 // The three top types, in board order, with their display labels.
 const TOP_TYPES: { value: GroupAudienceCategory; label: string }[] = [

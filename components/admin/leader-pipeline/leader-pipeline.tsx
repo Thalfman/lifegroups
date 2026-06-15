@@ -26,13 +26,11 @@ import { formatIsoDate } from "@/lib/shared/date";
 // Type-only: the data module itself is server-side, the import is erased at
 // build time.
 import type { PipelineMemberOption } from "@/components/admin/leader-pipeline/leader-pipeline-data";
+import {
+  fieldLabelClassName as LABEL,
+  fieldInputBaseClassName as INPUT,
+} from "@/components/admin/forms/field-styles";
 
-// Design-system form field classes (12px uppercase label → full-width input
-// with the global focus ring).
-const LABEL =
-  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
-const INPUT =
-  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
 // Notes can run to 2000 chars; a single-line input hides all but a sliver of
 // that, so notes use a multi-line, vertically resizable variant of INPUT.
 const TEXTAREA = `${INPUT} min-h-[4.5rem] resize-y leading-normal`;
