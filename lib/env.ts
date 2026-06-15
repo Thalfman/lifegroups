@@ -76,16 +76,15 @@ export function getSupabaseEnv(): SupabaseEnv | null {
   return { url, key };
 }
 
-// Request-path resolver. Same resolution as `getSupabaseEnv`, but a
-// misconfiguration (half-config or malformed URL) is LOGGED and treated as
-// "not configured" (`null`) instead of thrown. The Supabase client and the
-// session-refresh middleware run on essentially every request; letting the
-// throw escape there would turn a one-variable misconfig into a site-wide 500
-// — including `/login`, the page an operator needs to recover. So the request
-// path degrades like the no-env demo mode, but the error message (which names
-// the offending variable, per #593) still surfaces loudly in the server logs.
-// The strict, throwing `getSupabaseEnv` stays for an explicit boot/build-time
-// assertion that wants to fail hard.
+// Tolerant resolver for the session-refresh MIDDLEWARE ONLY. The middleware
+// runs on essentially every request — including genuinely public pages (the
+// static `/login` screen, marketing routes) that never touch Supabase — so a
+// thrown misconfig there would 500 the entire site, including the surfaces an
+// operator needs to recover. So the middleware degrades like the no-env demo
+// path on a misconfig, but the error (which names the offending variable, per
+// #593) is still logged loudly. Everything else — the server client, and any
+// data path — uses the strict, throwing `getSupabaseEnv` so a configured-but-
+// invalid deploy fails loudly there instead of masquerading as demo mode.
 export function getSupabaseEnvSafe(): SupabaseEnv | null {
   try {
     return getSupabaseEnv();
