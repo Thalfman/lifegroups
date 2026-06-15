@@ -34,6 +34,35 @@ const HARNESS_CORE_SURFACES = [
   "group-health",
 ] as const;
 
+// The data-dense directory/grid surfaces #567 reshaped into stacked cards at
+// phone width (table/matrix restored at md+). Each renders a mobile card list
+// (`md:hidden`) plus a desktop table/grid (`hidden md:block`); at a phone
+// viewport only the card list should be visible.
+const STACKED_SURFACES = [
+  // surface id, an element the mobile card stack renders, an element the
+  // desktop table/grid renders (hidden at phone width).
+  {
+    id: "groups-directory",
+    cardSelector: "article",
+    tableSelector: "table",
+  },
+  {
+    id: "people",
+    cardSelector: "li",
+    tableSelector: "table",
+  },
+  {
+    id: "care-directory",
+    cardSelector: "li",
+    tableSelector: "table",
+  },
+  {
+    id: "multiply-readiness-grid",
+    cardSelector: "li",
+    tableSelector: "table",
+  },
+] as const;
+
 async function signIn(
   page: Page,
   email: string,
@@ -117,6 +146,76 @@ test.describe("mobile smoke — public + harness (#557)", () => {
     await gotoHarness(page);
     const results = await new AxeBuilder({ page }).analyze();
     expectNoBlockingAxeViolations(results);
+  });
+});
+
+// Responsive directories + the Multiply readiness grid (#567). At phone width
+// the Care / People / Groups directories and the Multiply grid must render as
+// readable stacked cards — never a horizontal-scroll table — and the harness
+// page must not itself widen past the viewport. These run on the mobile-iphone
+// and mobile-android projects, plus an explicit 375px pin (the narrowest
+// supported phone, called out in the issue) so the floor is covered regardless
+// of the project viewports.
+test.describe("mobile smoke — responsive directories + grid (#567)", () => {
+  test("the stacked surfaces show their mobile cards, not the desktop table", async ({
+    page,
+  }) => {
+    await gotoHarness(page);
+    for (const { id, cardSelector, tableSelector } of STACKED_SURFACES) {
+      const surface = page.locator(`[data-a11y-surface="${id}"]`);
+      await expect(surface, `surface "${id}" should render`).toBeVisible();
+      // The mobile card stack paints…
+      await expect(
+        surface.locator(cardSelector).first(),
+        `surface "${id}" should show its stacked cards at phone width`
+      ).toBeVisible();
+      // …while the desktop table/grid stays hidden (display:none) behind md+.
+      const table = surface.locator(tableSelector).first();
+      if ((await table.count()) > 0) {
+        await expect(
+          table,
+          `surface "${id}" should hide its desktop table at phone width`
+        ).toBeHidden();
+      }
+    }
+  });
+
+  // Measure each reshaped surface's OWN box rather than the whole harness page:
+  // the harness mounts every surface, including intentionally-wide ones (e.g.
+  // the master-calendar month grid) that live in their own overflow-x:auto
+  // region and are excluded from the per-surface audit. A page-level scrollWidth
+  // check would be hostage to those; the contract #567 actually adds is that
+  // these four stacked surfaces never overflow their own content box at phone
+  // width. A 1px slack absorbs sub-pixel rounding (matches responsive-mobile).
+  async function expectStackedSurfacesDoNotOverflow(page: Page): Promise<void> {
+    for (const { id } of STACKED_SURFACES) {
+      const surface = page.locator(`[data-a11y-surface="${id}"]`);
+      await expect(surface, `surface "${id}" should render`).toBeVisible();
+      const overflow = await surface.evaluate(
+        (el) =>
+          (el as HTMLElement).scrollWidth - (el as HTMLElement).clientWidth
+      );
+      expect(
+        overflow,
+        `surface "${id}" overflows its content box by ${overflow}px (forces ` +
+          `horizontal scroll at phone width)`
+      ).toBeLessThanOrEqual(1);
+    }
+  }
+
+  test("the stacked surfaces never overflow their box at phone width", async ({
+    page,
+  }) => {
+    await gotoHarness(page);
+    await expectStackedSurfacesDoNotOverflow(page);
+  });
+
+  test("the stacked surfaces never overflow their box at the 375px floor", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await gotoHarness(page);
+    await expectStackedSurfacesDoNotOverflow(page);
   });
 });
 
