@@ -163,7 +163,10 @@ export default async function AdminGroupDetailPage({
             })}
           </div>
 
-          <Suspense key={tab} fallback={<DetailTabPanelSkeleton />}>
+          <Suspense
+            key={`${groupId}-${tab}`}
+            fallback={<DetailTabPanelSkeleton />}
+          >
             <GroupTabPanel
               group={group}
               groupId={groupId}
