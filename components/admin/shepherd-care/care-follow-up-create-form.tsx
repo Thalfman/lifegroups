@@ -76,7 +76,7 @@ export function CareFollowUpCreateForm({
         due date and notes are optional. New follow-ups start as open.
         Admin-only — these never appear on leader or member surfaces.
       </p>
-      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
+      <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
         <div className="col-span-full">
           <label htmlFor="cfu-title" className={FIELD_LABEL}>
             Title

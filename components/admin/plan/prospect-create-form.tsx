@@ -99,7 +99,7 @@ export function ProspectCreateForm({
         Only the name is required. New prospects start as <em>Interested</em>;
         move them to Matched once you have a group.
       </p>
-      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
+      <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
         <div>
           <label htmlFor="prospect-full_name" className={LABEL}>
             Full name

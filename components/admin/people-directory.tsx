@@ -327,14 +327,14 @@ function FilterBar({
   onScopeChange: (v: DirectoryScope) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 items-center gap-2.5 rounded-md border border-line bg-surface p-3 md:grid-cols-[minmax(220px,1fr)_auto_auto] md:gap-3 md:px-3.5">
+    <div className="grid grid-cols-1 items-center gap-2.5 rounded-md border border-line bg-surface p-3 sm:grid-cols-2 sm:gap-3 md:grid-cols-[minmax(220px,1fr)_auto_auto] md:px-3.5">
       <input
         type="search"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder="Search by name or email…"
         aria-label="Search people"
-        className={fieldInputClassName}
+        className={cn(fieldInputClassName, "sm:col-span-2 md:col-span-1")}
       />
       {/* Scope narrows who's listed — formerly the Leaders / Members tabs. */}
       <select
@@ -490,7 +490,7 @@ function SuperAdminRowDangerActions({
 // One directory row: identity block left, row actions right; stacks to a
 // single column on mobile.
 const ROW_CLASS =
-  "grid grid-cols-1 items-start gap-3 border-b border-lineSoft px-4 py-3.5 md:grid-cols-[minmax(0,1fr)_auto]";
+  "grid grid-cols-1 items-start gap-3 border-b border-lineSoft px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto]";
 const ROW_NAME_CLASS = "font-display text-md font-medium text-ink";
 const ROW_BADGES_CLASS = "flex flex-wrap items-center gap-2.5";
 const ROW_CONTACT_CLASS =
