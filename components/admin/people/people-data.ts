@@ -18,10 +18,11 @@ import {
   fetchShepherdCareDirectoryForAdmin,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
 import {
-  careCadenceWindowsFromDefaults,
-  decodeMetricDefaults,
-} from "@/lib/admin/metrics";
+  needsContactProfileIds,
+  resolveCareNeedsContact,
+} from "@/lib/admin/care-needs-contact";
 import type { PipelineRollup } from "@/lib/admin/leader-pipeline";
 import { buildLeaderPipelineData } from "@/components/admin/leader-pipeline/leader-pipeline-data";
 
@@ -45,6 +46,7 @@ export type PeopleReads = {
     typeof fetchActiveShepherdCoverageAssignmentsForAdmin
   >;
   fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
+  fetchAttentionBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
   fetchShepherdCareDirectory: OmitClient<
     typeof fetchShepherdCareDirectoryForAdmin
   >;
@@ -62,6 +64,7 @@ export function supabasePeopleReads(client: AppSupabaseClient): PeopleReads {
     fetchActiveCoverageAssignments:
       fetchActiveShepherdCoverageAssignmentsForAdmin,
     fetchMetricDefaults: fetchMetricDefaultsCached,
+    fetchAttentionBaselines: fetchAttentionResetBaselines,
     fetchShepherdCareDirectory: fetchShepherdCareDirectoryForAdmin,
   });
 }
@@ -127,36 +130,28 @@ export async function buildPeoplePipelineData(
 }
 
 // The set of leaders/co-leaders whose care cadence has lapsed, so each person
-// row can show the Contact/Care indicator. Built from the same shepherd-care
-// directory + active-coverage windows the Care area uses, so the two never
-// disagree. On any read failure the set is simply empty (rows fall back to "No
-// current concerns") — the indicator is glanceable context, not a gate.
+// row can show the Contact/Care indicator. Built through the shared Care
+// needs-contact resolver (lib/admin/care-needs-contact.ts) — the same windows +
+// active-coverage + "care" attention-reset baselines + directory waterfall the
+// Care tab uses — so the People tab and Care answer "needs contact" identically.
+// Passing the "care" baselines (which this surface used to omit) is the issue
+// #636 fix: a Leader cleared by a care reset now drops off the People tab too. On
+// any read failure the set is simply empty (rows fall back to "No current
+// concerns") — the indicator is glanceable context, not a gate.
 export async function buildPeopleNeedsContact(
   reads: PeopleReads,
   options: { todayIso: string }
 ): Promise<Set<string>> {
-  const [assignmentsRes, metricDefaultsRes] = await Promise.all([
-    reads.fetchActiveCoverageAssignments(),
-    reads.fetchMetricDefaults(),
-  ]);
-
-  const windows = careCadenceWindowsFromDefaults(
-    decodeMetricDefaults(metricDefaultsRes.data ?? null)
+  const resolution = await resolveCareNeedsContact(
+    {
+      fetchActiveAssignments: reads.fetchActiveCoverageAssignments,
+      fetchMetricDefaults: reads.fetchMetricDefaults,
+      fetchAttentionBaselines: reads.fetchAttentionBaselines,
+      fetchCareDirectory: reads.fetchShepherdCareDirectory,
+    },
+    { todayIso: options.todayIso }
   );
-  const delegatedShepherdIds = assignmentsRes.error
-    ? undefined
-    : new Set((assignmentsRes.data ?? []).map((a) => a.shepherd_profile_id));
-
-  const directory = await reads.fetchShepherdCareDirectory({
-    todayIso: options.todayIso,
-    windows,
-    delegatedShepherdIds,
-  });
-  if (directory.error || !directory.data) return new Set();
-
-  return new Set(
-    directory.data.filter((e) => e.needs_attention).map((e) => e.profile.id)
-  );
+  return needsContactProfileIds(resolution);
 }
 
 export type PeoplePageData = {

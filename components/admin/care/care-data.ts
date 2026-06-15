@@ -20,7 +20,6 @@ import {
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
 import {
-  buildSurfaceBaselines,
   EMPTY_ATTENTION_BASELINES,
   type AttentionBaselines,
 } from "@/lib/admin/attention-reset";
@@ -29,6 +28,7 @@ import {
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
 import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
+import { resolveCareNeedsContact } from "@/lib/admin/care-needs-contact";
 
 // The Care surface's read-orchestration, as a pure function of a reads seam
 // (ADR 0015). The Care tab (ADR 0016) is the entry point for Job 1 — "how are my
@@ -113,65 +113,66 @@ export function emptyCareData(error: string): CareData {
   };
 }
 
-// Pure assembly: gather the independent reads, resolve the windows + active-
-// coverage set + baselines, then waterfall the directory read with them. The
-// directory is the one read that depends on the others, so it cannot join the
-// parallel batch. Every degrade path is reachable from a test through an
-// in-memory `reads` adapter.
+// Pure assembly: gather the independent reads in parallel with the shared Care
+// needs-contact resolver (issue #636), which owns the windows + active-coverage
+// + baselines + directory waterfall the three surfaces share. Care keeps the
+// full directory entries it returns; People + person-detail derive their narrower
+// shapes from the same resolver, so the "needs contact" indicator can never
+// disagree across the three. Every degrade path is reachable from a test through
+// an in-memory `reads` adapter.
 export async function buildCareData(
   reads: CareReads,
   options: { todayIso: string }
 ): Promise<CareData> {
   const { todayIso } = options;
 
-  // The directory needs the configured staleness windows + the active-coverage
-  // set (so its needs_attention matches the dashboard's), so resolve those
-  // first; everything else is independent and joins the batch.
+  // The directory waterfall (windows + coverage + baselines + directory) lives in
+  // the shared resolver; the remaining reads are independent and join a parallel
+  // batch. Both fire concurrently — the resolver starts its own internal batch
+  // immediately — so this preserves today's read concurrency.
   const [
-    overShepherdsRes,
-    assignmentsRes,
-    recentRes,
-    outstandingRes,
-    completedRes,
-    metricDefaultsRes,
-    groupLeadersRes,
-    attentionBaselinesRes,
+    [
+      overShepherdsRes,
+      recentRes,
+      outstandingRes,
+      completedRes,
+      groupLeadersRes,
+    ],
+    careContact,
   ] = await Promise.all([
-    reads.fetchOverShepherds({ includeArchived: true }),
-    reads.fetchActiveAssignments(),
-    reads.fetchRecentInteractions({ limit: 30 }),
-    reads.fetchOutstandingFollowUps(),
-    reads.fetchCompletedFollowUps({ limit: 50 }),
-    reads.fetchMetricDefaults(),
-    reads.fetchGroupLeaders({ activeOnly: true }),
-    reads.fetchAttentionBaselines(),
+    Promise.all([
+      reads.fetchOverShepherds({ includeArchived: true }),
+      reads.fetchRecentInteractions({ limit: 30 }),
+      reads.fetchOutstandingFollowUps(),
+      reads.fetchCompletedFollowUps({ limit: 50 }),
+      reads.fetchGroupLeaders({ activeOnly: true }),
+    ]),
+    resolveCareNeedsContact(
+      {
+        fetchActiveAssignments: reads.fetchActiveAssignments,
+        fetchMetricDefaults: reads.fetchMetricDefaults,
+        fetchAttentionBaselines: reads.fetchAttentionBaselines,
+        fetchCareDirectory: reads.fetchCareDirectory,
+      },
+      { todayIso }
+    ),
   ]);
 
-  const windows = careCadenceWindowsFromDefaults(
-    decodeMetricDefaults(metricDefaultsRes.data ?? null)
-  );
-  const delegatedShepherdIds = assignmentsRes.error
-    ? undefined
-    : new Set((assignmentsRes.data ?? []).map((a) => a.shepherd_profile_id));
-  // A failed baselines read degrades to "no baselines" (today's behaviour),
-  // never fails the page.
-  const baselines = buildSurfaceBaselines(
-    attentionBaselinesRes.data ?? [],
-    "care"
-  );
-
-  const directory = await reads.fetchCareDirectory({
-    todayIso,
+  const {
+    directory,
     windows,
-    delegatedShepherdIds,
     baselines,
-  });
+    assignments,
+    assignmentsAvailable,
+    assignmentsError,
+    metricDefaultsError,
+  } = careContact;
   if (directory.error) return emptyCareData(directory.error.message);
 
   return {
     entries: directory.data,
-    assignments: assignmentsRes.data ?? [],
-    assignmentsAvailable: assignmentsRes.error === null,
+    assignments,
+    assignmentsAvailable,
     overShepherds: overShepherdsRes.data ?? [],
     recentInteractions: recentRes.data ?? [],
     outstandingFollowUps: outstandingRes.data ?? [],
@@ -187,11 +188,11 @@ export async function buildCareData(
     baselines,
     error:
       overShepherdsRes.error?.message ??
-      assignmentsRes.error?.message ??
+      assignmentsError ??
       recentRes.error?.message ??
       outstandingRes.error?.message ??
       completedRes.error?.message ??
-      metricDefaultsRes.error?.message ??
+      metricDefaultsError ??
       groupLeadersRes.error?.message ??
       null,
   };

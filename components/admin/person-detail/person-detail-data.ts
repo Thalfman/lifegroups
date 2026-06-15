@@ -13,10 +13,11 @@ import {
   fetchShepherdCareDirectoryForAdmin,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
 import {
-  careCadenceWindowsFromDefaults,
-  decodeMetricDefaults,
-} from "@/lib/admin/metrics";
+  profileNeedsContact,
+  resolveCareNeedsContact,
+} from "@/lib/admin/care-needs-contact";
 import { ROLE_LABELS, isLeaderRole } from "@/lib/auth/roles";
 import type {
   PersonDetail,
@@ -77,6 +78,7 @@ export type PersonDetailReads = {
     typeof fetchActiveShepherdCoverageAssignmentsForAdmin
   >;
   fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
+  fetchAttentionBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
   fetchShepherdCareDirectory: OmitClient<
     typeof fetchShepherdCareDirectoryForAdmin
   >;
@@ -96,6 +98,7 @@ export function supabasePersonDetailReads(
     fetchActiveShepherdCoverageAssignments:
       fetchActiveShepherdCoverageAssignmentsForAdmin,
     fetchMetricDefaults: fetchMetricDefaultsCached,
+    fetchAttentionBaselines: fetchAttentionResetBaselines,
     fetchShepherdCareDirectory: fetchShepherdCareDirectoryForAdmin,
   });
 }
@@ -113,34 +116,29 @@ function assignableGroupOptions(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// Whether a single leader's care cadence has lapsed. Built from the same
-// shepherd-care directory + windows the Care area uses, then narrowed to this
-// profile, so the person page and the Care queue never disagree. Fails closed
+// Whether a single leader's care cadence has lapsed. Built through the shared
+// Care needs-contact resolver (lib/admin/care-needs-contact.ts) — the same
+// windows + active-coverage + "care" attention-reset baselines + directory
+// waterfall the Care tab uses — then narrowed to this profile, so the person
+// page and the Care queue answer "needs contact" identically. Passing the "care"
+// baselines (which this surface used to omit) is the issue #636 fix: a Leader
+// cleared by a care reset no longer reads as needing contact here. Fails closed
 // to false (no false "needs contact") when a feeding read fails.
 async function leaderNeedsContact(
   reads: PersonDetailReads,
   profileId: string,
   todayIso: string
 ): Promise<boolean> {
-  const [assignmentsRes, metricDefaultsRes] = await Promise.all([
-    reads.fetchActiveShepherdCoverageAssignments(),
-    reads.fetchMetricDefaults(),
-  ]);
-  const windows = careCadenceWindowsFromDefaults(
-    decodeMetricDefaults(metricDefaultsRes.data ?? null)
+  const resolution = await resolveCareNeedsContact(
+    {
+      fetchActiveAssignments: reads.fetchActiveShepherdCoverageAssignments,
+      fetchMetricDefaults: reads.fetchMetricDefaults,
+      fetchAttentionBaselines: reads.fetchAttentionBaselines,
+      fetchCareDirectory: reads.fetchShepherdCareDirectory,
+    },
+    { todayIso }
   );
-  const delegatedShepherdIds = assignmentsRes.error
-    ? undefined
-    : new Set((assignmentsRes.data ?? []).map((a) => a.shepherd_profile_id));
-  const directory = await reads.fetchShepherdCareDirectory({
-    todayIso,
-    windows,
-    delegatedShepherdIds,
-  });
-  if (directory.error || !directory.data) return false;
-  return directory.data.some(
-    (e) => e.profile.id === profileId && e.needs_attention
-  );
+  return profileNeedsContact(resolution, profileId);
 }
 
 // Resolve only the spine: the identity that titles the header and decides 404.

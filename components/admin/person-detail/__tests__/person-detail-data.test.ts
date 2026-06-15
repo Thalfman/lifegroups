@@ -87,6 +87,7 @@ function personReads(
       ] as never),
     fetchActiveShepherdCoverageAssignments: async () => ok([] as never),
     fetchMetricDefaults: async () => ok(null),
+    fetchAttentionBaselines: async () => ok([]),
     fetchShepherdCareDirectory: async () =>
       ok([{ profile: { id: LEADER_ID }, needs_attention: true }] as never),
     ...overrides,
@@ -186,6 +187,37 @@ describe("buildPersonBody", () => {
       TODAY
     );
     expect(body.person.needsContact).toBe(false);
+  });
+
+  // Issue #636 fix: the person-detail page now passes the "care" attention-reset
+  // baselines it used to omit, so a Leader cleared by a care reset stops reading
+  // as needing contact here, matching the Care queue.
+  it("threads the care attention-reset baselines into the directory read", async () => {
+    let captured: Parameters<
+      PersonDetailReads["fetchShepherdCareDirectory"]
+    >[0];
+    await buildPersonBody(
+      personReads({
+        fetchAttentionBaselines: async () =>
+          ok([
+            {
+              surface: "care",
+              scope: "global",
+              entity_id: null,
+              baseline_on: "2026-06-01",
+            },
+          ] as never),
+        fetchShepherdCareDirectory: async (options) => {
+          captured = options;
+          return ok([
+            { profile: { id: LEADER_ID }, needs_attention: true },
+          ] as never);
+        },
+      }),
+      leaderSpine,
+      TODAY
+    );
+    expect(captured?.baselines?.global).toBe("2026-06-01");
   });
 
   it("a non-leader login profile cannot be placed and has no care link", async () => {

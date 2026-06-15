@@ -29,6 +29,7 @@ function emptyReads(overrides: Partial<PeopleReads> = {}): PeopleReads {
     fetchLeaderPipeline: async () => ok([]),
     fetchActiveCoverageAssignments: async () => ok([]),
     fetchMetricDefaults: async () => ok(null),
+    fetchAttentionBaselines: async () => ok([]),
     fetchShepherdCareDirectory: async () => ok([]),
     ...overrides,
   };
@@ -189,5 +190,46 @@ describe("buildPeopleNeedsContact", () => {
     expect(captured?.delegatedShepherdIds).toBeUndefined();
     // The indicator still derives from the directory read that did succeed.
     expect(set).toEqual(new Set(["p1"]));
+  });
+
+  // Issue #636 fix: the People tab now passes the "care" attention-reset
+  // baselines it used to omit, so a Leader cleared by a care reset drops off the
+  // People tab exactly as it does on the Care tab — the two answer identically.
+  it("threads the care attention-reset baselines into the directory read", async () => {
+    let captured: Parameters<PeopleReads["fetchShepherdCareDirectory"]>[0];
+    await buildPeopleNeedsContact(
+      emptyReads({
+        fetchAttentionBaselines: async () =>
+          ok([
+            {
+              surface: "care",
+              scope: "global",
+              entity_id: null,
+              baseline_on: "2026-06-01",
+            },
+            {
+              surface: "care",
+              scope: "entity",
+              entity_id: "sh-1",
+              baseline_on: "2026-06-03",
+            },
+            // A different surface's row must not leak into the care baselines.
+            {
+              surface: "health",
+              scope: "global",
+              entity_id: null,
+              baseline_on: "2026-01-01",
+            },
+          ] as never),
+        fetchShepherdCareDirectory: async (options) => {
+          captured = options;
+          return ok([]);
+        },
+      }),
+      { todayIso: "2026-06-04" }
+    );
+
+    expect(captured?.baselines?.global).toBe("2026-06-01");
+    expect(captured?.baselines?.byEntityId.get("sh-1")).toBe("2026-06-03");
   });
 });
