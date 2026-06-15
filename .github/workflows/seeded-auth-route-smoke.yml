@@ -1,0 +1,80 @@
+name: Seeded-auth route smoke
+
+# OPT-IN / SCHEDULED ONLY (#597). This lane is deliberately NOT part of the
+# default PR lane (.github/workflows/ci.yml), which stays deterministic and
+# needs no Supabase. It stands up a LOCAL seeded Supabase CLI stack (free, no
+# production secrets), seeds throwaway Auth users via the existing
+# `npm run seed:test-auth` tooling, and smokes the authenticated role routes:
+# Ministry Admin (Care/Plan/Multiply), Leader, the unauthorized boundary, and
+# mobile viewports. It exercises the role-routing regressions the unit suite
+# (in-memory reads seam) and the harness-only a11y suite can't catch.
+#
+# Coordinates with #607 (RLS / action-pipeline integration harness): that work
+# owns tests/integration/** and its own separately-named workflow. This file is
+# additive and shares only the read-only seeded-auth tooling under scripts/.
+#
+# Triggers: manual dispatch and a weekly cron. No push/pull_request trigger, so
+# it never gates a PR.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Mondays 07:00 UTC. A drift check, not a merge gate.
+    - cron: "0 7 * * 1"
+
+# Never run more than one smoke at a time; a newer dispatch supersedes an older.
+concurrency:
+  group: seeded-auth-route-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+# This workflow reads no repo secrets: the local Supabase CLI stack mints its
+# own dev keys, and the throwaway test users are local-only.
+permissions:
+  contents: read
+
+jobs:
+  route-smoke:
+    name: local seeded Supabase + route smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase stack
+        # Applies every migration under supabase/migrations/ to a throwaway
+        # local Postgres + Auth. No remote project is linked.
+        run: supabase start
+
+      - name: Run seeded-auth route smoke
+        # The runner reads the local stack's URL/keys from `supabase status`,
+        # applies the operational seed, seeds throwaway Auth users, then serves
+        # the app and runs the seeded-auth Playwright specs.
+        run: ./scripts/seeded-auth-route-smoke.sh
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: route-smoke-playwright-report
+          path: playwright-report
+          retention-days: 7
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop --no-backup || true
