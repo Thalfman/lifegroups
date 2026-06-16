@@ -36,20 +36,19 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    // Desktop a11y suite (everything except the mobile smoke spec, which the
+    // Desktop a11y suite (everything except the mobile-only specs, which the
     // mobile-viewport projects below own).
     {
       name: "chromium",
-      testIgnore: /mobile-smoke\.spec\.ts/,
+      testIgnore: /mobile-(smoke|flows)\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
-    // Mobile-viewport cross-surface smoke (#557). Chromium-based (CI installs
-    // only chromium) at an iPhone-sized and an Android-sized viewport, so an
-    // iPhone-class WebKit dependency never blocks the suite. They run ONLY the
-    // mobile smoke spec.
+    // Mobile-viewport cross-surface smoke (#557) + the four priority-flow 375px
+    // regression assertions (#651). Chromium-based at an iPhone-sized and an
+    // Android-sized viewport. They run ONLY the mobile specs.
     {
       name: "mobile-iphone",
-      testMatch: /mobile-smoke\.spec\.ts/,
+      testMatch: /mobile-(smoke|flows)\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 390, height: 844 },
@@ -57,10 +56,25 @@ export default defineConfig({
     },
     {
       name: "mobile-android",
-      testMatch: /mobile-smoke\.spec\.ts/,
+      testMatch: /mobile-(smoke|flows)\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 412, height: 915 },
+      },
+    },
+    // WebKit (Safari-engine) mobile project (#651) — the closest faithful proxy
+    // to iPhone Safari, standing in for the unstaffed physical-device pass. It
+    // runs the four priority-flow assertions under the WebKit engine with touch
+    // enabled, so the spec's WebKit-only safe-area + touch checks exercise a real
+    // touch engine at the 375px floor. CI installs `webkit` alongside `chromium`.
+    {
+      name: "mobile-webkit",
+      testMatch: /mobile-flows\.spec\.ts/,
+      use: {
+        ...devices["Desktop Safari"],
+        browserName: "webkit",
+        viewport: { width: 375, height: 812 },
+        hasTouch: true,
       },
     },
   ],

@@ -49,14 +49,15 @@ export const metadata: Metadata = {
 };
 
 // Mobile viewport + status-bar tint. User scaling is intentionally left enabled
-// to keep the meta-viewport a11y rule green. `viewport-fit: cover` (drawing into
-// the notch / home-indicator area) is deliberately NOT set here: the sticky
-// TopBar and sticky submit bar have no `env(safe-area-inset-*)` offsets yet, so
-// cover is deferred to the Phase 2 mobile-UX hardening that adds safe-area
-// handling (see the responsive-chrome issue).
+// to keep the meta-viewport a11y rule green. `viewport-fit: cover` lets the app
+// draw into the notch / home-indicator area on a phone; the chrome that anchors
+// to the edges (the EditingSurface full-screen sheet, the sticky submit bar)
+// now pads itself with `env(safe-area-inset-*)` so nothing lands under the notch
+// or home indicator (#651 Phase 2 mobile-UX hardening).
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#fbfaf4",
 };
 

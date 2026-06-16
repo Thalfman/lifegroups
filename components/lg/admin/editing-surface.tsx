@@ -91,7 +91,7 @@ export function EditingSurface({
           }}
           className="fixed inset-y-0 right-0 z-drawer flex h-dvh w-full flex-col bg-bg shadow-softLg data-[state=open]:animate-[lg-drawer-in_200ms_ease-out] md:w-[min(460px,94vw)] md:border-l md:border-line"
         >
-          <header className="relative grid gap-1.5 border-b border-line bg-surface px-5 py-[18px]">
+          <header className="relative grid gap-1.5 border-b border-line bg-surface px-5 pb-[18px] pt-[max(18px,env(safe-area-inset-top))]">
             {eyebrow ? (
               <span className="font-sans text-sm text-ink3">{eyebrow}</span>
             ) : null}
@@ -113,12 +113,12 @@ export function EditingSurface({
             </button>
           </header>
 
-          <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5 py-[18px]">
+          <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5 pt-[18px] pb-[max(18px,env(safe-area-inset-bottom))]">
             {children}
           </div>
 
           {footer ? (
-            <footer className="flex flex-wrap justify-end gap-2.5 border-t border-line bg-surface px-5 py-3.5">
+            <footer className="flex flex-wrap justify-end gap-2.5 border-t border-line bg-surface px-5 pt-3.5 pb-[max(14px,env(safe-area-inset-bottom))]">
               {footer}
             </footer>
           ) : null}
