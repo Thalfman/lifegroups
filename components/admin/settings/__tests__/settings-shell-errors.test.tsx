@@ -72,6 +72,7 @@ function shellData(
     groups: [],
     groupMetricSettings: [],
     groupRubricCriteria: [],
+    hasSavedGroupRubric: true,
     leaderRubricCriteria: [],
     groupCategories: [],
     categoriesByAudience: EMPTY_CATEGORIES_BY_AUDIENCE,

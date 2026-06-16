@@ -750,6 +750,7 @@ const SETTINGS_DATA: SettingsShellData = {
     { key: "attendance", label: "Attendance", weight: 60 },
     { key: "unity", label: "Unity", weight: 40 },
   ],
+  hasSavedGroupRubric: true,
   leaderRubricCriteria: [
     { key: "walk", label: "Walk with God", weight: 50 },
     { key: "team", label: "Team development", weight: 50 },

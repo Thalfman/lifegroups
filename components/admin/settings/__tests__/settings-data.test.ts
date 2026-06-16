@@ -143,6 +143,41 @@ describe("buildSettingsData — degradation", () => {
     expect(data.errors.readiness).toBeNull();
   });
 
+  it("seeds the working default rubric when no health_rubrics row exists (#642)", async () => {
+    const data = await buildSettingsData(emptyReads(), {
+      isSuperAdmin: false,
+    });
+
+    // No row, no error → the editor shows the 40/40/20 starting defaults, not a
+    // zeroed form, and is flagged as unsaved so the note + lazy-persist apply.
+    expect(data.hasSavedGroupRubric).toBe(false);
+    expect(data.groupRubricCriteria).toEqual([
+      { key: "attendance", label: "Attendance", weight: 40 },
+      { key: "spiritual_growth", label: "Spiritual growth", weight: 40 },
+      { key: "group_question", label: "Group question", weight: 20 },
+    ]);
+    expect(data.groupRubricCriteria.reduce((sum, c) => sum + c.weight, 0)).toBe(
+      100
+    );
+  });
+
+  it("uses the stored criteria and marks the rubric saved when a row exists (#642)", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchGroupHealthRubric: async () =>
+          ok({
+            criteria: [{ key: "unity", label: "Unity", weight: 100 }],
+          } as never),
+      }),
+      { isSuperAdmin: false }
+    );
+
+    expect(data.hasSavedGroupRubric).toBe(true);
+    expect(data.groupRubricCriteria).toEqual([
+      { key: "unity", label: "Unity", weight: 100 },
+    ]);
+  });
+
   it("reports the defaults as live when a stored row decodes", async () => {
     const data = await buildSettingsData(
       emptyReads({

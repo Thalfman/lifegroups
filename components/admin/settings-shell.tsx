@@ -36,9 +36,15 @@ export type SettingsShellData = {
   defaultsSource: "live" | "fallback";
   groups: GroupsRow[];
   groupMetricSettings: GroupMetricSettingsRow[];
-  // #374 / ADR 0018: the current group Health Rubric's criteria (Julian-owned).
-  // Empty when no rubric has been built yet; the editor seeds a blank row.
+  // #374 / ADR 0018: the criteria the group Health Rubric editor seeds with
+  // (Julian-owned). When a rubric has been saved this is its stored criteria;
+  // when none exists yet it's the working in-code default
+  // (DEFAULT_GROUP_RUBRIC_CRITERIA, 40/40/20) so the editor never shows a
+  // zeroed 0/100 form (#642). hasSavedGroupRubric distinguishes the two.
   groupRubricCriteria: RubricCriterion[];
+  // #642: false when no health_rubrics row exists yet, so the editor shows the
+  // "starting defaults" note and the first save is what persists the rubric.
+  hasSavedGroupRubric: boolean;
   // #378 / ADR 0018: the current Leader-Health Rubric's criteria — the symmetric
   // per-leader rubric, same editor parameterized to the "leader" kind. Empty
   // until Julian builds it.
@@ -101,6 +107,7 @@ export type SettingsShellData = {
 
 export type SettingsCareModel = {
   groupRubricCriteria: RubricCriterion[];
+  hasSavedGroupRubric: boolean;
   leaderRubricCriteria: RubricCriterion[];
   errors: Pick<SettingsShellData["errors"], "groupRubric" | "leaderRubric">;
 };
@@ -154,6 +161,7 @@ export function buildSettingsWorkspace(
     defaultsSource: data.defaultsSource,
     care: {
       groupRubricCriteria: data.groupRubricCriteria,
+      hasSavedGroupRubric: data.hasSavedGroupRubric,
       leaderRubricCriteria: data.leaderRubricCriteria,
       errors: {
         groupRubric: data.errors.groupRubric,
@@ -297,7 +305,10 @@ function CarePanel({ model }: { model: SettingsCareModel }) {
           <CouldNotLoad subject="The Group Health Rubric" />
         ) : (
           <Card>
-            <HealthRubricEditor criteria={model.groupRubricCriteria} />
+            <HealthRubricEditor
+              criteria={model.groupRubricCriteria}
+              hasSavedRubric={model.hasSavedGroupRubric}
+            />
           </Card>
         )}
       </section>
