@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveMultiplicationCandidate,
@@ -339,6 +339,206 @@ function WillingGroupField({
   );
 }
 
+// Scope a field's element id to the form it renders in. The inline-edit form
+// passes a per-candidate prefix so several edit forms can render at once without
+// their label↔control associations colliding; the add form passes "mc-add".
+function fieldId(prefix: string, name: string): string {
+  return `${prefix}-${name}`;
+}
+
+// The candidate forms (add + inline edit) share these field blocks verbatim
+// apart from their seeded values, so they live as one set of components rather
+// than duplicated JSX in each form. Each ties its label to its control via a
+// prefix-derived id.
+
+function TargetYearField({
+  idPrefix,
+  defaultValue,
+}: {
+  idPrefix: string;
+  defaultValue?: number | null;
+}) {
+  const id = fieldId(idPrefix, "target_year");
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>
+        Target year
+      </label>
+      <input
+        id={id}
+        name="target_year"
+        type="number"
+        min={2024}
+        max={2100}
+        inputMode="numeric"
+        defaultValue={defaultValue ?? ""}
+        placeholder="2026"
+        className={INPUT}
+      />
+    </div>
+  );
+}
+
+function StatusField({
+  idPrefix,
+  defaultValue,
+}: {
+  idPrefix: string;
+  defaultValue: MultiplicationCandidateStatus;
+}) {
+  const id = fieldId(idPrefix, "status");
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>
+        Status
+      </label>
+      <select
+        id={id}
+        name="status"
+        defaultValue={defaultValue}
+        className={INPUT}
+      >
+        {STATUS_OPTIONS.map((s) => (
+          <option key={s} value={s}>
+            {CANDIDATE_STATUS_LABEL[s]}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function SuccessorField({
+  idPrefix,
+  defaultValue,
+}: {
+  idPrefix: string;
+  defaultValue?: string | null;
+}) {
+  const id = fieldId(idPrefix, "successor_designate");
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>
+        Successor / leader-designate
+      </label>
+      <input
+        id={id}
+        name="successor_designate"
+        type="text"
+        maxLength={120}
+        defaultValue={defaultValue ?? ""}
+        placeholder="e.g. Tony L."
+        className={INPUT}
+      />
+    </div>
+  );
+}
+
+function MeetingTimeField({
+  idPrefix,
+  defaultValue,
+}: {
+  idPrefix: string;
+  defaultValue?: MultiplicationMeetingTime | null;
+}) {
+  const id = fieldId(idPrefix, "meeting_time");
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>
+        Meeting time
+      </label>
+      <select
+        id={id}
+        name="meeting_time"
+        defaultValue={defaultValue ?? ""}
+        className={INPUT}
+      >
+        <option value="">Unset</option>
+        {MEETING_TIME_OPTIONS.map((m) => (
+          <option key={m} value={m}>
+            {MEETING_TIME_LABEL[m]}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function MemberCountField({
+  idPrefix,
+  defaultValue,
+  placeholder,
+  hint,
+}: {
+  idPrefix: string;
+  defaultValue?: number | null;
+  placeholder?: string;
+  hint: ReactNode;
+}) {
+  const id = fieldId(idPrefix, "manual_member_count");
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>
+        Members (entered)
+      </label>
+      <input
+        id={id}
+        name="manual_member_count"
+        type="number"
+        min={0}
+        max={1000}
+        inputMode="numeric"
+        defaultValue={defaultValue ?? ""}
+        placeholder={placeholder}
+        className={INPUT}
+      />
+      <p className={HINT}>{hint}</p>
+    </div>
+  );
+}
+
+function NeedsSimilarStageField({
+  defaultChecked,
+}: {
+  defaultChecked?: boolean;
+}) {
+  return (
+    <label className={CHECKBOX_LABEL}>
+      <input
+        type="checkbox"
+        name="needs_similar_stage"
+        defaultChecked={defaultChecked}
+      />
+      Need for a similar-stage group
+    </label>
+  );
+}
+
+function NotesField({
+  idPrefix,
+  defaultValue,
+}: {
+  idPrefix: string;
+  defaultValue?: string | null;
+}) {
+  const id = fieldId(idPrefix, "notes");
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>
+        Notes
+      </label>
+      <textarea
+        id={id}
+        name="notes"
+        maxLength={2000}
+        rows={3}
+        defaultValue={defaultValue ?? ""}
+        className={TEXTAREA}
+      />
+    </div>
+  );
+}
+
 function CandidateEditForm({
   c,
   typeOptions,
@@ -365,114 +565,48 @@ function CandidateEditForm({
     formAction: archiveAction,
     pending: archivePending,
   } = useActionForm<{ id: string }>(adminArchiveMultiplicationCandidate);
-  // Per-candidate field ids so each inline-edit label is programmatically tied
-  // to its control even when several candidates render their edit forms at once.
-  const fid = (name: string) => `mc-edit-${c.candidateId}-${name}`;
+  // Per-candidate field-id prefix so each inline-edit label is programmatically
+  // tied to its control even when several candidates render their edit forms at
+  // once.
+  const idPrefix = `mc-edit-${c.candidateId}`;
   return (
     <div className="mt-2.5 grid gap-2.5">
       <form action={formAction} className="grid gap-2.5">
         <input type="hidden" name="candidate_id" value={c.candidateId} />
-        <TypeField idPrefix={`mc-edit-${c.candidateId}`} state={typeGroup} />
+        <TypeField idPrefix={idPrefix} state={typeGroup} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
-          <div>
-            <label htmlFor={fid("target_year")} className={LABEL}>
-              Target year
-            </label>
-            <input
-              id={fid("target_year")}
-              name="target_year"
-              type="number"
-              min={2024}
-              max={2100}
-              inputMode="numeric"
-              defaultValue={c.targetYear ?? ""}
-              placeholder="2026"
-              className={INPUT}
-            />
-          </div>
-          <div>
-            <label htmlFor={fid("status")} className={LABEL}>
-              Status
-            </label>
-            <select
-              id={fid("status")}
-              name="status"
-              defaultValue={c.status}
-              className={INPUT}
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {CANDIDATE_STATUS_LABEL[s]}
-                </option>
-              ))}
-            </select>
-          </div>
+          <TargetYearField idPrefix={idPrefix} defaultValue={c.targetYear} />
+          <StatusField idPrefix={idPrefix} defaultValue={c.status} />
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
-          <div>
-            <label htmlFor={fid("successor_designate")} className={LABEL}>
-              Successor / leader-designate
-            </label>
-            <input
-              id={fid("successor_designate")}
-              name="successor_designate"
-              type="text"
-              maxLength={120}
-              defaultValue={c.successorDesignate ?? ""}
-              placeholder="e.g. Tony L."
-              className={INPUT}
-            />
-          </div>
-          <div>
-            <label htmlFor={fid("meeting_time")} className={LABEL}>
-              Meeting time
-            </label>
-            <select
-              id={fid("meeting_time")}
-              name="meeting_time"
-              defaultValue={c.meetingTime ?? ""}
-              className={INPUT}
-            >
-              <option value="">Unset</option>
-              {MEETING_TIME_OPTIONS.map((m) => (
-                <option key={m} value={m}>
-                  {MEETING_TIME_LABEL[m]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div>
-          <label htmlFor={fid("manual_member_count")} className={LABEL}>
-            Members (entered)
-          </label>
-          <input
-            id={fid("manual_member_count")}
-            name="manual_member_count"
-            type="number"
-            min={0}
-            max={1000}
-            inputMode="numeric"
-            defaultValue={c.manualMemberCount ?? ""}
-            placeholder={String(c.activeMemberCount)}
-            className={INPUT}
+          <SuccessorField
+            idPrefix={idPrefix}
+            defaultValue={c.successorDesignate}
           />
-          <p className={HINT}>
-            Julian&rsquo;s headcount for this group, used for the &ldquo;12+
-            members&rdquo; signal. Leave blank to use the in-app roster count (
-            {c.activeMemberCount}).
-          </p>
+          <MeetingTimeField idPrefix={idPrefix} defaultValue={c.meetingTime} />
         </div>
-        <WillingGroupField
-          idPrefix={`mc-edit-${c.candidateId}`}
-          state={typeGroup}
+        <MemberCountField
+          idPrefix={idPrefix}
+          defaultValue={c.manualMemberCount}
+          placeholder={String(c.activeMemberCount)}
+          hint={
+            <>
+              Julian&rsquo;s headcount for this group, used for the &ldquo;12+
+              members&rdquo; signal. Leave blank to use the in-app roster count
+              ({c.activeMemberCount}).
+            </>
+          }
         />
+        <WillingGroupField idPrefix={idPrefix} state={typeGroup} />
         <div>
-          <label htmlFor={fid("leader_pipeline_id")} className={LABEL}>
+          <label
+            htmlFor={fieldId(idPrefix, "leader_pipeline_id")}
+            className={LABEL}
+          >
             Linked apprentice
           </label>
           <select
-            id={fid("leader_pipeline_id")}
+            id={fieldId(idPrefix, "leader_pipeline_id")}
             name="leader_pipeline_id"
             value={typeGroup.leaderPipelineId}
             onChange={(e) => typeGroup.setLeaderPipelineId(e.target.value)}
@@ -492,27 +626,8 @@ function CandidateEditForm({
               : "Pick the multiplying group above to link one of its apprentices."}
           </p>
         </div>
-        <label className={CHECKBOX_LABEL}>
-          <input
-            type="checkbox"
-            name="needs_similar_stage"
-            defaultChecked={c.needsSimilarStage}
-          />
-          Need for a similar-stage group
-        </label>
-        <div>
-          <label htmlFor={fid("notes")} className={LABEL}>
-            Notes
-          </label>
-          <textarea
-            id={fid("notes")}
-            name="notes"
-            maxLength={2000}
-            rows={3}
-            defaultValue={c.notes ?? ""}
-            className={TEXTAREA}
-          />
-        </div>
+        <NeedsSimilarStageField defaultChecked={c.needsSimilarStage} />
+        <NotesField idPrefix={idPrefix} defaultValue={c.notes} />
         <div className="flex items-center gap-2.5">
           <PButton type="submit" tone="terra" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save"}
@@ -614,108 +729,21 @@ function AddCandidateForm({
     <form action={formAction} className="grid gap-2.5">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-[2fr_1fr_1fr] md:gap-2.5">
         <TypeField idPrefix="mc-add" state={typeGroup} />
-        <div>
-          <label htmlFor="mc-year" className={LABEL}>
-            Target year
-          </label>
-          <input
-            id="mc-year"
-            name="target_year"
-            type="number"
-            min={2024}
-            max={2100}
-            inputMode="numeric"
-            placeholder="2026"
-            className={INPUT}
-          />
-        </div>
-        <div>
-          <label htmlFor="mc-status" className={LABEL}>
-            Status
-          </label>
-          <select
-            id="mc-status"
-            name="status"
-            defaultValue="watching"
-            className={INPUT}
-          >
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {CANDIDATE_STATUS_LABEL[s]}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TargetYearField idPrefix="mc-add" />
+        <StatusField idPrefix="mc-add" defaultValue="watching" />
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
-        <div>
-          <label htmlFor="mc-successor" className={LABEL}>
-            Successor / leader-designate
-          </label>
-          <input
-            id="mc-successor"
-            name="successor_designate"
-            type="text"
-            maxLength={120}
-            placeholder="e.g. Tony L."
-            className={INPUT}
-          />
-        </div>
-        <div>
-          <label htmlFor="mc-meeting-time" className={LABEL}>
-            Meeting time
-          </label>
-          <select
-            id="mc-meeting-time"
-            name="meeting_time"
-            defaultValue=""
-            className={INPUT}
-          >
-            <option value="">Unset</option>
-            {MEETING_TIME_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                {MEETING_TIME_LABEL[m]}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SuccessorField idPrefix="mc-add" />
+        <MeetingTimeField idPrefix="mc-add" />
       </div>
-      <div>
-        <label htmlFor="mc-members" className={LABEL}>
-          Members (entered)
-        </label>
-        <input
-          id="mc-members"
-          name="manual_member_count"
-          type="number"
-          min={0}
-          max={1000}
-          inputMode="numeric"
-          placeholder="e.g. 12"
-          className={INPUT}
-        />
-        <p className={HINT}>
-          Julian&rsquo;s headcount for the multiplying group. Leave blank to use
-          the in-app roster count.
-        </p>
-      </div>
+      <MemberCountField
+        idPrefix="mc-add"
+        placeholder="e.g. 12"
+        hint="Julian’s headcount for the multiplying group. Leave blank to use the in-app roster count."
+      />
       <WillingGroupField idPrefix="mc-add" state={typeGroup} />
-      <label className={CHECKBOX_LABEL}>
-        <input type="checkbox" name="needs_similar_stage" />
-        Need for a similar-stage group
-      </label>
-      <div>
-        <label htmlFor="mc-notes" className={LABEL}>
-          Notes
-        </label>
-        <textarea
-          id="mc-notes"
-          name="notes"
-          maxLength={2000}
-          rows={3}
-          className={TEXTAREA}
-        />
-      </div>
+      <NeedsSimilarStageField />
+      <NotesField idPrefix="mc-add" />
       <div className="flex items-center gap-2.5">
         <PButton
           type="submit"
