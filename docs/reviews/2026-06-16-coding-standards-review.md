@@ -20,13 +20,13 @@ genuine DRY issue (a duplicated date helper).
 
 ## Mechanical hygiene — clean
 
-| Signal                       | Result                                                                 |
-| ---------------------------- | ---------------------------------------------------------------------- |
-| `select("*")` call sites     | **0** (all 25 matches are comments documenting the ban)                |
-| `: any` / `as any` types     | **0** (all 8 matches are the English word "any" in comments)           |
+| Signal                       | Result                                                                      |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| `select("*")` call sites     | **0** (all 25 matches are comments documenting the ban)                     |
+| `: any` / `as any` types     | **0** (all 8 matches are the English word "any" in comments)                |
 | `console.*` calls            | **7, all legitimate** — the logger sink, env-config error, error boundaries |
-| `@ts-ignore` / `@ts-nocheck` | **0**                                                                  |
-| TODO/FIXME/HACK              | **1**                                                                  |
+| `@ts-ignore` / `@ts-nocheck` | **0**                                                                       |
+| TODO/FIXME/HACK              | **1**                                                                       |
 
 The hard invariants from `CLAUDE.md` / `AGENTS.md` genuinely hold.
 
@@ -94,3 +94,27 @@ correct (`[kind]/[personId]` where `kind` is `"profile" | "member"`).
 Consolidate the duplicated `addDaysIso` / `subtractDaysIso` date helper into
 `lib/shared/church-time.ts` (lib finding #1). The remaining items are optional
 readability extractions, not defects.
+
+## Resolved — 2026-06-16
+
+All findings above were implemented on branch
+`claude/coding-standards-docs-review`:
+
+- **`lib` #1 (DRY date helper):** `addDaysIso` / `subtractDaysIso` now live in
+  `lib/shared/church-time.ts` and are imported everywhere; `launch-planning.ts`
+  keeps its guarded null-returning wrapper as a deliberate stronger-contract
+  exception. Covered by new unit tests.
+- **`lib` #2/#3 (long functions):** `fetchAdminWeeklyCheckInReview` split into
+  `buildGroupReviewRow` + `summarizeReview`; `fetchMultiplicationCandidatesForAdmin`
+  split into a `firstReadError([...])` guard and named index-builders.
+- **`components` #1 (planner forms):** the add/edit candidate forms now share
+  one set of field components keyed by an id prefix.
+- **`components` #2/#3/#4:** calendar `EditorModal` split into `EditorHeader` +
+  `EditorStatusTypeFields`; `PillarInputs` derives its checkbox id from
+  `useId()`; `people-directory` empty-state ternaries lifted into
+  `emptyProfileMessage` / `emptyMemberMessage`.
+- **`app` #1/#2:** the two invite-error branches share an
+  `errorLinesFrom(source, status)` helper; the JWT-redaction regex is now a
+  named `JWT_PATTERN` constant. (`#3 runInvite` left as-is per the note.)
+
+Verified green: `lint`, `typecheck`, and `test:run` (full unit suite).
