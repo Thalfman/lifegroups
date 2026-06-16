@@ -40,9 +40,26 @@ export function ProspectBoardView({
   activeGroups: PlanGroupOption[];
   dueTasks: DueFollowUp[];
 }) {
+  // #648: when the funnel is completely empty, a compact line teaches the path
+  // (using the glossary states) so the board isn't just empty columns next to
+  // the Add prospect action above.
+  const activeTotal = board.columns.reduce(
+    (sum, col) => sum + col.prospects.length,
+    0
+  );
+  const isFunnelEmpty = activeTotal === 0 && board.joined.length === 0;
+
   return (
     <div className="grid gap-5">
       <DueTasks dueTasks={dueTasks} />
+
+      {isFunnelEmpty ? (
+        <p className="m-0 rounded-md border border-dashed border-line bg-surface px-3.5 py-3 font-sans text-sm text-ink2">
+          No Prospects in the Interest Funnel yet. The path: add an{" "}
+          <strong>Interested</strong> person above, <strong>match</strong> them
+          to a group, then mark them <strong>Joined</strong>.
+        </p>
+      ) : null}
 
       <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-[repeat(auto-fit,minmax(240px,1fr))] md:gap-4">
         {board.columns.map((col) => {

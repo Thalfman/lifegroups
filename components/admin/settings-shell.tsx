@@ -1,3 +1,4 @@
+import { AddToHomeScreenButton } from "@/components/pwa/add-to-home-screen-button";
 import { MetricDefaultsForm } from "@/components/admin/forms/metric-defaults-form";
 import { GroupMetricOverridesForm } from "@/components/admin/forms/group-metric-overrides-form";
 import { ClearGroupMetricOverridesButton } from "@/components/admin/forms/clear-group-metric-overrides-button";
@@ -524,8 +525,8 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     <div className="grid gap-4">
       <SettingsSectionHeader
         eyebrow="Imports"
-        title="Bulk people import"
-        description="Tools for loading people in bulk."
+        title="Adding people"
+        description="How people get into the system."
       />
       {isSuperAdmin ? (
         <SuperAdminScopeNotice>
@@ -533,11 +534,13 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         </SuperAdminScopeNotice>
       ) : null}
       <Card>
+        {/* #648: frame this as a positive instruction, not a dead-end. A
+            Ministry Admin adds people from the People page; a one-off
+            spreadsheet load is a Super-Admin bulk import. */}
         <p className="m-0 mb-3.5 font-sans text-sm text-ink2">
-          Bulk import stays in the Super Admin Console.{" "}
           {isSuperAdmin
-            ? "Open the console to run an import."
-            : "Only the super admin can run one."}
+            ? "Add people from the People page. For a one-off spreadsheet load, run a bulk roster import from the Super Admin Console."
+            : "Add people from the People page. If you need to load a whole roster from a spreadsheet, ask the Super Admin to run a bulk import."}
         </p>
         {isSuperAdmin ? (
           <PLinkButton
@@ -548,6 +551,20 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             Open import in Super Admin Console →
           </PLinkButton>
         ) : null}
+      </Card>
+
+      {/* #648: the "Add to Home Screen" affordance lives here in Settings now,
+          not in the admin Home header. The button renders nothing when the app
+          is already installed or install isn't supported, so the card keeps a
+          line of explanatory copy and is never empty. */}
+      <SettingsSectionHeader eyebrow="App" title="Install app" />
+      <Card>
+        <p className="m-0 mb-3.5 font-sans text-sm text-ink2">
+          Add this app to your device&rsquo;s Home Screen so it opens
+          full-screen. If it&rsquo;s already installed or your browser
+          doesn&rsquo;t support it, there&rsquo;s nothing to do here.
+        </p>
+        <AddToHomeScreenButton />
       </Card>
     </div>
   );

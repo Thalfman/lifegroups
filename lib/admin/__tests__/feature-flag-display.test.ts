@@ -56,7 +56,10 @@ describe("buildFeatureFlagRow — frozen surfaces (verify-before-flip)", () => {
     const row = buildFeatureFlagRow(FROZEN, {
       [FROZEN.key]: { enabled: true },
     });
-    expect(row.stateBadge).toEqual({ label: "Held off", tone: "warning" });
+    expect(row.stateBadge).toEqual({
+      label: "Enabled — pending go-ahead",
+      tone: "warning",
+    });
     expect(row.riskNote).toEqual({
       text: "Turned on, but held off until it passes its safety review.",
       heldOff: true,
@@ -65,11 +68,11 @@ describe("buildFeatureFlagRow — frozen surfaces (verify-before-flip)", () => {
     expect(row.enabled).toBe(true);
   });
 
-  it("reads On only when switched on and verified", () => {
+  it("reads Live only when switched on and verified", () => {
     const row = buildFeatureFlagRow(FROZEN, {
       [FROZEN.key]: { enabled: true, verified: true },
     });
-    expect(row.stateBadge).toEqual({ label: "On", tone: "good" });
+    expect(row.stateBadge).toEqual({ label: "Live", tone: "good" });
     // The standing held caution stays on the row; only the amber emphasis
     // is reserved for the held-off state.
     expect(row.riskNote).toEqual({

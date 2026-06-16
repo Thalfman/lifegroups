@@ -182,6 +182,18 @@ export function MultiplyGridView({
   grid: MultiplyGrid;
   ministryYear: number;
 }) {
+  const activeRows = grid.rows.filter(rowHasActiveCell);
+  const emptyRowCount = grid.rows.length - activeRows.length;
+  // Offer the filter only when it would actually hide something AND there's at
+  // least one active row to keep on screen.
+  const canFilter = emptyRowCount > 0 && activeRows.length > 0;
+  // Hook must run on every render (before any early return) to satisfy
+  // rules-of-hooks.
+  const [showOnlyActive, setShowOnlyActive] = useState(
+    canFilter && emptyRowCount >= MANY_EMPTY_ROWS
+  );
+  const visibleRows = canFilter && showOnlyActive ? activeRows : grid.rows;
+
   if (grid.rows.length === 0) {
     return (
       <div className="grid justify-items-start gap-3.5">
@@ -196,16 +208,6 @@ export function MultiplyGridView({
       </div>
     );
   }
-
-  const activeRows = grid.rows.filter(rowHasActiveCell);
-  const emptyRowCount = grid.rows.length - activeRows.length;
-  // Offer the filter only when it would actually hide something AND there's at
-  // least one active row to keep on screen.
-  const canFilter = emptyRowCount > 0 && activeRows.length > 0;
-  const [showOnlyActive, setShowOnlyActive] = useState(
-    canFilter && emptyRowCount >= MANY_EMPTY_ROWS
-  );
-  const visibleRows = canFilter && showOnlyActive ? activeRows : grid.rows;
 
   return (
     <div className="grid gap-4">

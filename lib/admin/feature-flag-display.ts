@@ -64,11 +64,14 @@ export function buildFeatureFlagRow(
       tone: frozen ? "warning" : "planned",
     },
     stateBadge: {
+      // #648: a frozen surface reads as a sequence — enabled, then live — not a
+      // contradictory "On"/"Held off". "Enabled — pending go-ahead" is the
+      // switch-on-but-not-yet-verified state; "Live" is verified and serving.
       label: frozen
         ? resolved
-          ? "On"
+          ? "Live"
           : enabled
-            ? "Held off"
+            ? "Enabled — pending go-ahead"
             : "Locked off"
         : resolved
           ? navVis
