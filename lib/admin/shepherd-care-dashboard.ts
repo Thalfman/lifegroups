@@ -103,6 +103,30 @@ export type CareDashboardSummary = {
   outstandingFollowUps: number;
 };
 
+// #649: the three states the Care summary distinguishes so a fresh system never
+// reads as vacuous success. "not_active" — no active leaders, so there is
+// nothing to care for yet (the summary shows a neutral setup prompt rather than
+// "everyone is up to date" / "every active leader is covered"). The two active
+// states tell apart outstanding care work from a genuine all-clear.
+export type CareCoverageState = "not_active" | "active_with_gaps" | "caught_up";
+
+export function resolveCareCoverageState(
+  summary: CareDashboardSummary,
+  options: { coverageAvailable: boolean }
+): CareCoverageState {
+  if (summary.totalActiveShepherds === 0) return "not_active";
+  const hasGaps =
+    summary.needsAttention > 0 ||
+    summary.overdueTouchpoints > 0 ||
+    summary.notContactedRecently > 0 ||
+    summary.noCareProfile > 0 ||
+    summary.outstandingFollowUps > 0 ||
+    // Only count unassigned coverage as a gap when the coverage read succeeded —
+    // a failed read is "unknown", not "everyone unassigned".
+    (options.coverageAvailable && summary.unassignedCoverage > 0);
+  return hasGaps ? "active_with_gaps" : "caught_up";
+}
+
 export type ShepherdCareDashboardModel = {
   summary: CareDashboardSummary;
   attentionQueue: CareAttentionItem[];

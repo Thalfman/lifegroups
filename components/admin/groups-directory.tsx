@@ -65,6 +65,8 @@ import {
   isGroupsViewSnapshot,
   type GroupsViewSnapshot,
 } from "@/components/admin/groups/view-snapshot";
+import { effectiveGroupsViewMode } from "@/components/admin/groups/view-mode";
+import { isTaskListTab } from "@/lib/dashboard/group-list-tabs";
 import { GroupCard } from "@/components/admin/groups/group-card";
 import { GroupEditorDrawer } from "@/components/admin/groups/group-editor-drawer";
 import { GroupsTable } from "@/components/admin/groups/groups-table";
@@ -133,12 +135,20 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   const initialTab = props.initialTab ?? "all";
   const [tab, setTab] = useState<ListTab>(initialTab);
 
-  // Card⇄table view mode and the table's sort. SSR + the first client render
-  // use these render-time defaults ("cards", sorted by group name ascending) so
-  // server and client markup match; usePersistedViewState then adopts the
-  // admin's saved choice after its restore effect (no hydration flash). The
-  // preference is local, per-browser, and profile-scoped (#325).
+  // Card⇄table view mode and the table's sort. `mode` is the admin's persisted
+  // browsing preference — local, per-browser, profile-scoped (#325) — which
+  // drives the `all`/`archived`/attention tabs. SSR + the first client render
+  // use these render-time defaults so server and client markup match;
+  // usePersistedViewState then adopts the saved choice after its restore effect.
   const [mode, setMode] = useState<ViewMode>("table");
+  // #650: the task tabs (Needs setup / Needs health check) default to card
+  // layout. `taskViewOverride` lets the admin flip a task tab to a table for the
+  // current visit; it is intentionally ephemeral (never persisted, so it can't
+  // change the global browsing default) and resets each time the active tab
+  // changes, so arriving on a task tab always lands on the card view.
+  const [taskViewOverride, setTaskViewOverride] = useState<ViewMode | null>(
+    null
+  );
   // Sort key + direction live in one state object so the header click handler
   // computes both from a single functional update — nesting one setter inside
   // another's updater would double-fire under React StrictMode's intentional
@@ -165,6 +175,30 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   useValueChange(initialTab, (tab) => {
     setTab(tab);
   });
+
+  // Reset the per-visit task-tab view override whenever the active tab changes,
+  // so each arrival on a task tab starts from its card default (#650). Switching
+  // away and back re-defaults to cards; a non-task tab ignores the override.
+  useValueChange(tab, () => {
+    setTaskViewOverride(null);
+  });
+
+  // The layout actually rendered: task tabs default to cards (unless flipped for
+  // this visit), every other tab follows the persisted browsing preference.
+  const effectiveMode = effectiveGroupsViewMode({
+    tab,
+    browsingMode: mode,
+    taskOverride: taskViewOverride,
+  });
+  const onModeChange = useCallback(
+    (next: ViewMode) => {
+      // On a task tab, record an ephemeral per-visit override; elsewhere, update
+      // the persisted browsing preference.
+      if (isTaskListTab(tab)) setTaskViewOverride(next);
+      else setMode(next);
+    },
+    [tab]
+  );
 
   usePersistedViewState<GroupsViewSnapshot>({
     surface: "groups",
@@ -346,7 +380,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   // Setters stay plain useState updates so the persisted-state restore is
   // untouched and SSR still emits the render-time defaults (no hydration flash).
   const deferredSort = useDeferredValue(sort);
-  const deferredMode = useDeferredValue(mode);
+  const deferredMode = useDeferredValue(effectiveMode);
   const deferredColumns = useDeferredValue(columns);
   const deferredDensity = useDeferredValue(density);
   const trimmed = deferredQuery.trim().toLowerCase();
@@ -356,7 +390,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     query !== deferredQuery ||
     tab !== deferredTab ||
     sort !== deferredSort ||
-    mode !== deferredMode ||
+    effectiveMode !== deferredMode ||
     columns !== deferredColumns ||
     density !== deferredDensity;
 
@@ -478,10 +512,10 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     <section className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="hidden flex-wrap items-center gap-3 md:flex">
-          <ViewModeToggle mode={mode} onModeChange={setMode} />
+          <ViewModeToggle mode={effectiveMode} onModeChange={onModeChange} />
           {/* Density + column controls are table-only — they have no meaning for
               the card layout, so they appear once the admin switches to table. */}
-          {mode === "table" ? (
+          {effectiveMode === "table" ? (
             <>
               <DensityToggle density={density} onDensityChange={setDensity} />
               <ColumnVisibilityMenu

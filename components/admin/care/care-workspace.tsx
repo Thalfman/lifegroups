@@ -17,6 +17,7 @@ import type { DirectoryFilter } from "@/lib/admin/shepherd-care-view";
 import {
   buildShepherdCareDashboardModel,
   countAllAttentionItems,
+  resolveCareCoverageState,
 } from "@/lib/admin/shepherd-care-dashboard";
 import {
   buildCareArea,
@@ -163,6 +164,12 @@ export function buildCareWorkspace({
     windows: care.windows,
     baselines: care.baselines,
   });
+  // #649: the three coverage states. When "not_active" (no active leaders) the
+  // summary cards render their own neutral "not active yet" prompt, so the
+  // all-leaders tab suppresses the otherwise-duplicate Care setup notice.
+  const careCoverageState = resolveCareCoverageState(dashboard.summary, {
+    coverageAvailable: dashboard.coverageAvailable,
+  });
   const totalAttention = countAllAttentionItems(
     care.entries,
     care.assignments,
@@ -256,7 +263,7 @@ export function buildCareWorkspace({
       count: care.entries.length,
       panel: (
         <div className="grid gap-5">
-          {careSetupNotice}
+          {careCoverageState === "not_active" ? null : careSetupNotice}
           <ShepherdCareDashboardSummaryCards
             summary={dashboard.summary}
             coverageAvailable={dashboard.coverageAvailable}

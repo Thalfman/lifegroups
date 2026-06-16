@@ -1,14 +1,26 @@
 import Link from "next/link";
 import { MetricCard } from "@/components/dashboard/cards";
 import { P } from "@/lib/pastoral";
-import type { CareDashboardSummary } from "@/lib/admin/shepherd-care-dashboard";
+import {
+  resolveCareCoverageState,
+  type CareDashboardSummary,
+} from "@/lib/admin/shepherd-care-dashboard";
 import { buildShepherdCareTriageLink } from "@/lib/admin/shepherd-care-view";
+import {
+  FROM_SETUP_PARAM,
+  FROM_SETUP_VALUE,
+} from "@/lib/dashboard/setup-recovery";
 
 function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many;
 }
 
 const LINK_RESET = "block text-inherit no-underline";
+
+// #649: a setup deep-link carrying the ?from=setup marker, so the neutral
+// "not active yet" state lands in the guided setup chain (Home re-focuses the
+// next incomplete step — import / assign leaders) and offers a return path.
+const SETUP_CHAIN_HREF = `/admin?${FROM_SETUP_PARAM}=${FROM_SETUP_VALUE}`;
 
 export function ShepherdCareDashboardSummaryCards({
   summary,
@@ -19,6 +31,38 @@ export function ShepherdCareDashboardSummaryCards({
   coverageAvailable: boolean;
   followUpsAvailable: boolean;
 }) {
+  // With no active leaders the per-tile counts are all zero, so the success
+  // metas ("Everyone is up to date", "Every active leader is covered") read as
+  // vacuous truths on a fresh system. Show a single neutral "not active yet"
+  // state that points into setup instead (#649).
+  if (
+    resolveCareCoverageState(summary, { coverageAvailable }) === "not_active"
+  ) {
+    return (
+      <section aria-labelledby="shepherd-care-summary">
+        <h2 id="shepherd-care-summary" className="sr-only">
+          Leader care summary
+        </h2>
+        <div className="rounded-md border border-line bg-surface px-4 py-3.5">
+          <div className="font-display text-lg font-medium text-ink">
+            Care coverage is not active yet
+          </div>
+          <p className="m-0 mt-1 font-sans text-sm text-ink2">
+            There are no active leaders to care for yet, so there is nothing to
+            track. Add and assign leaders to turn on care coverage — then this
+            summary shows who needs a touch.
+          </p>
+          <Link
+            href={SETUP_CHAIN_HREF}
+            className="mt-3 inline-flex font-sans text-sm font-semibold text-clay no-underline hover:underline"
+          >
+            Go to setup -&gt;
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
   const totalMeta =
     summary.totalActiveShepherds === 0
       ? "Import or mark leaders to turn on care coverage"
