@@ -70,6 +70,19 @@ describe("admin_add_person_to_group migration (#643)", () => {
     expect(body).toContain("raise exception 'invalid_role'");
   });
 
+  it("locks the group row and rejects a closed group before any insert", () => {
+    const body = functionBody(sql, FN);
+    expect(body).toContain("for update");
+    expect(body).toContain("v_lifecycle = 'closed'");
+    expect(body).toContain("raise exception 'group_closed'");
+    // The guard must precede the first person insert, so a closed group never
+    // gets an orphan member/leader created against it.
+    const guardAt = body.indexOf("raise exception 'group_closed'");
+    const firstInsertAt = body.indexOf("insert into public.profiles");
+    expect(guardAt).toBeGreaterThan(-1);
+    expect(firstInsertAt).toBeGreaterThan(guardAt);
+  });
+
   it("grants execute only to the new function", () => {
     const grantLines = sql.raw
       .split("\n")

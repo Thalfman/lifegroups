@@ -39,7 +39,7 @@ declare
   v_full_name text;
   v_email text;
   v_phone text;
-  v_group_exists boolean;
+  v_lifecycle public.group_lifecycle_status;
   v_person_id uuid;
   v_assignment_id uuid;
 begin
@@ -68,12 +68,20 @@ begin
   v_email := nullif(lower(btrim(coalesce(p_email, ''))), '');
   v_phone := nullif(btrim(coalesce(p_phone, '')), '');
 
-  select true into v_group_exists
+  -- Lock the group row (FOR UPDATE) and read its lifecycle so a concurrent
+  -- admin_close_group can't slip in between this check and the inserts. A closed
+  -- group's roster is read-only in the UI; reject the stale-form / direct-RPC
+  -- path here too, before creating an orphan person on a roster that should
+  -- require reopening first.
+  select lifecycle_status into v_lifecycle
     from public.groups
    where id = p_group_id
-   limit 1;
-  if v_group_exists is null then
+   for update;
+  if not found then
     raise exception 'missing_group';
+  end if;
+  if v_lifecycle = 'closed' then
+    raise exception 'group_closed';
   end if;
 
   if v_kind = 'leader' then
