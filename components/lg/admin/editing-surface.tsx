@@ -107,7 +107,7 @@ export function EditingSurface({
               type="button"
               onClick={onRequestClose}
               aria-label={closeLabel}
-              className="absolute right-3.5 top-3.5 h-8 w-8 rounded-pill border border-line bg-transparent font-sans text-lg leading-none text-ink2 transition-colors duration-150 hover:bg-surfaceAlt"
+              className="absolute right-3.5 top-[max(14px,env(safe-area-inset-top))] h-8 w-8 rounded-pill border border-line bg-transparent font-sans text-lg leading-none text-ink2 transition-colors duration-150 hover:bg-surfaceAlt"
             >
               ×
             </button>

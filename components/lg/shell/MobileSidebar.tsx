@@ -37,14 +37,16 @@ export function MobileSidebarTrigger({
         <DialogOverlay className="fixed inset-0 z-overlay bg-ink/45" />
         <DialogContent
           aria-describedby={undefined}
-          className="fixed bottom-0 left-0 top-0 z-drawer w-[min(280px,84vw)] overflow-hidden bg-sidebar shadow-softLg"
+          // Edge-anchored under `viewport-fit=cover`: pad the nav off the notch,
+          // home indicator, and left safe area (#651).
+          className="fixed bottom-0 left-0 top-0 z-drawer w-[min(280px,84vw)] overflow-hidden bg-sidebar pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pt-[env(safe-area-inset-top)] shadow-softLg"
         >
           <DialogTitle className="sr-only">Navigation</DialogTitle>
           <DialogClose asChild>
             <button
               type="button"
               aria-label="Close navigation"
-              className="absolute right-3.5 top-3.5 z-[2] grid h-8 w-8 place-items-center rounded-sm border border-line bg-surfaceAlt text-ink2"
+              className="absolute right-3.5 top-[max(14px,env(safe-area-inset-top))] z-[2] grid h-8 w-8 place-items-center rounded-sm border border-line bg-surfaceAlt text-ink2"
             >
               <Icon name="x" size={15} />
             </button>

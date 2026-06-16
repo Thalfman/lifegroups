@@ -255,14 +255,15 @@ async function expectNoHorizontalOverflow(region: Locator): Promise<void> {
   ).toBeLessThanOrEqual(1);
 }
 
-// Each primary action's box sits inside the 375px viewport, and the action
-// itself receives the hit at its own centre (nothing covers it). Disabled
-// controls set `pointer-events: none`, so the hit-test is skipped for them —
-// the in-viewport box check still applies.
+// Each primary action's box sits fully inside the viewport on all four edges,
+// and the action itself receives the hit at its own centre (nothing covers it).
+// Disabled controls set `pointer-events: none`, so only the hit-test is skipped
+// for them — the in-viewport box check (all four edges) still applies.
 async function expectPrimaryUnobstructed(
   page: Page,
   primary: Locator
 ): Promise<void> {
+  const viewportHeight = page.viewportSize()?.height ?? PHONE.height;
   const box = await boundingBoxOf(primary);
   expect(
     box.x,
@@ -272,6 +273,17 @@ async function expectPrimaryUnobstructed(
     box.x + box.width,
     `primary action runs past the 375px viewport (right edge ${box.x + box.width}px)`
   ).toBeLessThanOrEqual(PHONE.width + 1);
+  // Vertical bounds matter for the (initially disabled) submit bars: a primary
+  // clipped under the top edge or the home indicator must fail, not slip through
+  // the disabled early-return below.
+  expect(
+    box.y,
+    "primary action clipped at the top edge"
+  ).toBeGreaterThanOrEqual(-1);
+  expect(
+    box.y + box.height,
+    `primary action runs past the bottom edge (${box.y + box.height}px > ${viewportHeight}px)`
+  ).toBeLessThanOrEqual(viewportHeight + 1);
 
   if (await primary.isDisabled().catch(() => false)) return;
 
@@ -286,10 +298,54 @@ async function expectPrimaryUnobstructed(
   ).toBe(true);
 }
 
+// The full-screen editing sheet pads BOTH edges that can fall under the notch /
+// home indicator: the header carries a top inset and the footer (or, when there
+// is no footer, the scrollable content area) carries a bottom inset. Each is
+// checked on its specific element — required edge class AND computed padding, so
+// a dropped edge or an inset utility that stops emitting CSS both fail.
+async function expectEditingSheetSafeArea(dialog: Locator): Promise<void> {
+  const header = dialog.locator("> header");
+  await expect(header).toBeVisible();
+  expect(
+    (await header.getAttribute("class")) ?? "",
+    "drawer header must carry a top safe-area inset"
+  ).toContain("env(safe-area-inset-top)");
+  const headerPadTop = await header.evaluate((el) =>
+    parseFloat(getComputedStyle(el as Element).paddingTop)
+  );
+  expect(
+    headerPadTop,
+    `drawer header paddingTop ${headerPadTop}px lost its base inset`
+  ).toBeGreaterThanOrEqual(18 - SLACK);
+
+  const footer = dialog.locator("> footer");
+  const bottomEdge =
+    (await footer.count()) > 0
+      ? footer
+      : dialog.locator("> div.overflow-y-auto");
+  await expect(bottomEdge).toBeVisible();
+  expect(
+    (await bottomEdge.getAttribute("class")) ?? "",
+    "drawer bottom edge must carry a bottom safe-area inset"
+  ).toContain("env(safe-area-inset-bottom)");
+  const bottomPad = await bottomEdge.evaluate((el) =>
+    parseFloat(getComputedStyle(el as Element).paddingBottom)
+  );
+  expect(
+    bottomPad,
+    `drawer bottom paddingBottom ${bottomPad}px lost its base inset`
+  ).toBeGreaterThanOrEqual(14 - SLACK);
+}
+
 for (const flow of FLOWS) {
   test.describe(`mobile flow — ${flow.name} (#651)`, () => {
     test.beforeEach(async ({ page }) => {
-      await page.setViewportSize(PHONE);
+      // Pin every project to the 375px floor. The WebKit project already opens
+      // at 375 via its iPhone descriptor (an isMobile context, where resizing is
+      // a no-op), so only the wider Chromium projects need the resize.
+      if (page.viewportSize()?.width !== PHONE.width) {
+        await page.setViewportSize(PHONE);
+      }
     });
 
     test("primary actions are ≥44px and every control clears 24px", async ({
@@ -360,16 +416,7 @@ for (const flow of FLOWS) {
 
       if (!flow.isDrawer) return;
       await flow.open(page, "click");
-      const region = flow.region(page);
-      const honorsSafeArea = await region.evaluate((node) =>
-        [node, ...Array.from(node.querySelectorAll("*"))].some((el) =>
-          (el.getAttribute("class") ?? "").includes("safe-area-inset")
-        )
-      );
-      expect(
-        honorsSafeArea,
-        "the full-screen editing sheet must pad itself with env(safe-area-inset-*)"
-      ).toBe(true);
+      await expectEditingSheetSafeArea(flow.region(page));
     });
 
     test("WebKit: the flow opens and an in-drawer field focuses via touch", async ({

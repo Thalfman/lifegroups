@@ -63,18 +63,16 @@ export default defineConfig({
       },
     },
     // WebKit (Safari-engine) mobile project (#651) — the closest faithful proxy
-    // to iPhone Safari, standing in for the unstaffed physical-device pass. It
-    // runs the four priority-flow assertions under the WebKit engine with touch
-    // enabled, so the spec's WebKit-only safe-area + touch checks exercise a real
-    // touch engine at the 375px floor. CI installs `webkit` alongside `chromium`.
+    // to iPhone Safari, standing in for the unstaffed physical-device pass. The
+    // iPhone 13 descriptor carries WebKit + `isMobile` (so the meta viewport and
+    // `viewport-fit=cover` count) + `hasTouch`, and the viewport is pinned to the
+    // 375px floor. CI installs `webkit` alongside `chromium`.
     {
       name: "mobile-webkit",
       testMatch: /mobile-flows\.spec\.ts/,
       use: {
-        ...devices["Desktop Safari"],
-        browserName: "webkit",
+        ...devices["iPhone 13"],
         viewport: { width: 375, height: 812 },
-        hasTouch: true,
       },
     },
   ],
