@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { adminCreateMember } from "@/app/(protected)/admin/people/actions";
+import {
+  adminCreateMember,
+  adminAddPersonToGroup,
+} from "@/app/(protected)/admin/people/actions";
 import {
   fieldHintClassName,
   fieldInputClassName,
@@ -22,14 +25,19 @@ export function MemberForm({
   onDirty,
   onCancel,
   onPendingChange,
+  // Group roster create-and-assign (#643): when set, the same form creates the
+  // member AND puts them on this group in one atomic audited write (via
+  // adminAddPersonToGroup) instead of only creating the directory record.
+  assignToGroup,
 }: {
   onSaved?: () => void;
   onDirty?: () => void;
   onCancel?: () => void;
   onPendingChange?: (pending: boolean) => void;
+  assignToGroup?: { groupId: string; groupName: string };
 } = {}) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
-    adminCreateMember,
+    assignToGroup ? adminAddPersonToGroup : adminCreateMember,
     { resetOnSuccess: true }
   );
 
@@ -53,9 +61,18 @@ export function MemberForm({
       onChange={onDirty}
       className="grid gap-3"
     >
+      {assignToGroup ? (
+        <>
+          <input type="hidden" name="group_id" value={assignToGroup.groupId} />
+          <input type="hidden" name="kind" value="member" />
+        </>
+      ) : null}
       <p className={formNoteClassName}>
         Members are participant records &mdash; they don&rsquo;t sign in. Email
         and phone are optional; capture whatever contact info you have.
+        {assignToGroup
+          ? ` They'll be added straight onto ${assignToGroup.groupName}.`
+          : ""}
       </p>
       <div className={formGridClassName}>
         <div>
@@ -108,7 +125,11 @@ export function MemberForm({
           size="md"
           disabled={pending || !canSubmit}
         >
-          {pending ? "Saving…" : "Add member"}
+          {pending
+            ? "Saving…"
+            : assignToGroup
+              ? "Add member to group"
+              : "Add member"}
         </Button>
         {onCancel ? (
           <Button
@@ -127,7 +148,14 @@ export function MemberForm({
           Enter a full name to enable Add member.
         </p>
       ) : null}
-      <FormStatus state={state} successText="Member added." />
+      <FormStatus
+        state={state}
+        successText={
+          assignToGroup
+            ? `Member added to ${assignToGroup.groupName}.`
+            : "Member added."
+        }
+      />
     </form>
   );
 }
