@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   GROUP_LIST_TAB_KEYS,
+  isTaskListTab,
   resolveGroupListTab,
+  TASK_LIST_TABS,
 } from "@/lib/dashboard/group-list-tabs";
 
 describe("resolveGroupListTab", () => {
@@ -30,5 +32,19 @@ describe("resolveGroupListTab", () => {
     expect(resolveGroupListTab(undefined)).toBe("all");
     expect(resolveGroupListTab("")).toBe("all");
     expect(resolveGroupListTab("needs-care")).toBe("all");
+  });
+});
+
+describe("isTaskListTab (#650)", () => {
+  it("treats only the setup / health-check task tabs as task-shaped", () => {
+    expect(TASK_LIST_TABS).toEqual(["needs_setup", "needs_health_check"]);
+    expect(isTaskListTab("needs_setup")).toBe(true);
+    expect(isTaskListTab("needs_health_check")).toBe(true);
+  });
+
+  it("leaves the global default and browsing tabs untouched", () => {
+    expect(isTaskListTab("all")).toBe(false);
+    expect(isTaskListTab("needs_attention")).toBe(false);
+    expect(isTaskListTab("archived")).toBe(false);
   });
 });
