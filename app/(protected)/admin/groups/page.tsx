@@ -49,6 +49,7 @@ export default async function AdminGroupsPage({
           viewerId={viewerId}
           isSuperAdmin={isSuperAdmin}
           initialTab={initialTab}
+          fromSetup={fromSetup}
         />
       </PageBody>
     </>

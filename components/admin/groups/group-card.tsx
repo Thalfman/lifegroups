@@ -50,6 +50,7 @@ export const GroupCard = memo(function GroupCard({
   defaults,
   onEdit,
   isSuperAdmin,
+  fromSetup = false,
 }: {
   group: GroupsRow;
   status: GroupStatus;
@@ -63,6 +64,9 @@ export const GroupCard = memo(function GroupCard({
   // stays a read-only row — editing no longer happens inline.
   onEdit: (group: GroupsRow) => void;
   isSuperAdmin: boolean;
+  // ADR 0027: carry the setup-return marker into the detail link so the roster
+  // work (Assign leaders/members) keeps the "← Back to setup" affordance.
+  fromSetup?: boolean;
 }) {
   const isArchived = status.lifecycle === "archived";
   // Repeated row actions name their group plus a stable discriminator so two
@@ -93,7 +97,7 @@ export const GroupCard = memo(function GroupCard({
         {/* Zone 6 — Actions */}
         <div className="flex flex-wrap items-center justify-end gap-2">
           <LinkButton
-            href={`/admin/groups/${group.id}`}
+            href={`/admin/groups/${group.id}${fromSetup ? "?from=setup" : ""}`}
             aria-label={`View ${groupLabel}`}
             variant="solid"
             size="sm"

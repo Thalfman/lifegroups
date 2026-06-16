@@ -7,6 +7,7 @@ import { PasswordResetForm } from "@/components/admin/forms/password-reset-form"
 import { CoverageAssignForm } from "@/components/admin/forms/coverage-assign-form";
 import { CoverageEndForm } from "@/components/admin/forms/coverage-end-form";
 import { PeopleImportForm } from "@/components/admin/forms/people-import-form";
+import { SetupReturnBanner } from "@/components/lg/admin/setup-return-banner";
 import { StatusBadge } from "@/components/admin/console-status";
 import { listAccountStatusProfiles } from "@/lib/admin/super-admin-console-model";
 import type { SuperAdminConsoleData } from "@/components/admin/super-admin/console-data";
@@ -126,6 +127,10 @@ function AccountManagementCard({ data }: { data: SuperAdminConsoleData }) {
 function PeopleImportCard() {
   return (
     <Panel id="people-import">
+      {/* ADR 0027: this panel is the target of the setup checklist's "Import
+          people" deep-link for super admins; the console scrolls here on the
+          hash, so the return affordance lives at the target, not page-top. */}
+      <SetupReturnBanner />
       <PanelTitle>People import</PanelTitle>
       <p className="m-0 font-sans text-sm text-ink2">
         Paste CSV to create leader profiles and member records in one audited

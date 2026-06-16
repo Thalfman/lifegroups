@@ -18,6 +18,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import {
+  BackToSetupLink,
+  isFromSetup,
+} from "@/components/lg/admin/back-to-setup-link";
 import { Card } from "@/components/lg/Card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -57,7 +61,7 @@ import type { AttendanceSessionStatus } from "@/types/enums";
 export const dynamic = "force-dynamic";
 
 type Params = { groupId: string };
-type Search = { tab?: string };
+type Search = { tab?: string; from?: string };
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -97,6 +101,11 @@ export default async function AdminGroupDetailPage({
   const { groupId } = await params;
   const search = (await searchParams) ?? {};
   const tab: GroupDetailTab = resolveTab(search.tab);
+  // ADR 0027: arrived from a setup deep-link (via the Groups list). Keep the
+  // "← Back to setup" affordance here — this is where the roster work (Assign
+  // leaders/members) actually happens — and preserve the marker across tabs.
+  const fromSetup = isFromSetup(search.from);
+  const tabMarker = fromSetup ? "&from=setup" : "";
 
   const session = await requireAdmin();
   // Gates the super-admin-only "Reset attention" control inside the shared
@@ -130,12 +139,16 @@ export default async function AdminGroupDetailPage({
       />
       <PageBody maxWidth={920}>
         <div className="grid gap-5">
-          <Link
-            href="/admin/groups"
-            className="font-sans text-sm text-ink2 no-underline"
-          >
-            ← Back to groups
-          </Link>
+          {fromSetup ? (
+            <BackToSetupLink className="w-fit font-sans text-sm font-semibold text-ink2 no-underline hover:text-ink" />
+          ) : (
+            <Link
+              href="/admin/groups"
+              className="font-sans text-sm text-ink2 no-underline"
+            >
+              ← Back to groups
+            </Link>
+          )}
 
           <div
             role="tablist"
@@ -149,7 +162,7 @@ export default async function AdminGroupDetailPage({
                   key={t.key}
                   role="tab"
                   aria-selected={active}
-                  href={`/admin/groups/${groupId}?tab=${t.key}`}
+                  href={`/admin/groups/${groupId}?tab=${t.key}${tabMarker}`}
                   className={cn(
                     "inline-flex items-center rounded-pill px-3.5 py-2 font-sans text-sm no-underline transition-colors duration-150",
                     active

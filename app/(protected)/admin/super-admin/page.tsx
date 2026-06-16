@@ -8,10 +8,6 @@ import { TestAccountsPanel } from "@/components/admin/test-accounts-panel";
 import type { AssignableProfile } from "@/components/admin/forms/role-change-form";
 import type { ChecklistRow } from "@/components/admin/system-status-checklist";
 import { requireSuperAdmin } from "@/lib/auth/session";
-import {
-  BackToSetupLink,
-  isFromSetup,
-} from "@/components/lg/admin/back-to-setup-link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { testAccountsStatus } from "./test-accounts-actions";
 import {
@@ -418,16 +414,11 @@ function buildTestAccountsSummary(
   };
 }
 
-export default async function AdminSuperAdminPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ from?: string | string[] }>;
-}) {
+export default async function AdminSuperAdminPage() {
   const session = await requireSuperAdmin();
   const data = await loadData(session.profile.id);
   const initialTestAccounts = await testAccountsStatus();
   const testAccountsSummary = buildTestAccountsSummary(initialTestAccounts);
-  const fromSetup = isFromSetup((await searchParams)?.from);
 
   return (
     <>
@@ -437,10 +428,11 @@ export default async function AdminSuperAdminPage({
         lede="Owner and operator console for launch readiness, access, configuration, diagnostics, audit, and guarded danger actions."
         maxWidth={CONSOLE_MAX_WIDTH}
       />
+      {/* ADR 0027: the setup "Import people" deep-link lands deep in the
+          console (the People-import panel, via #people-import); the return
+          affordance renders AT that panel (SetupReturnBanner), not page-top,
+          since the hash handler scrolls past anything up here. */}
       <PageBody maxWidth={CONSOLE_MAX_WIDTH}>
-        {fromSetup ? (
-          <BackToSetupLink className="mb-3 block w-fit font-sans text-xs font-semibold text-ink2 no-underline hover:text-ink" />
-        ) : null}
         <SuperAdminConsoleShell
           data={data}
           testAccountsSummary={testAccountsSummary}

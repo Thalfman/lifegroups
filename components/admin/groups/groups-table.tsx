@@ -90,6 +90,7 @@ const GroupTableRowView = memo(function GroupTableRowView({
   defaults,
   onEdit,
   isSuperAdmin,
+  fromSetup,
 }: {
   group: GroupsRow;
   status: GroupStatus;
@@ -102,6 +103,7 @@ const GroupTableRowView = memo(function GroupTableRowView({
   defaults: MetricDefaults;
   onEdit: (group: GroupsRow) => void;
   isSuperAdmin: boolean;
+  fromSetup: boolean;
 }) {
   const show = (column: GroupsTableOptionalColumn) =>
     isColumnShown(shownColumns, column);
@@ -165,7 +167,7 @@ const GroupTableRowView = memo(function GroupTableRowView({
       <td className={cn(cell, "text-right")}>
         <div className="inline-flex flex-wrap justify-end gap-1.5">
           <LinkButton
-            href={`/admin/groups/${group.id}`}
+            href={`/admin/groups/${group.id}${fromSetup ? "?from=setup" : ""}`}
             aria-label={`View ${groupLabel}`}
             variant="ghost"
             size="sm"
@@ -197,6 +199,7 @@ export function GroupsTable({
   defaults,
   onEdit,
   isSuperAdmin,
+  fromSetup = false,
 }: {
   rows: GroupTableRow[];
   sortKey: GroupsTableSortKey;
@@ -209,6 +212,7 @@ export function GroupsTable({
   defaults: MetricDefaults;
   onEdit: (group: GroupsRow) => void;
   isSuperAdmin: boolean;
+  fromSetup?: boolean;
 }) {
   // Render the structural "group" column plus only the optional columns the
   // admin has chosen to show, keeping the table's fixed render order.
@@ -289,6 +293,7 @@ export function GroupsTable({
               defaults={defaults}
               onEdit={onEdit}
               isSuperAdmin={isSuperAdmin}
+              fromSetup={fromSetup}
             />
           ))}
         </tbody>
