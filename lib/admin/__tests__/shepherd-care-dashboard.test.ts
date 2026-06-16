@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildShepherdCareDashboardModel,
   countAllAttentionItems,
+  resolveCareCoverageState,
   type CareAttentionReason,
+  type CareDashboardSummary,
 } from "@/lib/admin/shepherd-care-dashboard";
 import type {
   ActiveShepherdCoverageAssignmentSummary,
@@ -539,6 +541,71 @@ describe("buildShepherdCareDashboardModel", () => {
       ]);
       expect(reasons).not.toContain("stale_last_contact");
       expect(reasons).toContain("no_over_shepherd");
+    });
+  });
+
+  // #649: the three coverage states the Care summary distinguishes, so a fresh
+  // system reads as "not active yet" rather than vacuous success.
+  describe("resolveCareCoverageState", () => {
+    function summary(
+      overrides: Partial<CareDashboardSummary> = {}
+    ): CareDashboardSummary {
+      return {
+        totalActiveShepherds: 0,
+        needsAttention: 0,
+        overdueTouchpoints: 0,
+        notContactedRecently: 0,
+        noCareProfile: 0,
+        unassignedCoverage: 0,
+        overdueFollowUps: 0,
+        outstandingFollowUps: 0,
+        ...overrides,
+      };
+    }
+
+    it("is not_active when there are no active leaders", () => {
+      expect(
+        resolveCareCoverageState(summary(), { coverageAvailable: true })
+      ).toBe("not_active");
+      // Outstanding gaps are vacuous with zero leaders, so it stays not_active.
+      expect(
+        resolveCareCoverageState(summary({ unassignedCoverage: 3 }), {
+          coverageAvailable: true,
+        })
+      ).toBe("not_active");
+    });
+
+    it("is caught_up when leaders exist and nothing needs attention", () => {
+      expect(
+        resolveCareCoverageState(summary({ totalActiveShepherds: 4 }), {
+          coverageAvailable: true,
+        })
+      ).toBe("caught_up");
+    });
+
+    it("is active_with_gaps when leaders exist and a gap is present", () => {
+      expect(
+        resolveCareCoverageState(
+          summary({ totalActiveShepherds: 4, needsAttention: 1 }),
+          { coverageAvailable: true }
+        )
+      ).toBe("active_with_gaps");
+      expect(
+        resolveCareCoverageState(
+          summary({ totalActiveShepherds: 4, unassignedCoverage: 2 }),
+          { coverageAvailable: true }
+        )
+      ).toBe("active_with_gaps");
+    });
+
+    it("does not treat unassigned coverage as a gap when the read is unavailable", () => {
+      // A failed coverage read is "unknown", not "everyone unassigned".
+      expect(
+        resolveCareCoverageState(
+          summary({ totalActiveShepherds: 4, unassignedCoverage: 4 }),
+          { coverageAvailable: false }
+        )
+      ).toBe("caught_up");
     });
   });
 

@@ -139,6 +139,21 @@ describe("buildCareWorkspace", () => {
     );
   });
 
+  it("shows a neutral not-active care state that deep-links into setup, not vacuous success (#649)", () => {
+    // The default fixture has no active care leaders.
+    const workspace = buildCareWorkspace(workspaceInput());
+    const html = tabMarkup(workspace, "all-leaders");
+
+    expect(html).toContain("Care coverage is not active yet");
+    expect(html).toContain("/admin?from=setup");
+    // The vacuous success metas are gone when there are zero leaders.
+    expect(html).not.toContain("Everyone is up to date");
+    expect(html).not.toContain("Every active leader is covered");
+    // The summary panel is the single neutral state, so the all-leaders tab does
+    // not also stack the Care setup notice.
+    expect(html).not.toContain("Care setup path");
+  });
+
   it("points to coverage setup when leaders exist but coverage is unassigned", () => {
     const workspace = buildCareWorkspace(
       workspaceInput({
