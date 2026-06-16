@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCareArea,
-  combinedOpenFollowUpCount,
+  openFollowUpCountsByQueue,
   type BuildCareAreaInput,
 } from "@/lib/admin/care-area";
 import type {
@@ -276,7 +276,7 @@ describe("buildCareArea", () => {
 // follow-up queues (care follow-ups about Leaders + the general `follow_ups`
 // queue for groups and tasks). Counting only — the two tables stay separate
 // models; a single-queue merge is explicitly out of scope.
-describe("combinedOpenFollowUpCount (#479)", () => {
+describe("openFollowUpCountsByQueue (#479 / #644)", () => {
   const careFollowUps = [
     { status: "open" as const },
     { status: "in_progress" as const },
@@ -292,31 +292,31 @@ describe("combinedOpenFollowUpCount (#479)", () => {
     { status: "done" as const },
   ];
 
-  it("adds the open (not-done) items of both queues", () => {
+  it("counts each queue's open (not-done) items separately, never merged", () => {
     expect(
-      combinedOpenFollowUpCount({
+      openFollowUpCountsByQueue({
         careFollowUps,
         careFollowUpsAvailable: true,
         generalFollowUps,
         generalFollowUpsAvailable: true,
       })
-    ).toBe(5); // 2 open care + 3 open general
+    ).toEqual({ care: 2, general: 3 });
   });
 
-  it("is 0 when both feeds loaded and are genuinely empty", () => {
+  it("is 0/0 when both feeds loaded and are genuinely empty", () => {
     expect(
-      combinedOpenFollowUpCount({
+      openFollowUpCountsByQueue({
         careFollowUps: [],
         careFollowUpsAvailable: true,
         generalFollowUps: [],
         generalFollowUpsAvailable: true,
       })
-    ).toBe(0);
+    ).toEqual({ care: 0, general: 0 });
   });
 
-  it("suppresses the badge when the care feed failed (no false low count)", () => {
+  it("suppresses the figures when the care feed failed (no false low count)", () => {
     expect(
-      combinedOpenFollowUpCount({
+      openFollowUpCountsByQueue({
         careFollowUps: [],
         careFollowUpsAvailable: false,
         generalFollowUps,
@@ -325,9 +325,9 @@ describe("combinedOpenFollowUpCount (#479)", () => {
     ).toBeUndefined();
   });
 
-  it("suppresses the badge when the general feed failed (no false low count)", () => {
+  it("suppresses the figures when the general feed failed (no false low count)", () => {
     expect(
-      combinedOpenFollowUpCount({
+      openFollowUpCountsByQueue({
         careFollowUps,
         careFollowUpsAvailable: true,
         generalFollowUps: [],

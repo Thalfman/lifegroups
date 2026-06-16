@@ -221,11 +221,17 @@ describe("The two follow-up queues read as a legible split (#479, copy only)", (
     );
   });
 
-  it("the tab badge is the combined open count across both queues", () => {
-    // The badge must come from the shared pure helper (so the count's
-    // definition of "open" and its failed-read suppression stay tested in
-    // lib/admin/__tests__/care-area.test.ts) and must be wired onto the tab.
-    expect(CARE_WORKSPACE).toContain("combinedOpenFollowUpCount({");
-    expect(CARE_WORKSPACE).toContain("count: openFollowUpCount");
+  it("shows two labelled open counts (care vs general), not one combined badge", () => {
+    // The figures come from the shared pure helper (so the definition of "open"
+    // and its failed-read suppression stay tested in
+    // lib/admin/__tests__/care-area.test.ts) and render as two labelled figures
+    // in the panel — never a single merged number that contradicts the
+    // "counts won't match" copy (#644).
+    expect(CARE_WORKSPACE).toContain("openFollowUpCountsByQueue({");
+    expect(CARE_WORKSPACE).toContain("openFollowUpCounts.care");
+    expect(CARE_WORKSPACE).toContain("openFollowUpCounts.general");
+    // The old combined-count badge wiring is gone.
+    expect(CARE_WORKSPACE).not.toContain("combinedOpenFollowUpCount");
+    expect(CARE_WORKSPACE).not.toContain("count: openFollowUpCount");
   });
 });

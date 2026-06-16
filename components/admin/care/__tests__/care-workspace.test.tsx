@@ -112,9 +112,12 @@ describe("buildCareWorkspace", () => {
       "recent-interactions",
       "notes",
     ]);
-    expect(workspace.tabs.find((tab) => tab.key === "follow-ups")?.count).toBe(
-      0
-    );
+    // #644: the Follow-ups tab no longer carries a single combined count badge;
+    // the two queues' open counts render as separate labelled figures in the
+    // panel instead (asserted in care-area + the structural source test).
+    expect(
+      workspace.tabs.find((tab) => tab.key === "follow-ups")?.count
+    ).toBeUndefined();
     expect(workspace.errorBanner).toBeNull();
   });
 
