@@ -433,13 +433,12 @@ export function AdminFollowUpsShell({
         onRequestClose={drawer.requestClose}
         eyebrow="New follow-up"
         title="Add a follow-up"
-        description="Tie it to a guest, member, or group, and assign someone if you want them to own it. Saving adds it to the queue."
+        description="Tie it to a member or group, and assign someone if you want them to own it. Saving adds it to the queue."
         closeLabel="Close new follow-up form"
       >
         <FollowUpCreateForm
           groups={sortedGroups}
           members={members}
-          guests={sortedGuests}
           assignees={sortedAssignees}
           onCancel={drawer.requestClose}
           onDirty={drawer.markDirty}

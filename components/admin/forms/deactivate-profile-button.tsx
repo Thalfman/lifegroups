@@ -4,15 +4,17 @@ import { adminDeactivateProfile } from "@/app/(protected)/admin/people/actions";
 import { ConfirmActionButton } from "./confirm-action-button";
 
 // Exported so the copy stays byte-locked by the confirm-action-button test.
+// "Archive" is the user-facing soft-delete label (CONTEXT.md glossary); the
+// underlying audited RPC (admin_deactivate_profile) is unchanged (#645).
 export function deactivateProfileConfirmMessage(fullName?: string): string {
   return fullName
-    ? `Deactivate ${fullName}? Their leader assignments will also be closed.`
-    : "Deactivate this profile? Their leader assignments will also be closed.";
+    ? `Archive ${fullName}? Their leader assignments will also be closed.`
+    : "Archive this profile? Their leader assignments will also be closed.";
 }
 
 export function DeactivateProfileButton({
   profileId,
-  label = "Deactivate",
+  label = "Archive",
   fullName,
 }: {
   profileId: string;
@@ -25,7 +27,7 @@ export function DeactivateProfileButton({
       confirmMessage={deactivateProfileConfirmMessage(fullName)}
       hiddenFields={[{ name: "profile_id", value: profileId }]}
       idleLabel={label}
-      pendingLabel="Deactivating…"
+      pendingLabel="Archiving…"
       tone="terra"
       ariaLabel={fullName ? `${label} ${fullName}` : undefined}
     />

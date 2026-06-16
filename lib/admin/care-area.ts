@@ -267,31 +267,31 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
   return { needsContact, dueSoon, recentCare, completed };
 }
 
-// #479 — the Follow-ups tab badge: ONE combined open count across BOTH
-// follow-up queues (care follow-ups about Leaders, backed by
-// shepherd_care_follow_ups, plus the generic `follow_ups` queue for groups and
-// tasks). "Open" means not yet done — in-progress and snoozed work is still
-// open work, matching the generic queue's "Open items" default filter. This is
-// counting only, never a merge: the two queues stay separate models. When
-// either feed failed to load the badge is suppressed (undefined) rather than
+// #479 / #644 — the Follow-ups tab surfaces the open count of EACH queue as its
+// own labelled figure ("N care · N general"), never one merged number. The two
+// queues are distinct models tracked independently (care follow-ups about
+// Leaders, backed by shepherd_care_follow_ups, plus the generic `follow_ups`
+// queue for groups and tasks), and the on-page copy says so — "their counts
+// won't match" — so a single combined badge contradicted the page (#644).
+// "Open" means not yet done: in-progress and snoozed work is still open work,
+// matching the generic queue's "Open items" default filter. When either feed
+// failed to load the whole figure is suppressed (undefined) rather than
 // reporting a false low count — the same graceful-degrade contract every Care
 // read follows.
-export function combinedOpenFollowUpCount(input: {
+export function openFollowUpCountsByQueue(input: {
   careFollowUps: Pick<CareFollowUpDashboardRow, "status">[];
   careFollowUpsAvailable: boolean;
   generalFollowUps: Pick<AdminFollowUpEntry, "status">[];
   generalFollowUpsAvailable: boolean;
-}): number | undefined {
+}): { care: number; general: number } | undefined {
   if (!input.careFollowUpsAvailable || !input.generalFollowUpsAvailable) {
     return undefined;
   }
   // The care feed is already not-done at the database level; filter
-  // defensively anyway so a feed change can't quietly inflate the badge.
-  const openCare = input.careFollowUps.filter(
+  // defensively anyway so a feed change can't quietly inflate the count.
+  const care = input.careFollowUps.filter((fu) => fu.status !== "done").length;
+  const general = input.generalFollowUps.filter(
     (fu) => fu.status !== "done"
   ).length;
-  const openGeneral = input.generalFollowUps.filter(
-    (fu) => fu.status !== "done"
-  ).length;
-  return openCare + openGeneral;
+  return { care, general };
 }

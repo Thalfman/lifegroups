@@ -76,10 +76,16 @@ export function HealthRubricEditor({
   // The noun shown in the editor's blurb (e.g. "group" / "leader"), so the same
   // component reads naturally for either rubric.
   subjectLabel = "group",
+  // #642: false when no health_rubrics row exists yet, so `criteria` are the
+  // working in-code defaults rather than a saved rubric. Drives the
+  // "starting defaults" note. Defaults true so callers that pass a real saved
+  // rubric (or don't seed a default) keep their prior behaviour.
+  hasSavedRubric = true,
 }: {
   criteria: RubricCriterion[];
   kind?: "group" | "leader";
   subjectLabel?: string;
+  hasSavedRubric?: boolean;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminSetHealthRubric
@@ -121,6 +127,13 @@ export function HealthRubricEditor({
         weight. The weights must total {RUBRIC_WEIGHT_TOTAL} before you can
         save.
       </p>
+
+      {!hasSavedRubric ? (
+        <p className={formNoteClassName}>
+          These are starting defaults — tune them to your ministry, then Save.
+          Nothing is recorded until you do.
+        </p>
+      ) : null}
 
       <div className="grid gap-3">
         {rows.map((row, idx) => (

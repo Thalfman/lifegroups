@@ -117,4 +117,19 @@ describe("PeopleDirectory role sections", () => {
     expect(more).toBeGreaterThanOrEqual(0);
     expect(inlineDelete).toBeGreaterThan(more);
   });
+
+  it("moves Archive into the row More menu for a non-super-admin (#645)", () => {
+    const html = renderDirectory(
+      [profile({ id: "p-lead", full_name: "Lena Leader", role: "leader" })],
+      { isSuperAdmin: false }
+    );
+
+    // The "More" menu renders even without super-admin (Archive lives inside),
+    // and the destructive action is the reversible "Archive", not "Deactivate".
+    const more = html.indexOf('aria-label="More actions for Lena Leader"');
+    const archive = html.indexOf('aria-label="Archive Lena Leader"');
+    expect(more).toBeGreaterThanOrEqual(0);
+    expect(archive).toBeGreaterThan(more);
+    expect(html).not.toContain(">Deactivate<");
+  });
 });

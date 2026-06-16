@@ -13,7 +13,10 @@ import {
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
-import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
+import {
+  decodeRubricCriteria,
+  DEFAULT_GROUP_RUBRIC_CRITERIA,
+} from "@/lib/admin/health-rubric";
 import {
   fetchAudienceReadinessRules,
   fetchReadinessRule,
@@ -186,7 +189,8 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     defaultsSource: "fallback",
     groups: [],
     groupMetricSettings: [],
-    groupRubricCriteria: [],
+    groupRubricCriteria: DEFAULT_GROUP_RUBRIC_CRITERIA,
+    hasSavedGroupRubric: false,
     leaderRubricCriteria: [],
     groupCategories: [],
     categoriesByAudience: EMPTY_CATEGORIES_BY_AUDIENCE,
@@ -284,9 +288,18 @@ export async function buildSettingsData(
     defaultsSource: defaultsResult.data ? "live" : "fallback",
     groups: groupsResult.data ?? [],
     groupMetricSettings: settingsResult.data ?? [],
-    groupRubricCriteria: decodeRubricCriteria(
-      rubricResult.data?.criteria ?? null
-    ),
+    // #642: when no health_rubrics row exists (and the read didn't fail), seed
+    // the editor with the working in-code default (40/40/20) instead of an
+    // empty/zeroed form, and flag it so the editor shows the "starting defaults"
+    // note. A FAILED read keeps `[]` so it surfaces as "couldn't load" rather
+    // than fabricating a rubric an admin could save over real-but-unread data.
+    // Nothing is persisted until the admin's first save.
+    groupRubricCriteria: rubricResult.data
+      ? decodeRubricCriteria(rubricResult.data.criteria)
+      : batch.errors.groupRubric
+        ? []
+        : DEFAULT_GROUP_RUBRIC_CRITERIA,
+    hasSavedGroupRubric: rubricResult.data != null,
     leaderRubricCriteria: decodeRubricCriteria(
       leaderRubricResult.data?.criteria ?? null
     ),

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useDeferredValue, useMemo, useState } from "react";
+import { Children, memo, useDeferredValue, useMemo, useState } from "react";
 import { DeactivateMemberButton } from "@/components/admin/forms/deactivate-member-button";
 import { DeactivateProfileButton } from "@/components/admin/forms/deactivate-profile-button";
 import { ChangeLeaderRoleForm } from "@/components/admin/forms/change-leader-role-form";
@@ -459,15 +459,20 @@ function ViewPersonLink({ href, name }: { href: string; name: string }) {
   );
 }
 
-function SuperAdminRowDangerActions({
-  entityType,
-  id,
+// A per-row "More" menu (#645). It holds the lower-frequency, heavier actions —
+// Archive (the reversible soft-delete) for any admin, plus the Super-Admin-only
+// permanent Delete — so the row's default state isn't a prominent destructive
+// button. Renders nothing when there are no menu actions for this row (e.g. an
+// already-archived person viewed by a non-super-admin).
+function RowMoreMenu({
   label,
+  children,
 }: {
-  entityType: "profile" | "member";
-  id: string;
   label: string;
+  children: React.ReactNode;
 }) {
+  const items = Children.toArray(children).filter(Boolean);
+  if (items.length === 0) return null;
   return (
     <details className="relative inline-flex">
       <summary
@@ -476,8 +481,8 @@ function SuperAdminRowDangerActions({
       >
         More
       </summary>
-      <div className="absolute right-0 top-[calc(100%+6px)] z-dropdown rounded-md border border-line bg-surface p-2 shadow-softLg">
-        <SuperAdminInlineDelete entityType={entityType} id={id} label={label} />
+      <div className="absolute right-0 top-[calc(100%+6px)] z-dropdown grid gap-2 rounded-md border border-line bg-surface p-2 shadow-softLg">
+        {items}
       </div>
     </details>
   );
@@ -574,19 +579,21 @@ const ProfileRow = memo(function ProfileRow({
                 currentRole={profile.role as "leader" | "co_leader"}
               />
             ) : null}
-            {profile.status === "active" ? (
-              <DeactivateProfileButton
-                profileId={profile.id}
-                fullName={profile.full_name}
-              />
-            ) : null}
-            {isSuperAdmin ? (
-              <SuperAdminRowDangerActions
-                entityType="profile"
-                id={profile.id}
-                label={profile.full_name}
-              />
-            ) : null}
+            <RowMoreMenu label={profile.full_name}>
+              {profile.status === "active" ? (
+                <DeactivateProfileButton
+                  profileId={profile.id}
+                  fullName={profile.full_name}
+                />
+              ) : null}
+              {isSuperAdmin ? (
+                <SuperAdminInlineDelete
+                  entityType="profile"
+                  id={profile.id}
+                  label={profile.full_name}
+                />
+              ) : null}
+            </RowMoreMenu>
           </>
         )}
       </div>
@@ -643,19 +650,21 @@ const MemberRow = memo(function MemberRow({
           href={`/admin/people/member/${member.id}`}
           name={member.full_name}
         />
-        {member.status === "active" ? (
-          <DeactivateMemberButton
-            memberId={member.id}
-            fullName={member.full_name}
-          />
-        ) : null}
-        {isSuperAdmin ? (
-          <SuperAdminRowDangerActions
-            entityType="member"
-            id={member.id}
-            label={member.full_name}
-          />
-        ) : null}
+        <RowMoreMenu label={member.full_name}>
+          {member.status === "active" ? (
+            <DeactivateMemberButton
+              memberId={member.id}
+              fullName={member.full_name}
+            />
+          ) : null}
+          {isSuperAdmin ? (
+            <SuperAdminInlineDelete
+              entityType="member"
+              id={member.id}
+              label={member.full_name}
+            />
+          ) : null}
+        </RowMoreMenu>
       </div>
     </li>
   );

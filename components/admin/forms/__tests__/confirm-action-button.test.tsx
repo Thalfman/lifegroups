@@ -91,21 +91,21 @@ describe("confirmation copy — byte-identical to the pre-#489 modules", () => {
     );
   });
 
-  it("Deactivate profile", () => {
+  it("Archive profile", () => {
     expect(deactivateProfileConfirmMessage("Jane Leader")).toBe(
-      "Deactivate Jane Leader? Their leader assignments will also be closed."
+      "Archive Jane Leader? Their leader assignments will also be closed."
     );
     expect(deactivateProfileConfirmMessage()).toBe(
-      "Deactivate this profile? Their leader assignments will also be closed."
+      "Archive this profile? Their leader assignments will also be closed."
     );
   });
 
-  it("Deactivate member", () => {
+  it("Archive member", () => {
     expect(deactivateMemberConfirmMessage("Sam Member")).toBe(
-      "Deactivate Sam Member? Their active group memberships will be closed today."
+      "Archive Sam Member? Their active group memberships will be closed today."
     );
     expect(deactivateMemberConfirmMessage()).toBe(
-      "Deactivate this member? Their active group memberships will be closed today."
+      "Archive this member? Their active group memberships will be closed today."
     );
   });
 
@@ -164,8 +164,8 @@ describe("six configs — labels, aria-labels, and hidden fields", () => {
     );
     expect(html).toContain('name="profile_id"');
     expect(html).toContain('value="p1"');
-    expect(html).toContain('aria-label="Deactivate Jane Leader"');
-    expect(html).toContain(">Deactivate</button>");
+    expect(html).toContain('aria-label="Archive Jane Leader"');
+    expect(html).toContain(">Archive</button>");
   });
 
   it("DeactivateMemberButton names the person in the aria-label", () => {
@@ -174,8 +174,8 @@ describe("six configs — labels, aria-labels, and hidden fields", () => {
     );
     expect(html).toContain('name="member_id"');
     expect(html).toContain('value="m1"');
-    expect(html).toContain('aria-label="Deactivate Sam Member"');
-    expect(html).toContain(">Deactivate</button>");
+    expect(html).toContain('aria-label="Archive Sam Member"');
+    expect(html).toContain(">Archive</button>");
   });
 
   it("ClearGroupMetricOverridesButton serializes every override field as cleared", () => {

@@ -40,6 +40,19 @@ export type Rubric = {
 // builder rejects a save unless they total this (ADR 0018).
 export const RUBRIC_WEIGHT_TOTAL = 100;
 
+// The working in-code default the Settings editor seeds when no Group Health
+// Rubric has been saved yet (#642), so the operator tunes a sensible 40/40/20
+// starting point instead of staring at a zeroed "0/100" form. It mirrors the
+// three dimensions and weights of BUILT_IN_GROUP_HEALTH_RUBRIC
+// (lib/admin/group-health.ts) and sums to RUBRIC_WEIGHT_TOTAL. Nothing is
+// persisted until the admin's first save — this only changes what the editor
+// shows, never the stored rubric or the grade engine.
+export const DEFAULT_GROUP_RUBRIC_CRITERIA: RubricCriterion[] = [
+  { key: "attendance", label: "Attendance", weight: 40 },
+  { key: "spiritual_growth", label: "Spiritual growth", weight: 40 },
+  { key: "group_question", label: "Group question", weight: 20 },
+];
+
 // ---------------------------------------------------------------------------
 // Score bands: internal-numeric (0–100) floors for each letter (incl. F).
 // ---------------------------------------------------------------------------

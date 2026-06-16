@@ -1,5 +1,4 @@
 import { PageHeader } from "@/components/lg/PageHeader";
-import { AddToHomeScreenButton } from "@/components/pwa/add-to-home-screen-button";
 import { DashboardClient } from "@/components/lg/admin/dashboard/DashboardClient";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -114,7 +113,6 @@ export default async function AdminPage({
         eyebrow="Ministry Admin"
         title="Home"
         lede="What needs your attention first — then the week ahead, the ministry snapshot, and recent activity."
-        actions={<AddToHomeScreenButton />}
       />
       <DashboardClient
         data={data}

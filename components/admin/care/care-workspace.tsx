@@ -20,7 +20,7 @@ import {
 } from "@/lib/admin/shepherd-care-dashboard";
 import {
   buildCareArea,
-  combinedOpenFollowUpCount,
+  openFollowUpCountsByQueue,
 } from "@/lib/admin/care-area";
 import { buildCareAccordion } from "@/lib/admin/care-accordion";
 import type { CareAccordionEnrichment } from "@/lib/supabase/care-accordion-reads";
@@ -29,6 +29,10 @@ import type { GroupsRow } from "@/types/database";
 
 const CARE_GROUP_HEADING = "m-0 font-sans text-sm font-semibold text-ink3";
 const FOLLOW_UPS_LEDE = "m-0 font-sans text-sm text-ink2";
+// #644: the two open-queue figures, shown as one labelled line so the counts
+// read as "N care · N general" rather than a single merged number.
+const FOLLOW_UPS_OPEN_COUNTS =
+  "m-0 flex flex-wrap items-center gap-1 font-sans text-sm text-ink2 [&_strong]:font-semibold [&_strong]:text-ink";
 
 export type CareWorkspaceInput = {
   viewerId: string;
@@ -190,7 +194,7 @@ export function buildCareWorkspace({
     todayIso,
   });
 
-  const openFollowUpCount = combinedOpenFollowUpCount({
+  const openFollowUpCounts = openFollowUpCountsByQueue({
     careFollowUps: care.outstandingFollowUps,
     careFollowUpsAvailable: care.outstandingFollowUpsAvailable,
     generalFollowUps: followUpsData.followUps,
@@ -306,14 +310,30 @@ export function buildCareWorkspace({
     },
     {
       key: "follow-ups",
+      // #644: no single combined count badge on the tab — the two queues are
+      // tracked independently and their counts won't match, so the panel shows
+      // them as two distinct labelled figures instead.
       label: "Follow-ups",
-      count: openFollowUpCount,
       panel: (
         <div className="grid gap-6">
           <p className={FOLLOW_UPS_LEDE}>
             Two queues live here: care follow-ups are about your leaders, and
             general follow-ups cover groups and tasks.
           </p>
+          {openFollowUpCounts ? (
+            <p
+              className={FOLLOW_UPS_OPEN_COUNTS}
+              aria-label={`${openFollowUpCounts.care} open care follow-ups, ${openFollowUpCounts.general} open general follow-ups`}
+            >
+              <span>
+                <strong>{openFollowUpCounts.care}</strong> care
+              </span>
+              <span aria-hidden="true"> &middot; </span>
+              <span>
+                <strong>{openFollowUpCounts.general}</strong> general
+              </span>
+            </p>
+          ) : null}
           <div className="grid gap-9">
             <section className="grid gap-5">
               <SectionHeader

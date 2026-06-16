@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { PLinkButton } from "@/components/pastoral/button";
@@ -41,6 +44,19 @@ const BLOCKER_LABEL: Record<ReadinessPillarKey, string> = {
 
 // Shared cell chrome: lineSoft separators between rows and columns.
 const CELL = "border-b border-r border-lineSoft px-3.5 py-3 align-top";
+
+// A row is "active" when at least one of its top-type cells is applied (and has
+// a readout). The "Show only active cells" filter (#647) hides rows with none.
+function rowHasActiveCell(row: MultiplyGridRow): boolean {
+  return GRID_TYPES.some(
+    (type) => row.cells[type].applied && row.cells[type].readout != null
+  );
+}
+
+// Default the filter to active-only when there are enough empty rows that the
+// full grid reads as dense — but never when no row is active (that would hide
+// everything; the operator should see their categories instead).
+const MANY_EMPTY_ROWS = 3;
 
 function ReadinessBadge({ ready }: { ready: boolean }) {
   return (
@@ -166,6 +182,18 @@ export function MultiplyGridView({
   grid: MultiplyGrid;
   ministryYear: number;
 }) {
+  const activeRows = grid.rows.filter(rowHasActiveCell);
+  const emptyRowCount = grid.rows.length - activeRows.length;
+  // Offer the filter only when it would actually hide something AND there's at
+  // least one active row to keep on screen.
+  const canFilter = emptyRowCount > 0 && activeRows.length > 0;
+  // Hook must run on every render (before any early return) to satisfy
+  // rules-of-hooks.
+  const [showOnlyActive, setShowOnlyActive] = useState(
+    canFilter && emptyRowCount >= MANY_EMPTY_ROWS
+  );
+  const visibleRows = canFilter && showOnlyActive ? activeRows : grid.rows;
+
   if (grid.rows.length === 0) {
     return (
       <div className="grid justify-items-start gap-3.5">
@@ -192,19 +220,33 @@ export function MultiplyGridView({
       </p>
       {/* This grid is read-only; the setup controls live in Settings. Link
           straight to the right tabs so admins don't have to guess routes. */}
-      <div className="flex flex-wrap gap-2.5">
+      <div className="flex flex-wrap items-center gap-2.5">
         <PLinkButton href="/admin/settings?tab=groups" tone="ghost" size="sm">
           Edit group types →
         </PLinkButton>
         <PLinkButton href="/admin/settings?tab=multiply" tone="ghost" size="sm">
           Edit multiplication trigger →
         </PLinkButton>
+        {/* #647: a filter (not a redesign) — hide the category rows that have no
+            active cells so a ministry with many empty categories isn't a wall of
+            blanks. The full matrix stays one toggle away. */}
+        {canFilter ? (
+          <label className="ml-auto inline-flex items-center gap-2 font-sans text-sm text-ink2">
+            <input
+              type="checkbox"
+              checked={showOnlyActive}
+              onChange={(e) => setShowOnlyActive(e.target.checked)}
+            />
+            Show only active cells
+            <span className="text-ink3">({emptyRowCount} hidden)</span>
+          </label>
+        ) : null}
       </div>
 
       {/* Mobile: a stack of category cards (only applied types listed), so the
           grid is readable at 375px without horizontal scroll. Hidden at md+. */}
       <ul className="m-0 grid list-none gap-3 p-0 md:hidden">
-        {grid.rows.map((row) => (
+        {visibleRows.map((row) => (
           <GridCategoryCard key={row.categoryId} row={row} />
         ))}
       </ul>
@@ -234,7 +276,7 @@ export function MultiplyGridView({
             </tr>
           </thead>
           <tbody>
-            {grid.rows.map((row) => (
+            {visibleRows.map((row) => (
               <tr key={row.categoryId}>
                 <th
                   scope="row"

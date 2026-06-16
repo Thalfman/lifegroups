@@ -219,32 +219,43 @@ function GroupHealthEditorBody({
         <FormStatus state={recompute.state} successText="Grade saved." />
       </form>
 
+      {/* One primary action: saving the ratings. The recompute action is
+          demoted to a quiet secondary affordance below so the two no longer
+          read as competing saves. */}
       <div className="mt-1 flex flex-wrap justify-end gap-2.5 border-t border-line pt-3.5">
-        {/* Recompute grades from the last *saved* ratings, so it's disabled while
-            there are unsaved edits — otherwise it would silently discard them. */}
-        <form action={recompute.formAction}>
-          <input type="hidden" name="group_id" value={row.group_id} />
-          <PButton
-            type="submit"
-            tone="ghost"
-            size="sm"
-            disabled={dirty || recompute.pending}
-            aria-label={`Recompute ${row.group_name} grade`}
-            title={dirty ? "Save your rating edits first" : undefined}
-          >
-            {recompute.pending ? "Saving…" : "Save grade only"}
-          </PButton>
-        </form>
         <PButton
           type="submit"
           tone="terra"
           size="sm"
           form={formId}
           disabled={ratings.pending}
-          aria-label={`Save ${row.group_name} health rating`}
+          aria-label={`Save ${row.group_name} health ratings`}
         >
-          {ratings.pending ? "Saving…" : "Save rating"}
+          {ratings.pending ? "Saving…" : "Save ratings"}
         </PButton>
+      </div>
+
+      {/* Recompute grades from the last *saved* ratings, so it's disabled while
+          there are unsaved edits — otherwise it would silently discard them. */}
+      <div className="mt-3.5 grid gap-1.5 border-t border-line pt-3.5">
+        <form action={recompute.formAction} className="grid gap-1.5">
+          <input type="hidden" name="group_id" value={row.group_id} />
+          <PButton
+            type="submit"
+            tone="ghost"
+            size="sm"
+            disabled={dirty || recompute.pending}
+            aria-label={`Save ${row.group_name} current grade to record`}
+            title={dirty ? "Save your rating edits first" : undefined}
+          >
+            {recompute.pending ? "Saving…" : "Save current grade to record"}
+          </PButton>
+          <p className="m-0 font-sans text-xs text-ink2">
+            Writes this month’s grade snapshot from the current rubric — useful
+            after changing the rubric in Settings.
+            {dirty ? " Save your rating edits first." : ""}
+          </p>
+        </form>
       </div>
 
       {isSuperAdmin ? (
