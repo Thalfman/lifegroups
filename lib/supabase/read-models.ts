@@ -28,6 +28,7 @@ import type {
 } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
 import { churchDayStartUtcIso } from "@/lib/shared/church-time";
+import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
 import {
   currentUtcDateIso,
   differenceInDaysIso,
@@ -1105,16 +1106,6 @@ function indexCandidateGroups(
   return m;
 }
 
-function countCandidateGroupMembers(
-  rows: ReadonlyArray<{ group_id: string }>
-): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const r of rows) {
-    m.set(r.group_id, (m.get(r.group_id) ?? 0) + 1);
-  }
-  return m;
-}
-
 function earliestCoShepherdByGroup(
   rows: ReadonlyArray<{ group_id: string; assigned_at: string }>
 ): Map<string, string> {
@@ -1273,8 +1264,11 @@ export async function fetchMultiplicationCandidatesForAdmin(
   }
 
   const groupById = indexCandidateGroups(groupRows, categoryLabelById);
-  const memberCountByGroup = countCandidateGroupMembers(
-    (membershipsRes.data ?? []) as { group_id: string }[]
+  const memberCountByGroup = countActiveMembersByGroup(
+    (membershipsRes.data ?? []) as {
+      group_id: string;
+      status: string | null;
+    }[]
   );
   const coShepherdSinceByGroup = earliestCoShepherdByGroup(
     (leadersRes.data ?? []) as { group_id: string; assigned_at: string }[]
