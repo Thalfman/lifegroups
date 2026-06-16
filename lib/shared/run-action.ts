@@ -264,11 +264,13 @@ async function runWriteActionPipeline<Actor, V, T, D>(
     });
     return { ok: false, errors: [core.mapRpcError(error.message)] };
   }
-  // `data == null` (not `!data`): a widened `D` can carry a legitimately falsy
-  // success value (a `false` flag, a `0` count, an empty object), so only a
-  // genuine null/undefined — the RPC succeeded at the protocol level but
-  // returned nothing — is a no-data failure.
-  if (data == null) {
+  // No-data gate. `data == null` (not `!data`) so a widened `D` can carry a
+  // legitimately falsy success value — a `false` flag, a `0` count, an empty
+  // object. The one falsy value that is still a failure is the empty string:
+  // the default `D = string` path is a bare uuid (and the text channel a count),
+  // and neither is ever `""` on success, so `!data`'s historical rejection of
+  // `""` is preserved here rather than silently committing `{ id: "" }`.
+  if (data == null || (data as unknown) === "") {
     ctx.finish("fail", {
       error_code: "rpc_no_data",
       ...baseFields,

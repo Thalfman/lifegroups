@@ -491,6 +491,21 @@ describe("runAdminWriteAction", () => {
       expect(lastLog().ctx).toMatchObject({ outcome: "ok" });
     });
 
+    it("treats an empty-string return as rpc_no_data on the default string path", async () => {
+      // A bare-uuid (D = string) RPC is never "" on success; rejecting it keeps
+      // the pre-widening `!data` behavior rather than committing { id: "" }.
+      const spec = baseSpec({ rpc: async () => ({ data: "", error: null }) });
+
+      const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+      expect(result).toEqual({ ok: false, errors: ["nothing saved"] });
+      expect(lastLog().ctx).toMatchObject({
+        outcome: "fail",
+        error_code: "rpc_no_data",
+      });
+      expect(mockRevalidatePath).not.toHaveBeenCalled();
+    });
+
     it("still treats a null JSON return as rpc_no_data", async () => {
       const spec: AdminWriteActionSpec<Payload, { flag: unknown }, unknown> = {
         name: "admin.test.null",
