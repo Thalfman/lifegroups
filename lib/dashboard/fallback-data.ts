@@ -22,16 +22,11 @@ import {
   DEMO_SHEPHERD_CARE_SUMMARY,
   DEMO_SUMMARY,
 } from "./demo-seed";
-import { churchTodayIso } from "@/lib/shared/church-time";
+import { addDaysIso, churchTodayIso } from "@/lib/shared/church-time";
 
 // The demo "week ahead" horizon, derived the same way the live assembler does
 // (church-local today + 7 days from the pinned demo `now`) so the no-client
 // demo card gates its launch milestone against the same shared bound as live.
-function addDaysIso(iso: string, days: number): string {
-  const anchor = new Date(`${iso}T00:00:00Z`);
-  anchor.setUTCDate(anchor.getUTCDate() + days);
-  return anchor.toISOString().slice(0, 10);
-}
 const DEMO_WEEK_AHEAD_CUTOFF_ISO = addDaysIso(
   churchTodayIso(new Date(DEMO_NOW_ISO)),
   7

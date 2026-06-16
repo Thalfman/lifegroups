@@ -28,6 +28,7 @@ import type {
 } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
 import { churchDayStartUtcIso } from "@/lib/shared/church-time";
+import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
 import {
   currentUtcDateIso,
   differenceInDaysIso,
@@ -1045,6 +1046,79 @@ export type MultiplicationCandidateEntry = {
   linkedApprentice: MultiplicationCandidateApprentice | null;
 };
 
+// Group projection read for the multiplication planner's batched group facts.
+type MultiplicationGroupProjection = {
+  id: string;
+  audience_category: GroupAudienceCategory | null;
+  category_id: string | null;
+  launched_on: string | null;
+  lifecycle_status: GroupsRow["lifecycle_status"];
+  name: string;
+};
+
+// Return the first non-null read error from a set of batched reads, wrapped
+// with its scope, or null when every read succeeded. Collapses the repetitive
+// per-read error guards in `fetchMultiplicationCandidatesForAdmin`.
+function firstReadError(
+  results: ReadonlyArray<{ scope: string; error: unknown }>
+): Error | null {
+  for (const r of results) {
+    if (r.error) return wrapError(r.scope, r.error);
+  }
+  return null;
+}
+
+function indexApprentices(
+  rows: ReadonlyArray<{
+    id: string;
+    display_name: string;
+    readiness_stage: LeaderReadinessStage;
+  }>
+): Map<string, MultiplicationCandidateApprentice> {
+  const m = new Map<string, MultiplicationCandidateApprentice>();
+  for (const a of rows) {
+    m.set(a.id, {
+      id: a.id,
+      displayName: a.display_name,
+      stage: a.readiness_stage,
+    });
+  }
+  return m;
+}
+
+function indexCandidateGroups(
+  groupRows: ReadonlyArray<MultiplicationGroupProjection>,
+  categoryLabelById: ReadonlyMap<string, string>
+): Map<string, MultiplicationCandidateGroup> {
+  const m = new Map<string, MultiplicationCandidateGroup>();
+  for (const g of groupRows) {
+    m.set(g.id, {
+      id: g.id,
+      name: g.name,
+      audience_category: g.audience_category,
+      launched_on: g.launched_on,
+      lifecycle_status: g.lifecycle_status,
+      category_label: g.category_id
+        ? (categoryLabelById.get(g.category_id) ?? null)
+        : null,
+    });
+  }
+  return m;
+}
+
+function earliestCoShepherdByGroup(
+  rows: ReadonlyArray<{ group_id: string; assigned_at: string }>
+): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const l of rows) {
+    const current = m.get(l.group_id);
+    if (current === undefined || l.assigned_at < current) {
+      m.set(l.group_id, l.assigned_at);
+    }
+  }
+  return m;
+}
+
 // Julian P4: active (non-archived) multiplication candidates enriched with the
 // group facts the readiness helper needs (member count, launch date,
 // co-shepherd tenure). Admin-only via RLS. Batches the group/membership/leader
@@ -1121,69 +1195,39 @@ export async function fetchMultiplicationCandidatesForAdmin(
             .in("id", apprenticeIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
-  if (groupsRes.error) {
-    return {
-      data: null,
-      error: wrapError(
-        "fetchMultiplicationCandidatesForAdmin/groups",
-        groupsRes.error
-      ),
-    };
-  }
-  if (membershipsRes.error) {
-    return {
-      data: null,
-      error: wrapError(
-        "fetchMultiplicationCandidatesForAdmin/memberships",
-        membershipsRes.error
-      ),
-    };
-  }
-  if (leadersRes.error) {
-    return {
-      data: null,
-      error: wrapError(
-        "fetchMultiplicationCandidatesForAdmin/leaders",
-        leadersRes.error
-      ),
-    };
-  }
-  if (apprenticesRes.error) {
-    return {
-      data: null,
-      error: wrapError(
-        "fetchMultiplicationCandidatesForAdmin/apprentices",
-        apprenticesRes.error
-      ),
-    };
-  }
+  const batchError = firstReadError([
+    {
+      scope: "fetchMultiplicationCandidatesForAdmin/groups",
+      error: groupsRes.error,
+    },
+    {
+      scope: "fetchMultiplicationCandidatesForAdmin/memberships",
+      error: membershipsRes.error,
+    },
+    {
+      scope: "fetchMultiplicationCandidatesForAdmin/leaders",
+      error: leadersRes.error,
+    },
+    {
+      scope: "fetchMultiplicationCandidatesForAdmin/apprentices",
+      error: apprenticesRes.error,
+    },
+  ]);
+  if (batchError) return { data: null, error: batchError };
 
-  const apprenticeById = new Map<string, MultiplicationCandidateApprentice>();
-  for (const a of (apprenticesRes.data ?? []) as {
-    id: string;
-    display_name: string;
-    readiness_stage: LeaderReadinessStage;
-  }[]) {
-    apprenticeById.set(a.id, {
-      id: a.id,
-      displayName: a.display_name,
-      stage: a.readiness_stage,
-    });
-  }
+  const apprenticeById = indexApprentices(
+    (apprenticesRes.data ?? []) as {
+      id: string;
+      display_name: string;
+      readiness_stage: LeaderReadinessStage;
+    }[]
+  );
 
   // #398: resolve each group's category_id to its catalog label so the planner
   // buckets by audience × category label. Batch-read the referenced categories
   // (one extra round-trip keyed by the distinct category ids) and map id →
   // label; a null/absent/archived category resolves to null = Uncategorized.
-  type GroupCategoryProjection = {
-    id: string;
-    audience_category: GroupAudienceCategory | null;
-    category_id: string | null;
-    launched_on: string | null;
-    lifecycle_status: GroupsRow["lifecycle_status"];
-    name: string;
-  };
-  const groupRows = (groupsRes.data ?? []) as GroupCategoryProjection[];
+  const groupRows = (groupsRes.data ?? []) as MultiplicationGroupProjection[];
   // Resolve labels for both the groups' categories AND each candidate's own
   // category (type-only candidates have no group but still segment by their
   // cell), so one batched read covers every label the planner needs.
@@ -1219,38 +1263,16 @@ export async function fetchMultiplicationCandidatesForAdmin(
     }
   }
 
-  const groupById = new Map<string, MultiplicationCandidateGroup>();
-  for (const g of groupRows) {
-    groupById.set(g.id, {
-      id: g.id,
-      name: g.name,
-      audience_category: g.audience_category,
-      launched_on: g.launched_on,
-      lifecycle_status: g.lifecycle_status,
-      category_label: g.category_id
-        ? (categoryLabelById.get(g.category_id) ?? null)
-        : null,
-    });
-  }
-
-  const memberCountByGroup = new Map<string, number>();
-  for (const m of (membershipsRes.data ?? []) as { group_id: string }[]) {
-    memberCountByGroup.set(
-      m.group_id,
-      (memberCountByGroup.get(m.group_id) ?? 0) + 1
-    );
-  }
-
-  const coShepherdSinceByGroup = new Map<string, string>();
-  for (const l of (leadersRes.data ?? []) as {
-    group_id: string;
-    assigned_at: string;
-  }[]) {
-    const current = coShepherdSinceByGroup.get(l.group_id);
-    if (current === undefined || l.assigned_at < current) {
-      coShepherdSinceByGroup.set(l.group_id, l.assigned_at);
-    }
-  }
+  const groupById = indexCandidateGroups(groupRows, categoryLabelById);
+  const memberCountByGroup = countActiveMembersByGroup(
+    (membershipsRes.data ?? []) as {
+      group_id: string;
+      status: string | null;
+    }[]
+  );
+  const coShepherdSinceByGroup = earliestCoShepherdByGroup(
+    (leadersRes.data ?? []) as { group_id: string; assigned_at: string }[]
+  );
 
   const entries: MultiplicationCandidateEntry[] = candidates.map(
     (candidate) => ({

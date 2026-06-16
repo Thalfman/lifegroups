@@ -10,7 +10,11 @@
 // retained for backward compatibility with merged migration
 // 20260518140000_phase5a6_group_calendar.sql but ignored everywhere.
 
-import { DAY_INDEX, isoWeekNumberOf } from "@/lib/shared/church-time";
+import {
+  addDaysIso,
+  DAY_INDEX,
+  isoWeekNumberOf,
+} from "@/lib/shared/church-time";
 import type { GroupCalendarEventsRow } from "@/types/database";
 import type {
   GroupCalendarEventStatus,
@@ -121,12 +125,6 @@ export function monthBounds(monthIso: string): {
     firstIso: first.toISOString().slice(0, 10),
     lastIso: last.toISOString().slice(0, 10),
   };
-}
-
-function addDaysIso(iso: string, days: number): string {
-  const anchor = new Date(`${iso}T00:00:00Z`);
-  anchor.setUTCDate(anchor.getUTCDate() + days);
-  return anchor.toISOString().slice(0, 10);
 }
 
 function dayOfWeekIso(iso: string): number {

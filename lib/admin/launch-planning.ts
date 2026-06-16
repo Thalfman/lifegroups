@@ -21,6 +21,7 @@ import type {
 } from "@/types/database";
 import type { LeaderReadinessStage } from "@/types/enums";
 import { isRecord } from "@/lib/admin/validation";
+import { isIsoDate } from "@/lib/admin/validation/shared";
 import { jsonInt, jsonIntOrNull, jsonNumber } from "@/lib/admin/jsonb-decode";
 import {
   effectiveCapacity,
@@ -28,6 +29,7 @@ import {
   type MetricDefaults,
 } from "@/lib/admin/metrics";
 import { apprenticeReadyBy } from "@/lib/admin/leader-pipeline";
+import { subtractDaysIso as subtractDaysIsoUnchecked } from "@/lib/shared/church-time";
 import {
   countActiveMembersByGroup,
   indexOverridesByGroup,
@@ -324,16 +326,15 @@ function clampNonNegative(n: number): number {
 }
 
 // Subtract `days` from an ISO `YYYY-MM-DD` date string using UTC math.
-// Returns null if the input doesn't parse.
+// Returns null if the input doesn't parse — a stronger contract than the
+// always-string canonical `subtractDaysIso` from church-time. Two gates are
+// needed: `isIsoDate` rejects the wrong shape, and the finiteness check rejects
+// well-formed-but-impossible calendar dates (e.g. "2026-13-40", which passes the
+// shape gate but parses to NaN and would make the canonical helper throw).
 function subtractDaysIso(iso: string, days: number): string | null {
-  // Strict format gate so a malformed string can't slide through Date's
-  // forgiving parser. ISO-8601 calendar date only.
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
-  const parsed = new Date(`${iso}T00:00:00Z`);
-  const t = parsed.getTime();
-  if (!Number.isFinite(t)) return null;
-  const moved = new Date(t - days * 24 * 60 * 60 * 1000);
-  return moved.toISOString().slice(0, 10);
+  if (!isIsoDate(iso)) return null;
+  if (!Number.isFinite(new Date(`${iso}T00:00:00Z`).getTime())) return null;
+  return subtractDaysIsoUnchecked(iso, days);
 }
 
 export function computeLaunchPlan(

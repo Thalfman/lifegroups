@@ -93,11 +93,12 @@ function mapFnError(raw: string): string {
   return raw;
 }
 
+// A JWT (header.payload.signature) so error text can't leak a live token into
+// the Super-Admin diagnostics panel.
+const JWT_PATTERN = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
+
 function redact(message: string): string {
-  return message.replace(
-    /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
-    "[REDACTED_JWT]"
-  );
+  return message.replace(JWT_PATTERN, "[REDACTED_JWT]");
 }
 
 async function extractErrorBody(
@@ -166,6 +167,26 @@ function buildErrorLines(args: {
   return lines.map(redact);
 }
 
+// Map an Edge Function failure response to display lines. Both failure paths —
+// the thrown-Response body and the `ok: false` data payload — carry the same
+// shape, so they share one mapping. `tokenForStatus(200)` resolves to the same
+// "db_error" default the data path used inline, so the two paths stay identical.
+function errorLinesFrom(
+  source: Partial<EdgeFnResponse>,
+  status: number | null
+): string[] {
+  const code = source.code ?? source.errors?.[0] ?? tokenForStatus(status);
+  return buildErrorLines({
+    status,
+    code,
+    missing: source.missing,
+    postgrestError: source.postgrestError,
+    duplicateProfileInfo: source.duplicateProfileInfo,
+    extras: source.errors,
+    warnings: source.warnings,
+  });
+}
+
 function readFromForm(input: unknown): Record<string, unknown> {
   if (input instanceof FormData) {
     const out: Record<string, unknown> = {};
@@ -222,18 +243,7 @@ async function runInvite(
 
   if (error) {
     const { status, body } = await extractErrorBody(error);
-    const code = body?.code ?? body?.errors?.[0] ?? tokenForStatus(status);
-    return actionFail(
-      buildErrorLines({
-        status,
-        code,
-        missing: body?.missing,
-        postgrestError: body?.postgrestError,
-        duplicateProfileInfo: body?.duplicateProfileInfo,
-        extras: body?.errors,
-        warnings: body?.warnings,
-      })
-    );
+    return actionFail(errorLinesFrom(body ?? {}, status));
   }
 
   if (!data) {
@@ -241,18 +251,7 @@ async function runInvite(
   }
 
   if (!data.ok) {
-    const code = data.code ?? data.errors?.[0] ?? "db_error";
-    return actionFail(
-      buildErrorLines({
-        status: 200,
-        code,
-        missing: data.missing,
-        postgrestError: data.postgrestError,
-        duplicateProfileInfo: data.duplicateProfileInfo,
-        extras: data.errors,
-        warnings: data.warnings,
-      })
-    );
+    return actionFail(errorLinesFrom(data, 200));
   }
 
   if (

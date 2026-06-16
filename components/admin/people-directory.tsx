@@ -88,6 +88,39 @@ export const PROFILE_SECTIONS: {
   },
 ];
 
+// Empty-state copy for the profile (leaders / oversight) section, factored out
+// of the JSX so the section markup reads as data rather than a four-branch
+// ternary. `filtered` = a search query or non-default status filter is active.
+function emptyProfileMessage(args: {
+  error: string | null;
+  filtered: boolean;
+  scope: DirectoryScope;
+}): string {
+  if (args.error) return `Couldn't load profiles: ${args.error}`;
+  if (args.filtered) {
+    return args.scope === "leaders"
+      ? "No leaders or co-leaders match the current filters."
+      : "No leaders or oversight roles match the current filters.";
+  }
+  return args.scope === "leaders"
+    ? "No leaders or co-leaders yet. Add a person, mark them as a leader, then assign them to a group."
+    : "No leaders or oversight roles yet. Add people, mark leaders, then assign group leaders.";
+}
+
+// Empty-state copy for the members section. Returns null when there are members
+// to show (the section renders rows instead of an empty state).
+function emptyMemberMessage(args: {
+  error: string | null;
+  hasMembers: boolean;
+  filtered: boolean;
+}): string | null {
+  if (args.error) return `Couldn't load members: ${args.error}`;
+  if (args.hasMembers) return null;
+  return args.filtered
+    ? "No members match the current filters."
+    : "No members yet. Add people first, then assign leaders and groups so care coverage can turn on.";
+}
+
 export function PeopleDirectory(props: PeopleDirectoryProps) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
@@ -232,17 +265,11 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
             }
             countLabel={`${visibleProfiles.length} shown`}
             stale={listIsStale}
-            empty={
-              props.errors.profiles
-                ? `Couldn't load profiles: ${props.errors.profiles}`
-                : trimmed || deferredStatusFilter !== "active"
-                  ? scope === "leaders"
-                    ? "No leaders or co-leaders match the current filters."
-                    : "No leaders or oversight roles match the current filters."
-                  : scope === "leaders"
-                    ? "No leaders or co-leaders yet. Add a person, mark them as a leader, then assign them to a group."
-                    : "No leaders or oversight roles yet. Add people, mark leaders, then assign group leaders."
-            }
+            empty={emptyProfileMessage({
+              error: props.errors.profiles,
+              filtered: Boolean(trimmed) || deferredStatusFilter !== "active",
+              scope,
+            })}
           >
             {null}
           </DirectorySection>
@@ -283,15 +310,11 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
           headerDescription="Members take part in groups but don’t sign in. Leaders record their attendance; admins assign them to groups."
           countLabel={`${visibleMembers.length} shown`}
           stale={listIsStale}
-          empty={
-            props.errors.members
-              ? `Couldn't load members: ${props.errors.members}`
-              : visibleMembers.length === 0
-                ? trimmed || deferredStatusFilter !== "active"
-                  ? "No members match the current filters."
-                  : "No members yet. Add people first, then assign leaders and groups so care coverage can turn on."
-                : null
-          }
+          empty={emptyMemberMessage({
+            error: props.errors.members,
+            hasMembers: visibleMembers.length > 0,
+            filtered: Boolean(trimmed) || deferredStatusFilter !== "active",
+          })}
         >
           {visibleMembers.map((m) => (
             <MemberRow

@@ -149,6 +149,145 @@ export function CalendarOccurrenceEditor({
   );
 }
 
+// The modal's title/date/inheritance-note band. Split out of EditorModal so the
+// modal body reads as structure (header · field grid · form actions) rather than
+// one ~330-line block.
+function EditorHeader({
+  occurrence,
+  showClock,
+  clockLabel,
+}: {
+  occurrence: CalendarOccurrenceEditorOccurrence;
+  showClock?: boolean;
+  clockLabel: ReturnType<typeof formatClock>;
+}) {
+  return (
+    <header
+      style={{
+        padding: "18px 22px 6px",
+        display: "grid",
+        gap: 4,
+      }}
+    >
+      <DialogTitle
+        style={{
+          fontFamily: fontSans,
+          fontSize: 11,
+          letterSpacing: 1.5,
+          textTransform: "uppercase",
+          color: P.ink3,
+          fontWeight: 600,
+          margin: 0,
+        }}
+      >
+        {occurrence.isMeetingOccurrence
+          ? "Edit meeting occurrence"
+          : "Edit special occurrence"}
+      </DialogTitle>
+      <DialogDescription
+        style={{
+          fontFamily: fontBody,
+          fontSize: 18,
+          color: P.ink,
+          margin: 0,
+          lineHeight: 1.3,
+        }}
+      >
+        {dateLabel(occurrence.date)}
+        {showClock && clockLabel ? ` · ${clockLabel}` : null}
+      </DialogDescription>
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 12,
+          color: P.ink2,
+          margin: "4px 0 0",
+          lineHeight: 1.45,
+        }}
+      >
+        Meeting time is inherited from the group schedule. To change it, edit
+        the group.
+      </p>
+    </header>
+  );
+}
+
+// The status + gathering-type two-up. Gathering type only shows when the
+// occurrence is "scheduled"; otherwise the empty cell keeps the grid balanced.
+function EditorStatusTypeFields({
+  statusId,
+  typeId,
+  status,
+  onStatusChange,
+  showEventTypeSelect,
+  occurrence,
+}: {
+  statusId: string;
+  typeId: string;
+  status: GroupCalendarEventStatus;
+  onStatusChange: (next: GroupCalendarEventStatus) => void;
+  showEventTypeSelect: boolean;
+  occurrence: CalendarOccurrenceEditorOccurrence;
+}) {
+  return (
+    <div
+      className="lg-m-form-2up"
+      style={{
+        display: "grid",
+        gap: 12,
+        gridTemplateColumns: "1fr 1fr",
+      }}
+    >
+      <div>
+        <label htmlFor={statusId} style={fieldLabelStyle}>
+          Status
+        </label>
+        <select
+          id={statusId}
+          name="status"
+          value={status}
+          onChange={(e) =>
+            onStatusChange(e.target.value as GroupCalendarEventStatus)
+          }
+          style={fieldSelectStyle}
+        >
+          {EVENT_STATUS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {showEventTypeSelect ? (
+        <div>
+          <label htmlFor={typeId} style={fieldLabelStyle}>
+            Gathering type
+          </label>
+          <select
+            id={typeId}
+            name="event_type"
+            defaultValue={
+              occurrence.eventType === "off" ||
+              occurrence.eventType === "cancelled"
+                ? "study"
+                : occurrence.eventType
+            }
+            style={fieldSelectStyle}
+          >
+            {EVENT_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div />
+      )}
+    </div>
+  );
+}
+
 function EditorModal({
   open,
   onClose,
@@ -259,53 +398,11 @@ function EditorModal({
             boxShadow: "0 18px 48px rgba(58, 42, 26, 0.2)",
           }}
         >
-          <header
-            style={{
-              padding: "18px 22px 6px",
-              display: "grid",
-              gap: 4,
-            }}
-          >
-            <DialogTitle
-              style={{
-                fontFamily: fontSans,
-                fontSize: 11,
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
-                color: P.ink3,
-                fontWeight: 600,
-                margin: 0,
-              }}
-            >
-              {occurrence.isMeetingOccurrence
-                ? "Edit meeting occurrence"
-                : "Edit special occurrence"}
-            </DialogTitle>
-            <DialogDescription
-              style={{
-                fontFamily: fontBody,
-                fontSize: 18,
-                color: P.ink,
-                margin: 0,
-                lineHeight: 1.3,
-              }}
-            >
-              {dateLabel(occurrence.date)}
-              {showClock && clockLabel ? ` · ${clockLabel}` : null}
-            </DialogDescription>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: P.ink2,
-                margin: "4px 0 0",
-                lineHeight: 1.45,
-              }}
-            >
-              Meeting time is inherited from the group schedule. To change it,
-              edit the group.
-            </p>
-          </header>
+          <EditorHeader
+            occurrence={occurrence}
+            showClock={showClock}
+            clockLabel={clockLabel}
+          />
 
           <form
             ref={formRef}
@@ -325,61 +422,14 @@ function EditorModal({
               <input type="hidden" name="event_type" value={lockedEventType} />
             ) : null}
 
-            <div
-              className="lg-m-form-2up"
-              style={{
-                display: "grid",
-                gap: 12,
-                gridTemplateColumns: "1fr 1fr",
-              }}
-            >
-              <div>
-                <label htmlFor={statusId} style={fieldLabelStyle}>
-                  Status
-                </label>
-                <select
-                  id={statusId}
-                  name="status"
-                  value={status}
-                  onChange={(e) =>
-                    setStatus(e.target.value as GroupCalendarEventStatus)
-                  }
-                  style={fieldSelectStyle}
-                >
-                  {EVENT_STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {showEventTypeSelect ? (
-                <div>
-                  <label htmlFor={typeId} style={fieldLabelStyle}>
-                    Gathering type
-                  </label>
-                  <select
-                    id={typeId}
-                    name="event_type"
-                    defaultValue={
-                      occurrence.eventType === "off" ||
-                      occurrence.eventType === "cancelled"
-                        ? "study"
-                        : occurrence.eventType
-                    }
-                    style={fieldSelectStyle}
-                  >
-                    {EVENT_TYPE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div />
-              )}
-            </div>
+            <EditorStatusTypeFields
+              statusId={statusId}
+              typeId={typeId}
+              status={status}
+              onStatusChange={setStatus}
+              showEventTypeSelect={showEventTypeSelect}
+              occurrence={occurrence}
+            />
 
             <div>
               <label htmlFor={titleId} style={fieldLabelStyle}>
