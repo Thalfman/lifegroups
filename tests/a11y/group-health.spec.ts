@@ -83,7 +83,7 @@ test.describe("group health triage + editing surface", () => {
     await expect(dialog.getByRole("spinbutton")).toHaveCount(2);
     // The save control carries the group as record context (not a bare "Save").
     await expect(
-      dialog.getByRole("button", { name: "Save Anderson health rating" })
+      dialog.getByRole("button", { name: "Save Anderson health ratings" })
     ).toBeVisible();
 
     // Opening moved focus into the surface.
@@ -124,7 +124,7 @@ test.describe("group health triage + editing surface", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
-  test("editing the ratings disables 'Save grade only' so edits can't be silently discarded", async ({
+  test("editing the ratings disables 'Save current grade to record' so edits can't be silently discarded", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
@@ -133,7 +133,7 @@ test.describe("group health triage + editing surface", () => {
       .click();
     const dialog = page.getByRole("dialog");
     const recompute = dialog.getByRole("button", {
-      name: "Recompute Anderson grade",
+      name: "Save Anderson current grade to record",
     });
     // Enabled until there are unsaved rating edits.
     await expect(recompute).toBeEnabled();
