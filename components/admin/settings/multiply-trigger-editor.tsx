@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminSetReadinessRule,
@@ -616,6 +616,10 @@ function PillarInputs({
   fields: PillarFields;
   update: (patch: Partial<PillarFields>) => void;
 }) {
+  // Unique per rendered pillar row so several editors on one page (Global +
+  // per-type levels) never share a checkbox id; each call renders exactly one
+  // Required control.
+  const reqId = useId();
   switch (pillar) {
     case "interest":
       return (
@@ -623,7 +627,7 @@ function PillarInputs({
           <Required
             checked={fields.interestRequired}
             onChange={(v) => update({ interestRequired: v })}
-            id="interest-req"
+            id={reqId}
           />
           <span className={THRESHOLD_NOTE}>≥</span>
           <input
@@ -645,7 +649,7 @@ function PillarInputs({
           <Required
             checked={fields.capacityRequired}
             onChange={(v) => update({ capacityRequired: v })}
-            id="capacity-req"
+            id={reqId}
           />
           <span className={THRESHOLD_NOTE}>no capacity issue</span>
         </>
@@ -656,7 +660,7 @@ function PillarInputs({
           <Required
             checked={fields.groupRequired}
             onChange={(v) => update({ groupRequired: v })}
-            id="group-req"
+            id={reqId}
           />
           <span className={THRESHOLD_NOTE}>≥</span>
           <LetterSelect
@@ -672,7 +676,7 @@ function PillarInputs({
           <Required
             checked={fields.leaderRequired}
             onChange={(v) => update({ leaderRequired: v })}
-            id="leader-req"
+            id={reqId}
           />
           <span className={THRESHOLD_NOTE}>≥</span>
           <LetterSelect
