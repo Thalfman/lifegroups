@@ -14,8 +14,11 @@ export type ButtonVariant =
   | "destructive";
 export type ButtonSize = "sm" | "md";
 
+// `min-h-[44px] md:min-h-0` floors every button/link-button to the 44px
+// comfortable tap target on phone viewports (#651 mobile-flow regression
+// thresholds), then releases the floor at md+ so desktop density is unchanged.
 const BASE =
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill font-sans text-base font-medium leading-tight no-underline transition duration-150 ease-out active:translate-y-[0.5px] disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-pill font-sans text-base font-medium leading-tight no-underline transition duration-150 ease-out active:translate-y-[0.5px] disabled:pointer-events-none disabled:opacity-50 md:min-h-0";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   // exactly one `primary` per surface — the action the user came to do
