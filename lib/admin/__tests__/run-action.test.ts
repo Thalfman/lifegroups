@@ -38,6 +38,7 @@ import {
   runAdminWriteAction,
   type AdminWriteActionSpec,
   type AuthGate,
+  type ValidationResult,
 } from "@/lib/admin/run-action";
 
 const ACTOR_ID = "11111111-1111-1111-1111-111111111111";
@@ -419,6 +420,96 @@ describe("runAdminWriteAction", () => {
     expect(lastLog().ctx).toMatchObject({
       outcome: "ok",
       target_group_id: "g-9",
+    });
+  });
+
+  // The widened result seam (RpcResult<D>): a JSON- or text-returning RPC
+  // threads its parsed value through `result(data, value)` instead of the
+  // default { id }. This is what lets the Super-Admin danger-zone writes (whose
+  // RPCs return structured JSON / a count / a snapshot summary) stay behind the
+  // one runner skeleton.
+  describe("widened RPC result (D)", () => {
+    // Built fresh (not by spreading baseSpec) so the widened D isn't fighting
+    // baseSpec's D=string okFields type.
+    const validate = (
+      raw: Record<string, unknown>
+    ): ValidationResult<Payload> =>
+      typeof raw.name === "string" && raw.name.length > 0
+        ? { ok: true, value: { name: raw.name } }
+        : { ok: false, errors: ["name required"] };
+
+    it("threads a parsed JSON object through result(data, value)", async () => {
+      type Summary = { name: string; total: number };
+      const spec: AdminWriteActionSpec<Payload, Summary, { total: number }> = {
+        name: "admin.test.json",
+        keys: ["name"],
+        validate,
+        rpc: async () => ({ data: { total: 7 }, error: null }),
+        result: (data, value) => ({ name: value.name, total: data.total }),
+        revalidate: () => "/admin/test",
+        noDataError: "nothing saved",
+      };
+
+      const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+      expect(result).toEqual({ ok: true, value: { name: "x", total: 7 } });
+      expect(lastLog().ctx).toMatchObject({ outcome: "ok" });
+    });
+
+    it("threads a text count through result", async () => {
+      const spec: AdminWriteActionSpec<Payload, { created: number }> = {
+        name: "admin.test.text",
+        keys: ["name"],
+        validate,
+        rpc: async () => ({ data: "3", error: null }),
+        result: (data) => ({ created: Number.parseInt(data, 10) }),
+        revalidate: () => "/admin/test",
+        noDataError: "nothing saved",
+      };
+
+      const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+      expect(result).toEqual({ ok: true, value: { created: 3 } });
+    });
+
+    it("treats a legitimately falsy JSON value as success, not no-data", async () => {
+      // `data == null` (not `!data`): a widened D can carry a falsy success
+      // value. A `0`/`false`/`{}` return must commit, not trip rpc_no_data.
+      const spec: AdminWriteActionSpec<Payload, { flag: unknown }, unknown> = {
+        name: "admin.test.falsy",
+        keys: ["name"],
+        validate,
+        rpc: async () => ({ data: false, error: null }),
+        result: (data) => ({ flag: data }),
+        revalidate: () => "/admin/test",
+        noDataError: "nothing saved",
+      };
+
+      const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+      expect(result).toEqual({ ok: true, value: { flag: false } });
+      expect(lastLog().ctx).toMatchObject({ outcome: "ok" });
+    });
+
+    it("still treats a null JSON return as rpc_no_data", async () => {
+      const spec: AdminWriteActionSpec<Payload, { flag: unknown }, unknown> = {
+        name: "admin.test.null",
+        keys: ["name"],
+        validate,
+        rpc: async () => ({ data: null, error: null }),
+        result: (data) => ({ flag: data }),
+        revalidate: () => "/admin/test",
+        noDataError: "nothing saved",
+      };
+
+      const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+      expect(result).toEqual({ ok: false, errors: ["nothing saved"] });
+      expect(lastLog().ctx).toMatchObject({
+        outcome: "fail",
+        error_code: "rpc_no_data",
+      });
+      expect(mockRevalidatePath).not.toHaveBeenCalled();
     });
   });
 });

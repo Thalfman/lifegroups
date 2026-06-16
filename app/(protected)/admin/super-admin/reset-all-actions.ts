@@ -1,15 +1,13 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireSuperAdminSession } from "@/lib/auth/session";
+import { type ActionResult } from "@/lib/admin/action-result";
 import {
-  type ActionResult,
-  actionFail,
-  actionOk,
-  mapRpcError,
-} from "@/lib/admin/action-result";
-import { isRecord } from "@/lib/admin/validation";
+  runAdminWriteAction,
+  type AdminWriteActionSpec,
+  type ValidationResult,
+} from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
 import {
   RESET_ALL_CONFIRM_PHRASE,
@@ -18,18 +16,20 @@ import {
 import { LAUNCH_MUTE_FLAG_KEYS } from "@/lib/admin/feature-flags";
 import type { CleanSlateSnapshotsRow } from "@/types/database";
 
-const REVALIDATE_PATH = "/admin/super-admin";
-
-function readForm(input: unknown): Record<string, unknown> {
-  if (input instanceof FormData) {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of input.entries()) {
-      out[key] = value === null ? undefined : String(value);
-    }
-    return out;
-  }
-  if (isRecord(input)) return input;
-  return {};
+// Read the cleared total back from the history snapshot row by id (RLS-gated
+// SELECT), never through the uuid return channel. No snapshot ⇒ nothing wiped.
+async function readClearedRows(
+  client: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  snapshotId: string | null
+): Promise<number> {
+  if (!client || !snapshotId) return 0;
+  const { data: snapshot } = await client
+    .from("clean_slate_snapshots")
+    .select("total_rows")
+    .eq("id", snapshotId)
+    .maybeSingle<Pick<CleanSlateSnapshotsRow, "total_rows">>();
+  const total = Number(snapshot?.total_rows);
+  return Number.isFinite(total) ? total : 0;
 }
 
 // Danger-Zone consolidation: one guarded step that makes the app read as a true
@@ -45,55 +45,59 @@ function readForm(input: unknown): Record<string, unknown> {
 // The whole step is idempotent — re-running on a clean database succeeds with no
 // rows cleared. People, groups, leaders, memberships, settings, care profiles &
 // notes, and the audit log are kept. Each piece remains separately revertable
-// from its own Danger-Zone card.
+// from its own Danger-Zone card. The RPC is idempotent (never raises
+// nothing_to_wipe), so a returned null id just means "history was already
+// clear", not a failure — `rpc` reports a non-null success shape either way.
+const RESET_ALL_SPEC: AdminWriteActionSpec<
+  Record<string, never>,
+  ResetAllSuccess,
+  ResetAllSuccess
+> = {
+  name: "super_admin.reset_all",
+  auth: requireSuperAdminSession,
+  keys: ["confirm"],
+  validate: (raw): ValidationResult<Record<string, never>> => {
+    const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
+    if (confirm !== RESET_ALL_CONFIRM_PHRASE) {
+      return {
+        ok: false,
+        errors: [
+          `Type ${RESET_ALL_CONFIRM_PHRASE} exactly to confirm resetting everything.`,
+        ],
+      };
+    }
+    return { ok: true, value: {} };
+  },
+  rpc: async (client) => {
+    const { data: snapshotId, error } = await adminRpc(
+      client,
+      "super_admin_reset_all",
+      {}
+    );
+    if (error) return { data: null, error };
+    const clearedRows = await readClearedRows(client, snapshotId);
+    return {
+      data: {
+        clearedRows,
+        mutedKeys: [...LAUNCH_MUTE_FLAG_KEYS],
+        snapshotId: snapshotId ?? null,
+      },
+      error: null,
+    };
+  },
+  result: (data) => data,
+  revalidate: () => [
+    "/admin/super-admin",
+    "/admin",
+    "/admin/shepherd-care",
+    "/admin/group-health",
+  ],
+  noDataError: "The reset did not complete. Please try again.",
+};
+
 export async function superAdminResetAll(
-  _prev: ActionResult<ResetAllSuccess> | undefined,
+  prev: ActionResult<ResetAllSuccess> | undefined,
   input: unknown
 ): Promise<ActionResult<ResetAllSuccess>> {
-  const auth = await requireSuperAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
-
-  const raw = readForm(input);
-  const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-  if (confirm !== RESET_ALL_CONFIRM_PHRASE) {
-    return actionFail([
-      `Type ${RESET_ALL_CONFIRM_PHRASE} exactly to confirm resetting everything.`,
-    ]);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
-
-  // The RPC composes launch prep + both attention resets atomically; it is
-  // idempotent (never raises nothing_to_wipe), so a returned null id just means
-  // "history was already clear", not a failure.
-  const { data: snapshotId, error } = await adminRpc(
-    client,
-    "super_admin_reset_all",
-    {}
-  );
-  if (error) return actionFail([mapRpcError(error.message)]);
-
-  // Read the cleared total back from the history snapshot row by id (RLS-gated
-  // SELECT), never through the uuid return channel. No snapshot ⇒ nothing wiped.
-  let clearedRows = 0;
-  if (snapshotId) {
-    const { data: snapshot } = await client
-      .from("clean_slate_snapshots")
-      .select("total_rows")
-      .eq("id", snapshotId)
-      .maybeSingle<Pick<CleanSlateSnapshotsRow, "total_rows">>();
-    const total = Number(snapshot?.total_rows);
-    clearedRows = Number.isFinite(total) ? total : 0;
-  }
-
-  revalidatePath(REVALIDATE_PATH);
-  revalidatePath("/admin");
-  revalidatePath("/admin/shepherd-care");
-  revalidatePath("/admin/group-health");
-  return actionOk({
-    clearedRows,
-    mutedKeys: [...LAUNCH_MUTE_FLAG_KEYS],
-    snapshotId,
-  });
+  return runAdminWriteAction(RESET_ALL_SPEC, prev, input);
 }

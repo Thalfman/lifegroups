@@ -47,7 +47,11 @@ export type ValidationResult<T> = CoreValidationResult<T>;
 // the action files previously each declared.
 export type ActionInput<T> = T | FormData;
 
-export type AdminWriteActionSpec<V, T> = {
+// `D` is the RPC's success-data shape (see `RpcResult<D>` in the shared core).
+// It defaults to `string` — a bare uuid — so the uuid-returning specs need no
+// third type argument. Super-Admin danger-zone writes whose RPC returns
+// structured JSON or a text count widen `D` and map it through `result`.
+export type AdminWriteActionSpec<V, T, D = string> = {
   // Stable log/action name, e.g. "admin.people.create_leader".
   name: string;
   // Form field names lifted from FormData when input is a form submission.
@@ -82,14 +86,11 @@ export type AdminWriteActionSpec<V, T> = {
     raw: Record<string, unknown>
   ) => FinishFields | Promise<FinishFields>;
   // Additional fields merged only into the success log line (e.g. the new
-  // row id, or an echoed input that is only interesting on success).
-  okFields?: (
-    value: V,
-    id: string,
-    raw: Record<string, unknown>
-  ) => FinishFields;
+  // row id, or an echoed input that is only interesting on success). The
+  // second argument is the RPC's returned value (`D`).
+  okFields?: (value: V, data: D, raw: Record<string, unknown>) => FinishFields;
   // Maps the validated payload to the typed RPC wrapper call.
-  rpc: (client: AppSupabaseClient, value: V) => Promise<RpcResult>;
+  rpc: (client: AppSupabaseClient, value: V) => Promise<RpcResult<D>>;
   // Paths to revalidate on success. `raw` is available for paths derived
   // from input outside the validated payload; return [] to revalidate
   // nothing. A target may be a bare path string or a typed `RevalidateTarget`
@@ -98,8 +99,11 @@ export type AdminWriteActionSpec<V, T> = {
     value: V,
     raw: Record<string, unknown>
   ) => RevalidateTarget | readonly RevalidateTarget[];
-  // Builds the success value from the RPC's returned id. Defaults to { id }.
-  result?: (id: string) => T;
+  // Builds the success value from the RPC's returned data and the validated
+  // payload. Defaults to { id: data } (valid when `D` is the default
+  // `string`); a widened `D` maps its JSON/text shape here, with `value` in
+  // scope for success fields that live on the payload rather than the return.
+  result?: (data: D, value: V) => T;
   // User-facing message when the RPC succeeds at the protocol level but
   // returns no id.
   noDataError: string;
@@ -123,8 +127,8 @@ function readFromForm(
   return {};
 }
 
-export async function runAdminWriteAction<V, T>(
-  spec: AdminWriteActionSpec<V, T>,
+export async function runAdminWriteAction<V, T, D = string>(
+  spec: AdminWriteActionSpec<V, T, D>,
   // `_prev` is the previous useActionState value, ignored by the runner.
   _prev: ActionResult<T> | undefined,
   // `unknown`, not `ActionInput<V>`: the core re-parses input through
@@ -133,7 +137,7 @@ export async function runAdminWriteAction<V, T>(
   // from the spec.
   input: unknown
 ): Promise<ActionResult<T>> {
-  return runWriteAction<AdminActor, V, T>(
+  return runWriteAction<AdminActor, V, T, D>(
     {
       name: spec.name,
       authenticate: async () => {

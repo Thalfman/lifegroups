@@ -1,15 +1,13 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireSuperAdminSession } from "@/lib/auth/session";
+import { type ActionResult } from "@/lib/admin/action-result";
 import {
-  type ActionResult,
-  actionFail,
-  actionOk,
-  mapRpcError,
-} from "@/lib/admin/action-result";
-import { isRecord } from "@/lib/admin/validation";
+  runAdminWriteAction,
+  type AdminWriteActionSpec,
+  type ValidationResult,
+} from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
 import {
   LAUNCH_PREP_CONFIRM_PHRASE,
@@ -18,18 +16,20 @@ import {
 import { LAUNCH_MUTE_FLAG_KEYS } from "@/lib/admin/feature-flags";
 import type { CleanSlateSnapshotsRow } from "@/types/database";
 
-const REVALIDATE_PATH = "/admin/super-admin";
-
-function readForm(input: unknown): Record<string, unknown> {
-  if (input instanceof FormData) {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of input.entries()) {
-      out[key] = value === null ? undefined : String(value);
-    }
-    return out;
-  }
-  if (isRecord(input)) return input;
-  return {};
+// Read the cleared total back from the snapshot row by id (RLS-gated SELECT),
+// never through the uuid return channel. No snapshot ⇒ nothing was wiped.
+async function readClearedRows(
+  client: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  snapshotId: string | null
+): Promise<number> {
+  if (!client || !snapshotId) return 0;
+  const { data: snapshot } = await client
+    .from("clean_slate_snapshots")
+    .select("total_rows")
+    .eq("id", snapshotId)
+    .maybeSingle<Pick<CleanSlateSnapshotsRow, "total_rows">>();
+  const total = Number(snapshot?.total_rows);
+  return Number.isFinite(total) ? total : 0;
 }
 
 // One-click launch prep: make the app read as a true clean slate for launch in a
@@ -49,51 +49,54 @@ function readForm(input: unknown): Record<string, unknown> {
 //
 // People, groups, leaders, memberships, settings, care profiles & notes, and the
 // audit log are kept (the wipe is history-only by design).
+const LAUNCH_PREP_SPEC: AdminWriteActionSpec<
+  Record<string, never>,
+  LaunchPrepSuccess,
+  LaunchPrepSuccess
+> = {
+  name: "super_admin.launch_prep",
+  auth: requireSuperAdminSession,
+  keys: ["confirm"],
+  validate: (raw): ValidationResult<Record<string, never>> => {
+    const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
+    if (confirm !== LAUNCH_PREP_CONFIRM_PHRASE) {
+      return {
+        ok: false,
+        errors: [
+          `Type ${LAUNCH_PREP_CONFIRM_PHRASE} exactly to confirm preparing for launch.`,
+        ],
+      };
+    }
+    return { ok: true, value: {} };
+  },
+  rpc: async (client) => {
+    // The RPC mutes + wipes + purges atomically; nothing_to_wipe is handled
+    // inside it, so a returned null id means "history was already clear", not a
+    // failure.
+    const { data: snapshotId, error } = await adminRpc(
+      client,
+      "super_admin_launch_prep",
+      {}
+    );
+    if (error) return { data: null, error };
+    const clearedRows = await readClearedRows(client, snapshotId);
+    return {
+      data: {
+        clearedRows,
+        mutedKeys: [...LAUNCH_MUTE_FLAG_KEYS],
+        snapshotId: snapshotId ?? null,
+      },
+      error: null,
+    };
+  },
+  result: (data) => data,
+  revalidate: () => ["/admin/super-admin", "/admin"],
+  noDataError: "Launch prep did not complete. Please try again.",
+};
+
 export async function superAdminLaunchPrep(
-  _prev: ActionResult<LaunchPrepSuccess> | undefined,
+  prev: ActionResult<LaunchPrepSuccess> | undefined,
   input: unknown
 ): Promise<ActionResult<LaunchPrepSuccess>> {
-  const auth = await requireSuperAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
-
-  const raw = readForm(input);
-  const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-  if (confirm !== LAUNCH_PREP_CONFIRM_PHRASE) {
-    return actionFail([
-      `Type ${LAUNCH_PREP_CONFIRM_PHRASE} exactly to confirm preparing for launch.`,
-    ]);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
-
-  // The RPC mutes + wipes + purges atomically; nothing_to_wipe is handled inside
-  // it, so a returned null id means "history was already clear", not a failure.
-  const { data: snapshotId, error } = await adminRpc(
-    client,
-    "super_admin_launch_prep",
-    {}
-  );
-  if (error) return actionFail([mapRpcError(error.message)]);
-
-  // Read the cleared total back from the snapshot row by id (RLS-gated SELECT),
-  // never through the uuid return channel. No snapshot ⇒ nothing was wiped.
-  let clearedRows = 0;
-  if (snapshotId) {
-    const { data: snapshot } = await client
-      .from("clean_slate_snapshots")
-      .select("total_rows")
-      .eq("id", snapshotId)
-      .maybeSingle<Pick<CleanSlateSnapshotsRow, "total_rows">>();
-    const total = Number(snapshot?.total_rows);
-    clearedRows = Number.isFinite(total) ? total : 0;
-  }
-
-  revalidatePath(REVALIDATE_PATH);
-  revalidatePath("/admin");
-  return actionOk({
-    clearedRows,
-    mutedKeys: [...LAUNCH_MUTE_FLAG_KEYS],
-    snapshotId,
-  });
+  return runAdminWriteAction(LAUNCH_PREP_SPEC, prev, input);
 }
