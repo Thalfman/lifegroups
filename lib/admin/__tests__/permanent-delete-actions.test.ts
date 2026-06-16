@@ -32,7 +32,15 @@ let rpc: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.clearAllMocks();
   rpc = vi.fn();
-  mockRequireSuperAdminSession.mockResolvedValue({ ok: true });
+  mockRequireSuperAdminSession.mockResolvedValue({
+    ok: true,
+    session: {
+      profile: {
+        id: "11111111-1111-1111-1111-111111111111",
+        role: "super_admin",
+      },
+    },
+  });
   mockCreateClient.mockResolvedValue({ rpc });
 });
 

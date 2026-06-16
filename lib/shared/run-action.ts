@@ -36,8 +36,15 @@ export type ValidationResult<T> =
   | { ok: true; value: T }
   | { ok: false; errors: string[] };
 
-export type RpcResult = {
-  data: string | null;
+// The RPC result seam. `D` is the shape the typed RPC wrapper returns on
+// success. It defaults to `string` — the common case, a bare uuid from a
+// `SECURITY DEFINER` RPC — so the ~30 uuid-returning specs need no annotation.
+// JSON- and text-returning RPCs (reset baselines, preflight reports, import
+// counts) widen `D` to `unknown` or a parsed shape and thread it through
+// `result` (below), so those writes stay behind this one skeleton instead of
+// re-rolling the pipeline by hand.
+export type RpcResult<D = string> = {
+  data: D | null;
   error: { message: string } | null;
 };
 
@@ -54,7 +61,7 @@ export type RevalidateTarget =
 // Everything that varies between surfaces, captured as data. `Actor` is the
 // authenticated identity the guards and field-builders see; `V` the validated
 // payload; `T` the success value.
-export type WriteActionCore<Actor, V, T> = {
+export type WriteActionCore<Actor, V, T, D = string> = {
   // Stable log/action name, e.g. "admin.people.create_leader".
   name: string;
   // Authenticate the actor and the base log fields that identify it on every
@@ -99,14 +106,12 @@ export type WriteActionCore<Actor, V, T> = {
     value: V,
     raw: Record<string, unknown>
   ) => FinishFields | Promise<FinishFields>;
-  // Additional fields merged only into the success line.
-  okFields?: (
-    value: V,
-    id: string,
-    raw: Record<string, unknown>
-  ) => FinishFields;
+  // Additional fields merged only into the success line. The second argument
+  // is the RPC's returned value (`D`) — a bare uuid for the default `string`
+  // case, or the parsed JSON/text shape for a widened `D`.
+  okFields?: (value: V, data: D, raw: Record<string, unknown>) => FinishFields;
   // Maps the validated payload to the typed RPC wrapper call.
-  rpc: (client: AppSupabaseClient, value: V) => Promise<RpcResult>;
+  rpc: (client: AppSupabaseClient, value: V) => Promise<RpcResult<D>>;
   // Paths to revalidate on success; `raw` is available for paths derived from
   // input outside the validated payload. A target may be a bare path string or
   // a typed `RevalidateTarget` (to invalidate a whole dynamic route).
@@ -114,8 +119,12 @@ export type WriteActionCore<Actor, V, T> = {
     value: V,
     raw: Record<string, unknown>
   ) => RevalidateTarget | readonly RevalidateTarget[];
-  // Builds the success value from the RPC's returned id. Defaults to { id }.
-  result?: (id: string) => T;
+  // Builds the success value from the RPC's returned data and the validated
+  // payload. Defaults to { id: data } (valid when `D` is the default
+  // `string`). A widened `D` (parsed JSON / a text count) maps its shape here;
+  // `value` is in scope for success fields that live on the payload rather than
+  // the RPC return (e.g. the deleted entity's type alongside its tombstone id).
+  result?: (data: D, value: V) => T;
   // User-facing message when the RPC succeeds but returns no id.
   noDataError: string;
   // Surface-specific RPC-error token -> message table.
@@ -142,8 +151,8 @@ function unhandledExceptionFields(error: unknown): FinishFields {
   return { error_message: String(error) };
 }
 
-export async function runWriteAction<Actor, V, T>(
-  core: WriteActionCore<Actor, V, T>,
+export async function runWriteAction<Actor, V, T, D = string>(
+  core: WriteActionCore<Actor, V, T, D>,
   input: unknown
 ): Promise<ActionResult<T>> {
   const ctx = startActionLog(core.name);
@@ -175,8 +184,8 @@ export async function runWriteAction<Actor, V, T>(
   }
 }
 
-async function runWriteActionPipeline<Actor, V, T>(
-  core: WriteActionCore<Actor, V, T>,
+async function runWriteActionPipeline<Actor, V, T, D>(
+  core: WriteActionCore<Actor, V, T, D>,
   input: unknown,
   ctx: ReturnType<typeof startActionLog>
 ): Promise<ActionResult<T>> {
@@ -255,7 +264,13 @@ async function runWriteActionPipeline<Actor, V, T>(
     });
     return { ok: false, errors: [core.mapRpcError(error.message)] };
   }
-  if (!data) {
+  // No-data gate. `data == null` (not `!data`) so a widened `D` can carry a
+  // legitimately falsy success value — a `false` flag, a `0` count, an empty
+  // object. The one falsy value that is still a failure is the empty string:
+  // the default `D = string` path is a bare uuid (and the text channel a count),
+  // and neither is ever `""` on success, so `!data`'s historical rejection of
+  // `""` is preserved here rather than silently committing `{ id: "" }`.
+  if (data == null || (data as unknown) === "") {
     ctx.finish("fail", {
       error_code: "rpc_no_data",
       ...baseFields,
@@ -274,6 +289,8 @@ async function runWriteActionPipeline<Actor, V, T>(
   const okFields = core.okFields ? core.okFields(v.value, data, raw) : {};
   ctx.finish("ok", { ...baseFields, ...rawFields, ...fields, ...okFields });
 
-  const value = core.result ? core.result(data) : ({ id: data } as T);
+  // Default `{ id: data }` is only sound for the `string` case; a widened `D`
+  // must supply `result`. The cast preserves the prior default behavior.
+  const value = core.result ? core.result(data, v.value) : ({ id: data } as T);
   return { ok: true, value };
 }

@@ -1,15 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireSuperAdminSession } from "@/lib/auth/session";
+import { type ActionResult } from "@/lib/admin/action-result";
 import {
-  type ActionResult,
-  actionFail,
-  actionOk,
-  mapRpcError,
-} from "@/lib/admin/action-result";
-import { isRecord } from "@/lib/admin/validation";
+  runAdminWriteAction,
+  type AdminWriteActionSpec,
+  type ValidationResult,
+} from "@/lib/admin/run-action";
 import {
   parsePeopleImport,
   type PersonImportRowError,
@@ -29,65 +26,61 @@ export type BulkImportPeopleSuccess = {
   perRowErrors: PersonImportRowError[];
 };
 
-function readForm(input: unknown): Record<string, unknown> {
-  if (input instanceof FormData) {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of input.entries()) {
-      out[key] = value === null ? undefined : String(value);
+type ParsedImport = ReturnType<typeof parsePeopleImport>;
+
+// The bulk-import RPC returns the created COUNT as text; `result` parses it and
+// folds in the per-row counts/errors the validator already computed.
+const BULK_IMPORT_PEOPLE_SPEC: AdminWriteActionSpec<
+  ParsedImport,
+  BulkImportPeopleSuccess
+> = {
+  name: "super_admin.bulk_import_people",
+  auth: requireSuperAdminSession,
+  keys: ["payload"],
+  validate: (raw): ValidationResult<ParsedImport> => {
+    const payload = typeof raw.payload === "string" ? raw.payload : "";
+    const parsed = parsePeopleImport(payload);
+    if (parsed.rowsToCreate.length === 0) {
+      // Nothing parseable. Surface the per-row errors (or a generic message).
+      const lines =
+        parsed.perRowErrors.length > 0
+          ? parsed.perRowErrors.map(
+              (e) => `Line ${e.line}: ${e.errors.join(", ")}`
+            )
+          : ["No valid rows to import. Check the header row and try again."];
+      return { ok: false, errors: lines };
     }
-    return out;
-  }
-  if (isRecord(input)) return input;
-  return {};
-}
+    return { ok: true, value: parsed };
+  },
+  okFields: (value) => ({ rows_to_create: value.rowsToCreate.length }),
+  rpc: (client, value) =>
+    adminTextRpc(client, "super_admin_bulk_import_people", {
+      p_rows: value.rowsToCreate,
+    }),
+  result: (data, value) => {
+    const createdCount = Number.parseInt(data, 10);
+    const leaderCount = value.rowsToCreate.filter(
+      (r) => r.role === "leader"
+    ).length;
+    const memberCount = value.rowsToCreate.filter(
+      (r) => r.role === "member"
+    ).length;
+    return {
+      createdCount: Number.isFinite(createdCount)
+        ? createdCount
+        : value.rowsToCreate.length,
+      leaderCount,
+      memberCount,
+      perRowErrors: value.perRowErrors,
+    };
+  },
+  revalidate: () => REVALIDATE_PATH,
+  noDataError: "The import did not complete. Please try again.",
+};
 
 export async function superAdminBulkImportPeople(
-  _prev: ActionResult<BulkImportPeopleSuccess> | undefined,
+  prev: ActionResult<BulkImportPeopleSuccess> | undefined,
   input: unknown
 ): Promise<ActionResult<BulkImportPeopleSuccess>> {
-  const auth = await requireSuperAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
-
-  const raw = readForm(input);
-  const payload = typeof raw.payload === "string" ? raw.payload : "";
-
-  const { rowsToCreate, perRowErrors } = parsePeopleImport(payload);
-
-  if (rowsToCreate.length === 0) {
-    // Nothing parseable. Surface the per-row errors (or a generic message).
-    const lines =
-      perRowErrors.length > 0
-        ? perRowErrors.map((e) => `Line ${e.line}: ${e.errors.join(", ")}`)
-        : ["No valid rows to import. Check the header row and try again."];
-    return actionFail(lines);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
-
-  const { data, error } = await adminTextRpc(
-    client,
-    "super_admin_bulk_import_people",
-    {
-      p_rows: rowsToCreate,
-    }
-  );
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) {
-    return actionFail(["The import did not complete. Please try again."]);
-  }
-
-  const createdCount = Number.parseInt(data, 10);
-  const leaderCount = rowsToCreate.filter((r) => r.role === "leader").length;
-  const memberCount = rowsToCreate.filter((r) => r.role === "member").length;
-
-  revalidatePath(REVALIDATE_PATH);
-  return actionOk({
-    createdCount: Number.isFinite(createdCount)
-      ? createdCount
-      : rowsToCreate.length,
-    leaderCount,
-    memberCount,
-    perRowErrors,
-  });
+  return runAdminWriteAction(BULK_IMPORT_PEOPLE_SPEC, prev, input);
 }
