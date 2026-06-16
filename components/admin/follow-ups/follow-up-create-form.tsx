@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateFollowUp } from "@/app/(protected)/admin/follow-ups/actions";
 import {
@@ -9,7 +9,6 @@ import {
 } from "@/lib/dashboard/labels";
 import type { GroupsRow, MembersRow, ProfilesRow } from "@/types/database";
 import type { FollowUpPriority, FollowUpType } from "@/types/enums";
-import type { GuestDirectoryEntry } from "@/lib/supabase/read-models";
 import {
   useActionForm,
   FormStatus,
@@ -17,6 +16,7 @@ import {
 import {
   fieldLabelClassName as FIELD_LABEL,
   fieldInputBaseClassName as FIELD_INPUT,
+  fieldHintClassName as FIELD_HINT,
 } from "@/components/admin/forms/field-styles";
 
 const TYPES: FollowUpType[] = [
@@ -34,7 +34,6 @@ const PRIORITIES: FollowUpPriority[] = ["low", "normal", "high"];
 export function FollowUpCreateForm({
   groups,
   members,
-  guests,
   assignees,
   // Supplied when rendered inside the EditingSurface drawer (#267), mirroring
   // the Groups create flow (#266): `onSaved` closes + refreshes once the
@@ -49,7 +48,6 @@ export function FollowUpCreateForm({
 }: {
   groups: GroupsRow[];
   members: MembersRow[];
-  guests: GuestDirectoryEntry[];
   assignees: ProfilesRow[];
   onSaved?: () => void;
   onDirty?: () => void;
@@ -77,6 +75,11 @@ export function FollowUpCreateForm({
     a.full_name.localeCompare(b.full_name)
   );
 
+  // Gate the submit on the one required field (Title), mirroring New Group /
+  // Add Prospect, with a short inline hint until it's filled in.
+  const [title, setTitle] = useState("");
+  const canSubmit = title.trim().length > 0;
+
   return (
     <form
       ref={formRef}
@@ -86,8 +89,8 @@ export function FollowUpCreateForm({
     >
       <p className="mb-3 mt-0 font-sans text-sm text-ink2">
         Title and type are required. Relate it to whichever entity makes sense —
-        group, member, guest — and assign someone if you want them to own it.
-        Notes are optional and capped at 1000 characters each.
+        group or member — and assign someone if you want them to own it. Notes
+        are optional and capped at 1000 characters each.
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:items-end md:gap-3.5">
         <div>
@@ -102,6 +105,8 @@ export function FollowUpCreateForm({
             maxLength={200}
             className={FIELD_INPUT}
             placeholder="Reach out to Skyler about placement"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
         </div>
         <div>
@@ -112,7 +117,7 @@ export function FollowUpCreateForm({
             id="fu-type"
             name="type"
             required
-            defaultValue="guest"
+            defaultValue="admin"
             className={FIELD_INPUT}
           >
             {TYPES.map((t) => (
@@ -188,24 +193,6 @@ export function FollowUpCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="fu-related_guest_id" className={FIELD_LABEL}>
-            Related guest (optional)
-          </label>
-          <select
-            id="fu-related_guest_id"
-            name="related_guest_id"
-            defaultValue=""
-            className={FIELD_INPUT}
-          >
-            <option value="">—</option>
-            {guests.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.full_name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
           <label htmlFor="fu-assigned_to" className={FIELD_LABEL}>
             Assigned to (optional)
           </label>
@@ -250,20 +237,30 @@ export function FollowUpCreateForm({
             placeholder="Context only the admin team should see."
           />
         </div>
-        <div className="flex flex-wrap gap-2.5">
-          <PButton type="submit" tone="terra" size="md" disabled={pending}>
-            {pending ? "Saving…" : "Add follow-up"}
-          </PButton>
-          {onCancel ? (
+        <div className="col-span-full flex flex-col gap-1.5">
+          <div className="flex flex-wrap gap-2.5">
             <PButton
-              type="button"
-              tone="ghost"
+              type="submit"
+              tone="terra"
               size="md"
-              disabled={pending}
-              onClick={onCancel}
+              disabled={pending || !canSubmit}
             >
-              Cancel
+              {pending ? "Saving…" : "Add follow-up"}
             </PButton>
+            {onCancel ? (
+              <PButton
+                type="button"
+                tone="ghost"
+                size="md"
+                disabled={pending}
+                onClick={onCancel}
+              >
+                Cancel
+              </PButton>
+            ) : null}
+          </div>
+          {!canSubmit ? (
+            <p className={FIELD_HINT}>Enter a title to enable Add follow-up.</p>
           ) : null}
         </div>
       </div>

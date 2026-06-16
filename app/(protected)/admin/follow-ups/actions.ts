@@ -31,7 +31,6 @@ const CREATE_FOLLOW_UP_KEYS = [
   "title",
   "related_group_id",
   "related_member_id",
-  "related_guest_id",
   "assigned_to",
   "priority",
   "due_date",
@@ -68,7 +67,11 @@ const CREATE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
       p_title: value.title,
       p_related_group_id: value.related_group_id,
       p_related_member_id: value.related_member_id,
-      p_related_guest_id: value.related_guest_id,
+      // The Add-Follow-up form no longer offers a "Related guest" link to the
+      // retired legacy guests pipeline (#639). The column and RPC arg stay so
+      // existing legacy data and the frozen Guests surface are unaffected; new
+      // follow-ups simply never set it.
+      p_related_guest_id: null,
       p_assigned_to: value.assigned_to,
       p_priority: value.priority,
       p_due_date: value.due_date,
