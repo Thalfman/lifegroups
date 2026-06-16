@@ -284,9 +284,6 @@
     bottom: 0 !important;
     background: var(--c-surface) !important;
     padding: 12px 14px !important;
-    /* Keep the submit action clear of the home indicator when
-       `viewport-fit=cover` is active (#651). */
-    padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
     margin-left: -14px !important;
     margin-right: -14px !important;
     margin-bottom: -18px !important;

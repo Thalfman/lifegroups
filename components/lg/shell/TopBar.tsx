@@ -13,9 +13,7 @@ export function TopBar({
   signOutSlot?: ReactNode;
 }) {
   return (
-    <div className="sticky top-0 z-sticky flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between gap-3 border-b border-line bg-surfaceAlt px-4 pt-[env(safe-area-inset-top)] md:px-8">
-      {/* `viewport-fit=cover` lets the bar paint under the status bar / notch;
-          the top inset keeps its content out of that area (#651). */}
+    <div className="sticky top-0 z-sticky flex h-14 items-center justify-between gap-3 border-b border-line bg-surfaceAlt px-4 md:px-8">
       <div className="flex min-w-0 items-center gap-3">
         {mobileTrigger ?? null}
       </div>
