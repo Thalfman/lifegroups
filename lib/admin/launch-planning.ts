@@ -28,6 +28,7 @@ import {
   type MetricDefaults,
 } from "@/lib/admin/metrics";
 import { apprenticeReadyBy } from "@/lib/admin/leader-pipeline";
+import { subtractDaysIso as subtractDaysIsoUnchecked } from "@/lib/shared/church-time";
 import {
   countActiveMembersByGroup,
   indexOverridesByGroup,
@@ -324,16 +325,14 @@ function clampNonNegative(n: number): number {
 }
 
 // Subtract `days` from an ISO `YYYY-MM-DD` date string using UTC math.
-// Returns null if the input doesn't parse.
+// Returns null if the input doesn't parse. This wraps the canonical
+// `subtractDaysIso` from church-time with a strict format gate so a malformed
+// string can't slide through Date's forgiving parser (ISO-8601 calendar date
+// only) — a stronger contract than the always-string canonical helper.
 function subtractDaysIso(iso: string, days: number): string | null {
-  // Strict format gate so a malformed string can't slide through Date's
-  // forgiving parser. ISO-8601 calendar date only.
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
-  const parsed = new Date(`${iso}T00:00:00Z`);
-  const t = parsed.getTime();
-  if (!Number.isFinite(t)) return null;
-  const moved = new Date(t - days * 24 * 60 * 60 * 1000);
-  return moved.toISOString().slice(0, 10);
+  if (!Number.isFinite(new Date(`${iso}T00:00:00Z`).getTime())) return null;
+  return subtractDaysIsoUnchecked(iso, days);
 }
 
 export function computeLaunchPlan(

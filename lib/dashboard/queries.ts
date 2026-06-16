@@ -62,7 +62,11 @@ import { ADMIN_FALLBACK, LEADER_FALLBACK } from "./fallback-data";
 // Phase 5B.0 swapped the dashboard's UTC isoWeekStart for a
 // church-timezone-aware version so the leader workflow and the
 // dashboard agree on what "this week" means.
-import { isoWeekStart, churchTodayIso } from "@/lib/shared/church-time";
+import {
+  addDaysIso,
+  isoWeekStart,
+  churchTodayIso,
+} from "@/lib/shared/church-time";
 import {
   careCadenceWindowsFromDefaults,
   decodeMetricDefaults,
@@ -85,15 +89,6 @@ function describeWeek(meetingWeekIso: string): string {
     day: "numeric",
     timeZone: "UTC",
   });
-}
-
-// Add `days` calendar days to a YYYY-MM-DD string (pure date arithmetic over a
-// UTC anchor — no DST drift since it never crosses a wall-clock offset). General
-// helper: week horizons, the due-this-week cutoff, and the activity-reset floor.
-function addDaysIso(iso: string, days: number): string {
-  const anchor = new Date(`${iso}T00:00:00Z`);
-  anchor.setUTCDate(anchor.getUTCDate() + days);
-  return anchor.toISOString().slice(0, 10);
 }
 
 function fallback<T>(data: T, error?: string): DashboardResult<T> {

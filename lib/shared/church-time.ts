@@ -87,6 +87,22 @@ export function churchDayStartUtcIso(dateIso: string): string {
   return new Date(naiveUtc - offsetMs).toISOString();
 }
 
+// Add `days` calendar days to a YYYY-MM-DD string (pure date arithmetic over a
+// UTC anchor — no DST drift since it never crosses a wall-clock offset). General
+// helper: week horizons, due-this-week cutoffs, activity-reset floors, and the
+// occurrence generator's day-by-day walk. Pass a negative `days` to subtract.
+export function addDaysIso(iso: string, days: number): string {
+  const anchor = new Date(`${iso}T00:00:00Z`);
+  anchor.setUTCDate(anchor.getUTCDate() + days);
+  return anchor.toISOString().slice(0, 10);
+}
+
+// Subtract `days` from a YYYY-MM-DD string. Thin wrapper over `addDaysIso` for
+// readability at call sites that count backwards.
+export function subtractDaysIso(iso: string, days: number): string {
+  return addDaysIso(iso, -days);
+}
+
 // Returns the Monday-of-ISO-week as YYYY-MM-DD for the given input.
 //
 // When passed a Date, the date is first projected into CHURCH_TIMEZONE so

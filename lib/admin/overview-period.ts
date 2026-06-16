@@ -5,7 +5,11 @@
 // Only the activity band is period-scoped — the vital-signs and domain cards
 // are point-in-time (current state) and ignore the grain.
 
-import { churchTodayIso, isoWeekStart } from "@/lib/shared/church-time";
+import {
+  addDaysIso,
+  churchTodayIso,
+  isoWeekStart,
+} from "@/lib/shared/church-time";
 
 export type OverviewGrain = "all" | "year" | "quarter" | "month" | "week";
 
@@ -66,12 +70,6 @@ export interface OverviewPeriodRange {
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
-}
-
-function addDaysIso(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
 }
 
 export function overviewPeriodRange(

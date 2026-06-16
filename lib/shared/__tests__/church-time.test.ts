@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  addDaysIso,
   CHURCH_TIMEZONE,
   churchDayStartUtcIso,
   churchMonthIso,
   churchTodayIso,
   isoWeekNumberOf,
   isoWeekStart,
+  subtractDaysIso,
 } from "@/lib/shared/church-time";
 
 describe("CHURCH_TIMEZONE", () => {
@@ -107,5 +109,39 @@ describe("churchDayStartUtcIso", () => {
     const upper = churchDayStartUtcIso("2026-06-01");
     expect(completedAt.toISOString() >= lower).toBe(true);
     expect(completedAt.toISOString() < upper).toBe(true);
+  });
+});
+
+describe("addDaysIso / subtractDaysIso", () => {
+  it("adds days within a month", () => {
+    expect(addDaysIso("2026-06-16", 7)).toBe("2026-06-23");
+  });
+
+  it("returns the same date for a zero offset", () => {
+    expect(addDaysIso("2026-06-16", 0)).toBe("2026-06-16");
+  });
+
+  it("accepts a negative offset to count backwards", () => {
+    expect(addDaysIso("2026-06-16", -1)).toBe("2026-06-15");
+  });
+
+  it("rolls across a month boundary", () => {
+    expect(addDaysIso("2026-01-31", 1)).toBe("2026-02-01");
+  });
+
+  it("rolls across a year boundary", () => {
+    expect(addDaysIso("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("does not drift across a DST transition (pure UTC-anchor math)", () => {
+    // 2026-03-08 is the US spring-forward day; the calendar-date math must
+    // still land on the 9th regardless of the wall-clock offset change.
+    expect(addDaysIso("2026-03-08", 1)).toBe("2026-03-09");
+  });
+
+  it("subtractDaysIso is the inverse of addDaysIso", () => {
+    expect(subtractDaysIso("2026-03-01", 1)).toBe("2026-02-28");
+    expect(subtractDaysIso("2027-01-01", 1)).toBe("2026-12-31");
+    expect(subtractDaysIso("2026-06-16", 0)).toBe("2026-06-16");
   });
 });

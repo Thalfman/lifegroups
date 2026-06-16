@@ -28,7 +28,11 @@ import {
   fetchProfilesForAdmin,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
-import { CHURCH_TIMEZONE, isoWeekStart } from "@/lib/shared/church-time";
+import {
+  addDaysIso,
+  CHURCH_TIMEZONE,
+  isoWeekStart,
+} from "@/lib/shared/church-time";
 import {
   BUILT_IN_METRIC_DEFAULTS,
   decodeMetricDefaults,
@@ -334,12 +338,6 @@ function isLeaderPulse(
   );
 }
 
-function addDaysIsoForWeek(iso: string, days: number): string {
-  const anchor = new Date(`${iso}T00:00:00Z`);
-  anchor.setUTCDate(anchor.getUTCDate() + days);
-  return anchor.toISOString().slice(0, 10);
-}
-
 function deriveSessionStatus(
   session: AttendanceSessionsRow | null
 ): SessionReviewStatus {
@@ -419,7 +417,7 @@ export async function fetchAdminWeeklyCheckInReview(
   meetingWeek: string,
   now: Date = new Date()
 ): Promise<WeeklyReviewData> {
-  const weekEnd = addDaysIsoForWeek(meetingWeek, 6);
+  const weekEnd = addDaysIso(meetingWeek, 6);
 
   const [
     groupsResult,

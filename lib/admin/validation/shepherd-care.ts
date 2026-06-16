@@ -4,6 +4,7 @@ import type {
   ShepherdCareStatus,
 } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
+import { addDaysIso } from "@/lib/shared/church-time";
 import { base64ToBytes } from "@/lib/crypto/encoding";
 import type { ValidationResult } from "./shared";
 import {
@@ -56,12 +57,6 @@ function todayIsoUtc(now: Date = new Date()): string {
   )
     .toISOString()
     .slice(0, 10);
-}
-
-function addDaysToIsoDate(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map((p) => Number.parseInt(p, 10));
-  const utc = Date.UTC(y, m - 1, d) + days * 86_400_000;
-  return new Date(utc).toISOString().slice(0, 10);
 }
 
 export type UpsertShepherdCareProfilePayload = {
@@ -178,7 +173,7 @@ export function validateLogShepherdCareInteractionPayload(
     // server) can log an interaction on their local current date. The
     // SQL guard mirrors this with `current_date + 1`.
     const today = options.todayIso ?? todayIsoUtc();
-    const cap = addDaysToIsoDate(today, 1);
+    const cap = addDaysIso(today, 1);
     if (interactionAt > cap) {
       errors.push("Interaction date can't be in the future.");
     }
@@ -597,7 +592,7 @@ export function validateAssignShepherdCoveragePayload(
       errors.push("Assigned date must be YYYY-MM-DD.");
     } else {
       const today = options.todayIso ?? todayIsoUtc();
-      const cap = addDaysToIsoDate(today, 1);
+      const cap = addDaysIso(today, 1);
       if (raw > cap) {
         errors.push("Assigned date can't be in the future.");
       } else {
@@ -642,7 +637,7 @@ export function validateEndShepherdCoverageAssignmentPayload(
       errors.push("Ended date must be YYYY-MM-DD.");
     } else {
       const today = options.todayIso ?? todayIsoUtc();
-      const cap = addDaysToIsoDate(today, 1);
+      const cap = addDaysIso(today, 1);
       if (raw > cap) {
         errors.push("Ended date can't be in the future.");
       } else {
