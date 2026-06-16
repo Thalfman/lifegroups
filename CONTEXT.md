@@ -87,8 +87,11 @@ _Avoid_: Prayer note, Care Note (that is the separate running log).
 The default, reversible way anything leaves a working surface — a soft delete
 (apprentices, multiplication candidates, launch scenarios, calendar events all
 archive). Visibility flows by the oversight ladder; the row stays. This is what
-"delete" means everywhere except the Super Admin danger zone.
-_Avoid_: Delete, soft-delete (as a user-facing label), remove.
+"delete" means everywhere except the Super Admin danger zone. It is also the
+user-facing label for taking a **person** out of active use (what the write
+path calls deactivation) — surfaces say Archive, not "Deactivate".
+_Avoid_: Delete, soft-delete (as a user-facing label), remove, Deactivate (as a
+user-facing label).
 
 **Permanent deletion**:
 The Super-Admin-only escape hatch that physically removes a row — distinct from
