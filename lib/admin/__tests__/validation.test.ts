@@ -4,6 +4,7 @@ import {
   guardAgainstSelfTarget,
   guardAgainstSuperAdminAssignment,
   validateAssignLeaderToGroupPayload,
+  validateAddPersonToGroupPayload,
   validateAssignShepherdCoveragePayload,
   validateEndGroupMembershipPayload,
   validateUnassignLeaderFromGroupPayload,
@@ -219,6 +220,83 @@ describe("validateAssignLeaderToGroupPayload", () => {
       expect(r.ok).toBe(true);
       if (r.ok) expect(r.value.role).toBe(role);
     }
+  });
+});
+
+describe("validateAddPersonToGroupPayload (#643)", () => {
+  it("accepts a member with only a name and normalizes the group id", () => {
+    const r = validateAddPersonToGroupPayload({
+      group_id: UUID_A.toUpperCase(),
+      kind: "member",
+      full_name: "  Sam Member  ",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.kind).toBe("member");
+      expect(r.value.group_id).toBe(UUID_A);
+      expect(r.value.full_name).toBe("Sam Member");
+      // Member never carries an in-group role.
+      expect("role" in r.value).toBe(false);
+    }
+  });
+
+  it("requires a valid email for a leader", () => {
+    const bad = validateAddPersonToGroupPayload({
+      group_id: UUID_A,
+      kind: "leader",
+      full_name: "Jane Leader",
+      email: "nope",
+      role: "leader",
+    });
+    expect(bad.ok).toBe(false);
+
+    const good = validateAddPersonToGroupPayload({
+      group_id: UUID_A,
+      kind: "leader",
+      full_name: "Jane Leader",
+      email: "jane@example.com",
+      role: "co_leader",
+    });
+    expect(good.ok).toBe(true);
+    if (good.ok && good.value.kind === "leader") {
+      expect(good.value.email).toBe("jane@example.com");
+      expect(good.value.role).toBe("co_leader");
+    }
+  });
+
+  it("rejects a leader role outside leader/co_leader", () => {
+    const r = validateAddPersonToGroupPayload({
+      group_id: UUID_A,
+      kind: "leader",
+      full_name: "Jane Leader",
+      email: "jane@example.com",
+      role: "member",
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects an unknown kind, a missing name, and a non-uuid group", () => {
+    expect(
+      validateAddPersonToGroupPayload({
+        group_id: UUID_A,
+        kind: "ghost",
+        full_name: "Sam",
+      }).ok
+    ).toBe(false);
+    expect(
+      validateAddPersonToGroupPayload({
+        group_id: UUID_A,
+        kind: "member",
+        full_name: "   ",
+      }).ok
+    ).toBe(false);
+    expect(
+      validateAddPersonToGroupPayload({
+        group_id: "not-a-uuid",
+        kind: "member",
+        full_name: "Sam",
+      }).ok
+    ).toBe(false);
   });
 });
 

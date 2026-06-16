@@ -180,15 +180,19 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
     );
     await expect(checklist).toBeVisible();
     await expect(checklist.getByText("Setup checklist")).toBeVisible();
+    // ADR 0027: setup deep-links carry the from=setup return marker.
     await expect(
       checklist.getByRole("link", { name: /Import people/ })
-    ).toHaveAttribute("href", "/admin/super-admin#people-import");
+    ).toHaveAttribute("href", "/admin/super-admin?from=setup#people-import");
     await expect(
       checklist.getByRole("link", { name: /Assign leaders/ })
-    ).toHaveAttribute("href", "/admin/groups?tab=needs_setup");
+    ).toHaveAttribute("href", "/admin/groups?tab=needs_setup&from=setup");
     await expect(
       checklist.getByRole("link", { name: /Assess health/ })
-    ).toHaveAttribute("href", "/admin/groups?tab=needs_health_check");
+    ).toHaveAttribute(
+      "href",
+      "/admin/groups?tab=needs_health_check&from=setup"
+    );
   });
 
   test("ranked next-actions queue rows carry contextual accessible names", async ({

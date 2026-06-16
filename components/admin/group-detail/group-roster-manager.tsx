@@ -18,6 +18,10 @@ import {
   successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import { useActionForm } from "@/components/admin/forms/action-form";
+import { EditingSurface } from "@/components/lg/admin/editing-surface";
+import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
+import { LeaderProfileForm } from "@/components/admin/forms/leader-profile-form";
+import { MemberForm } from "@/components/admin/forms/member-form";
 import { cn } from "@/lib/utils";
 import type { GroupPeopleTabData } from "@/components/admin/groups/group-detail-data";
 
@@ -53,6 +57,11 @@ export function GroupRosterManager({
   hiddenNavAreas?: readonly string[];
 }) {
   const peopleHidden = isHiddenArea(hiddenNavAreas, "/admin/people");
+  // Group roster create-and-assign (#643): the drawer's `target` doubles as the
+  // kind being added, so one EditingSurface serves both the Leaders and Members
+  // cards. The add-and-assign action already revalidates this route, so the
+  // drawer just closes + refreshes on save.
+  const addDrawer = useEditingDrawer<"leader" | "member">();
   return (
     <div className="grid gap-3.5">
       {data.archived ? (
@@ -124,6 +133,7 @@ export function GroupRosterManager({
                   groupName={groupName}
                   options={data.assignableLeaders}
                   peopleHidden={peopleHidden}
+                  onAddNew={() => addDrawer.open("leader")}
                 />
               ) : null}
             </>
@@ -184,6 +194,7 @@ export function GroupRosterManager({
                   groupName={groupName}
                   options={data.assignableMembers}
                   peopleHidden={peopleHidden}
+                  onAddNew={() => addDrawer.open("member")}
                 />
               ) : null}
             </>
@@ -254,6 +265,44 @@ export function GroupRosterManager({
           Manage everyone in People →
         </Link>
       )}
+
+      {/* One drawer for both kinds; `target` decides which form renders. The
+          forms create-and-assign in one atomic write (#643), so staffing never
+          dead-ends when every existing eligible person is already on a roster. */}
+      <EditingSurface
+        open={addDrawer.isOpen}
+        onRequestClose={addDrawer.requestClose}
+        eyebrow={groupName}
+        title={
+          addDrawer.target === "leader"
+            ? "Add a new leader to this group"
+            : "Add a new member to this group"
+        }
+        description={
+          addDrawer.target === "leader"
+            ? "Creates a brand-new leader and assigns them to this group in one step."
+            : "Creates a brand-new member and assigns them to this group in one step."
+        }
+        closeLabel="Close add person form"
+      >
+        {addDrawer.target === "leader" ? (
+          <LeaderProfileForm
+            assignToGroup={{ groupId, groupName }}
+            onSaved={addDrawer.markSaved}
+            onDirty={addDrawer.markDirty}
+            onCancel={addDrawer.requestClose}
+            onPendingChange={addDrawer.reportPending}
+          />
+        ) : addDrawer.target === "member" ? (
+          <MemberForm
+            assignToGroup={{ groupId, groupName }}
+            onSaved={addDrawer.markSaved}
+            onDirty={addDrawer.markDirty}
+            onCancel={addDrawer.requestClose}
+            onPendingChange={addDrawer.reportPending}
+          />
+        ) : null}
+      </EditingSurface>
     </div>
   );
 }
@@ -273,12 +322,15 @@ function RosterAssignRow({
   groupName,
   options,
   peopleHidden,
+  onAddNew,
 }: {
   kind: "leader" | "member";
   groupId: string;
   groupName: string;
   options: Array<{ id: string; name: string }> | null;
   peopleHidden: boolean;
+  // Opens the group-scoped create-and-assign drawer for this kind (#643).
+  onAddNew: () => void;
 }) {
   const action =
     kind === "leader" ? adminAssignLeaderToGroup : adminAssignMemberToGroup;
@@ -370,25 +422,35 @@ function RosterAssignRow({
           </Button>
         </div>
       </div>
-      {noOptions ? (
-        <div className="flex flex-wrap items-center gap-2.5">
+      {/* Create-and-assign: the only forward path when every existing eligible
+          person is already on a roster, and a convenience otherwise. type=button
+          so it opens the drawer without submitting this assign form. */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        {noOptions ? (
           <p className="m-0 font-sans text-xs text-ink3">
             {kind === "leader"
               ? "Every active leader and co-leader is already on this roster."
               : "Every active member is already on this roster."}
           </p>
-          {peopleHidden ? null : (
-            <Link
-              href="/admin/people"
-              className={buttonClassName("ghost", "sm")}
-            >
-              {kind === "leader"
-                ? "Add leader in People"
-                : "Add member in People"}
-            </Link>
-          )}
-        </div>
-      ) : null}
+        ) : null}
+        <button
+          type="button"
+          onClick={onAddNew}
+          className={buttonClassName("ghost", "sm")}
+        >
+          {kind === "leader"
+            ? "Add a new leader to this group"
+            : "Add a new member to this group"}
+        </button>
+        {peopleHidden ? null : (
+          <Link
+            href="/admin/people"
+            className="font-sans text-xs text-clay no-underline"
+          >
+            Manage in People →
+          </Link>
+        )}
+      </div>
       {state && !state.ok ? (
         <ul className="m-0 grid list-none gap-1.5 p-0">
           {state.errors.map((err, i) => (

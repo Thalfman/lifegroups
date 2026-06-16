@@ -117,6 +117,10 @@ type GroupsDirectoryProps = {
   isSuperAdmin?: boolean;
   // URL-driven initial tab for direct links from Home/setup recovery.
   initialTab?: ListTab;
+  // ADR 0027: the admin arrived via a setup deep-link (?from=setup). Carry the
+  // marker into each group's detail link so the roster work keeps the "← Back to
+  // setup" affordance.
+  fromSetup?: boolean;
   // #398: category-picker options grouped by top type, for the create/edit
   // forms in the editing drawer. Each list is the categories applied (active
   // cell) to that audience.
@@ -463,6 +467,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             defaults={props.metricDefaults}
             onEdit={openEdit}
             isSuperAdmin={props.isSuperAdmin ?? false}
+            fromSetup={props.fromSetup ?? false}
           />
         </li>
       ))}
@@ -552,6 +557,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
               defaults={props.metricDefaults}
               onEdit={openEdit}
               isSuperAdmin={props.isSuperAdmin ?? false}
+              fromSetup={props.fromSetup ?? false}
             />
           </div>
           {renderCardList("md:hidden")}

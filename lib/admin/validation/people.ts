@@ -136,6 +136,80 @@ export function validateAssignMemberToGroupPayload(
   };
 }
 
+// Group roster create-and-assign (#643): one payload that both creates a person
+// and names the group to put them on. A discriminated union on `kind` so a
+// leader carries the required email + in-group role while a member keeps email
+// optional and never carries a role — the same field rules the standalone
+// create validators enforce, plus the fixed group_id.
+export type AddPersonToGroupPayload =
+  | {
+      group_id: string;
+      kind: "member";
+      full_name: string;
+      email?: string;
+      phone?: string;
+    }
+  | {
+      group_id: string;
+      kind: "leader";
+      full_name: string;
+      email: string;
+      phone?: string;
+      role: Extract<RoleInGroup, "leader" | "co_leader">;
+    };
+
+export function validateAddPersonToGroupPayload(
+  input: unknown
+): ValidationResult<AddPersonToGroupPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+
+  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
+  const kind = input.kind;
+  if (kind !== "member" && kind !== "leader") {
+    errors.push("kind must be 'member' or 'leader'");
+  }
+
+  const fullName = trimString(input.full_name) ?? "";
+  if (fullName.length === 0) errors.push("full_name is required");
+  const phone = readOptionalString(input.phone);
+  if (phone !== undefined && !isPhone(phone))
+    errors.push("phone format is invalid");
+
+  if (kind === "leader") {
+    const email = trimString(input.email) ?? "";
+    if (!isEmail(email)) errors.push("email must be a valid address");
+    if (input.role !== "leader" && input.role !== "co_leader") {
+      errors.push("role must be 'leader' or 'co_leader'");
+    }
+    if (errors.length > 0) return { ok: false, errors };
+    const value: Extract<AddPersonToGroupPayload, { kind: "leader" }> = {
+      group_id: normalizeUuid(input.group_id as string),
+      kind: "leader",
+      full_name: fullName,
+      email,
+      role: input.role as "leader" | "co_leader",
+    };
+    if (phone !== undefined) value.phone = phone;
+    return { ok: true, value };
+  }
+
+  // Member branch (kind === "member"): email is optional.
+  const email = readOptionalString(input.email);
+  if (email !== undefined && !isEmail(email))
+    errors.push("email must be a valid address");
+  if (errors.length > 0) return { ok: false, errors };
+  const value: Extract<AddPersonToGroupPayload, { kind: "member" }> = {
+    group_id: normalizeUuid(input.group_id as string),
+    kind: "member",
+    full_name: fullName,
+  };
+  if (email !== undefined) value.email = email;
+  if (phone !== undefined) value.phone = phone;
+  return { ok: true, value };
+}
+
 // Roster removal (Groups/People overhaul): the inverse of the two assign
 // payloads — one person off one group's roster, person status untouched.
 

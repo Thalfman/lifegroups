@@ -428,6 +428,10 @@ export default async function AdminSuperAdminPage() {
         lede="Owner and operator console for launch readiness, access, configuration, diagnostics, audit, and guarded danger actions."
         maxWidth={CONSOLE_MAX_WIDTH}
       />
+      {/* ADR 0027: the setup "Import people" deep-link lands deep in the
+          console (the People-import panel, via #people-import); the return
+          affordance renders AT that panel (SetupReturnBanner), not page-top,
+          since the hash handler scrolls past anything up here. */}
       <PageBody maxWidth={CONSOLE_MAX_WIDTH}>
         <SuperAdminConsoleShell
           data={data}

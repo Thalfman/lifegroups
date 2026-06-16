@@ -106,37 +106,37 @@ describe("buildSetupRecoveryChecklist", () => {
       {
         status: "needs_action",
         count: 0,
-        href: "/admin/super-admin#people-import",
+        href: "/admin/super-admin?from=setup#people-import",
         label: "Import people",
       },
       {
         status: "needs_action",
         count: 16,
-        href: "/admin/groups?tab=needs_setup",
+        href: "/admin/groups?tab=needs_setup&from=setup",
         label: "Assign leaders",
       },
       {
         status: "needs_action",
         count: 16,
-        href: "/admin/groups?tab=needs_setup",
+        href: "/admin/groups?tab=needs_setup&from=setup",
         label: "Assign members",
       },
       {
         status: "complete",
         count: 0,
-        href: "/admin/groups?tab=needs_setup",
+        href: "/admin/groups?tab=needs_setup&from=setup",
         label: "Set capacity",
       },
       {
         status: "needs_action",
         count: 9,
-        href: "/admin/groups?tab=needs_setup",
+        href: "/admin/groups?tab=needs_setup&from=setup",
         label: "Set meeting info",
       },
       {
         status: "needs_action",
         count: 16,
-        href: "/admin/groups?tab=needs_health_check",
+        href: "/admin/groups?tab=needs_health_check&from=setup",
         label: "Assess health",
       },
     ]);
@@ -149,8 +149,17 @@ describe("buildSetupRecoveryChecklist", () => {
 
     expect(checklist.steps[0]).toMatchObject({
       key: "import_people",
-      href: "/admin/people",
+      href: "/admin/people?from=setup",
     });
+  });
+
+  it("marks every setup deep-link with from=setup (ADR 0027)", () => {
+    const checklist = buildSetupRecoveryChecklist(launchRecoveryDashboard(), {
+      isSuperAdmin: true,
+    });
+    for (const step of checklist.steps) {
+      expect(step.href).toContain("from=setup");
+    }
   });
 
   it("keeps the checklist visible when capacity is the only setup gap", () => {

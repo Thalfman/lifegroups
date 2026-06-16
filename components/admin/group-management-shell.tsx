@@ -76,6 +76,7 @@ export function GroupManagementShell({
   viewerId,
   isSuperAdmin = false,
   initialTab,
+  fromSetup = false,
 }: {
   data: GroupManagementData;
   // Signed-in profile id, threaded only to scope this browser's saved
@@ -85,6 +86,8 @@ export function GroupManagementShell({
   // SAD9: super-admin-only inline permanent delete of a group record.
   isSuperAdmin?: boolean;
   initialTab?: GroupListTab;
+  // ADR 0027: arrived via a setup deep-link; carry the marker into detail links.
+  fromSetup?: boolean;
 }) {
   const anyError =
     data.errors.groups ||
@@ -130,6 +133,7 @@ export function GroupManagementShell({
         viewerId={viewerId}
         isSuperAdmin={isSuperAdmin}
         initialTab={initialTab}
+        fromSetup={fromSetup}
         categoriesByAudience={
           data.categoriesByAudience ?? EMPTY_CATEGORIES_BY_AUDIENCE
         }

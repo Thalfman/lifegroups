@@ -322,6 +322,17 @@ export type AdminUuidRpcArgs = {
     p_role: RoleInGroup;
   };
   admin_assign_member_to_group: { p_group_id: string; p_member_id: string };
+  // Group roster create-and-assign (#643): create a brand-new member or leader
+  // AND put them on one group's roster in a single audited transaction. p_role
+  // is the in-group role for leaders (leader/co_leader) and null for members.
+  admin_add_person_to_group: {
+    p_group_id: string;
+    p_kind: "member" | "leader";
+    p_full_name: string;
+    p_email: string | null;
+    p_phone: string | null;
+    p_role: RoleInGroup | null;
+  };
   admin_deactivate_profile: { p_profile_id: string };
   admin_deactivate_member: { p_member_id: string };
   // Roster removal (Groups/People overhaul): take one person off one group's

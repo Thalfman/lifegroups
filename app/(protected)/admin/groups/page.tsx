@@ -4,10 +4,14 @@ import { loadGroupManagementData } from "@/components/admin/groups/group-managem
 import { getCurrentSession, requireAdmin } from "@/lib/auth/session";
 import { isSuperAdminRole } from "@/lib/auth/roles";
 import { resolveGroupListTab } from "@/lib/dashboard/group-list-tabs";
+import {
+  BackToSetupLink,
+  isFromSetup,
+} from "@/components/lg/admin/back-to-setup-link";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = { tab?: string | string[] };
+type SearchParams = { tab?: string | string[]; from?: string | string[] };
 
 export default async function AdminGroupsPage({
   searchParams,
@@ -17,6 +21,7 @@ export default async function AdminGroupsPage({
   await requireAdmin();
   const params = (await searchParams) ?? {};
   const initialTab = resolveGroupListTab(params.tab);
+  const fromSetup = isFromSetup(params.from);
   // The signed-in admin's profile id, used only to scope this browser's saved
   // card⇄table view preference so two admins sharing a device don't inherit
   // each other's choice (#325). getCurrentSession is React-cached, so this
@@ -36,11 +41,15 @@ export default async function AdminGroupsPage({
         lede="The single home for group setup, health, capacity, and lifecycle. Each group's standing reads as four independent labels — lifecycle, setup, health (the Group-Health Grade), and capacity. Open a group for its Health, Attendance, Follow-ups, and Events."
       />
       <PageBody>
+        {fromSetup ? (
+          <BackToSetupLink className="mb-3 block w-fit font-sans text-xs font-semibold text-ink2 no-underline hover:text-ink" />
+        ) : null}
         <GroupManagementShell
           data={data}
           viewerId={viewerId}
           isSuperAdmin={isSuperAdmin}
           initialTab={initialTab}
+          fromSetup={fromSetup}
         />
       </PageBody>
     </>

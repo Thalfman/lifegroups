@@ -1309,6 +1309,17 @@ export interface Database {
         Args: { p_group_id: UUID; p_member_id: UUID };
         Returns: UUID;
       };
+      admin_add_person_to_group: {
+        Args: {
+          p_group_id: UUID;
+          p_kind: string;
+          p_full_name: string;
+          p_email: string | null;
+          p_phone: string | null;
+          p_role: E.RoleInGroup | null;
+        };
+        Returns: UUID;
+      };
       admin_deactivate_profile: {
         Args: { p_profile_id: UUID };
         Returns: UUID;

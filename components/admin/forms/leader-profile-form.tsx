@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useValueChange } from "@/lib/hooks/use-value-change";
-import { adminCreateLeaderProfile } from "@/app/(protected)/admin/people/actions";
+import {
+  adminCreateLeaderProfile,
+  adminAddPersonToGroup,
+} from "@/app/(protected)/admin/people/actions";
 import {
   fieldHintClassName,
   fieldInputClassName,
   fieldLabelClassName,
+  fieldSelectClassName,
   formGridClassName,
   formNoteClassName,
 } from "./field-styles";
@@ -24,14 +28,19 @@ export function LeaderProfileForm({
   onDirty,
   onCancel,
   onPendingChange,
+  // Group roster create-and-assign (#643): when set, the same form creates the
+  // leader profile AND puts them on this group (with the chosen in-group role)
+  // in one atomic audited write, via adminAddPersonToGroup.
+  assignToGroup,
 }: {
   onSaved?: () => void;
   onDirty?: () => void;
   onCancel?: () => void;
   onPendingChange?: (pending: boolean) => void;
+  assignToGroup?: { groupId: string; groupName: string };
 } = {}) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
-    adminCreateLeaderProfile,
+    assignToGroup ? adminAddPersonToGroup : adminCreateLeaderProfile,
     { resetOnSuccess: true }
   );
   const [fullName, setFullName] = useState("");
@@ -65,9 +74,16 @@ export function LeaderProfileForm({
       onChange={onDirty}
       className="grid gap-3"
     >
+      {assignToGroup ? (
+        <>
+          <input type="hidden" name="group_id" value={assignToGroup.groupId} />
+          <input type="hidden" name="kind" value="leader" />
+        </>
+      ) : null}
       <p className={formNoteClassName}>
-        Creates a leader profile in the directory. Assign them to a group and
-        track their care from the person&rsquo;s page.
+        {assignToGroup
+          ? `Creates a leader profile and assigns them to ${assignToGroup.groupName}. Track their care from the person's page.`
+          : "Creates a leader profile in the directory. Assign them to a group and track their care from the person's page."}
       </p>
       <div className={formGridClassName}>
         <div>
@@ -115,6 +131,23 @@ export function LeaderProfileForm({
             placeholder="(555) 123-4567"
           />
         </div>
+        {assignToGroup ? (
+          <div>
+            <label htmlFor="leader-role" className={fieldLabelClassName}>
+              Role in this group
+            </label>
+            <select
+              id="leader-role"
+              name="role"
+              required
+              defaultValue="leader"
+              className={fieldSelectClassName}
+            >
+              <option value="leader">Leader</option>
+              <option value="co_leader">Co-leader</option>
+            </select>
+          </div>
+        ) : null}
       </div>
       <div className="flex flex-wrap gap-2.5">
         <Button
@@ -123,7 +156,11 @@ export function LeaderProfileForm({
           size="md"
           disabled={pending || !canSubmit}
         >
-          {pending ? "Saving…" : "Add leader"}
+          {pending
+            ? "Saving…"
+            : assignToGroup
+              ? "Add leader to group"
+              : "Add leader"}
         </Button>
         {onCancel ? (
           <Button
@@ -142,7 +179,14 @@ export function LeaderProfileForm({
           Enter a full name and valid email to enable Add leader.
         </p>
       ) : null}
-      <FormStatus state={state} successText="Leader profile added." />
+      <FormStatus
+        state={state}
+        successText={
+          assignToGroup
+            ? `Leader added to ${assignToGroup.groupName}.`
+            : "Leader profile added."
+        }
+      />
     </form>
   );
 }

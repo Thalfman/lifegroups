@@ -6,12 +6,14 @@ import {
   validateCreateMemberPayload,
   validateAssignLeaderToGroupPayload,
   validateAssignMemberToGroupPayload,
+  validateAddPersonToGroupPayload,
   validateChangeLeaderRolePayload,
   validateDeactivateProfilePayload,
   validateDeactivateMemberPayload,
   validateEndGroupMembershipPayload,
   validateUnassignLeaderFromGroupPayload,
   guardAgainstSelfTarget,
+  type AddPersonToGroupPayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -182,6 +184,49 @@ export async function adminAssignMemberToGroup(
   input: ActionInput<AssignMemberPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ASSIGN_MEMBER_SPEC, prev, input);
+}
+
+// ----- 4a. adminAddPersonToGroup ------------------------------------------
+//
+// Group roster create-and-assign (#643): create a brand-new member or leader
+// AND put them on this group in one atomic audited write, so the roster never
+// dead-ends when every existing eligible person is already assigned. Backed by
+// the admin_add_person_to_group SECURITY DEFINER RPC (one transaction, one
+// paired audit row) rather than chaining the create + assign actions.
+
+const ADD_PERSON_TO_GROUP_SPEC: AdminWriteActionSpec<
+  AddPersonToGroupPayload,
+  { id: string }
+> = {
+  name: "admin.people.add_person_to_group",
+  keys: ["group_id", "kind", "full_name", "email", "phone", "role"],
+  validate: validateAddPersonToGroupPayload,
+  fields: async (_actor, value) => ({
+    target_group_id: value.group_id,
+    person_kind: value.kind,
+    target_email_hash: value.email ? await hashEmail(value.email) : null,
+  }),
+  okFields: (value, id) => ({ new_person_id: id, person_kind: value.kind }),
+  rpc: (client, value) =>
+    adminRpc(client, "admin_add_person_to_group", {
+      p_group_id: value.group_id,
+      p_kind: value.kind,
+      p_full_name: value.full_name,
+      p_email: value.email ?? null,
+      p_phone: value.phone ?? null,
+      p_role: value.kind === "leader" ? value.role : null,
+    }),
+  // The new person shows up both in People and on this group's roster, so
+  // refresh both — the person-detail path doesn't exist until after creation.
+  revalidate: (value) => [REVALIDATE_PATH, `/admin/groups/${value.group_id}`],
+  noDataError: "The person was not added to the group. Please try again.",
+};
+
+export async function adminAddPersonToGroup(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<AddPersonToGroupPayload>
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(ADD_PERSON_TO_GROUP_SPEC, prev, input);
 }
 
 // ----- 4b. adminUnassignLeaderFromGroup -------------------------------------
