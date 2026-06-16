@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { adminCreateMember } from "@/app/(protected)/admin/people/actions";
 import {
+  fieldHintClassName,
   fieldInputClassName,
   fieldLabelClassName,
   formGridClassName,
@@ -40,6 +41,11 @@ export function MemberForm({
     onPendingChange?.(pending);
   }, [pending, onPendingChange]);
 
+  // Mirror New Group / Add Prospect: gate the submit on the one required field
+  // (full name) and show a short inline hint until it's filled in.
+  const [fullName, setFullName] = useState("");
+  const canSubmit = fullName.trim().length > 0;
+
   return (
     <form
       ref={formRef}
@@ -64,6 +70,8 @@ export function MemberForm({
             autoComplete="off"
             className={fieldInputClassName}
             placeholder="Sam Member"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
           />
         </div>
         <div>
@@ -94,7 +102,12 @@ export function MemberForm({
         </div>
       </div>
       <div className="flex flex-wrap gap-2.5">
-        <Button type="submit" variant="primary" size="md" disabled={pending}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          disabled={pending || !canSubmit}
+        >
           {pending ? "Saving…" : "Add member"}
         </Button>
         {onCancel ? (
@@ -109,6 +122,11 @@ export function MemberForm({
           </Button>
         ) : null}
       </div>
+      {!canSubmit ? (
+        <p className={fieldHintClassName}>
+          Enter a full name to enable Add member.
+        </p>
+      ) : null}
       <FormStatus state={state} successText="Member added." />
     </form>
   );
