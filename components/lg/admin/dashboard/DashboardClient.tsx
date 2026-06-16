@@ -102,16 +102,24 @@ export function DashboardClient({
   fromSetup?: boolean;
 }) {
   const hidden = new Set(hiddenNavAreas ?? []);
-  // ADR 0027: Home is a self-dismissing setup workspace. While any first-run
-  // setup step is incomplete it leads with the checklist and SUPPRESSES the
-  // needs-attention queue; once every step is complete it reverts to the normal
+  // ADR 0027: Home is a self-dismissing setup workspace. While there is real
+  // first-run setup work to do it leads with the checklist and SUPPRESSES the
+  // needs-attention queue; once that work is done it reverts to the normal
   // dashboard (needs-attention queue + snapshot). Degraded fallback data never
   // enters setup mode — the checklist hides itself there, so trust the queue.
+  //
+  // Gate on an ACTIONABLE gap (a `needs_action` step), not merely any
+  // non-complete step: a single degraded per-card read marks its step
+  // `unavailable` (status !== "complete"), and that must not flip Home into
+  // setup mode and hide the operational queue while the rest of the dashboard
+  // is live. The checklist still surfaces unavailable steps via its own `show`.
   const setupChecklist = buildSetupRecoveryChecklist(data, {
     isSuperAdmin,
     hiddenNavAreas,
   });
-  const setupMode = !degraded && setupChecklist.show;
+  const setupMode =
+    !degraded &&
+    setupChecklist.steps.some((step) => step.status === "needs_action");
   // Launch-planning capacity drills into the Planning tab; the leader pipeline
   // drills into People. When their tab is hidden, their snapshot card would
   // report stats for a gone surface, so it drops out with the tab. Leader care

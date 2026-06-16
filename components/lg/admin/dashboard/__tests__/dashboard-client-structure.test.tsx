@@ -235,6 +235,25 @@ describe("Home setup workspace (ADR 0027, #646)", () => {
     expect(html).not.toContain("launch steps");
   });
 
+  it("keeps the queue when a setup read is unavailable but no step is actionable", () => {
+    // A live dashboard with one degraded per-card read: every actionable gap is
+    // resolved, but launch-planning is unavailable so import/assign-members read
+    // as "unavailable" (not "needs_action"). Home must stay in dashboard mode —
+    // an unreadable setup step must not hide the operational queue.
+    const html = renderDashboardMode({
+      data: {
+        ...DASHBOARD_MODE_DATA,
+        launchPlanning: {
+          ...DASHBOARD_MODE_DATA.launchPlanning,
+          available: false,
+        },
+      },
+    });
+
+    indexOf(html, 'aria-label="Top next actions"');
+    expect(html).not.toContain("Finish setting up");
+  });
+
   it("does not enter setup mode on degraded fallback data", () => {
     // Degraded: the checklist hides itself, so Home stays in dashboard mode and
     // renders the needs-attention area (which, when degraded, shows its

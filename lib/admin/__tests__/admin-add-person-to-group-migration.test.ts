@@ -62,6 +62,13 @@ describe("admin_add_person_to_group migration (#643)", () => {
     expect(body).toContain("insert into public.group_memberships");
   });
 
+  it("rejects a null/blank kind before falling through to member creation", () => {
+    const body = functionBody(sql, FN);
+    // `null not in (...)` is NULL, so the guard must check null explicitly or a
+    // blank kind would silently create a member.
+    expect(body).toContain("v_kind is null or v_kind not in");
+  });
+
   it("validates inputs and reuses the existing mapped error tokens", () => {
     const body = functionBody(sql, FN);
     expect(body).toContain("raise exception 'invalid_input'");

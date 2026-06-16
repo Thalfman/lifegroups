@@ -53,7 +53,10 @@ begin
   end if;
 
   v_kind := nullif(btrim(coalesce(p_kind, '')), '');
-  if v_kind not in ('member', 'leader') then
+  -- Guard NULL explicitly: `null not in (...)` is NULL, not true, so without
+  -- this a blank/missing kind would skip both branches' raises and fall through
+  -- to member creation. This is the write boundary, so reject it outright.
+  if v_kind is null or v_kind not in ('member', 'leader') then
     raise exception 'invalid_input';
   end if;
 
