@@ -62,13 +62,19 @@ test.describe("admin People tabs", () => {
   }) => {
     const surface = page.locator(SURFACE);
 
-    // Deactivate is destructive: its accessible name must still carry the
-    // person's name, not collapse to a wall of identical "Deactivate" buttons.
-    const deactivate = surface.getByRole("button", {
-      name: /^Deactivate .+/,
+    // Archive lives in a per-row "More" menu now (#645); open the first one.
+    const moreMenu = surface
+      .locator('details:has(summary[aria-label^="More actions for"])')
+      .first();
+    await moreMenu.locator("summary").click();
+
+    // Archive is destructive: its accessible name must still carry the person's
+    // name, not collapse to a wall of identical "Archive" buttons.
+    const archive = moreMenu.getByRole("button", {
+      name: /^Archive .+/,
     });
-    expect(await deactivate.count()).toBeGreaterThan(0);
-    await expect(deactivate.first()).toBeVisible();
+    expect(await archive.count()).toBeGreaterThan(0);
+    await expect(archive.first()).toBeVisible();
 
     // Role change is a destructive direction (downgrade) candidate: its trigger
     // must name the person too.
@@ -228,7 +234,7 @@ test.describe("admin People tabs", () => {
     const surface = page.locator(SURFACE);
 
     // Scan each tab while it is mounted. Directory is last so the row-level
-    // destructive affordances (Deactivate / Change role) and the View person
+    // destructive affordances (Archive / Change role) and the View person
     // links are in the DOM when scanned. Scans scope to the People surface
     // (the harness renders every admin surface on one page) to stay fast.
     for (const name of [/^Apprentices/, /^Directory/]) {
