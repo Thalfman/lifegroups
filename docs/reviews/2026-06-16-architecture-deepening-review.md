@@ -29,17 +29,25 @@ and the write-action skeleton ([`run-action.ts`](../../lib/shared/run-action.ts)
 The friction is at the edges, where that discipline thins out. Five candidates
 survived verification, ranked.
 
-| #   | Candidate                                                                                                                | Strength        | Area       |
-| --- | ------------------------------------------------------------------------------------------------------------------------ | --------------- | ---------- |
-| 1   | [Danger-zone writes behind the Write Action Runner](#1--pull-the-danger-zone-writes-back-behind-the-write-action-runner) | **Strong**      | write path |
-| 2   | [Give the Super-Admin Console a reads seam](#2--give-the-super-admin-console-a-reads-seam)                               | **Strong**      | read path  |
-| 3   | [Move authorization guards out of the validation barrel](#3--move-authorization-guards-out-of-the-validation-barrel)     | Worth exploring | write path |
-| 4   | [Name the cell-capacity precondition at the seam](#4--name-the-cell-capacity-precondition-at-the-seam)                   | Worth exploring | read path  |
-| 5   | [Collapse the manual payload → RPC-args mapping](#5--collapse-the-manual-payload--rpc-args-mapping)                      | Speculative     | write path |
+| #   | Candidate                                                                                                                | Strength                  | Area       |
+| --- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------- | ---------- |
+| 1   | [Danger-zone writes behind the Write Action Runner](#1--pull-the-danger-zone-writes-back-behind-the-write-action-runner) | **Strong** ✅ Implemented | write path |
+| 2   | [Give the Super-Admin Console a reads seam](#2--give-the-super-admin-console-a-reads-seam)                               | **Strong** ✅ Implemented | read path  |
+| 3   | [Move authorization guards out of the validation barrel](#3--move-authorization-guards-out-of-the-validation-barrel)     | Worth exploring           | write path |
+| 4   | [Name the cell-capacity precondition at the seam](#4--name-the-cell-capacity-precondition-at-the-seam)                   | Worth exploring           | read path  |
+| 5   | [Collapse the manual payload → RPC-args mapping](#5--collapse-the-manual-payload--rpc-args-mapping)                      | Speculative               | write path |
 
 ---
 
 ## 1 · Pull the danger-zone writes back behind the Write Action Runner
+
+**Status:** ✅ Implemented 2026-06-16 — the runner result seam now carries
+JSON/text returns (`RpcResult<D>`), and the danger-zone writes (Clean Slate
+wipe/revert, permanent delete/inline-delete/restore, the activity/history/
+attention resets, reset-all, launch-prep, people-import) are runner specs that
+log once through `startActionLog`. Holdouts (documented in code): clean-slate
+import, preflight (a read), invite-link (already logs), invite-user/
+test-accounts (Edge-Function-backed), account password reset (Supabase Auth).
 
 **Strength:** Strong · **Dependency:** in-process
 
@@ -96,6 +104,12 @@ the exceptions that slipped the seam because their return shape didn't fit.
 ---
 
 ## 2 · Give the Super-Admin Console a reads seam
+
+**Status:** ✅ Implemented 2026-06-16 — `console-data.ts` now hosts a
+`SuperAdminConsoleReads` interface, the `supabaseSuperAdminConsoleReads`
+production adapter (via `bindReads`), and a pure `buildSuperAdminConsoleData`
+builder plus `buildSuperAdminChecklist`. The page is a thin loader call; the
+checklist degrade rules are unit-tested against an in-memory adapter.
 
 **Strength:** Strong · **Dependency:** local-substitutable
 
