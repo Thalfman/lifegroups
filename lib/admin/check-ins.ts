@@ -412,6 +412,127 @@ function compareReviewRows(a: GroupReviewRow, b: GroupReviewRow): number {
   return a.groupName.localeCompare(b.groupName);
 }
 
+// Indexed, already-fetched state threaded into the per-group row builder so
+// `fetchAdminWeeklyCheckInReview` stays an orchestration shell rather than a
+// 200-line body. Map types are read off the helpers that build them so the
+// context can never drift from its producers.
+type WeeklyReviewRowContext = {
+  meetingWeek: string;
+  now: Date;
+  sessionByGroup: Map<string, AttendanceSessionsRow>;
+  recordsBySession: Map<string, AttendanceRecordsRow[]>;
+  healthByGroup: Map<string, GroupHealthUpdatesRow>;
+  profileNames: ReturnType<typeof profileNameMap>;
+  leaderNames: ReturnType<typeof leaderNamesByGroup>;
+  calendarEventsByGroup: ReturnType<typeof buildCalendarEventsByGroup>;
+  metricSettingsByGroup: Map<string, GroupMetricSettingsRow>;
+  defaults: ReturnType<typeof decodeMetricDefaults>;
+};
+
+// Assemble one group's review row from the indexed context. Pure: no I/O, no
+// mutation of `ctx`.
+function buildGroupReviewRow(
+  g: GroupsRow,
+  ctx: WeeklyReviewRowContext
+): GroupReviewRow {
+  const session = ctx.sessionByGroup.get(g.id) ?? null;
+  const sessionStatus = deriveSessionStatus(session);
+  const sessionRecords = session
+    ? (ctx.recordsBySession.get(session.id) ?? [])
+    : [];
+  const showCounts =
+    sessionStatus === "submitted" || sessionStatus === "admin_entered";
+  const attendance = showCounts ? countAttendance(sessionRecords) : null;
+  const health = ctx.healthByGroup.get(g.id) ?? null;
+  const submitterName =
+    session && session.submitted_by
+      ? (ctx.profileNames.get(session.submitted_by) ?? null)
+      : null;
+  const occurrenceDate = expectedMeetingDateForWeek(ctx.meetingWeek, {
+    meetingDay: g.meeting_day,
+    meetingFrequency: g.meeting_frequency,
+    meetingWeekParity: g.meeting_week_parity,
+  });
+  const calendarOverride = pickCalendarOverrideForOccurrence(
+    ctx.calendarEventsByGroup.get(g.id) ?? [],
+    occurrenceDate
+  );
+  const dueResult = computeCheckInDue({
+    group: {
+      meetingDay: g.meeting_day,
+      meetingTime: g.meeting_time,
+      meetingFrequency: g.meeting_frequency,
+      meetingWeekParity: g.meeting_week_parity,
+    },
+    override: ctx.metricSettingsByGroup.get(g.id) ?? null,
+    defaults: ctx.defaults,
+    meetingWeek: ctx.meetingWeek,
+    now: ctx.now,
+    calendarOverride,
+  });
+  // Any non-"missing" session counts as the leader having checked in for
+  // the week. submitted / admin_entered are the obvious cases; did_not_meet
+  // and planned_pause are also valid leader submissions that settle the
+  // week, so they should suppress overdue messaging too (otherwise a row
+  // ends up "Did not meet · Overdue" simultaneously).
+  const isCheckedInThisWeek = sessionStatus !== "missing";
+  return {
+    groupId: g.id,
+    groupName: g.name,
+    meetingDay: g.meeting_day,
+    meetingTime: g.meeting_time,
+    lifecycleStatus: g.lifecycle_status,
+    isActive: g.lifecycle_status === "active",
+    leaderNames: ctx.leaderNames.get(g.id) ?? [],
+    sessionStatus,
+    submittedByName: submitterName,
+    submittedAt: session?.submitted_at ?? null,
+    meetingDate: session?.meeting_date ?? null,
+    attendance,
+    healthPulse: isLeaderPulse(health?.pulse) ? health!.pulse : null,
+    followUpNeeded: health?.follow_up_needed ?? false,
+    leaderNotePreview: truncatePreview(session?.leader_note ?? null),
+    dueLabel: formatCheckInDueLabel(dueResult.due),
+    dueRelative: formatCheckInDueRelative(dueResult),
+    // Only treat the row as "overdue" if (1) due-date math worked AND
+    // (2) the leader hasn't already submitted *anything* for this week
+    // (submitted / admin_entered / did_not_meet / planned_pause all
+    // count as "in").
+    isOverdue: dueResult.isOverdue && !isCheckedInThisWeek,
+    isScheduledThisWeek: dueResult.isScheduledThisWeek,
+  };
+}
+
+// Roll the active rows up into the summary tiles.
+function summarizeReview(rows: GroupReviewRow[]): WeeklyReviewSummary {
+  const summary: WeeklyReviewSummary = { ...EMPTY_SUMMARY };
+  for (const row of rows) {
+    if (!row.isActive) continue;
+    summary.totalActive++;
+    if (row.followUpNeeded) summary.needsFollowUp++;
+    switch (row.sessionStatus) {
+      case "submitted":
+      case "admin_entered":
+        summary.submitted++;
+        break;
+      case "did_not_meet":
+        summary.didNotMeet++;
+        break;
+      case "planned_pause":
+        summary.plannedPause++;
+        break;
+      case "missing":
+        // Only count a missing session toward the "Missing" tile when
+        // the group was actually scheduled to meet this week. Bi-weekly
+        // off-parity groups otherwise inflate the missing count for a
+        // week they were never expected to check in.
+        if (row.isScheduledThisWeek) summary.missing++;
+        break;
+    }
+  }
+  return summary;
+}
+
 export async function fetchAdminWeeklyCheckInReview(
   client: ReadClient,
   meetingWeek: string,
@@ -511,102 +632,24 @@ export async function fetchAdminWeeklyCheckInReview(
     ? BUILT_IN_METRIC_DEFAULTS
     : decodeMetricDefaults(metricDefaultsResult.data ?? null);
 
-  const rows: GroupReviewRow[] = groups.map((g) => {
-    const session = sessionByGroup.get(g.id) ?? null;
-    const sessionStatus = deriveSessionStatus(session);
-    const sessionRecords = session
-      ? (recordsBySession.get(session.id) ?? [])
-      : [];
-    const showCounts =
-      sessionStatus === "submitted" || sessionStatus === "admin_entered";
-    const attendance = showCounts ? countAttendance(sessionRecords) : null;
-    const health = healthByGroup.get(g.id) ?? null;
-    const submitterName =
-      session && session.submitted_by
-        ? (profileNames.get(session.submitted_by) ?? null)
-        : null;
-    const occurrenceDate = expectedMeetingDateForWeek(meetingWeek, {
-      meetingDay: g.meeting_day,
-      meetingFrequency: g.meeting_frequency,
-      meetingWeekParity: g.meeting_week_parity,
-    });
-    const calendarOverride = pickCalendarOverrideForOccurrence(
-      calendarEventsByGroup.get(g.id) ?? [],
-      occurrenceDate
-    );
-    const dueResult = computeCheckInDue({
-      group: {
-        meetingDay: g.meeting_day,
-        meetingTime: g.meeting_time,
-        meetingFrequency: g.meeting_frequency,
-        meetingWeekParity: g.meeting_week_parity,
-      },
-      override: metricSettingsByGroup.get(g.id) ?? null,
-      defaults,
-      meetingWeek,
-      now,
-      calendarOverride,
-    });
-    // Any non-"missing" session counts as the leader having checked in for
-    // the week. submitted / admin_entered are the obvious cases; did_not_meet
-    // and planned_pause are also valid leader submissions that settle the
-    // week, so they should suppress overdue messaging too (otherwise a row
-    // ends up "Did not meet · Overdue" simultaneously).
-    const isCheckedInThisWeek = sessionStatus !== "missing";
-    return {
-      groupId: g.id,
-      groupName: g.name,
-      meetingDay: g.meeting_day,
-      meetingTime: g.meeting_time,
-      lifecycleStatus: g.lifecycle_status,
-      isActive: g.lifecycle_status === "active",
-      leaderNames: leaderNames.get(g.id) ?? [],
-      sessionStatus,
-      submittedByName: submitterName,
-      submittedAt: session?.submitted_at ?? null,
-      meetingDate: session?.meeting_date ?? null,
-      attendance,
-      healthPulse: isLeaderPulse(health?.pulse) ? health!.pulse : null,
-      followUpNeeded: health?.follow_up_needed ?? false,
-      leaderNotePreview: truncatePreview(session?.leader_note ?? null),
-      dueLabel: formatCheckInDueLabel(dueResult.due),
-      dueRelative: formatCheckInDueRelative(dueResult),
-      // Only treat the row as "overdue" if (1) due-date math worked AND
-      // (2) the leader hasn't already submitted *anything* for this week
-      // (submitted / admin_entered / did_not_meet / planned_pause all
-      // count as "in").
-      isOverdue: dueResult.isOverdue && !isCheckedInThisWeek,
-      isScheduledThisWeek: dueResult.isScheduledThisWeek,
-    };
-  });
-
+  const rowContext: WeeklyReviewRowContext = {
+    meetingWeek,
+    now,
+    sessionByGroup,
+    recordsBySession,
+    healthByGroup,
+    profileNames,
+    leaderNames,
+    calendarEventsByGroup,
+    metricSettingsByGroup,
+    defaults,
+  };
+  const rows: GroupReviewRow[] = groups.map((g) =>
+    buildGroupReviewRow(g, rowContext)
+  );
   rows.sort(compareReviewRows);
 
-  const summary: WeeklyReviewSummary = { ...EMPTY_SUMMARY };
-  for (const row of rows) {
-    if (!row.isActive) continue;
-    summary.totalActive++;
-    if (row.followUpNeeded) summary.needsFollowUp++;
-    switch (row.sessionStatus) {
-      case "submitted":
-      case "admin_entered":
-        summary.submitted++;
-        break;
-      case "did_not_meet":
-        summary.didNotMeet++;
-        break;
-      case "planned_pause":
-        summary.plannedPause++;
-        break;
-      case "missing":
-        // Only count a missing session toward the "Missing" tile when
-        // the group was actually scheduled to meet this week. Bi-weekly
-        // off-parity groups otherwise inflate the missing count for a
-        // week they were never expected to check in.
-        if (row.isScheduledThisWeek) summary.missing++;
-        break;
-    }
-  }
+  const summary = summarizeReview(rows);
 
   return {
     meetingWeek,
