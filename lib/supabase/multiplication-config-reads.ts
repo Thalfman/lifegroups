@@ -2,7 +2,7 @@ import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
 import { isAudienceCategory } from "@/lib/admin/audience";
-import { cellKey, cellKeyOf } from "@/lib/admin/cell-coordinate";
+import { cellKey } from "@/lib/admin/cell-coordinate";
 import { fetchHealthRubric } from "./health-rubric-reads";
 import {
   tallyCellInterest,
@@ -190,26 +190,14 @@ export type CellKey = {
 };
 
 // The per-cell active group sizes: keyed by the canonical Cell coordinate key
-// (cellKeyString → cellKey) so callers index without juggling tuples. Each value
-// is the array of ACTIVE member counts of the active groups in that cell.
+// (cellKey) so callers index without juggling tuples. Each value is the array of
+// ACTIVE member counts of the active groups in that cell.
 export type CellActiveGroupSizes = {
   // Stable key → the cell's active group sizes.
   byCell: Map<string, number[]>;
   // The same key → its decomposed parts, for callers that need the audience/cat.
   keys: Map<string, CellKey>;
 };
-
-// The stable cell key string — a typed alias over the canonical lenient keyer
-// (`cellKeyOf`): a null category collapses to an empty-part key, and an
-// uncategorized group is in no cell, so that key is never matched. The encoding
-// itself lives in `lib/admin/cell-coordinate.ts`; this narrows the signature to a
-// known Audience for the surface and tests that import it.
-export function cellKeyString(
-  audience: GroupAudienceCategory,
-  categoryId: string | null
-): string {
-  return cellKeyOf(audience, categoryId);
-}
 
 // Pure aggregator (exported for testing): bucket each ACTIVE group's active member
 // count under its cell, with EVERY active cell pre-seeded to an empty list. The
@@ -238,7 +226,7 @@ export function tallyCellActiveGroupSizes(
       continue;
     }
     if (cell.categoryId == null) continue;
-    const key = cellKeyString(audience, cell.categoryId);
+    const key = cellKey({ audience, categoryId: cell.categoryId });
     if (!byCell.has(key)) {
       byCell.set(key, []);
       keys.set(key, { audience, categoryId: cell.categoryId });
@@ -254,7 +242,7 @@ export function tallyCellActiveGroupSizes(
     // An uncategorized group (null category_id) is in no category cell, so it
     // never feeds a cell's capacity (PRD §2.3 / §2.4).
     if (g.category_id == null) continue;
-    const key = cellKeyString(audience, g.category_id);
+    const key = cellKey({ audience, categoryId: g.category_id });
     // Only ACTIVE cells are considered: a group whose cell isn't an active target
     // is outside the capacity matrix and is dropped.
     const list = byCell.get(key);
@@ -464,9 +452,8 @@ type ResolvedCellLeaderGrade = {
 };
 
 // The per-CELL effective A–F letter arrays feeding the two health pillars, keyed
-// by `${audience_category}:${category_id}` (single colon — matching the readiness
-// + interest cell keys, distinct from the capacity read's double-colon key). A
-// cell with no grades is simply absent from the map.
+// by the canonical Cell coordinate key (cellKey) — the same key every per-cell
+// map uses. A cell with no grades is simply absent from the map.
 export type CellHealthGrades = Map<
   string,
   { groupGrades: GroupHealthLetter[]; leaderGrades: GroupHealthLetter[] }
@@ -476,14 +463,6 @@ export const EMPTY_CELL_HEALTH_GRADES: CellHealthGrades = new Map();
 
 function isCategory(value: unknown): value is GroupAudienceCategory {
   return value === "men" || value === "women" || value === "mixed";
-}
-
-// The per-cell health key — the same single-colon shape the readiness inputs use.
-export function cellHealthKey(
-  type: GroupAudienceCategory,
-  categoryId: string
-): string {
-  return cellKey({ audience: type, categoryId });
 }
 
 // Pure bucketer (exported for testing): bucket each resolved group grade under its
@@ -507,7 +486,9 @@ export function tallyCellHealthGrades(
   for (const g of groupGrades) {
     if (!g.letter || g.isClosed) continue;
     if (!isCategory(g.type) || g.categoryId == null) continue;
-    ensure(cellHealthKey(g.type, g.categoryId)).groupGrades.push(g.letter);
+    ensure(
+      cellKey({ audience: g.type, categoryId: g.categoryId })
+    ).groupGrades.push(g.letter);
   }
 
   for (const l of leaderGrades) {
@@ -598,7 +579,7 @@ export async function fetchCellHealthGrades(
     const categoryId = row.group?.category_id ?? null;
     if (!isCategory(type) || categoryId == null) continue;
     const set = leaderCellsByProfile.get(row.profile_id) ?? new Set();
-    set.add(cellHealthKey(type, categoryId));
+    set.add(cellKey({ audience: type, categoryId }));
     leaderCellsByProfile.set(row.profile_id, set);
   }
 
