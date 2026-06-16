@@ -6,6 +6,11 @@ import {
 } from "@/lib/dashboard/setup-recovery";
 import type { AdminDashboardData } from "@/lib/dashboard/types";
 import { cn } from "@/lib/utils";
+import { SetupReturnFocus } from "./SetupReturnFocus";
+
+// Id given to the first incomplete step's action, so a from=setup return to Home
+// can re-focus the next step the admin needs to do (ADR 0027).
+const NEXT_STEP_ID = "setup-recovery-next-step";
 
 const STATUS_COPY: Record<SetupRecoveryStatus, string> = {
   complete: "Ready",
@@ -24,17 +29,26 @@ export function SetupRecoveryChecklist({
   isSuperAdmin = false,
   degraded = false,
   hiddenNavAreas,
+  // True when the admin arrived back on Home from a setup deep-link
+  // (/admin?from=setup) — re-focus the next incomplete step (ADR 0027).
+  focusOnReturn = false,
 }: {
   data: AdminDashboardData;
   isSuperAdmin?: boolean;
   degraded?: boolean;
   hiddenNavAreas?: readonly string[];
+  focusOnReturn?: boolean;
 }) {
   const checklist = buildSetupRecoveryChecklist(data, {
     isSuperAdmin,
     hiddenNavAreas,
   });
   if (degraded || !checklist.show) return null;
+
+  // The first step still needing action is the one to re-focus on return.
+  const nextStepKey = checklist.steps.find(
+    (step) => step.status !== "complete"
+  )?.key;
 
   return (
     <section
@@ -50,11 +64,8 @@ export function SetupRecoveryChecklist({
             Setup checklist
           </h3>
           <p className="m-0 font-sans text-sm leading-normal text-ink2">
-            {checklist.incompleteCount} of {checklist.totalCount} launch steps
-            still need attention
-            {checklist.setupGapCount > 0
-              ? `, including ${checklist.setupGapCount} group setup gaps.`
-              : "."}
+            {checklist.incompleteCount} of {checklist.totalCount} setup steps
+            still need attention.
           </p>
         </div>
         <Badge tone={STATUS_TONES.watch} dot>
@@ -88,6 +99,7 @@ export function SetupRecoveryChecklist({
             </div>
             <LinkButton
               href={step.href}
+              id={step.key === nextStepKey ? NEXT_STEP_ID : undefined}
               variant={step.status === "complete" ? "ghost" : "solid"}
               size="sm"
               aria-label={`${step.actionLabel}: ${step.detail}`}
@@ -98,6 +110,8 @@ export function SetupRecoveryChecklist({
           </li>
         ))}
       </ol>
+
+      <SetupReturnFocus targetId={NEXT_STEP_ID} active={focusOnReturn} />
     </section>
   );
 }

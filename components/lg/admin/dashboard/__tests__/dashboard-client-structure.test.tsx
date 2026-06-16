@@ -35,6 +35,42 @@ function render(over: Partial<ComponentProps<typeof DashboardClient>> = {}) {
   );
 }
 
+// ADR 0027: Home is a self-dismissing setup workspace. The demo ADMIN_FALLBACK
+// still has open setup steps, so it renders in SETUP MODE (checklist leads, the
+// needs-attention queue is suppressed). Tests that assert dashboard-mode queue
+// ordering force every setup step complete so Home reverts to the queue.
+const DASHBOARD_MODE_DATA: AdminDashboardData = {
+  ...ADMIN_FALLBACK,
+  setupGaps: {
+    ...ADMIN_FALLBACK.setupGaps,
+    counts: { noCapacity: 0, noLeader: 0, noMeetingDayTime: 0, noMembers: 0 },
+  },
+  healthSummary: {
+    ...ADMIN_FALLBACK.healthSummary,
+    counts: {
+      ...ADMIN_FALLBACK.healthSummary.counts,
+      not_assessed: 0,
+      missing_required_ratings: 0,
+    },
+  },
+  launchPlanning: {
+    ...ADMIN_FALLBACK.launchPlanning,
+    available: true,
+    currentParticipants: 24,
+  },
+  shepherdCare: {
+    ...ADMIN_FALLBACK.shepherdCare,
+    available: true,
+    totalActiveShepherds: 8,
+  },
+};
+
+function renderDashboardMode(
+  over: Partial<ComponentProps<typeof DashboardClient>> = {}
+) {
+  return render({ data: DASHBOARD_MODE_DATA, ...over });
+}
+
 // First index of a substring, asserting it is actually present so an absent
 // marker fails loudly instead of comparing -1 positions.
 function indexOf(html: string, marker: string): number {
@@ -61,7 +97,7 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
   });
 
   it("leads with the urgent-work queue above the collapsible overview", () => {
-    const html = render();
+    const html = renderDashboardMode();
 
     const needsAttention = indexOf(html, 'aria-label="Top next actions"');
     const collapsible = indexOf(html, "<details");
@@ -114,7 +150,7 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
   });
 
   it("does not surface any deeper overview card above the urgent-work queue", () => {
-    const html = render();
+    const html = renderDashboardMode();
 
     const needsAttention = indexOf(html, 'aria-label="Top next actions"');
 
@@ -162,6 +198,51 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
     expect(html).not.toContain("/admin/groups?tab=needs_health_check");
     expect(html).not.toContain("/admin/people");
     expect(html).not.toContain("/admin/super-admin#people-import");
+  });
+});
+
+// ADR 0027 — Home is a self-dismissing setup workspace. While any first-run
+// setup step is incomplete, Home leads with the setup checklist and suppresses
+// the needs-attention queue; once every step is complete it reverts to the queue.
+describe("Home setup workspace (ADR 0027, #646)", () => {
+  it("leads with the setup checklist and suppresses the queue in setup mode", () => {
+    const html = render(); // ADMIN_FALLBACK still has open setup steps.
+
+    // The checklist leads.
+    indexOf(html, "Setup checklist");
+    indexOf(html, "Finish setting up");
+    // The needs-attention queue is suppressed (its ranked list is the signal;
+    // "Needs attention" as a stat label legitimately survives on a snapshot card).
+    expect(html).not.toContain('aria-label="Top next actions"');
+  });
+
+  it("reverts to the needs-attention queue once every setup step is complete", () => {
+    const html = renderDashboardMode();
+
+    indexOf(html, 'aria-label="Top next actions"');
+    // The setup checklist self-dismisses.
+    expect(html).not.toContain("Setup checklist");
+    expect(html).not.toContain("Finish setting up");
+  });
+
+  it("states one canonical setup-step count with no group-setup-gaps sub-clause", () => {
+    const html = render();
+
+    indexOf(html, "setup steps");
+    expect(html).toContain("still need attention.");
+    // The dropped sub-clause must not return.
+    expect(html).not.toContain("group setup gaps");
+    expect(html).not.toContain("launch steps");
+  });
+
+  it("does not enter setup mode on degraded fallback data", () => {
+    // Degraded: the checklist hides itself, so Home stays in dashboard mode and
+    // renders the needs-attention area (which, when degraded, shows its
+    // all-clear line rather than a queue) — never the setup checklist.
+    const html = render({ degraded: true });
+    expect(html).not.toContain("Setup checklist");
+    expect(html).not.toContain("Finish setting up");
+    indexOf(html, "Nothing needs your attention right now.");
   });
 });
 

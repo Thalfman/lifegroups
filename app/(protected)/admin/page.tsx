@@ -24,7 +24,10 @@ import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = { period?: string | string[] };
+type SearchParams = {
+  period?: string | string[];
+  from?: string | string[];
+};
 
 export default async function AdminPage({
   searchParams,
@@ -35,6 +38,10 @@ export default async function AdminPage({
 
   const params = (await searchParams) ?? {};
   const grain = resolveOverviewGrain(params.period);
+  // ADR 0027: a setup deep-link's "← Back to setup" affordance returns here with
+  // ?from=setup, so Home re-focuses the next incomplete step.
+  const fromSetup =
+    (Array.isArray(params.from) ? params.from[0] : params.from) === "setup";
 
   const client = await createSupabaseServerClient();
   // The guest pipeline is frozen by default (ADR 0002 / 0009). Resolve the flag
@@ -125,6 +132,7 @@ export default async function AdminPage({
         canResetActivity={session.profile.role === "super_admin"}
         hiddenNavAreas={[...hiddenNavAreas]}
         isSuperAdmin={session.profile.role === "super_admin"}
+        fromSetup={fromSetup}
       />
     </>
   );

@@ -41,6 +41,21 @@ function statusFromCount(count: number): SetupRecoveryStatus {
   return count > 0 ? "needs_action" : "complete";
 }
 
+// ADR 0027: setup deep-links carry a `?from=setup` marker so the target surface
+// renders a reusable "← Back to setup" affordance and returning to Home
+// re-focuses the next incomplete step. Append it without clobbering an existing
+// query string or fragment (e.g. `/admin/super-admin#people-import` →
+// `/admin/super-admin?from=setup#people-import`).
+export const FROM_SETUP_PARAM = "from";
+export const FROM_SETUP_VALUE = "setup";
+
+function withFromSetup(href: string): string {
+  const [path, hash] = href.split("#");
+  const separator = path.includes("?") ? "&" : "?";
+  const withMarker = `${path}${separator}${FROM_SETUP_PARAM}=${FROM_SETUP_VALUE}`;
+  return hash ? `${withMarker}#${hash}` : withMarker;
+}
+
 function hasHiddenArea(
   hiddenNavAreas: SetupRecoveryOptions["hiddenNavAreas"],
   href: string
@@ -207,8 +222,15 @@ export function buildSetupRecoveryChecklist(
     (step) => step.status !== "complete"
   ).length;
 
+  // Decorate every deep-link with the from=setup marker last, so each step's
+  // raw href above stays readable and the marker is applied in exactly one place.
+  const markedSteps = steps.map((step) => ({
+    ...step,
+    href: withFromSetup(step.href),
+  }));
+
   return {
-    steps,
+    steps: markedSteps,
     incompleteCount,
     totalCount: steps.length,
     setupGapCount,

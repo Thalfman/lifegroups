@@ -15,6 +15,7 @@ import { MultiplyOverviewCard } from "./MultiplyOverviewCard";
 import { LeaderPipelineOverviewCard } from "./LeaderPipelineOverviewCard";
 import { NeedsAttentionArea } from "./NeedsAttentionArea";
 import { SetupRecoveryChecklist } from "./SetupRecoveryChecklist";
+import { buildSetupRecoveryChecklist } from "@/lib/dashboard/setup-recovery";
 import { ThisWeekCard } from "./ThisWeekCard";
 import { ActivityBand } from "./ActivityBand";
 import { ActivityResetControl } from "./ActivityResetControl";
@@ -72,6 +73,7 @@ export function DashboardClient({
   canResetActivity,
   hiddenNavAreas,
   isSuperAdmin,
+  fromSetup = false,
 }: {
   data: AdminDashboardData;
   // Pivot overview summaries (#470), loaded in parallel with the dashboard
@@ -95,8 +97,21 @@ export function DashboardClient({
   // pivot keeps Home coherent on day one, #372). Omitted ⇒ hide nothing.
   hiddenNavAreas?: readonly string[];
   isSuperAdmin?: boolean;
+  // True when Home was reached via a setup deep-link's "← Back to setup" return
+  // (/admin?from=setup): re-focus the next incomplete step (ADR 0027).
+  fromSetup?: boolean;
 }) {
   const hidden = new Set(hiddenNavAreas ?? []);
+  // ADR 0027: Home is a self-dismissing setup workspace. While any first-run
+  // setup step is incomplete it leads with the checklist and SUPPRESSES the
+  // needs-attention queue; once every step is complete it reverts to the normal
+  // dashboard (needs-attention queue + snapshot). Degraded fallback data never
+  // enters setup mode — the checklist hides itself there, so trust the queue.
+  const setupChecklist = buildSetupRecoveryChecklist(data, {
+    isSuperAdmin,
+    hiddenNavAreas,
+  });
+  const setupMode = !degraded && setupChecklist.show;
   // Launch-planning capacity drills into the Planning tab; the leader pipeline
   // drills into People. When their tab is hidden, their snapshot card would
   // report stats for a gone surface, so it drops out with the tab. Leader care
@@ -111,28 +126,41 @@ export function DashboardClient({
   return (
     <PageBody>
       <div className="grid gap-8">
-        {/* 1 — Needs attention. The most urgent work leads Home: the ranked
-            queue puts leader care, group setup, health checks, and overdue
-            follow-ups in a fixed priority order, each a direct link. */}
+        {/* 1 — The lead panel. In setup mode (any first-run step incomplete)
+            Home leads with the guided setup checklist and suppresses the
+            needs-attention queue; once setup is complete it reverts to the
+            ranked needs-attention queue (leader care, group setup, health
+            checks, overdue follow-ups), each row a direct link. (ADR 0027) */}
         <section
           aria-labelledby="home-needs-attention"
           className="grid gap-2.5"
         >
-          <SectionHeading>
-            <span id="home-needs-attention">Needs attention</span>
-          </SectionHeading>
-          <NeedsAttentionArea
-            data={data}
-            degraded={degraded}
-            mutedKeys={mutedKeys}
-            hiddenNavAreas={hiddenNavAreas}
-          />
-          <SetupRecoveryChecklist
-            data={data}
-            degraded={degraded}
-            isSuperAdmin={isSuperAdmin}
-            hiddenNavAreas={hiddenNavAreas}
-          />
+          {setupMode ? (
+            <>
+              <SectionHeading>
+                <span id="home-needs-attention">Finish setting up</span>
+              </SectionHeading>
+              <SetupRecoveryChecklist
+                data={data}
+                degraded={degraded}
+                isSuperAdmin={isSuperAdmin}
+                hiddenNavAreas={hiddenNavAreas}
+                focusOnReturn={fromSetup}
+              />
+            </>
+          ) : (
+            <>
+              <SectionHeading>
+                <span id="home-needs-attention">Needs attention</span>
+              </SectionHeading>
+              <NeedsAttentionArea
+                data={data}
+                degraded={degraded}
+                mutedKeys={mutedKeys}
+                hiddenNavAreas={hiddenNavAreas}
+              />
+            </>
+          )}
         </section>
 
         {/* 2 — This week. The near-term horizon, composed from data already on
