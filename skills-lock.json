@@ -7,6 +7,12 @@
       "skillPath": "skills/productivity/caveman/SKILL.md",
       "computedHash": "934433479903febc585bf6deb5f0cebc63137e3f86b7babe0aab1ecb94d6d7a4"
     },
+    "coding-standards": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "skillPath": "skills/coding-standards/SKILL.md",
+      "computedHash": "49116bd02359cb354434c9bc9e437443ab2c80a1b7c4212069bde4985887d4d8"
+    },
     "design-an-interface": {
       "source": "mattpocock/skills",
       "sourceType": "github",
