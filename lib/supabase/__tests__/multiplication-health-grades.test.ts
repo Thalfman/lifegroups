@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  cellHealthKey,
-  tallyCellHealthGrades,
-} from "@/lib/supabase/multiplication-config-reads";
+import { tallyCellHealthGrades } from "@/lib/supabase/multiplication-config-reads";
+import { cellKey } from "@/lib/admin/cell-coordinate";
 import { resolveGroupRubricGrade } from "@/lib/admin/group-rubric-grade";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
 import { ministryYearOf } from "@/lib/admin/ministry-year";
@@ -142,6 +140,13 @@ describe("Multiply grid effective letter — override expiry", () => {
 
 const CAT_A = "cat-a";
 const CAT_B = "cat-b";
+
+// Build the expected per-cell key the same way the read does — through the one
+// canonical cellKey encoder.
+const cellHealthKey = (
+  type: "men" | "women" | "mixed",
+  categoryId: string
+): string => cellKey({ audience: type, categoryId });
 
 function leader(cells: string[], letter: GroupHealthLetter | null) {
   return { cells: new Set(cells), letter };

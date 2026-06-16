@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
-  cellKeyString,
   tallyCellActiveGroupSizes,
   type CellKey,
 } from "@/lib/supabase/multiplication-config-reads";
+import { cellKey } from "@/lib/admin/cell-coordinate";
+
+// Build the expected map key the same way the read does — through the one
+// canonical cellKey encoder.
+const cellKeyString = (
+  audience: "men" | "women" | "mixed",
+  categoryId: string
+): string => cellKey({ audience, categoryId });
 
 // Pure-aggregator tests for the per-CELL active group sizes read (#401, hardened
 // after codex review). The read itself is a thin Supabase round-trip; the bucketing

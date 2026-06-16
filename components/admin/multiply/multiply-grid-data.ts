@@ -24,6 +24,7 @@ import {
   fetchGroupCategories,
   fetchCategoryTypeTargetCells,
   fetchGroupCellLifecycleRows,
+  type CategoryTypeTargetRow,
 } from "@/lib/supabase/group-categories-reads";
 import {
   buildCellCoverage,
@@ -33,15 +34,15 @@ import {
   EMPTY_CELL_ACTIVE_GROUP_SIZES,
   EMPTY_CELL_HEALTH_GRADES,
   EMPTY_CELL_INTEREST,
-  cellHealthKey,
-  cellKeyString,
   fetchCellActiveGroupSizes,
   fetchCellHealthGrades,
   fetchCellInterestCounts,
+  type CellActiveGroupSizes,
+  type CellHealthGrades,
 } from "@/lib/supabase/multiplication-config-reads";
 import { computeCellCapacityIssue } from "@/lib/admin/cell-capacity";
 import { rollUpGrades } from "@/lib/admin/multiplication-pillars";
-import { interestForCell } from "@/lib/admin/prospect-interest";
+import type { CellInterestTally } from "@/lib/admin/prospect-interest";
 import { cellKey } from "@/lib/admin/cell-coordinate";
 
 // The Multiply GRID surface's data (#403 / PRD §2.5). This loader replaces the old
@@ -103,6 +104,48 @@ export function supabaseMultiplyGridReads(
     fetchCellInterestCounts,
     fetchCellActiveGroupSizes,
     fetchCellHealthGrades,
+  });
+}
+
+// Pure per-cell input assembly: turn the raw per-cell reads into the
+// GridCellInput[] the pure grid builder consumes. Every pillar for a cell is read
+// through ONE canonical cellKey — interest, capacity, both health roll-ups, and
+// coverage all index the same key, so a cell's readiness inputs can never be
+// stitched from mismatched coordinates. No I/O: the loader gathers the reads
+// (defaulting a failed read to its empty shape) and hands them here, so this
+// assembly — and its edge cases — is unit-testable with plain fixtures, never a
+// Supabase client. Coverage (`haveByKey`) is computed by buildCellCoverage and
+// passed in; this assembler never recomputes it.
+export function buildGridCellInputs(args: {
+  targetCells: readonly CategoryTypeTargetRow[];
+  interest: CellInterestTally;
+  cellSizes: CellActiveGroupSizes;
+  cellHealth: CellHealthGrades;
+  haveByKey: ReadonlyMap<string, number>;
+}): GridCellInput[] {
+  const { targetCells, interest, cellSizes, cellHealth, haveByKey } = args;
+  return targetCells.map((cell) => {
+    const audienceCategory = cell.audience_category;
+    const categoryId = cell.category_id;
+    // One coordinate, one encoder — every pillar lookup for this cell reads from
+    // the same key.
+    const key = cellKey({ audience: audienceCategory, categoryId });
+    const healthForCell = cellHealth.get(key);
+    return {
+      audienceCategory,
+      categoryId,
+      active: cell.active,
+      have: haveByKey.get(key) ?? 0,
+      target: cell.target_count,
+      override: decodeCellOverride(cell.trigger_overrides),
+      inputs: {
+        interestCount: interest[key] ?? 0,
+        capacityIssue: computeCellCapacityIssue(cellSizes.byCell.get(key) ?? [])
+          .isIssue,
+        groupHealth: rollUpGrades(healthForCell?.groupGrades ?? []),
+        leaderHealth: rollUpGrades(healthForCell?.leaderGrades ?? []),
+      },
+    };
   });
 }
 
@@ -201,30 +244,15 @@ export async function buildMultiplyGridData(
     targetCells.filter((cell) => cell.active).map((cell) => cell.category_id)
   );
 
-  // Assemble one GridCellInput per cell row. The pure builder pairs these against
-  // the catalog rows, so a cell whose category isn't live is dropped there.
-  const cells: GridCellInput[] = targetCells.map((cell) => {
-    const type = cell.audience_category;
-    const categoryId = cell.category_id;
-    const healthForCell = cellHealth.get(cellHealthKey(type, categoryId));
-    const capacityIssue = computeCellCapacityIssue(
-      cellSizes.byCell.get(cellKeyString(type, categoryId)) ?? []
-    ).isIssue;
-
-    return {
-      audienceCategory: type,
-      categoryId,
-      active: cell.active,
-      have: haveByKey.get(cellKey({ audience: type, categoryId })) ?? 0,
-      target: cell.target_count,
-      override: decodeCellOverride(cell.trigger_overrides),
-      inputs: {
-        interestCount: interestForCell(interest, type, categoryId),
-        capacityIssue,
-        groupHealth: rollUpGrades(healthForCell?.groupGrades ?? []),
-        leaderHealth: rollUpGrades(healthForCell?.leaderGrades ?? []),
-      },
-    };
+  // Assemble one GridCellInput per cell row through the pure assembler. The pure
+  // grid builder pairs these against the catalog rows, so a cell whose category
+  // isn't live is dropped there.
+  const cells = buildGridCellInputs({
+    targetCells,
+    interest,
+    cellSizes,
+    cellHealth,
+    haveByKey,
   });
 
   return {
