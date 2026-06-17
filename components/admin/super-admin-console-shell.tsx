@@ -13,18 +13,20 @@ import {
   ErrorBanner,
   StatusChip,
 } from "@/components/admin/super-admin/console-primitives";
-// The seven workspaces are loaded lazily (ssr:false) so each lands in its own
-// chunk fetched on first open, not in this route's First Load JS (the console
-// mounts only the active workspace). See super-admin/lazy-workspaces.
-import {
-  ReadinessWorkspace,
-  AccessWorkspace,
-  ConfigWorkspace,
-  DiagnosticsWorkspace,
-  AuditWorkspacePanel,
-  UsageWorkspace,
-  DangerWorkspace,
-} from "@/components/admin/super-admin/lazy-workspaces";
+// These seven workspaces are SERVER components: they derive their views from the
+// console's profile/member/group Maps server-side and hand only flat,
+// minimal props to their client children (e.g. AuditWorkspacePanel builds the
+// audit entries server-side). They therefore contribute no client bundle, so
+// they must stay server-imported — routing them through a client ssr:false lazy
+// wrapper would clientize them and serialize the full, care-sensitive data set
+// to the browser just to open a tab.
+import { ReadinessWorkspace } from "@/components/admin/super-admin/readiness-workspace";
+import { AccessWorkspace } from "@/components/admin/super-admin/access-workspace";
+import { ConfigWorkspace } from "@/components/admin/super-admin/config-workspace";
+import { DiagnosticsWorkspace } from "@/components/admin/super-admin/diagnostics-workspace";
+import { AuditWorkspacePanel } from "@/components/admin/super-admin/audit-workspace-panel";
+import { UsageWorkspace } from "@/components/admin/super-admin/usage-workspace";
+import { DangerWorkspace } from "@/components/admin/super-admin/danger-workspace";
 import type { SuperAdminConsoleData } from "@/components/admin/super-admin/console-data";
 
 // The shared risk/status vocabulary (#451) lives in console-status so client
