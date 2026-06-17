@@ -5,7 +5,11 @@ import type {
   LeaderHealthLetter,
   GroupHealthOverrideScope,
 } from "@/types/enums";
-import { wrapError, type ReadResult } from "@/lib/supabase/read-core";
+import {
+  wrapError,
+  decodeNumericRecord,
+  type ReadResult,
+} from "@/lib/supabase/read-core";
 
 // Read side for the persisted Leader-Health Grade row (#378 / ADR 0018), behind
 // the reads seam (ADR 0015). Admin-only data — runs under the admin layout guard
@@ -43,17 +47,6 @@ type PersistedLeaderGrade = {
   updated_at: string | null;
 };
 
-// Decode the raw jsonb criterion_scores into a clean Record<string, number>,
-// dropping any non-numeric value (the trust-boundary decode for the read).
-function decodeScores(raw: unknown): Record<string, number> {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
-  const out: Record<string, number> = {};
-  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
-  }
-  return out;
-}
-
 // Fetch a leader's persisted Leader-Health Grade for a ministry year, or null
 // when none has been entered yet (the success-with-null case, not an error).
 export async function fetchLeaderRubricGradeRow(
@@ -76,7 +69,7 @@ export async function fetchLeaderRubricGradeRow(
     data: {
       profile_id: data.profile_id,
       ministry_year: data.ministry_year,
-      criterion_scores: decodeScores(data.criterion_scores),
+      criterion_scores: decodeNumericRecord(data.criterion_scores),
       computed_letter: data.computed_letter,
       override_letter: data.override_letter,
       override_scope: data.override_scope,

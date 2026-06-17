@@ -208,6 +208,13 @@ export const ALL_TYPE_OPTIONS: {
   { value: "cancelled", label: friendlyEventTypeLabel("cancelled") },
 ];
 
+// value → label lookups for the two static option sets, built once at module
+// load rather than rebuilt in each summary/chip pass.
+const TYPE_LABELS = new Map(ALL_TYPE_OPTIONS.map((o) => [o.value, o.label]));
+const STATUS_LABELS = new Map(
+  EVENT_STATUS_OPTIONS.map((o) => [o.value, o.label])
+);
+
 export type CalendarLeaderOption = { profileId: string; name: string };
 export type CalendarGroupOption = { groupId: string; groupName: string };
 
@@ -237,22 +244,18 @@ export function calendarFilterSummarySegments({
       : `${groupFilter.length} ${groupFilter.length === 1 ? "group" : "groups"}`
   );
 
-  const typeLabels = new Map(ALL_TYPE_OPTIONS.map((o) => [o.value, o.label]));
   segments.push(
     typeFilter.length === 0
       ? "All gathering types"
       : typeFilter
-          .map((t) => typeLabels.get(t) ?? friendlyEventTypeLabel(t))
+          .map((t) => TYPE_LABELS.get(t) ?? friendlyEventTypeLabel(t))
           .join(", ")
   );
 
-  const statusLabels = new Map(
-    EVENT_STATUS_OPTIONS.map((o) => [o.value, o.label])
-  );
   segments.push(
     statusFilter.length === 0
       ? "All statuses"
-      : statusFilter.map((s) => statusLabels.get(s) ?? s).join(", ")
+      : statusFilter.map((s) => STATUS_LABELS.get(s) ?? s).join(", ")
   );
 
   segments.push(
@@ -299,10 +302,6 @@ export function calendarActiveFilterChips(
   const groupLabels = new Map(
     options.groups.map((g) => [g.groupId, g.groupName])
   );
-  const typeLabels = new Map(ALL_TYPE_OPTIONS.map((o) => [o.value, o.label]));
-  const statusLabels = new Map(
-    EVENT_STATUS_OPTIONS.map((o) => [o.value, o.label])
-  );
 
   for (const id of filters.groupFilter) {
     chips.push({
@@ -319,7 +318,7 @@ export function calendarActiveFilterChips(
     chips.push({
       key: `type:${t}`,
       category: "Type",
-      label: typeLabels.get(t) ?? friendlyEventTypeLabel(t),
+      label: TYPE_LABELS.get(t) ?? friendlyEventTypeLabel(t),
       remove: (f) => ({
         ...f,
         typeFilter: f.typeFilter.filter((v) => v !== t),
@@ -330,7 +329,7 @@ export function calendarActiveFilterChips(
     chips.push({
       key: `status:${s}`,
       category: "Status",
-      label: statusLabels.get(s) ?? s,
+      label: STATUS_LABELS.get(s) ?? s,
       remove: (f) => ({
         ...f,
         statusFilter: f.statusFilter.filter((v) => v !== s),

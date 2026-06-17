@@ -281,80 +281,102 @@ export function createPrivateNotesSession(
     clearIdleTimer();
   }
 
-  // ---- enrollment ---------------------------------------------------------
-
-  async function enroll(): Promise<void> {
-    patch({ busy: true, error: null, status: null });
+  // The busy envelope every async flow shares: flip `busy` on (clearing the
+  // prior error, and — for action flows — the prior status), run the body, map
+  // a throw to a user-facing error, and always clear `busy` in `finally`. The
+  // body may `return` early (e.g. on an `!result.ok` action failure after it has
+  // already patched its own error); the `finally` still clears `busy`.
+  async function runBusy(
+    body: () => Promise<void>,
+    options: { resetStatus?: boolean; onError?: (err: unknown) => string } = {}
+  ): Promise<void> {
+    patch({
+      busy: true,
+      error: null,
+      ...(options.resetStatus ? { status: null } : {}),
+    });
     try {
-      const newDek = await generateDek();
-      const wrapAad = buildWrapAad(creatorProfileId, DEK_VERSION);
-      const slotInputs: PrivateNoteKeySlotInput[] = [];
-
-      // Mandatory recovery slot (the offline backstop / universal fallback).
-      const code = generateRecoveryCode();
-      const recoverySalt = newHkdfSalt();
-      const recoveryKek = await deriveKekFromRecoveryCode(code, recoverySalt);
-      const recoveryWrap = await wrapDek(newDek, recoveryKek, wrapAad);
-      slotInputs.push({
-        slot_type: "recovery",
-        credential_id: null,
-        label: "Recovery code",
-        prf_salt: null,
-        hkdf_salt: bytesToBase64(recoverySalt),
-        wrapped_dek: bytesToBase64(recoveryWrap.wrapped),
-        wrap_iv: bytesToBase64(recoveryWrap.iv),
-      });
-
-      // Optional passkey slot where the authenticator supports the PRF
-      // extension. Best-effort: a cancelled/failed passkey falls back to
-      // recovery-only enrollment.
-      if (isPrfPasskeySupported()) {
-        try {
-          const { credentialId, prfSalt } = await registerPrfPasskey({
-            rpId: config.getRpId(),
-            rpName: "LifeGroups private notes",
-            userName: "Private care notes",
-            userDisplayName: "Private care notes",
-          });
-          const prfOutput = await evaluatePrf(
-            credentialId,
-            prfSalt,
-            config.getRpId()
-          );
-          const passkeySalt = newHkdfSalt();
-          const passkeyKek = await deriveKekFromPrf(prfOutput, passkeySalt);
-          const passkeyWrap = await wrapDek(newDek, passkeyKek, wrapAad);
-          slotInputs.push({
-            slot_type: "passkey",
-            credential_id: bytesToBase64(credentialId),
-            label: "Passkey",
-            prf_salt: bytesToBase64(prfSalt),
-            hkdf_salt: bytesToBase64(passkeySalt),
-            wrapped_dek: bytesToBase64(passkeyWrap.wrapped),
-            wrap_iv: bytesToBase64(passkeyWrap.iv),
-          });
-        } catch {
-          // Passkey unavailable / declined — continue with recovery only.
-        }
-      }
-
-      // Show the recovery code and require capture before persisting. Stash
-      // the pending slots until the admin confirms they saved the code.
-      patch({ recoveryCode: code, dek: newDek });
-      startIdleTimer();
-      pendingSlots = slotInputs;
+      await body();
     } catch (err) {
-      patch({ error: errorMessage(err) });
+      patch({
+        error: options.onError ? options.onError(err) : errorMessage(err),
+      });
     } finally {
       patch({ busy: false });
     }
   }
 
+  // ---- enrollment ---------------------------------------------------------
+
+  async function enroll(): Promise<void> {
+    return runBusy(
+      async () => {
+        const newDek = await generateDek();
+        const wrapAad = buildWrapAad(creatorProfileId, DEK_VERSION);
+        const slotInputs: PrivateNoteKeySlotInput[] = [];
+
+        // Mandatory recovery slot (the offline backstop / universal fallback).
+        const code = generateRecoveryCode();
+        const recoverySalt = newHkdfSalt();
+        const recoveryKek = await deriveKekFromRecoveryCode(code, recoverySalt);
+        const recoveryWrap = await wrapDek(newDek, recoveryKek, wrapAad);
+        slotInputs.push({
+          slot_type: "recovery",
+          credential_id: null,
+          label: "Recovery code",
+          prf_salt: null,
+          hkdf_salt: bytesToBase64(recoverySalt),
+          wrapped_dek: bytesToBase64(recoveryWrap.wrapped),
+          wrap_iv: bytesToBase64(recoveryWrap.iv),
+        });
+
+        // Optional passkey slot where the authenticator supports the PRF
+        // extension. Best-effort: a cancelled/failed passkey falls back to
+        // recovery-only enrollment.
+        if (isPrfPasskeySupported()) {
+          try {
+            const { credentialId, prfSalt } = await registerPrfPasskey({
+              rpId: config.getRpId(),
+              rpName: "LifeGroups private notes",
+              userName: "Private care notes",
+              userDisplayName: "Private care notes",
+            });
+            const prfOutput = await evaluatePrf(
+              credentialId,
+              prfSalt,
+              config.getRpId()
+            );
+            const passkeySalt = newHkdfSalt();
+            const passkeyKek = await deriveKekFromPrf(prfOutput, passkeySalt);
+            const passkeyWrap = await wrapDek(newDek, passkeyKek, wrapAad);
+            slotInputs.push({
+              slot_type: "passkey",
+              credential_id: bytesToBase64(credentialId),
+              label: "Passkey",
+              prf_salt: bytesToBase64(prfSalt),
+              hkdf_salt: bytesToBase64(passkeySalt),
+              wrapped_dek: bytesToBase64(passkeyWrap.wrapped),
+              wrap_iv: bytesToBase64(passkeyWrap.iv),
+            });
+          } catch {
+            // Passkey unavailable / declined — continue with recovery only.
+          }
+        }
+
+        // Show the recovery code and require capture before persisting. Stash
+        // the pending slots until the admin confirms they saved the code.
+        patch({ recoveryCode: code, dek: newDek });
+        startIdleTimer();
+        pendingSlots = slotInputs;
+      },
+      { resetStatus: true }
+    );
+  }
+
   async function confirmEnrollment(): Promise<void> {
     const slotInputs = pendingSlots;
     if (!slotInputs) return;
-    patch({ busy: true, error: null });
-    try {
+    return runBusy(async () => {
       const result = await actions.enrollKeys({
         dek_version: DEK_VERSION,
         slots: slotInputs,
@@ -387,11 +409,7 @@ export function createPrivateNotesSession(
         status:
           "Private notes are set up. Your DEK is unlocked for this session.",
       });
-    } catch (err) {
-      patch({ error: errorMessage(err) });
-    } finally {
-      patch({ busy: false });
-    }
+    });
   }
 
   // ---- unlock -------------------------------------------------------------
@@ -427,28 +445,26 @@ export function createPrivateNotesSession(
   async function unlockWithRecovery(): Promise<void> {
     const recoverySlot = recoverySlotOf(state.slots);
     if (!recoverySlot) return;
-    patch({ busy: true, error: null });
-    try {
-      const kek = await deriveKekFromRecoveryCode(
-        state.recoveryInput,
-        base64ToBytes(recoverySlot.hkdf_salt)
-      );
-      const unlockedDek = await unwrapDek(
-        base64ToBytes(recoverySlot.wrapped_dek),
-        base64ToBytes(recoverySlot.wrap_iv),
-        kek,
-        buildWrapAad(creatorProfileId, recoverySlot.dek_version)
-      );
-      patch({ recoveryInput: "" });
-      await afterUnlock(unlockedDek);
-    } catch {
-      patch({
-        error:
+    return runBusy(
+      async () => {
+        const kek = await deriveKekFromRecoveryCode(
+          state.recoveryInput,
+          base64ToBytes(recoverySlot.hkdf_salt)
+        );
+        const unlockedDek = await unwrapDek(
+          base64ToBytes(recoverySlot.wrapped_dek),
+          base64ToBytes(recoverySlot.wrap_iv),
+          kek,
+          buildWrapAad(creatorProfileId, recoverySlot.dek_version)
+        );
+        patch({ recoveryInput: "" });
+        await afterUnlock(unlockedDek);
+      },
+      {
+        onError: () =>
           "That recovery code didn't unlock your notes. Check it and try again.",
-      });
-    } finally {
-      patch({ busy: false });
-    }
+      }
+    );
   }
 
   async function unlockWithPasskey(): Promise<void> {
@@ -468,42 +484,40 @@ export function createPrivateNotesSession(
         : []
     );
     if (candidates.length === 0) return;
-    patch({ busy: true, error: null });
-    try {
-      const { credentialId, prfOutput } = await evaluatePrfForCredentials(
-        candidates.map((c) => ({
-          credentialId: c.credentialId,
-          prfSalt: c.prfSalt,
-        })),
-        config.getRpId()
-      );
-      const assertedB64 = bytesToBase64(credentialId);
-      const match = candidates.find(
-        (c) => c.slot.credential_id === assertedB64
-      );
-      if (!match)
-        throw new Error(
-          "No matching passkey slot for the asserted credential."
+    return runBusy(
+      async () => {
+        const { credentialId, prfOutput } = await evaluatePrfForCredentials(
+          candidates.map((c) => ({
+            credentialId: c.credentialId,
+            prfSalt: c.prfSalt,
+          })),
+          config.getRpId()
         );
-      const kek = await deriveKekFromPrf(
-        prfOutput,
-        base64ToBytes(match.slot.hkdf_salt)
-      );
-      const unlockedDek = await unwrapDek(
-        base64ToBytes(match.slot.wrapped_dek),
-        base64ToBytes(match.slot.wrap_iv),
-        kek,
-        buildWrapAad(creatorProfileId, match.slot.dek_version)
-      );
-      await afterUnlock(unlockedDek);
-    } catch {
-      patch({
-        error:
+        const assertedB64 = bytesToBase64(credentialId);
+        const match = candidates.find(
+          (c) => c.slot.credential_id === assertedB64
+        );
+        if (!match)
+          throw new Error(
+            "No matching passkey slot for the asserted credential."
+          );
+        const kek = await deriveKekFromPrf(
+          prfOutput,
+          base64ToBytes(match.slot.hkdf_salt)
+        );
+        const unlockedDek = await unwrapDek(
+          base64ToBytes(match.slot.wrapped_dek),
+          base64ToBytes(match.slot.wrap_iv),
+          kek,
+          buildWrapAad(creatorProfileId, match.slot.dek_version)
+        );
+        await afterUnlock(unlockedDek);
+      },
+      {
+        onError: () =>
           "Your passkey didn't unlock your notes. Try the recovery code instead.",
-      });
-    } finally {
-      patch({ busy: false });
-    }
+      }
+    );
   }
 
   // ---- save ---------------------------------------------------------------
@@ -511,42 +525,40 @@ export function createPrivateNotesSession(
   async function save(): Promise<void> {
     const dek = state.dek;
     if (!dek) return;
-    patch({ busy: true, error: null, status: null });
-    try {
-      const { ciphertext, iv } = await encryptNote(
-        dek,
-        state.noteText,
-        buildNoteAad(careProfileId, creatorProfileId, DEK_VERSION)
-      );
-      const ciphertextB64 = bytesToBase64(ciphertext);
-      const ivB64 = bytesToBase64(iv);
-      const result = await actions.upsertNote({
-        care_profile_id: careProfileId,
-        set_body: true,
-        ciphertext: ciphertextB64,
-        iv: ivB64,
-        dek_version: DEK_VERSION,
-        shepherd_profile_id: shepherdProfileId,
-      });
-      if (!result.ok) {
-        patch({ error: result.errors.join(" ") });
-        return;
-      }
-      // Keep the latest ciphertext so a same-tab lock -> unlock decrypts this
-      // save, not the stale initial prop.
-      patch({
-        savedNote: {
+    return runBusy(
+      async () => {
+        const { ciphertext, iv } = await encryptNote(
+          dek,
+          state.noteText,
+          buildNoteAad(careProfileId, creatorProfileId, DEK_VERSION)
+        );
+        const ciphertextB64 = bytesToBase64(ciphertext);
+        const ivB64 = bytesToBase64(iv);
+        const result = await actions.upsertNote({
+          care_profile_id: careProfileId,
+          set_body: true,
           ciphertext: ciphertextB64,
           iv: ivB64,
           dek_version: DEK_VERSION,
-        },
-        status: "Saved. Encrypted on your device before it left the browser.",
-      });
-    } catch (err) {
-      patch({ error: errorMessage(err) });
-    } finally {
-      patch({ busy: false });
-    }
+          shepherd_profile_id: shepherdProfileId,
+        });
+        if (!result.ok) {
+          patch({ error: result.errors.join(" ") });
+          return;
+        }
+        // Keep the latest ciphertext so a same-tab lock -> unlock decrypts this
+        // save, not the stale initial prop.
+        patch({
+          savedNote: {
+            ciphertext: ciphertextB64,
+            iv: ivB64,
+            dek_version: DEK_VERSION,
+          },
+          status: "Saved. Encrypted on your device before it left the browser.",
+        });
+      },
+      { resetStatus: true }
+    );
   }
 
   function lock(): void {
@@ -562,69 +574,67 @@ export function createPrivateNotesSession(
   async function addPasskey(): Promise<void> {
     const dek = state.dek;
     if (!dek || !isPrfPasskeySupported()) return;
-    patch({ busy: true, error: null, status: null });
-    try {
-      const { credentialId, prfSalt } = await registerPrfPasskey({
-        rpId: config.getRpId(),
-        rpName: "LifeGroups private notes",
-        userName: "Private care notes",
-        userDisplayName: "Private care notes",
-        // Don't overwrite an existing resident credential on the same
-        // authenticator.
-        excludeCredentialIds: passkeySlotsOf(state.slots)
-          .map((s) => s.credential_id)
-          .filter((c): c is string => c !== null)
-          .map((c) => base64ToBytes(c)),
-      });
-      const prfOutput = await evaluatePrf(
-        credentialId,
-        prfSalt,
-        config.getRpId()
-      );
-      const salt = newHkdfSalt();
-      const kek = await deriveKekFromPrf(prfOutput, salt);
-      const wrap = await wrapDek(
-        dek,
-        kek,
-        buildWrapAad(creatorProfileId, DEK_VERSION)
-      );
-      const result = await actions.addKeySlot({
-        credential_id: bytesToBase64(credentialId),
-        label: "Passkey",
-        prf_salt: bytesToBase64(prfSalt),
-        hkdf_salt: bytesToBase64(salt),
-        wrapped_dek: bytesToBase64(wrap.wrapped),
-        wrap_iv: bytesToBase64(wrap.iv),
-        shepherd_profile_id: shepherdProfileId,
-      });
-      if (!result.ok) {
-        patch({ error: result.errors.join(" ") });
-        return;
-      }
-      patch({
-        slots: [
-          ...state.slots,
-          {
-            id: result.value.id,
-            created_by_profile_id: creatorProfileId,
-            dek_version: DEK_VERSION,
-            slot_type: "passkey",
-            credential_id: bytesToBase64(credentialId),
-            label: "Passkey",
-            prf_salt: bytesToBase64(prfSalt),
-            hkdf_salt: bytesToBase64(salt),
-            wrapped_dek: bytesToBase64(wrap.wrapped),
-            wrap_iv: bytesToBase64(wrap.iv),
-            created_at: "",
-          },
-        ],
-        status: "Passkey added. This note now unlocks with it too.",
-      });
-    } catch (err) {
-      patch({ error: errorMessage(err) });
-    } finally {
-      patch({ busy: false });
-    }
+    return runBusy(
+      async () => {
+        const { credentialId, prfSalt } = await registerPrfPasskey({
+          rpId: config.getRpId(),
+          rpName: "LifeGroups private notes",
+          userName: "Private care notes",
+          userDisplayName: "Private care notes",
+          // Don't overwrite an existing resident credential on the same
+          // authenticator.
+          excludeCredentialIds: passkeySlotsOf(state.slots)
+            .map((s) => s.credential_id)
+            .filter((c): c is string => c !== null)
+            .map((c) => base64ToBytes(c)),
+        });
+        const prfOutput = await evaluatePrf(
+          credentialId,
+          prfSalt,
+          config.getRpId()
+        );
+        const salt = newHkdfSalt();
+        const kek = await deriveKekFromPrf(prfOutput, salt);
+        const wrap = await wrapDek(
+          dek,
+          kek,
+          buildWrapAad(creatorProfileId, DEK_VERSION)
+        );
+        const result = await actions.addKeySlot({
+          credential_id: bytesToBase64(credentialId),
+          label: "Passkey",
+          prf_salt: bytesToBase64(prfSalt),
+          hkdf_salt: bytesToBase64(salt),
+          wrapped_dek: bytesToBase64(wrap.wrapped),
+          wrap_iv: bytesToBase64(wrap.iv),
+          shepherd_profile_id: shepherdProfileId,
+        });
+        if (!result.ok) {
+          patch({ error: result.errors.join(" ") });
+          return;
+        }
+        patch({
+          slots: [
+            ...state.slots,
+            {
+              id: result.value.id,
+              created_by_profile_id: creatorProfileId,
+              dek_version: DEK_VERSION,
+              slot_type: "passkey",
+              credential_id: bytesToBase64(credentialId),
+              label: "Passkey",
+              prf_salt: bytesToBase64(prfSalt),
+              hkdf_salt: bytesToBase64(salt),
+              wrapped_dek: bytesToBase64(wrap.wrapped),
+              wrap_iv: bytesToBase64(wrap.iv),
+              created_at: "",
+            },
+          ],
+          status: "Passkey added. This note now unlocks with it too.",
+        });
+      },
+      { resetStatus: true }
+    );
   }
 
   // Rotate the recovery code: generate a new one, re-wrap the in-memory DEK,
@@ -633,34 +643,31 @@ export function createPrivateNotesSession(
   async function startRotateRecovery(): Promise<void> {
     const dek = state.dek;
     if (!dek) return;
-    patch({ busy: true, error: null, status: null });
-    try {
-      const code = generateRecoveryCode();
-      const salt = newHkdfSalt();
-      const kek = await deriveKekFromRecoveryCode(code, salt);
-      const wrap = await wrapDek(
-        dek,
-        kek,
-        buildWrapAad(creatorProfileId, DEK_VERSION)
-      );
-      pendingRotation = {
-        hkdf_salt: bytesToBase64(salt),
-        wrapped_dek: bytesToBase64(wrap.wrapped),
-        wrap_iv: bytesToBase64(wrap.iv),
-      };
-      patch({ rotationAck: false, rotationCode: code });
-    } catch (err) {
-      patch({ error: errorMessage(err) });
-    } finally {
-      patch({ busy: false });
-    }
+    return runBusy(
+      async () => {
+        const code = generateRecoveryCode();
+        const salt = newHkdfSalt();
+        const kek = await deriveKekFromRecoveryCode(code, salt);
+        const wrap = await wrapDek(
+          dek,
+          kek,
+          buildWrapAad(creatorProfileId, DEK_VERSION)
+        );
+        pendingRotation = {
+          hkdf_salt: bytesToBase64(salt),
+          wrapped_dek: bytesToBase64(wrap.wrapped),
+          wrap_iv: bytesToBase64(wrap.iv),
+        };
+        patch({ rotationAck: false, rotationCode: code });
+      },
+      { resetStatus: true }
+    );
   }
 
   async function confirmRotateRecovery(): Promise<void> {
     const material = pendingRotation;
     if (!material) return;
-    patch({ busy: true, error: null });
-    try {
+    return runBusy(async () => {
       const result = await actions.rotateRecovery({
         ...material,
         label: "Recovery code",
@@ -691,33 +698,27 @@ export function createPrivateNotesSession(
         rotationAck: false,
         status: "Recovery code rotated. The old code no longer works.",
       });
-    } catch (err) {
-      patch({ error: errorMessage(err) });
-    } finally {
-      patch({ busy: false });
-    }
+    });
   }
 
   async function removeSlot(slotId: string): Promise<void> {
-    patch({ busy: true, error: null, status: null });
-    try {
-      const result = await actions.removeKeySlot({
-        slot_id: slotId,
-        shepherd_profile_id: shepherdProfileId,
-      });
-      if (!result.ok) {
-        patch({ error: result.errors.join(" ") });
-        return;
-      }
-      patch({
-        slots: state.slots.filter((s) => s.id !== slotId),
-        status: "Unlock method removed.",
-      });
-    } catch (err) {
-      patch({ error: errorMessage(err) });
-    } finally {
-      patch({ busy: false });
-    }
+    return runBusy(
+      async () => {
+        const result = await actions.removeKeySlot({
+          slot_id: slotId,
+          shepherd_profile_id: shepherdProfileId,
+        });
+        if (!result.ok) {
+          patch({ error: result.errors.join(" ") });
+          return;
+        }
+        patch({
+          slots: state.slots.filter((s) => s.id !== slotId),
+          status: "Unlock method removed.",
+        });
+      },
+      { resetStatus: true }
+    );
   }
 
   return {

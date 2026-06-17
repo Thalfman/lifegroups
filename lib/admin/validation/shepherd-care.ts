@@ -16,6 +16,7 @@ import {
   normalizeUuid,
   isIsoDate,
   readBooleanFlag,
+  makeIdPayloadValidator,
 } from "./shared";
 
 // ---------------------------------------------------------------------------
@@ -333,18 +334,10 @@ export type ArchiveShepherdCareFollowUpPayload = {
   follow_up_id: string;
 };
 
-export function validateArchiveShepherdCareFollowUpPayload(
+export const validateArchiveShepherdCareFollowUpPayload: (
   input: unknown
-): ValidationResult<ArchiveShepherdCareFollowUpPayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.follow_up_id))
-    return { ok: false, errors: ["follow_up_id must be a uuid"] };
-  return {
-    ok: true,
-    value: { follow_up_id: normalizeUuid(input.follow_up_id as string) },
-  };
-}
+) => ValidationResult<ArchiveShepherdCareFollowUpPayload> =
+  makeIdPayloadValidator("follow_up_id");
 
 export type UpdateShepherdCareFollowUpPayload = {
   follow_up_id: string;
@@ -986,15 +979,7 @@ export type RemovePrivateNoteKeySlotPayload = {
   slot_id: string;
 };
 
-export function validateRemovePrivateNoteKeySlotPayload(
+export const validateRemovePrivateNoteKeySlotPayload: (
   input: unknown
-): ValidationResult<RemovePrivateNoteKeySlotPayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.slot_id))
-    return { ok: false, errors: ["slot_id must be a uuid"] };
-  return {
-    ok: true,
-    value: { slot_id: normalizeUuid(input.slot_id as string) },
-  };
-}
+) => ValidationResult<RemovePrivateNoteKeySlotPayload> =
+  makeIdPayloadValidator("slot_id");

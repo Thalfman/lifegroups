@@ -22,19 +22,14 @@ import {
   type FinishFields,
 } from "@/lib/observability/instrument";
 import type { LogOutcome } from "@/lib/observability/logger";
+import type { ActionResult } from "@/lib/shared/action-result";
+import type { ValidationResult } from "@/lib/shared/validation-primitives";
 
-// Same envelope the per-surface action-result modules return; declared here so
-// the core can build it directly without depending on either surface.
-export type ActionResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; errors: string[] };
-
-// Structural mirror of each surface's ValidationResult. The core only reads
-// `.ok`, `.value`, `.errors`, so it stays decoupled from which validation
-// module produced the result.
-export type ValidationResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; errors: string[] };
+// The core builds an `ActionResult` directly and reads only `.ok`/`.value`/
+// `.errors` off the validator's `ValidationResult`, so both envelopes are the
+// shared shapes (`@/lib/shared/action-result`, `@/lib/shared/validation-primitives`)
+// rather than re-declared per surface.
+export type { ActionResult, ValidationResult };
 
 // The RPC result seam. `D` is the shape the typed RPC wrapper returns on
 // success. It defaults to `string` — the common case, a bare uuid from a

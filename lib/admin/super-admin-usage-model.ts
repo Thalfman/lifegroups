@@ -11,6 +11,9 @@ import type { ProfilesRow, UsageEventsRow } from "@/types/database";
 // profile map and passes them in, so the tallies and empty-state branching are
 // unit-testable without rendering.
 
+// How many of the most-recent logins the panel lists.
+const RECENT_LOGINS_LIMIT = 10;
+
 // Prettify a usage area slug for display ("super-admin" -> "Super admin",
 // "shepherd-care" -> "Shepherd care"). The first segment is capitalised, the
 // rest stay lowercase and the hyphens become spaces — enough to read, without
@@ -74,7 +77,7 @@ export function buildUsagePanelModel(input: {
   const sortedAreas = [...areaCounts.entries()].sort((a, b) => b[1] - a[1]);
   const maxAreaCount = sortedAreas.length > 0 ? sortedAreas[0][1] : 0;
 
-  const recentLogins = logins.slice(0, 10).map((e) => {
+  const recentLogins = logins.slice(0, RECENT_LOGINS_LIMIT).map((e) => {
     const actor = e.actor_profile_id
       ? profilesById.get(e.actor_profile_id)
       : null;

@@ -14,6 +14,8 @@ import {
   readOptionalInteger,
   isIsoDate,
   readBooleanFlag,
+  makeIdPayloadValidator,
+  readOptionalUuid,
 } from "./shared";
 
 // ---------------------------------------------------------------------------
@@ -344,18 +346,10 @@ export function validateUpdateLaunchPlanningScenarioPayload(
 
 export type ScenarioIdPayload = { scenario_id: string };
 
-export function validateScenarioIdPayload(
+export const validateScenarioIdPayload: (
   input: unknown
-): ValidationResult<ScenarioIdPayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.scenario_id))
-    return { ok: false, errors: ["scenario_id must be a uuid"] };
-  return {
-    ok: true,
-    value: { scenario_id: normalizeUuid(input.scenario_id as string) },
-  };
-}
+) => ValidationResult<ScenarioIdPayload> =
+  makeIdPayloadValidator("scenario_id");
 
 // ---------------------------------------------------------------------------
 // Julian P2 — church attendance snapshot payload.
@@ -474,15 +468,9 @@ function validateMultiplicationCandidateFields(
 ): MultiplicationCandidateFields {
   // The multiplying group is optional (type-only watch). When present it must
   // be a uuid; the group is the source of truth for the cell server-side.
-  let groupId: string | null = null;
-  const groupRaw = readOptionalString(input.group_id);
-  if (groupRaw !== undefined) {
-    if (!isUuid(groupRaw)) {
-      errors.push("group_id must be a uuid.");
-    } else {
-      groupId = normalizeUuid(groupRaw);
-    }
-  }
+  const groupId =
+    readOptionalUuid(input.group_id, errors, "group_id must be a uuid.") ??
+    null;
 
   // The cell (audience × category) is required for a type-only watch; when a
   // group is attached the RPC derives the cell from the group, so the form may
@@ -499,15 +487,13 @@ function validateMultiplicationCandidateFields(
     errors.push("Group type is required.");
   }
 
-  let categoryId: string | null = null;
-  const categoryRaw = readOptionalString(input.category_id);
-  if (categoryRaw !== undefined) {
-    if (!isUuid(categoryRaw)) {
-      errors.push("category_id must be a uuid.");
-    } else {
-      categoryId = normalizeUuid(categoryRaw);
-    }
-  } else if (groupId === null) {
+  const categoryUuid = readOptionalUuid(
+    input.category_id,
+    errors,
+    "category_id must be a uuid."
+  );
+  const categoryId = categoryUuid ?? null;
+  if (categoryUuid === undefined && groupId === null) {
     errors.push("Group type is required.");
   }
 
@@ -562,15 +548,12 @@ function validateMultiplicationCandidateFields(
     }
   }
 
-  let leaderPipelineId: string | null = null;
-  const linkRaw = readOptionalString(input.leader_pipeline_id);
-  if (linkRaw !== undefined) {
-    if (!isUuid(linkRaw)) {
-      errors.push("leader_pipeline_id must be a uuid.");
-    } else {
-      leaderPipelineId = normalizeUuid(linkRaw);
-    }
-  }
+  const leaderPipelineId =
+    readOptionalUuid(
+      input.leader_pipeline_id,
+      errors,
+      "leader_pipeline_id must be a uuid."
+    ) ?? null;
 
   // An apprentice is a same-group concept: linking one without a multiplying
   // group is meaningless (and the RPC + trigger reject it as
@@ -687,15 +670,7 @@ export function validateSetGroupCapacityTargetPayload(
 
 export type CandidateIdPayload = { candidate_id: string };
 
-export function validateCandidateIdPayload(
+export const validateCandidateIdPayload: (
   input: unknown
-): ValidationResult<CandidateIdPayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.candidate_id))
-    return { ok: false, errors: ["candidate_id must be a uuid"] };
-  return {
-    ok: true,
-    value: { candidate_id: normalizeUuid(input.candidate_id as string) },
-  };
-}
+) => ValidationResult<CandidateIdPayload> =
+  makeIdPayloadValidator("candidate_id");

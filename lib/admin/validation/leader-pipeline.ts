@@ -6,6 +6,8 @@ import {
   readOptionalString,
   normalizeUuid,
   isIsoDate,
+  makeIdPayloadValidator,
+  readOptionalUuid,
 } from "./shared";
 
 // ---------------------------------------------------------------------------
@@ -53,15 +55,9 @@ function validateApprenticeFields(
     );
   }
 
-  let memberId: string | null = null;
-  const memberRaw = readOptionalString(input.member_id);
-  if (memberRaw !== undefined) {
-    if (!isUuid(memberRaw)) {
-      errors.push("member_id must be a uuid.");
-    } else {
-      memberId = normalizeUuid(memberRaw);
-    }
-  }
+  const memberId =
+    readOptionalUuid(input.member_id, errors, "member_id must be a uuid.") ??
+    null;
 
   let stage: LeaderReadinessStage = "identified";
   if (
@@ -171,15 +167,7 @@ export function validateAdvanceApprenticeStagePayload(
 
 export type ApprenticeIdPayload = { apprentice_id: string };
 
-export function validateApprenticeIdPayload(
+export const validateApprenticeIdPayload: (
   input: unknown
-): ValidationResult<ApprenticeIdPayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.apprentice_id))
-    return { ok: false, errors: ["apprentice_id must be a uuid"] };
-  return {
-    ok: true,
-    value: { apprentice_id: normalizeUuid(input.apprentice_id as string) },
-  };
-}
+) => ValidationResult<ApprenticeIdPayload> =
+  makeIdPayloadValidator("apprentice_id");

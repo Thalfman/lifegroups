@@ -4,10 +4,9 @@
 // re-validates everything at the database layer (it is the real trust boundary).
 
 import { isUuid } from "@/lib/shared/uuid";
+import type { ValidationResult } from "@/lib/shared/validation-primitives";
 
-export type ValidationResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; errors: string[] };
+export type { ValidationResult };
 
 // Generous-but-bounded body length; the RPC enforces the same 4000-char ceiling.
 const NOTE_BODY_MAX = 4000;

@@ -25,6 +25,21 @@ export function currentUtcDateIso(): string {
     .slice(0, 10);
 }
 
+/**
+ * Decode a raw jsonb object (e.g. a grade row's `criterion_scores`) into a
+ * clean `Record<string, number>` at the trust boundary, dropping any
+ * non-finite or non-numeric value. Used by the Care / leader / multiplication
+ * grade readers so the criterion-score decode lives in one place.
+ */
+export function decodeNumericRecord(raw: unknown): Record<string, number> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
+  }
+  return out;
+}
+
 export function differenceInDaysIso(today: string, then: string): number {
   // Both inputs are YYYY-MM-DD; Date.parse with the ISO string at midnight UTC
   // is stable across server timezones. Truncate the result to whole days.

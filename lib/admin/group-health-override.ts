@@ -31,14 +31,19 @@ export type ResolvedGrade = {
 export function resolveGrade(
   computedLetter: GroupHealthLetter | null,
   override: GradeOverride | null,
-  currentPeriodMonth: string,
+  currentPeriodMonth: string
 ): ResolvedGrade {
-  const active = override !== null && isOverrideActive(override, currentPeriodMonth);
+  // Narrow on `override` directly (not a derived boolean) so the active branch
+  // reads its fields without a non-null assertion.
+  const activeOverride =
+    override !== null && isOverrideActive(override, currentPeriodMonth)
+      ? override
+      : null;
   return {
     computed_letter: computedLetter,
-    effective_letter: active ? override!.letter : computedLetter,
-    is_overridden: active,
-    override_scope: active ? override!.scope : null,
+    effective_letter: activeOverride ? activeOverride.letter : computedLetter,
+    is_overridden: activeOverride !== null,
+    override_scope: activeOverride ? activeOverride.scope : null,
   };
 }
 
@@ -47,7 +52,7 @@ export function resolveGrade(
 // admin clears it (no period check).
 function isOverrideActive(
   override: GradeOverride,
-  currentPeriodMonth: string,
+  currentPeriodMonth: string
 ): boolean {
   if (override.scope === "until_cleared") return true;
   return override.period_month === currentPeriodMonth;

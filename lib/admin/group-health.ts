@@ -78,6 +78,15 @@ export type AttendanceConsistency = {
   meets_threshold: boolean;
 };
 
+// Most-recent-week-first comparator for attendance weeks. Callers `[...weeks]`
+// before sorting so the source array is never mutated.
+function byMeetingWeekDesc(
+  a: AttendanceWeekTally,
+  b: AttendanceWeekTally
+): number {
+  return a.meeting_week < b.meeting_week ? 1 : -1;
+}
+
 // A week's attendance %: present over everyone rated that week. Excused counts
 // against the rate on purpose — the dimension measures whether people are
 // actually showing up, and an excused absence is still an absence in the room
@@ -96,7 +105,7 @@ export function attendanceConsistency(
   // Most-recent weeks first, then take the window. Sorting here means callers
   // can hand us rows in any order.
   const windowed = [...weeks]
-    .sort((a, b) => (a.meeting_week < b.meeting_week ? 1 : -1))
+    .sort(byMeetingWeekDesc)
     .slice(0, config.attendance_window_weeks);
 
   const pcts = windowed
@@ -151,9 +160,7 @@ export function attendanceTrend(
 ): AttendanceTrend {
   // Most-recent first, so slice(0, n) is the recent window and the next slice
   // is the prior one.
-  const ordered = [...weeks].sort((a, b) =>
-    a.meeting_week < b.meeting_week ? 1 : -1
-  );
+  const ordered = [...weeks].sort(byMeetingWeekDesc);
   const recent = ordered.slice(0, halfWindowWeeks);
   const prior = ordered.slice(halfWindowWeeks, halfWindowWeeks * 2);
 

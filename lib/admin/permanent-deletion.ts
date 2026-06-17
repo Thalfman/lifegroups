@@ -33,6 +33,15 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
+// The danger-zone tables aren't in the generated supabase types, so each
+// `fetchItems` loader projects its rows through one named row shape at this
+// trust seam. `mapRows` carries that shape on the mapper's parameter and maps a
+// nullish/absent result to `[]`, so the loaders stop repeating the
+// `(data ?? []) as Array<Row>` loose-cast-then-map block.
+function mapRows<Row, T>(data: unknown, mapper: (row: Row) => T): T[] {
+  return ((data ?? []) as Array<Row>).map(mapper);
+}
+
 // #312 foundation: Launch Scenarios — the lowest-blast entity.
 const LAUNCH_SCENARIO: PermanentDeletionEntity = {
   entityType: "launch_scenario",
@@ -43,19 +52,21 @@ const LAUNCH_SCENARIO: PermanentDeletionEntity = {
       .from("launch_planning_scenarios")
       .select("id, name, is_current, archived_at")
       .order("name", { ascending: true });
-    const rows = (data ?? []) as Array<{
-      id: string;
-      name: string;
-      is_current: boolean;
-      archived_at: string | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label:
-        str(r.name) +
-        (r.is_current ? " — current" : "") +
-        (r.archived_at ? " (archived)" : ""),
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        name: string;
+        is_current: boolean;
+        archived_at: string | null;
+      }) => ({
+        id: r.id,
+        label:
+          str(r.name) +
+          (r.is_current ? " — current" : "") +
+          (r.archived_at ? " (archived)" : ""),
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     return str(snapshot.name) || "Launch scenario";
@@ -72,19 +83,17 @@ const GROUP: PermanentDeletionEntity = {
       .from("groups")
       .select("id, name, lifecycle_status")
       .order("name", { ascending: true });
-    const rows = (data ?? []) as Array<{
-      id: string;
-      name: string;
-      lifecycle_status: string | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label:
-        str(r.name) +
-        (r.lifecycle_status && r.lifecycle_status !== "active"
-          ? ` (${r.lifecycle_status})`
-          : ""),
-    }));
+    return mapRows(
+      data,
+      (r: { id: string; name: string; lifecycle_status: string | null }) => ({
+        id: r.id,
+        label:
+          str(r.name) +
+          (r.lifecycle_status && r.lifecycle_status !== "active"
+            ? ` (${r.lifecycle_status})`
+            : ""),
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     return str(snapshot.name) || "Group";
@@ -103,20 +112,22 @@ const PROFILE: PermanentDeletionEntity = {
       .select("id, full_name, email, role, status")
       .neq("role", "super_admin")
       .order("full_name", { ascending: true });
-    const rows = (data ?? []) as Array<{
-      id: string;
-      full_name: string;
-      email: string;
-      role: string;
-      status: string;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label:
-        str(r.full_name) +
-        (r.email ? ` <${r.email}>` : "") +
-        (r.status && r.status !== "active" ? ` (${r.status})` : ""),
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        full_name: string;
+        email: string;
+        role: string;
+        status: string;
+      }) => ({
+        id: r.id,
+        label:
+          str(r.full_name) +
+          (r.email ? ` <${r.email}>` : "") +
+          (r.status && r.status !== "active" ? ` (${r.status})` : ""),
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     const name = str(snapshot.full_name);
@@ -137,16 +148,18 @@ const CALENDAR_EVENT: PermanentDeletionEntity = {
       .select("id, title, event_date, event_type")
       .order("event_date", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      title: string | null;
-      event_date: string;
-      event_type: string;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${str(r.title) || str(r.event_type)} — ${str(r.event_date)}`,
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        title: string | null;
+        event_date: string;
+        event_type: string;
+      }) => ({
+        id: r.id,
+        label: `${str(r.title) || str(r.event_type)} — ${str(r.event_date)}`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     return (
@@ -167,15 +180,13 @@ const MULTIPLICATION_CANDIDATE: PermanentDeletionEntity = {
       .select("id, status, target_year")
       .order("target_year", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      status: string;
-      target_year: number | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${str(r.status)}${r.target_year ? ` · ${r.target_year}` : ""} (${r.id.slice(0, 8)})`,
-    }));
+    return mapRows(
+      data,
+      (r: { id: string; status: string; target_year: number | null }) => ({
+        id: r.id,
+        label: `${str(r.status)}${r.target_year ? ` · ${r.target_year}` : ""} (${r.id.slice(0, 8)})`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     const status = str(snapshot.status);
@@ -192,15 +203,13 @@ const APPRENTICE: PermanentDeletionEntity = {
       .from("leader_pipeline")
       .select("id, display_name, readiness_stage")
       .order("display_name", { ascending: true });
-    const rows = (data ?? []) as Array<{
-      id: string;
-      display_name: string;
-      readiness_stage: string;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${str(r.display_name)}${r.readiness_stage ? ` — ${r.readiness_stage}` : ""}`,
-    }));
+    return mapRows(
+      data,
+      (r: { id: string; display_name: string; readiness_stage: string }) => ({
+        id: r.id,
+        label: `${str(r.display_name)}${r.readiness_stage ? ` — ${r.readiness_stage}` : ""}`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     return str(snapshot.display_name) || "Apprentice";
@@ -216,15 +225,13 @@ const OVER_SHEPHERD: PermanentDeletionEntity = {
       .from("over_shepherds")
       .select("id, full_name, active")
       .order("full_name", { ascending: true });
-    const rows = (data ?? []) as Array<{
-      id: string;
-      full_name: string;
-      active: boolean;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${str(r.full_name)}${r.active ? "" : " (inactive)"}`,
-    }));
+    return mapRows(
+      data,
+      (r: { id: string; full_name: string; active: boolean }) => ({
+        id: r.id,
+        label: `${str(r.full_name)}${r.active ? "" : " (inactive)"}`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     return str(snapshot.full_name) || "Over-Shepherd";
@@ -241,16 +248,18 @@ const CLEAN_SLATE_SNAPSHOT: PermanentDeletionEntity = {
       .select("id, kind, total_rows, created_at")
       .order("created_at", { ascending: false })
       .limit(50);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      kind: string;
-      total_rows: number;
-      created_at: string;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${str(r.kind)} — ${r.total_rows} rows (${str(r.created_at).slice(0, 10)})`,
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        kind: string;
+        total_rows: number;
+        created_at: string;
+      }) => ({
+        id: r.id,
+        label: `${str(r.kind)} — ${r.total_rows} rows (${str(r.created_at).slice(0, 10)})`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     const kind = str(snapshot.kind);
@@ -275,19 +284,21 @@ const MEMBER: PermanentDeletionEntity = {
       .select("id, full_name, email, status")
       .order("full_name", { ascending: true })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      full_name: string;
-      email: string | null;
-      status: string | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label:
-        str(r.full_name) +
-        (r.email ? ` <${r.email}>` : "") +
-        (r.status && r.status !== "active" ? ` (${r.status})` : ""),
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        full_name: string;
+        email: string | null;
+        status: string | null;
+      }) => ({
+        id: r.id,
+        label:
+          str(r.full_name) +
+          (r.email ? ` <${r.email}>` : "") +
+          (r.status && r.status !== "active" ? ` (${r.status})` : ""),
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     return str(snapshot.full_name) || str(snapshot.email) || "Member";
@@ -303,18 +314,20 @@ const GROUP_MEMBERSHIP: PermanentDeletionEntity = {
       .from("group_memberships")
       .select("id, role, groups(name), members(full_name)")
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      role: string;
-      groups: { name: string } | null;
-      members: { full_name: string } | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${r.members?.full_name ?? "Member"} in ${
-        r.groups?.name ?? "group"
-      } (${str(r.role)})`,
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        role: string;
+        groups: { name: string } | null;
+        members: { full_name: string } | null;
+      }) => ({
+        id: r.id,
+        label: `${r.members?.full_name ?? "Member"} in ${
+          r.groups?.name ?? "group"
+        } (${str(r.role)})`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     const role = str(snapshot.role);
@@ -331,19 +344,21 @@ const GROUP_LEADER: PermanentDeletionEntity = {
       .from("group_leaders")
       .select("id, role, active, groups(name), profiles(full_name)")
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      role: string;
-      active: boolean;
-      groups: { name: string } | null;
-      profiles: { full_name: string } | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${r.profiles?.full_name ?? "Leader"} — ${
-        r.groups?.name ?? "group"
-      } (${str(r.role)})${r.active ? "" : " (inactive)"}`,
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        role: string;
+        active: boolean;
+        groups: { name: string } | null;
+        profiles: { full_name: string } | null;
+      }) => ({
+        id: r.id,
+        label: `${r.profiles?.full_name ?? "Leader"} — ${
+          r.groups?.name ?? "group"
+        } (${str(r.role)})${r.active ? "" : " (inactive)"}`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     const role = str(snapshot.role);
@@ -361,19 +376,21 @@ const ATTENDANCE_SESSION: PermanentDeletionEntity = {
       .select("id, meeting_week, meeting_date, status, groups(name)")
       .order("meeting_week", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      meeting_week: string;
-      meeting_date: string | null;
-      status: string | null;
-      groups: { name: string } | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${r.groups?.name ?? "Group"} — ${
-        str(r.meeting_date) || str(r.meeting_week)
-      }`,
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        meeting_week: string;
+        meeting_date: string | null;
+        status: string | null;
+        groups: { name: string } | null;
+      }) => ({
+        id: r.id,
+        label: `${r.groups?.name ?? "Group"} — ${
+          str(r.meeting_date) || str(r.meeting_week)
+        }`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     const week = str(snapshot.meeting_week);
@@ -393,22 +410,24 @@ const ATTENDANCE_RECORD: PermanentDeletionEntity = {
       )
       .order("created_at", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      attendance_status: string;
-      members: { full_name: string } | null;
-      attendance_sessions: { meeting_week: string } | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${r.members?.full_name ?? "Member"} — ${str(
-        r.attendance_status
-      )}${
-        r.attendance_sessions?.meeting_week
-          ? ` (${r.attendance_sessions.meeting_week})`
-          : ""
-      }`,
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        attendance_status: string;
+        members: { full_name: string } | null;
+        attendance_sessions: { meeting_week: string } | null;
+      }) => ({
+        id: r.id,
+        label: `${r.members?.full_name ?? "Member"} — ${str(
+          r.attendance_status
+        )}${
+          r.attendance_sessions?.meeting_week
+            ? ` (${r.attendance_sessions.meeting_week})`
+            : ""
+        }`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     const status = str(snapshot.attendance_status);
@@ -426,19 +445,21 @@ const GUEST: PermanentDeletionEntity = {
       .select("id, full_name, email, pipeline_stage")
       .order("full_name", { ascending: true })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      full_name: string;
-      email: string | null;
-      pipeline_stage: string | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label:
-        str(r.full_name) +
-        (r.email ? ` <${r.email}>` : "") +
-        (r.pipeline_stage ? ` (${r.pipeline_stage})` : ""),
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        full_name: string;
+        email: string | null;
+        pipeline_stage: string | null;
+      }) => ({
+        id: r.id,
+        label:
+          str(r.full_name) +
+          (r.email ? ` <${r.email}>` : "") +
+          (r.pipeline_stage ? ` (${r.pipeline_stage})` : ""),
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     return str(snapshot.full_name) || str(snapshot.email) || "Guest";
@@ -455,18 +476,20 @@ const FOLLOW_UP: PermanentDeletionEntity = {
       .select("id, type, title, status")
       .order("created_at", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      type: string;
-      title: string;
-      status: string | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${str(r.title) || str(r.type)}${
-        r.status && r.status !== "open" ? ` (${r.status})` : ""
-      }`,
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        type: string;
+        title: string;
+        status: string | null;
+      }) => ({
+        id: r.id,
+        label: `${str(r.title) || str(r.type)}${
+          r.status && r.status !== "open" ? ` (${r.status})` : ""
+        }`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     return str(snapshot.title) || str(snapshot.type) || "Follow-up";
@@ -483,18 +506,20 @@ const GROUP_HEALTH_UPDATE: PermanentDeletionEntity = {
       .select("id, update_week, pulse, groups(name)")
       .order("update_week", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      update_week: string;
-      pulse: string | null;
-      groups: { name: string } | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${r.groups?.name ?? "Group"} — ${str(r.update_week)}${
-        r.pulse ? ` (${r.pulse})` : ""
-      }`,
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        update_week: string;
+        pulse: string | null;
+        groups: { name: string } | null;
+      }) => ({
+        id: r.id,
+        label: `${r.groups?.name ?? "Group"} — ${str(r.update_week)}${
+          r.pulse ? ` (${r.pulse})` : ""
+        }`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     const week = str(snapshot.update_week);
@@ -514,22 +539,24 @@ const GROUP_HEALTH_ASSESSMENT: PermanentDeletionEntity = {
       )
       .order("period_month", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      period_month: string;
-      computed_letter: string | null;
-      override_letter: string | null;
-      groups: { name: string } | null;
-    }>;
-    return rows.map((r) => {
-      const grade = str(r.override_letter) || str(r.computed_letter);
-      return {
-        id: r.id,
-        label: `${r.groups?.name ?? "Group"} — ${str(r.period_month)}${
-          grade ? ` (${grade})` : ""
-        }`,
-      };
-    });
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        period_month: string;
+        computed_letter: string | null;
+        override_letter: string | null;
+        groups: { name: string } | null;
+      }) => {
+        const grade = str(r.override_letter) || str(r.computed_letter);
+        return {
+          id: r.id,
+          label: `${r.groups?.name ?? "Group"} — ${str(r.period_month)}${
+            grade ? ` (${grade})` : ""
+          }`,
+        };
+      }
+    );
   },
   labelFromSnapshot(snapshot) {
     const month = str(snapshot.period_month);
@@ -553,26 +580,28 @@ const INVITATION: PermanentDeletionEntity = {
       .select("id, role, expires_at, revoked_at, used_count, groups(name)")
       .order("created_at", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      role: string;
-      expires_at: string;
-      revoked_at: string | null;
-      used_count: number;
-      groups: { name: string } | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${str(r.role)} invite${
-        r.groups?.name ? ` · ${r.groups.name}` : ""
-      } — expires ${str(r.expires_at).slice(0, 10)}${
-        r.revoked_at
-          ? " (revoked)"
-          : r.used_count > 0
-            ? ` (used ${r.used_count})`
-            : ""
-      }`,
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        role: string;
+        expires_at: string;
+        revoked_at: string | null;
+        used_count: number;
+        groups: { name: string } | null;
+      }) => ({
+        id: r.id,
+        label: `${str(r.role)} invite${
+          r.groups?.name ? ` · ${r.groups.name}` : ""
+        } — expires ${str(r.expires_at).slice(0, 10)}${
+          r.revoked_at
+            ? " (revoked)"
+            : r.used_count > 0
+              ? ` (used ${r.used_count})`
+              : ""
+        }`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     const role = str(snapshot.role);
@@ -590,18 +619,20 @@ const SHEPHERD_COVERAGE_ASSIGNMENT: PermanentDeletionEntity = {
       .select("id, active, profiles(full_name), over_shepherds(full_name)")
       .order("created_at", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      active: boolean;
-      profiles: { full_name: string } | null;
-      over_shepherds: { full_name: string } | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${r.profiles?.full_name ?? "Leader"} → ${
-        r.over_shepherds?.full_name ?? "over-shepherd"
-      }${r.active ? "" : " (inactive)"}`,
-    }));
+    return mapRows(
+      data,
+      (r: {
+        id: string;
+        active: boolean;
+        profiles: { full_name: string } | null;
+        over_shepherds: { full_name: string } | null;
+      }) => ({
+        id: r.id,
+        label: `${r.profiles?.full_name ?? "Leader"} → ${
+          r.over_shepherds?.full_name ?? "over-shepherd"
+        }${r.active ? "" : " (inactive)"}`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     return `Coverage assignment ${String(snapshot.id ?? "").slice(0, 8)}`;
@@ -618,15 +649,13 @@ const CHURCH_ATTENDANCE_SNAPSHOT: PermanentDeletionEntity = {
       .select("id, snapshot_date, attendance_count")
       .order("snapshot_date", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      snapshot_date: string;
-      attendance_count: number;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: `${str(r.snapshot_date)} — ${r.attendance_count}`,
-    }));
+    return mapRows(
+      data,
+      (r: { id: string; snapshot_date: string; attendance_count: number }) => ({
+        id: r.id,
+        label: `${str(r.snapshot_date)} — ${r.attendance_count}`,
+      })
+    );
   },
   labelFromSnapshot(snapshot) {
     const date = str(snapshot.snapshot_date);
@@ -665,23 +694,25 @@ const SHEPHERD_CARE_FOLLOW_UP: PermanentDeletionEntity = {
       )
       .order("created_at", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<
-      {
-        id: string;
-        title: string;
-        status: string | null;
-        due_date: string | null;
-      } & CareSubjectEmbed
-    >;
-    return rows.map((r) => {
-      const who = careSubjectName(r);
-      const statusSuffix =
-        r.status && r.status !== "open" ? ` (${r.status})` : "";
-      return {
-        id: r.id,
-        label: `${who ? `${who} · ` : ""}${str(r.title)}${statusSuffix} [${r.id.slice(0, 8)}]`,
-      };
-    });
+    return mapRows(
+      data,
+      (
+        r: {
+          id: string;
+          title: string;
+          status: string | null;
+          due_date: string | null;
+        } & CareSubjectEmbed
+      ) => {
+        const who = careSubjectName(r);
+        const statusSuffix =
+          r.status && r.status !== "open" ? ` (${r.status})` : "";
+        return {
+          id: r.id,
+          label: `${who ? `${who} · ` : ""}${str(r.title)}${statusSuffix} [${r.id.slice(0, 8)}]`,
+        };
+      }
+    );
   },
   labelFromSnapshot(snapshot) {
     return str(snapshot.title) || "Care follow-up";
@@ -700,22 +731,24 @@ const SHEPHERD_CARE_INTERACTION: PermanentDeletionEntity = {
       )
       .order("interaction_at", { ascending: false })
       .limit(200);
-    const rows = (data ?? []) as Array<
-      {
-        id: string;
-        interaction_type: string;
-        interaction_at: string;
-      } & CareSubjectEmbed
-    >;
-    return rows.map((r) => {
-      const who = careSubjectName(r);
-      return {
-        id: r.id,
-        label: `${who ? `${who} · ` : ""}${str(r.interaction_type)} — ${str(
-          r.interaction_at
-        ).slice(0, 10)} [${r.id.slice(0, 8)}]`,
-      };
-    });
+    return mapRows(
+      data,
+      (
+        r: {
+          id: string;
+          interaction_type: string;
+          interaction_at: string;
+        } & CareSubjectEmbed
+      ) => {
+        const who = careSubjectName(r);
+        return {
+          id: r.id,
+          label: `${who ? `${who} · ` : ""}${str(r.interaction_type)} — ${str(
+            r.interaction_at
+          ).slice(0, 10)} [${r.id.slice(0, 8)}]`,
+        };
+      }
+    );
   },
   labelFromSnapshot(snapshot) {
     const type = str(snapshot.interaction_type);

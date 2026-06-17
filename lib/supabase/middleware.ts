@@ -8,6 +8,15 @@ import {
 } from "@/lib/auth/password-setup";
 import { getSupabaseEnvSafe } from "./config";
 
+// Copy every Set-Cookie the working response accumulated (session cookies
+// getClaims() rotated, the password-setup marker) onto a freshly-built
+// redirect/rewrite response so it drops none of them.
+function carryCookies(from: NextResponse, to: NextResponse): void {
+  from.cookies.getAll().forEach((cookie) => {
+    to.cookies.set(cookie);
+  });
+}
+
 export async function updateSupabaseSession(
   request: NextRequest
 ): Promise<NextResponse> {
@@ -88,9 +97,7 @@ export async function updateSupabaseSession(
     const redirectResponse = NextResponse.redirect(target);
     // Carry over the session cookies getClaims() rotated above and the marker
     // renewed above so the redirect drops neither.
-    response.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie);
-    });
+    carryCookies(response, redirectResponse);
     return redirectResponse;
   }
 
@@ -116,9 +123,7 @@ export async function updateSupabaseSession(
       const acceptUrl = request.nextUrl.clone();
       acceptUrl.pathname = "/reset-password";
       const redirectResponse = NextResponse.redirect(acceptUrl);
-      response.cookies.getAll().forEach((cookie) => {
-        redirectResponse.cookies.set(cookie);
-      });
+      carryCookies(response, redirectResponse);
       return redirectResponse;
     }
 
@@ -131,9 +136,7 @@ export async function updateSupabaseSession(
     // headers, leaving the bad cookies in place so every root visit keeps
     // re-paying the refresh/validation cost. (For a clean anonymous request
     // there are no cookies to copy, so this is a no-op on the common path.)
-    response.cookies.getAll().forEach((cookie) => {
-      rewriteResponse.cookies.set(cookie);
-    });
+    carryCookies(response, rewriteResponse);
     return rewriteResponse;
   }
 
