@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { requireAdmin } from "@/lib/auth/session";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { loadMultiplyGridData } from "@/components/admin/multiply/multiply-grid-data";
 import { loadMultiplyPlanData } from "@/components/admin/multiply/multiply-plan-data";
@@ -58,10 +59,25 @@ function calmNote(message: string): ReactNode {
 async function loadMultiplyPageData(): Promise<{ tabs: MultiplyTab[] }> {
   await requireAdmin();
 
+  // All three tabs' reads still run on every visit (the default tab is "plan",
+  // so the grid compute + pipeline read are wasted on the common path — a
+  // server-side per-tab split is a follow-up). Time each one separately so the
+  // production `read_bundle` logs show which tab dominates and justify that
+  // split with measured evidence. `describe` carries only counts/discriminants,
+  // never row contents (the read-timing privacy contract).
   const [plan, grid, leaders] = await Promise.all([
-    loadMultiplyPlanData(),
-    loadMultiplyGridData(),
-    loadLeaderPipelineData(),
+    measureReadBundle("multiply_plan", loadMultiplyPlanData, (data) => ({
+      result_kind: data.error ? "error" : "ok",
+      segments: data.segments.length,
+    })),
+    measureReadBundle("multiply_readiness", loadMultiplyGridData, (data) => ({
+      result_kind: data.error ? "error" : "ok",
+      rule_fell_back: data.ruleFellBack,
+    })),
+    measureReadBundle("multiply_leaders", loadLeaderPipelineData, (data) => ({
+      result_kind: data.error ? "error" : "ok",
+      total_apprentices: data.rollup.totalApprentices,
+    })),
   ]);
 
   const planCount = plan.segments.reduce(
