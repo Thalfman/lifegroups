@@ -48,7 +48,11 @@ can be scheduled, scoped down, or deferred on its own.
   `/leader`, `/over-shepherd`, the public auth routes, and **all frozen/off-nav
   routes** (`/admin/planning`, `/admin/launch-planning`, `/admin/calendar`,
   `/admin/guests`, `/admin/follow-ups`, `/admin/group-health`,
-  `/admin/check-ins/**`) resolving exactly as today.
+  `/admin/leader-pipeline`, `/admin/check-ins/**`) resolving exactly as today.
+  Note `/admin/leader-pipeline` is a Care-owned frozen alias in
+  `lib/nav/active-nav.ts` with a live revalidation path in
+  `app/(protected)/admin/leader-pipeline/actions.ts` — bookmarked URLs and that
+  action must keep working.
 - Keep the existing `ActionResult` form contract, server-action exports,
   Supabase RPC names, feature-flag keys, and route search-param compatibility
   (legacy `?tab=`/`?view=`/`?filter=` keys keep selecting the same canonical
@@ -103,8 +107,14 @@ stable.
   `ValidationResult`, `isRecord`, `trimString`, `readOptionalString`, `UUID_RE`,
   `isUuid` — all behavior-identical. Replace with shared imports. **Keep its
   stricter `isIsoDate` local** (it round-trips the date; admin's is regex-only).
-- `lib/leader/group-note-validation.ts` privately re-declares `isRecord`,
-  `trimString` — import them instead.
+- `lib/leader/group-note-validation.ts` privately re-declares `isRecord` (which
+  IS identical — import it) **and `trimString` (which is NOT)**: the leader local
+  `trimString` returns `null` for whitespace-only input and feeds a
+  `body === null` non-empty check, whereas the shared/admin helper returns the
+  trimmed string (including `""`). Swapping it in would let blank/whitespace
+  leader Care Notes + Prayer Requests pass validation — a behavior change. Keep
+  this `trimString` local (or replace it with an explicit non-empty-string
+  helper); only share `isRecord`.
 - Promote the genuinely cross-surface string helpers out of
   `lib/admin/validation/shared.ts` into `lib/shared/validation-helpers.ts`
   (`trimString`, the `undefined`-returning `readOptionalString`,
@@ -135,11 +145,14 @@ re-seed; Multiply = URL `?tab=` history sync), and minor className tokens.
   className overrides). Each shell becomes a thin adapter keeping its own state
   logic and rendering `<TabShell/>`; public props/exports unchanged.
 - **Parity is the bar**: keep ids (`care-tab-*`, `multiply-tab-*`), roles,
-  `aria-selected`/`aria-controls` byte-identical. One nuance — Care handles only
-  Arrow Left/Right + Home/End, Multiply also Arrow Up/Down. Reproduce the union
-  (full ARIA key set, an additive spec-compliant superset) **or** make the key
-  set a prop if strict zero-change is preferred. `test:a11y` + the shell tests
-  are the gate.
+  `aria-selected`/`aria-controls` byte-identical, **and keep each shell's exact
+  keyboard set**. Care handles only Arrow Left/Right + Home/End; Multiply also
+  Arrow Up/Down. To honor "no behavior change", make the supported key set a
+  per-shell prop and preserve Care's current set as-is — do NOT default to the
+  union, since that would make Up/Down newly activate Care tabs (observable).
+  Adopting the full ARIA key set in Care is a deliberate accessibility
+  improvement to decide separately, not part of this behavior-preserving wave.
+  `test:a11y` + the shell tests are the gate.
 
 ### 5. Simplify write-action structure (no contract change)
 
@@ -195,19 +208,32 @@ behavior.
   `docs/adr/0022-multiply-unifies-plan-readiness-leaders.md` (canonical, cited as
   0022 in README/CLAUDE.md) and
   `docs/adr/0022-admin-jsonb-write-reguard-and-audit-locks.md` (misnumbered).
-  Renumber the jsonb ADR to **0028** (next free; ADRs run 0001–0027), update
-  inbound references (`grep -rn "0022-admin-jsonb"` + prose) and `docs/README.md`.
+  Renumber the jsonb ADR to **0028** (next free; ADRs run 0001–0027) and update
+  `docs/README.md`. Updating slug references (`grep -rn "0022-admin-jsonb"`) is
+  not enough: do a **contextual search for bare "ADR 0022" citations of the
+  jsonb/audit-lock ADR** — they appear in migration SQL (e.g.
+  `supabase/migrations/20260617000000_phase_groups7_audit_before_advisory_locks.sql`)
+  and tests (`lib/admin/__tests__/audit-before-advisory-locks-migration.test.ts`)
+  — and repoint only those to 0028. Bare "ADR 0022" elsewhere refers to the
+  Multiply ADR and must stay; verify each citation's subject before editing.
 - **Archive the superseded `docs/PRD.md`** to git history per the documented docs
-  convention (marked superseded by PRD #371; confirm no code imports it). Skip if
-  the user prefers to keep it in-tree; do the ADR renumber regardless.
+  convention (marked superseded by PRD #371). Before removing it, **update or
+  replace every inbound link** so nothing dangles — it is referenced from
+  `README.md`, `docs/README.md`, `docs/architecture/ARCHITECTURE.md`, and several
+  `docs/adr/*` files (confirm with `grep -rn "PRD.md"`); also confirm no code
+  imports it. Skip the removal if the user prefers to keep it in-tree; do the ADR
+  renumber regardless.
 - After implementation, refresh `docs/architecture/ARCHITECTURE.md` to describe
   the consolidated internal patterns. ADRs stay authoritative.
 
 ## Out of scope (to honor "no interface change")
 
-- Collapsing/redirecting any route or alias (`/admin/calendar`,
-  `/admin/shepherd-care`, `/admin/follow-ups`, `/admin/launch-planning`, the
-  `/admin/multiply/criteria`+`/settings` redirect pages) — they render today.
+- Changing how any route or alias resolves. Each keeps its **current** behavior:
+  the alias hosts (`/admin/calendar`, `/admin/shepherd-care`,
+  `/admin/follow-ups`, `/admin/launch-planning`) render 200 today and must keep
+  rendering; the `/admin/multiply/criteria` and `/admin/multiply/settings` pages
+  **`redirect()` today** (to `/admin/settings?tab=…`) and must keep redirecting —
+  do not convert a redirect into a rendered page or vice-versa.
 - Renaming the `components/admin/multiplication/` ↔ `multiply/` directories or
   any exported component/type (would break importers — an internal interface).
 - Any migration, RPC, RLS, feature-flag-key, or `types/` change.
