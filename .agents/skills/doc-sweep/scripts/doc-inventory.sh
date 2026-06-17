@@ -44,9 +44,15 @@ for f in "${FILES[@]}"; do
   rel="${f#./}"
   lines=$(wc -l < "$f" | tr -d ' ')
   if [ "$have_git" -eq 1 ]; then
-    date=$(git log -1 --format=%cs -- "$f" 2>/dev/null || true)
-    age=$(git log -1 --format=%cr -- "$f" 2>/dev/null || true)
-    [ -z "$date" ] && { date="(untracked)"; age="-"; }
+    if git ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
+      # Tracked. In a shallow clone `git log` may lack history for a path; that
+      # is a missing-history signal, NOT an untracked file — keep them distinct.
+      date=$(git log -1 --format=%cs -- "$f" 2>/dev/null || true)
+      age=$(git log -1 --format=%cr -- "$f" 2>/dev/null || true)
+      [ -z "$date" ] && { date="(no history)"; age="shallow?"; }
+    else
+      date="(untracked)"; age="-"
+    fi
   else
     date="(no git)"; age="-"
   fi
@@ -57,13 +63,14 @@ done
 echo
 echo "# Dead relative links (target file does not exist)"
 echo "# (skips http(s)://, mailto:, and pure #anchor links)"
-echo "# NOTE: link targets containing '(' (e.g. Next.js route groups like"
-echo "#       '(protected)') truncate at the paren and may report a false dead"
-echo "#       link — verify any flagged target that contains a paren before acting."
 dead=0
 for f in "${FILES[@]}"; do
   dir=$(dirname "$f")
-  # Extract markdown link targets: ](target)
+  # Extract markdown link targets in two forms, so parens inside a target don't
+  # truncate it:
+  #   1. angle-wrapped  ](<...>)  — target may contain '(' ')' e.g. Next.js
+  #      route groups like (protected); read everything between < and >.
+  #   2. plain          ](target) — target has no '<' and no ')'; stop at ')'.
   while IFS= read -r target; do
     [ -z "$target" ] && continue
     case "$target" in
@@ -76,7 +83,12 @@ for f in "${FILES[@]}"; do
       printf '  %-50s -> %s\n' "${f#./}" "$target"
       dead=$((dead+1))
     fi
-  done < <(grep -oE '\]\([^)]+\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//')
+  done < <(
+    {
+      grep -oE '\]\(<[^>]*>\)' "$f" 2>/dev/null | sed -E 's/^\]\(<//; s/>\)$//'
+      grep -oE '\]\([^<)][^)]*\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//'
+    }
+  )
 done
 [ "$dead" -eq 0 ] && echo "  none found"
 echo

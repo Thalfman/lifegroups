@@ -25,10 +25,15 @@ The deliverable is a timestamped report the user can act on later.
    how *this* repo treats docs: `CLAUDE.md`, `AGENTS.md`, `README.md`,
    `CONTEXT.md` (glossary), and any docs index (`docs/README.md`). Note its
    retire policy (e.g. "historical docs are retired to git history").
-2. **Inventory.** Run `scripts/doc-inventory.sh` from the repo root. It lists
-   every markdown file with its last-commit date/age and line count, and scans
-   for dead relative links. Save its raw output as `inventory.txt` in the report
-   dir. This is your factual spine — don't eyeball file lists.
+2. **Inventory.** Run this skill's bundled script, passing the repo root as the
+   argument, and capture its output into the report dir:
+   `bash "$SKILL_DIR/scripts/doc-inventory.sh" <repo-root> > <report-dir>/inventory.txt`
+   where `$SKILL_DIR` is this skill's own directory (e.g.
+   `.agents/skills/doc-sweep`; the `.claude/skills/doc-sweep` symlink resolves to
+   the same place). Do not run a bare `scripts/doc-inventory.sh` from the repo
+   root — that path won't exist. It lists every markdown file with its
+   last-commit date/age and line count, and scans for dead relative links. This
+   is your factual spine — don't eyeball file lists.
 3. **Tier the docs.** Classify into tiers (root canonical → index → ADRs →
    PRDs/plans → runbooks/architecture → ephemeral reviews/retros/audits). See
    [REFERENCE.md](REFERENCE.md) for the tier model.
