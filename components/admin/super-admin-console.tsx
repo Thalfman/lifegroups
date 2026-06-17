@@ -143,7 +143,7 @@ export function SuperAdminConsole({
           band can never sit stuck on top of content. */}
       <div className="md:sticky md:top-14 md:z-[5] md:-my-2 md:bg-bg md:py-2">
         {/* A segmented rail that wraps rather than clips at narrow widths —
-            all six tabs stay visible on a phone. w-fit keeps it compact on
+            all seven tabs stay visible on a phone. w-fit keeps it compact on
             wide screens, where it fits one row. */}
         <div
           className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg border border-line bg-sidebar p-1"

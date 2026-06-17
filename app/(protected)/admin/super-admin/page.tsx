@@ -66,7 +66,7 @@ export default async function AdminSuperAdminPage() {
       <PageHeader
         eyebrow="Super admin"
         title="Super Admin"
-        lede="Owner and operator console for launch readiness, access, configuration, diagnostics, audit, and guarded danger actions."
+        lede="Owner and operator console for launch readiness, access, configuration, diagnostics, audit, usage, and guarded danger actions."
         maxWidth={CONSOLE_MAX_WIDTH}
       />
       {/* ADR 0027: the setup "Import people" deep-link lands deep in the

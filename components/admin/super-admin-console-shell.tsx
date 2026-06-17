@@ -18,6 +18,7 @@ import { AccessWorkspace } from "@/components/admin/super-admin/access-workspace
 import { ConfigWorkspace } from "@/components/admin/super-admin/config-workspace";
 import { DiagnosticsWorkspace } from "@/components/admin/super-admin/diagnostics-workspace";
 import { AuditWorkspacePanel } from "@/components/admin/super-admin/audit-workspace-panel";
+import { UsageWorkspace } from "@/components/admin/super-admin/usage-workspace";
 import { DangerWorkspace } from "@/components/admin/super-admin/danger-workspace";
 import type { SuperAdminConsoleData } from "@/components/admin/super-admin/console-data";
 
@@ -108,6 +109,11 @@ export function SuperAdminConsoleShell({
       id: "audit",
       label: "Audit",
       node: <AuditWorkspacePanel data={data} />,
+    },
+    {
+      id: "usage",
+      label: "Usage",
+      node: <UsageWorkspace data={data} />,
     },
     {
       id: "danger",

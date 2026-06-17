@@ -183,6 +183,19 @@ describe("buildSuperAdminConsoleStatus", () => {
     expect(on.chips[5].value).toBe("On");
     expect(on.chips[5].detail).toBe("Recording logins + area views");
   });
+
+  it("links the Usage chip to its workspace regardless of flag state", () => {
+    const action = { label: "Open Usage", hash: "usage" };
+    expect(buildSuperAdminConsoleStatus(baseInput()).chips[5].action).toEqual(
+      action
+    );
+    expect(
+      buildSuperAdminConsoleStatus({
+        ...baseInput(),
+        featureFlags: { usage_tracking: { enabled: true } },
+      }).chips[5].action
+    ).toEqual(action);
+  });
 });
 
 describe("computeNextAction precedence", () => {
@@ -266,6 +279,11 @@ describe("workspace deep-link aliases", () => {
     expect(LEGACY_HASH_ALIASES["test-tools"]).toBe("diagnostics");
     expect(LEGACY_HASH_ALIASES["danger-zone"]).toBe("danger");
     expect(LEGACY_HASH_ALIASES["overview"]).toBe("readiness");
+  });
+
+  it("hosts usage as its own workspace, with #activity aliased to it", () => {
+    expect(SUPER_ADMIN_WORKSPACE_IDS).toContain("usage");
+    expect(LEGACY_HASH_ALIASES["activity"]).toBe("usage");
   });
 });
 

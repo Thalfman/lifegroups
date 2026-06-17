@@ -19,6 +19,7 @@ export const SUPER_ADMIN_WORKSPACE_IDS = [
   "config",
   "diagnostics",
   "audit",
+  "usage",
   "danger",
 ] as const;
 
@@ -45,6 +46,7 @@ export const LEGACY_HASH_ALIASES: Record<string, SuperAdminWorkspaceId> = {
   "ministry-settings": "config",
   "test-tools": "diagnostics",
   maintenance: "diagnostics",
+  activity: "usage",
   "danger-zone": "danger",
 };
 
@@ -272,6 +274,7 @@ export function buildSuperAdminConsoleStatus(input: {
       detail: usageTrackingOn
         ? "Recording logins + area views"
         : "Off — nothing is recorded",
+      action: { label: "Open Usage", hash: "usage" },
     },
   ];
 
