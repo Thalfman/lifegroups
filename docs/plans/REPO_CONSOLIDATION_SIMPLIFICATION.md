@@ -45,7 +45,11 @@ can be scheduled, scoped down, or deferred on its own.
 
 - Keep `/admin`, `/admin/care`, `/admin/plan`, `/admin/multiply`,
   `/admin/groups`, `/admin/people`, `/admin/settings`, `/admin/super-admin`,
-  `/leader`, `/over-shepherd`, the public auth routes, and **all frozen/off-nav
+  `/leader`, `/over-shepherd`, the public auth routes, the
+  **account + app-store-compliance routes** (`/support`, `/account-deletion`,
+  `/privacy`, `/welcome`, the `/invite/[token]` redemption flow, and the shared
+  signed-in `/account`, which links the public support/deletion/privacy pages),
+  and **all frozen/off-nav
   routes** (`/admin/planning`, `/admin/launch-planning`, `/admin/calendar`,
   `/admin/guests`, `/admin/follow-ups`, `/admin/group-health`,
   `/admin/leader-pipeline`, `/admin/shepherd-care/**`, `/admin/check-ins/**`,
@@ -184,7 +188,13 @@ Land after waves 1–4 are green. Extract a generic `AssignmentForm` from
 (keeping role/visibility gating + per-surface actions intact). The action called,
 field names posted, and validation contract must be identical before/after.
 **Only extract where shapes genuinely converge** — forced unification behind many
-conditional props is not simplification.
+conditional props is not simplification. In particular,
+`components/admin/shepherd-care/coverage-assignment-form.tsx` is **not** a pure
+one-select assignment: when `currentAssignmentId` exists it also renders the
+`adminEndShepherdCoverage` clear-coverage form (plus the archived-over-shepherd
+recovery path). Only its assign row may be shared with `AssignmentForm`; the
+clear/reassign state stays local so admins keep the ability to soft-end existing
+coverage.
 
 ### 7. Split oversized monoliths (behavior-preserving extraction)
 
@@ -205,8 +215,19 @@ rest.
 
 ### 8. Rationalize legacy / frozen-surface implementation
 
-Keep frozen routes and direct URLs alive, but make frozen/alias pages render
-**through canonical area components/loaders** rather than duplicating them.
+Keep frozen routes and direct URLs alive. This wave applies **only to true thin
+aliases** — pages that already render a canonical area's component/loader (or a
+trivial wrapper of it). Where such an alias exists, route it through the
+canonical component/loader instead of a duplicate.
+
+**Standalone frozen surfaces keep their own shells and loaders.** Several frozen
+routes are not aliases of a canonical area and must NOT be folded into one — e.g.
+`app/(protected)/admin/guests/page.tsx` loads its own `loadGuestsData()` and
+renders `GuestsManagementShell` (the legacy guest pipeline), which is a different
+surface from `/admin/plan`'s `loadPlanData()` + Prospect board. Routing
+`/admin/guests` through the Plan component would replace the pipeline for
+bookmarked users. These surfaces stay on their own shells/loaders; only the
+read-seam wave (§2) touches their internals.
 Centralize alias-to-canonical mapping and tab/search-param normalization so old
 links stay stable while internals stop duplicating loaders.
 `NAV_ALIAS_TO_CANONICAL` and its tests remain the source of truth for active-nav
