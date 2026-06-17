@@ -25,8 +25,10 @@ The deliverable is a timestamped report the user can act on later.
    how *this* repo treats docs: `CLAUDE.md`, `AGENTS.md`, `README.md`,
    `CONTEXT.md` (glossary), and any docs index (`docs/README.md`). Note its
    retire policy (e.g. "historical docs are retired to git history").
-2. **Inventory.** Run this skill's bundled script, passing the repo root as the
-   argument, and capture its output into the report dir:
+2. **Inventory.** First create the report dir
+   (`mkdir -p docs/doc-sweeps/<YYYY-MM-DD-HHMM>/` — or the repo's reviews home;
+   this is the `<report-dir>` for the whole run). Then run this skill's bundled
+   script, passing the repo root, and capture its output there:
    `bash "$SKILL_DIR/scripts/doc-inventory.sh" <repo-root> > <report-dir>/inventory.txt`
    where `$SKILL_DIR` is this skill's own directory (e.g.
    `.agents/skills/doc-sweep`; the `.claude/skills/doc-sweep` symlink resolves to
@@ -45,9 +47,8 @@ The deliverable is a timestamped report the user can act on later.
 5. **Reconcile variants.** Where several docs cover the same ground (multiple
    PRDs, `PRD.md` vs `PRODUCT.md`, README vs CLAUDE.md vocabulary), name the
    canonical one and recommend how the others fold in.
-6. **Write the report** to a NEW subdirectory `docs/doc-sweeps/<YYYY-MM-DD-HHMM>/`
-   (create `docs/doc-sweeps/` if absent; if the repo has a different reviews
-   home, mirror it). Use the report template in [REFERENCE.md](REFERENCE.md):
+6. **Write the report** as `report.md` in the `<report-dir>` created in step 2,
+   beside `inventory.txt`. Use the report template in [REFERENCE.md](REFERENCE.md):
    summary dashboard → decision checklist → per-doc breakdowns.
 7. **Hand off.** Reply with the report path, the dashboard counts, and the 3–5
    highest-impact decisions. Offer to execute the user's decisions in a follow-up

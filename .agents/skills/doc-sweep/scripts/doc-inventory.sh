@@ -85,8 +85,10 @@ for f in "${FILES[@]}"; do
     fi
   done < <(
     {
-      grep -oE '\]\(<[^>]*>\)' "$f" 2>/dev/null | sed -E 's/^\]\(<//; s/>\)$//'
-      grep -oE '\]\([^<)][^)]*\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//'
+      # `|| true` so a no-match grep (exit 1 under `set -o pipefail`) does not
+      # abort the block before the second extractor runs.
+      { grep -oE '\]\(<[^>]*>\)' "$f" 2>/dev/null | sed -E 's/^\]\(<//; s/>\)$//'; } || true
+      { grep -oE '\]\([^<)][^)]*\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//'; } || true
     }
   )
 done
