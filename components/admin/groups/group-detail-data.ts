@@ -363,7 +363,19 @@ async function buildPeopleTab(
     ]);
 
   const memberIds = (membershipsRes.data ?? []).map((m) => m.member_id);
-  const membersRes = await reads.fetchMembersByIds(memberIds);
+  const rosterMemberIds = new Set(memberIds);
+
+  // A non-archived group already loaded the full active-member pool above (it
+  // feeds the inline assign control), and the roster is a subset of that pool —
+  // so derive the roster rows from it instead of a second round-trip fetching
+  // the same records by id. This drops the People tab's one serial read (the
+  // batch above all resolves in parallel; `fetchMembersByIds` was awaited after
+  // it). An archived group skips the pool (its roster is read-only), so it
+  // still needs the targeted by-id read. The roster fails closed on whichever
+  // read backs it.
+  const membersRes = archived
+    ? await reads.fetchMembersByIds(memberIds)
+    : allMembersRes;
 
   // Fail closed per section: a failed read must not render an empty roster as
   // if authoritative (leader names come from the profiles read).
@@ -388,7 +400,7 @@ async function buildPeopleTab(
   const members = membersFailed
     ? null
     : (membersRes.data ?? [])
-        .filter((m) => m.status === "active")
+        .filter((m) => rosterMemberIds.has(m.id) && m.status === "active")
         .sort((a, b) => a.full_name.localeCompare(b.full_name))
         .map((m) => ({ id: m.id, fullName: m.full_name }));
 
@@ -409,7 +421,6 @@ async function buildPeopleTab(
           .sort((a, b) => a.full_name.localeCompare(b.full_name))
           .map((p) => ({ id: p.id, name: p.full_name }));
 
-  const rosterMemberIds = new Set(memberIds);
   const assignableMembers =
     archived || membersFailed || allMembersRes.error
       ? null

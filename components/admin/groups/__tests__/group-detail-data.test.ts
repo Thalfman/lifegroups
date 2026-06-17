@@ -379,18 +379,45 @@ describe("buildGroupDetailData", () => {
       ]);
     });
 
-    it("suppresses the roster and member options when the members read fails", async () => {
+    it("derives the roster from the already-loaded pool, with no second members read", async () => {
+      let byIdCalled = false;
       const result = await buildGroupDetailData(
-        detailReads({ fetchMembersByIds: async () => fail("members boom") }),
+        detailReads({
+          fetchMembersByIds: async () => {
+            byIdCalled = true;
+            return fail("must not be called");
+          },
+        }),
         options("people")
       );
 
       if (result.kind !== "ok") throw new Error("expected ok");
       if (result.tabData.tab !== "people") throw new Error("wrong tab");
+      // A non-archived group reuses the member pool it already loaded for the
+      // assign control, so the People tab makes no by-id round-trip — and the
+      // roster is still the active in-roster members, sorted by name.
+      expect(byIdCalled).toBe(false);
+      expect(result.tabData.members).toEqual([
+        { id: "m-1", fullName: "Avery Member" },
+        { id: "m-2", fullName: "Blair Member" },
+      ]);
+    });
+
+    it("suppresses the roster and member options when the member pool read fails", async () => {
+      const result = await buildGroupDetailData(
+        detailReads({ fetchAllMembers: async () => fail("pool boom") }),
+        options("people")
+      );
+
+      if (result.kind !== "ok") throw new Error("expected ok");
+      if (result.tabData.tab !== "people") throw new Error("wrong tab");
+      // The pool now backs the roster (the roster is a subset of those same
+      // rows), so a failed pool read fails the roster closed rather than
+      // rendering a partial one — and the not-already-assigned difference can't
+      // be computed either, so the assign control is suppressed too.
       expect(result.tabData.members).toBeNull();
-      // Without a trustworthy roster the not-already-assigned difference
-      // can't be computed — no assign control rather than wrong choices.
       expect(result.tabData.assignableMembers).toBeNull();
+      // Leaders come from their own reads and are unaffected.
       expect(result.tabData.leaders).toEqual([
         {
           id: "gl-1",
@@ -401,17 +428,22 @@ describe("buildGroupDetailData", () => {
       ]);
     });
 
-    it("suppresses member options when the member pool read fails", async () => {
+    it("reads an archived group's roster by id and fails it closed on a failed read", async () => {
       const result = await buildGroupDetailData(
-        detailReads({ fetchAllMembers: async () => fail("pool boom") }),
+        detailReads({
+          fetchGroupsByIds: async () =>
+            ok([{ ...GROUP, lifecycle_status: "closed" }] as never),
+          fetchMembersByIds: async () => fail("members boom"),
+        }),
         options("people")
       );
 
       if (result.kind !== "ok") throw new Error("expected ok");
       if (result.tabData.tab !== "people") throw new Error("wrong tab");
-      // The roster itself survives — only the assign options fail closed.
-      expect(result.tabData.members).toHaveLength(2);
-      expect(result.tabData.assignableMembers).toBeNull();
+      // The archived roster is read-only and skips the pool, so it still reads
+      // members by id — and fails closed when that read fails.
+      expect(result.tabData.archived).toBe(true);
+      expect(result.tabData.members).toBeNull();
     });
 
     it("renders an archived group's roster read-only with no assign options", async () => {
