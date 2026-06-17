@@ -1,4 +1,5 @@
 import type { AdminDashboardData } from "@/lib/dashboard/types";
+import { PEOPLE_IMPORT_HREF } from "@/lib/admin/people-import";
 
 export type SetupRecoveryStepKey =
   | "import_people"
@@ -44,8 +45,8 @@ function statusFromCount(count: number): SetupRecoveryStatus {
 // ADR 0027: setup deep-links carry a `?from=setup` marker so the target surface
 // renders a reusable "← Back to setup" affordance and returning to Home
 // re-focuses the next incomplete step. Append it without clobbering an existing
-// query string or fragment (e.g. `/admin/super-admin#people-import` →
-// `/admin/super-admin?from=setup#people-import`).
+// query string or fragment (e.g. `/admin/settings?tab=system#people-import` →
+// `/admin/settings?tab=system&from=setup#people-import`).
 export const FROM_SETUP_PARAM = "from";
 export const FROM_SETUP_VALUE = "setup";
 
@@ -117,9 +118,10 @@ export function buildSetupRecoveryChecklist(
           ? activeGroups
           : 0;
 
-  const importHref = options.isSuperAdmin
-    ? "/admin/super-admin#people-import"
-    : "/admin/people";
+  // Bulk import is now an admin capability hosted in Settings > System (no
+  // Super-Admin-console hop), so every role's "Import people" step lands on the
+  // same admin importer regardless of isSuperAdmin.
+  const importHref = PEOPLE_IMPORT_HREF;
 
   const steps: SetupRecoveryChecklistRow[] = [];
 
@@ -135,7 +137,7 @@ export function buildSetupRecoveryChecklist(
       count: currentParticipants ?? 0,
       href: importHref,
       label: "Import people",
-      actionLabel: options.isSuperAdmin ? "Import people" : "Open People",
+      actionLabel: "Import people",
       detail:
         currentParticipants === null
           ? "People counts could not be read, so confirm the roster before launch."

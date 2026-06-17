@@ -106,7 +106,7 @@ describe("buildSetupRecoveryChecklist", () => {
       {
         status: "needs_action",
         count: 0,
-        href: "/admin/super-admin?from=setup#people-import",
+        href: "/admin/settings?tab=system&from=setup#people-import",
         label: "Import people",
       },
       {
@@ -142,15 +142,21 @@ describe("buildSetupRecoveryChecklist", () => {
     ]);
   });
 
-  it("uses People instead of Super Admin import for non-super-admins", () => {
-    const checklist = buildSetupRecoveryChecklist(launchRecoveryDashboard(), {
-      isSuperAdmin: false,
-    });
+  it("routes every admin's Import people step to the Settings importer", () => {
+    // Bulk import is now an admin capability in Settings > System (no
+    // Super-Admin-console hop), so super and non-super admins share one target.
+    for (const isSuperAdmin of [true, false]) {
+      const checklist = buildSetupRecoveryChecklist(launchRecoveryDashboard(), {
+        isSuperAdmin,
+      });
 
-    expect(checklist.steps[0]).toMatchObject({
-      key: "import_people",
-      href: "/admin/people?from=setup",
-    });
+      expect(checklist.steps[0]).toMatchObject({
+        key: "import_people",
+        href: "/admin/settings?tab=system&from=setup#people-import",
+        label: "Import people",
+        actionLabel: "Import people",
+      });
+    }
   });
 
   it("marks every setup deep-link with from=setup (ADR 0027)", () => {

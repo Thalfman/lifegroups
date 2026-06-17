@@ -8,8 +8,8 @@ import {
   type SettingsTab,
 } from "@/components/admin/settings-tabs";
 import { PBadge } from "@/components/pastoral/atoms";
-import { SuperAdminScopeNotice } from "@/components/admin/super-admin-only-badge";
-import { PLinkButton } from "@/components/pastoral/button";
+import { PeopleImportForm } from "@/components/admin/forms/people-import-form";
+import { SetupReturnBanner } from "@/components/lg/admin/setup-return-banner";
 import {
   buildOverrideRows,
   overrideSummaryChips,
@@ -80,10 +80,10 @@ export type SettingsShellData = {
     cells: ReadinessCellSeed[];
   };
   // Issue #304: whether the viewer is the super_admin. Settings is a
-  // ministry-admin surface, but bulk people import stays behind the super-admin
-  // boundary (requireSuperAdminSession). For a ministry_admin the System tab
-  // surfaces that capability and deep-links to the Super Admin Console rather
-  // than exposing a write path here.
+  // ministry-admin surface. Bulk people import is now an ordinary admin
+  // capability rendered in the System tab for every admin (the importer posts to
+  // the admin-gated admin_bulk_import_people RPC), so this flag no longer gates
+  // the importer; it is retained for any future super-admin-only settings.
   isSuperAdmin: boolean;
   errors: {
     defaults: string | null;
@@ -233,7 +233,7 @@ export function SettingsShell({
     {
       id: "system",
       label: "System",
-      panel: <SystemPanel isSuperAdmin={workspace.system.isSuperAdmin} />,
+      panel: <SystemPanel />,
     },
   ];
 
@@ -515,12 +515,12 @@ function ThresholdsPanel({ model }: { model: SettingsThresholdsModel }) {
 }
 
 // System tab: utility pointers that aren't part of Care/Plan/Multiply config.
-// Bulk people import is a security-critical write path gated by
-// requireSuperAdminSession() in the Super Admin Console — that boundary is
-// unchanged. This tab deep-links to that surface for the super_admin and
-// explains the gate to a ministry_admin; it introduces NO normal-admin write
-// path. Future reminder/email preferences will also land here.
-function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+// Bulk people import is now an ordinary admin capability (Ministry Admin + Super
+// Admin) hosted here — the importer form posts to the admin-gated
+// admin_bulk_import_people RPC (auth_is_admin() + paired audit row), so no
+// Super-Admin-console hop is needed. The same form is reused in the Super Admin
+// Console. Future reminder/email preferences will also land here.
+function SystemPanel() {
   return (
     <div className="grid gap-4">
       <SettingsSectionHeader
@@ -528,30 +528,22 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         title="Adding people"
         description="How people get into the system."
       />
-      {isSuperAdmin ? (
-        <SuperAdminScopeNotice>
-          Super Admin controls in this section are hidden from every other role.
-        </SuperAdminScopeNotice>
-      ) : null}
-      <Card>
-        {/* #648: frame this as a positive instruction, not a dead-end. A
-            Ministry Admin adds people from the People page; a one-off
-            spreadsheet load is a Super-Admin bulk import. */}
-        <p className="m-0 mb-3.5 font-sans text-sm text-ink2">
-          {isSuperAdmin
-            ? "Add people from the People page. For a one-off spreadsheet load, run a bulk roster import from the Super Admin Console."
-            : "Add people from the People page. If you need to load a whole roster from a spreadsheet, ask the Super Admin to run a bulk import."}
-        </p>
-        {isSuperAdmin ? (
-          <PLinkButton
-            href="/admin/super-admin#people-import"
-            tone="ghost"
-            size="sm"
-          >
-            Open import in Super Admin Console →
-          </PLinkButton>
-        ) : null}
-      </Card>
+      {/* Anchor + return banner mirror the Super-Admin console panel: the setup
+          checklist's "Import people" step deep-links here (?tab=system
+          #people-import) and the banner (self-gating on ?from=setup) offers a
+          "← Back to setup" path. */}
+      <section id="people-import" className="grid gap-3.5">
+        <SetupReturnBanner />
+        <Card>
+          <p className="m-0 mb-3.5 font-sans text-sm text-ink2">
+            Add people one at a time from the People page, or bulk-import a
+            whole roster from a spreadsheet here. Upload a CSV file or paste
+            rows; parsing and de-duplication run before any write, and skipped
+            rows are reported back. Each import is one audited batch.
+          </p>
+          <PeopleImportForm />
+        </Card>
+      </section>
 
       {/* #648: the "Add to Home Screen" affordance lives here in Settings now,
           not in the admin Home header. The button renders nothing when the app
