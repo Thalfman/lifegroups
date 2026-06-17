@@ -11,17 +11,15 @@ import {
   formStatusView,
 } from "@/lib/forms/action-form-view";
 
-// The confirm gate: a cancelled dialog blocks the native form submit; a
-// confirmed one lets it through to the server action.
-export function gateSubmitOnConfirm(
-  confirmed: boolean,
-  event: { preventDefault: () => void }
-): "submit" | "block" {
-  if (!confirmed) {
-    event.preventDefault();
-    return "block";
-  }
-  return "submit";
+// The confirm gate, as a pure decision. A flow with confirmation copy submits
+// only after the operator confirms in the non-blocking dialog ("confirm"); a
+// `null` message needs no dialog and submits straight through ("direct").
+export type ConfirmSubmitMode = "direct" | "confirm";
+
+export function confirmActionSubmitMode(
+  confirmMessage: string | null
+): ConfirmSubmitMode {
+  return confirmMessage === null ? "direct" : "confirm";
 }
 
 // What the button row should render for a given action state.

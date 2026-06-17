@@ -1,26 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   confirmActionButtonView,
-  gateSubmitOnConfirm,
+  confirmActionSubmitMode,
 } from "@/lib/forms/confirm-action-view";
 import { actionFail, actionOk } from "@/lib/shared/action-result";
 
 // The confirm → submit → status lifecycle every guarded admin button shares,
-// tested once (#489): cancel blocks the submit, confirm lets it through,
-// pending disables the button, and the finished action surfaces the
-// standardized success / error status.
+// tested once (#489): copy gates the submit behind a dialog, a null message
+// submits straight through, pending disables the button, and the finished
+// action surfaces the standardized success / error status.
 
-describe("gateSubmitOnConfirm", () => {
-  it("blocks the form submit when the operator cancels the dialog", () => {
-    const event = { preventDefault: vi.fn() };
-    expect(gateSubmitOnConfirm(false, event)).toBe("block");
-    expect(event.preventDefault).toHaveBeenCalledTimes(1);
+describe("confirmActionSubmitMode", () => {
+  it("gates the submit behind a dialog when there is confirmation copy", () => {
+    expect(confirmActionSubmitMode("Archive Bayside Men?")).toBe("confirm");
   });
 
-  it("lets the form submit through when the operator confirms", () => {
-    const event = { preventDefault: vi.fn() };
-    expect(gateSubmitOnConfirm(true, event)).toBe("submit");
-    expect(event.preventDefault).not.toHaveBeenCalled();
+  it("submits straight through when the message is null", () => {
+    expect(confirmActionSubmitMode(null)).toBe("direct");
   });
 });
 
