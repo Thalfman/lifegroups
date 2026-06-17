@@ -1,28 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Regression guard for the people-import "did not complete" bug. The RPC returns
-// the created COUNT as a `text` scalar; it used to be read through the uuid-only
-// channel (callUuidRpc → readUuidRpcData), which rejects any non-uuid string as
-// null, so a successful import (e.g. count "3") was always reported as a failure
-// even though the rows committed. The action now uses the text channel; these
-// tests drive the action with a mocked rpc to prove a count flows through.
+// Guards for the admin-gated bulk people importer (Settings > System). Two
+// things matter: (1) the RPC returns the created COUNT as a `text` scalar and
+// must flow through the text channel — read through the uuid-only channel a
+// successful import (e.g. count "3") was wrongly reported as a failure; and
+// (2) the action gates on requireAdminSession, so a denied guard surfaces an
+// error and never reaches the RPC.
 
-const { mockRequireSuperAdminSession, mockCreateClient, mockRevalidatePath } =
+const { mockRequireAdminSession, mockCreateClient, mockRevalidatePath } =
   vi.hoisted(() => ({
-    mockRequireSuperAdminSession: vi.fn(),
+    mockRequireAdminSession: vi.fn(),
     mockCreateClient: vi.fn(),
     mockRevalidatePath: vi.fn(),
   }));
 
 vi.mock("@/lib/auth/session", () => ({
-  requireSuperAdminSession: mockRequireSuperAdminSession,
+  requireAdminSession: mockRequireAdminSession,
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: mockCreateClient,
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mockRevalidatePath }));
 
-import { superAdminBulkImportPeople } from "@/app/(protected)/admin/super-admin/people-import-actions";
+import { adminBulkImportPeople } from "@/app/(protected)/admin/settings/people-import-actions";
 
 // A header + one valid leader row (leaders require an email) → exactly one row
 // to create, zero per-row errors.
@@ -34,28 +34,28 @@ let rpc: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.clearAllMocks();
   rpc = vi.fn();
-  mockRequireSuperAdminSession.mockResolvedValue({
+  mockRequireAdminSession.mockResolvedValue({
     ok: true,
     session: {
       profile: {
         id: "11111111-1111-1111-1111-111111111111",
-        role: "super_admin",
+        role: "ministry_admin",
       },
     },
   });
   mockCreateClient.mockResolvedValue({ rpc });
 });
 
-describe("superAdminBulkImportPeople — text count return channel", () => {
-  it("reports success with the created count (a plain text number, not a uuid)", async () => {
+describe("adminBulkImportPeople — text count return channel", () => {
+  it("calls the admin-gated RPC and reports success with the created count", async () => {
     rpc.mockResolvedValue({ data: "3", error: null });
 
-    const result = await superAdminBulkImportPeople(undefined, {
+    const result = await adminBulkImportPeople(undefined, {
       payload: VALID_CSV,
     });
 
     expect(rpc).toHaveBeenCalledWith(
-      "super_admin_bulk_import_people",
+      "admin_bulk_import_people",
       expect.objectContaining({ p_rows: expect.any(Array) })
     );
     expect(result.ok).toBe(true);
@@ -69,7 +69,7 @@ describe("superAdminBulkImportPeople — text count return channel", () => {
   it("treats a zero count as a success, not a failure", async () => {
     rpc.mockResolvedValue({ data: "0", error: null });
 
-    const result = await superAdminBulkImportPeople(undefined, {
+    const result = await adminBulkImportPeople(undefined, {
       payload: VALID_CSV,
     });
 
@@ -80,10 +80,26 @@ describe("superAdminBulkImportPeople — text count return channel", () => {
   it("still fails on a genuine RPC error", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "boom" } });
 
-    const result = await superAdminBulkImportPeople(undefined, {
+    const result = await adminBulkImportPeople(undefined, {
       payload: VALID_CSV,
     });
 
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("adminBulkImportPeople — admin gate", () => {
+  it("returns the guard error and never calls the RPC when the session is denied", async () => {
+    mockRequireAdminSession.mockResolvedValue({
+      ok: false,
+      error: "Only ministry admins can perform that action.",
+    });
+
+    const result = await adminBulkImportPeople(undefined, {
+      payload: VALID_CSV,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
   });
 });

@@ -55,3 +55,64 @@ describe("SAC.5 migration — super_admin_bulk_import_people", () => {
     assertExecuteLockdown(sql, "super_admin_bulk_import_people", "jsonb");
   });
 });
+
+// The admin-gated importer (20260707000000) broadens the same batch to Ministry
+// Admins (Settings > System). Same boundary invariants, but gated on
+// auth_is_admin() and writing an 'admin.bulk_import_people' audit row.
+describe("migration — admin_bulk_import_people", () => {
+  let adminSql: MigrationSql;
+
+  beforeAll(() => {
+    adminSql = loadMigration("20260707000000_admin_bulk_import_people.sql");
+  });
+
+  it("defines the RPC as SECURITY DEFINER with a pinned search_path", () => {
+    assertSecurityDefiner(adminSql, "admin_bulk_import_people");
+  });
+
+  it("gates on auth_is_admin() (not the super-admin role check)", () => {
+    expect(adminSql.lower).toContain("not public.auth_is_admin()");
+    expect(adminSql.lower).not.toContain("auth_role() <> 'super_admin'");
+  });
+
+  it("rejects a non-array payload with invalid_input", () => {
+    expect(adminSql.lower).toContain("jsonb_typeof(p_rows) <> 'array'");
+    expect(adminSql.lower).toContain("raise exception 'invalid_input'");
+  });
+
+  it("inserts leaders into profiles and members into members", () => {
+    expect(adminSql.lower).toContain("insert into public.profiles");
+    expect(adminSql.lower).toContain("insert into public.members");
+    expect(adminSql.lower).toContain("v_role = 'leader'");
+  });
+
+  it("preserves the leader's phone in the profiles insert", () => {
+    // Regression: the leader branch must carry phone like the member branch and
+    // the one-at-a-time create paths, or imported leader numbers are dropped.
+    expect(adminSql.lower).toContain(
+      "insert into public.profiles (id, full_name, email, phone, role, status)"
+    );
+  });
+
+  it("enforces the per-batch row bounds at the security boundary", () => {
+    // Defense-in-depth: reject empty batches (no no-op audit rows) AND the
+    // 500-row cap, even for direct RPC callers that bypass the TS parser.
+    expect(adminSql.lower).toContain("jsonb_array_length(p_rows) < 1");
+    expect(adminSql.lower).toContain("jsonb_array_length(p_rows) > 500");
+  });
+
+  it("writes one paired audit_events row recording the created count", () => {
+    assertPairedAuditInsert(
+      adminSql,
+      "admin_bulk_import_people",
+      "'admin.bulk_import_people'"
+    );
+    expect(functionBody(adminSql, "admin_bulk_import_people")).toContain(
+      "created_count"
+    );
+  });
+
+  it("locks function EXECUTE down to authenticated only", () => {
+    assertExecuteLockdown(adminSql, "admin_bulk_import_people", "jsonb");
+  });
+});
