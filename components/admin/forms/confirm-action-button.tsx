@@ -127,7 +127,7 @@ export function ConfirmActionButton<T>({
           {view.label}
         </PButton>
       </form>
-      {gated && confirmMessage !== null && (
+      {gated && (
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}

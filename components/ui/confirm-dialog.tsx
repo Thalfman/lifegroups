@@ -42,7 +42,8 @@ export function ConfirmDialog({
   confirmLabel: string;
   cancelLabel?: string;
   confirmTone?: PButtonTone;
-  // Fired when the operator confirms. The dialog closes itself first.
+  // Fired when the operator confirms; Radix then closes the dialog. It runs
+  // synchronously, so the submit it triggers fires before the close settles.
   onConfirm: () => void;
 }) {
   return (
