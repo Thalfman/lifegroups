@@ -1,24 +1,16 @@
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
-import { CANDIDATE_STATUS_LABEL } from "@/lib/admin/multiplication";
-import type { MultiplicationCandidateStatus } from "@/types/enums";
+import { P, fontSans } from "@/lib/pastoral";
 import type {
   LaunchPlanningDashboardSnapshot,
   MultiplicationDashboardSummary,
 } from "@/lib/dashboard/types";
 import {
+  CandidateCountsLine,
   OpenLink,
   StatTile,
   StatTileGrid,
   launchRiskDisplay,
 } from "./overview-primitives";
-
-const MULTIPLICATION_ORDER: MultiplicationCandidateStatus[] = [
-  "watching",
-  "planned",
-  "launched",
-  "deferred",
-];
 
 function RiskPill({ label, tone }: { label: string; tone: string }) {
   return (
@@ -105,49 +97,10 @@ export function LaunchPlanningOverviewCard({
         />
       </StatTileGrid>
 
-      <div
-        style={{
-          marginTop: 14,
-          paddingTop: 12,
-          borderTop: `1px solid ${P.line2}`,
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 12,
-            textTransform: "uppercase",
-            letterSpacing: 0,
-            color: P.ink3,
-            fontWeight: 600,
-          }}
-        >
-          Multiplication
-        </span>
-        {/* Render an explicit unavailable note rather than dropping the section,
-            so a failed read doesn't read as "no candidates". */}
-        <span
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: multiplication.available ? P.ink2 : P.ink3,
-            fontStyle: multiplication.available ? "normal" : "italic",
-          }}
-        >
-          {multiplication.available
-            ? MULTIPLICATION_ORDER.map(
-                (s, i) =>
-                  `${CANDIDATE_STATUS_LABEL[s]} ${multiplication.counts[s]}${
-                    i < MULTIPLICATION_ORDER.length - 1 ? "  ·  " : ""
-                  }`
-              ).join("")
-            : "Data unavailable"}
-        </span>
-      </div>
+      <CandidateCountsLine
+        eyebrow="Multiplication"
+        multiplication={multiplication}
+      />
     </StatusCard>
   );
 }

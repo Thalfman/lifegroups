@@ -111,6 +111,13 @@ export function POrnament({
 
 export type PAvatarTone = "terra" | "sage" | "mustard" | "neutral";
 
+const PAVATAR_TONES: Record<PAvatarTone, { bg: string; fg: string }> = {
+  terra: { bg: P.terraSoft, fg: P.terra },
+  sage: { bg: P.sageSoft, fg: P.sage },
+  mustard: { bg: P.mustardSoft, fg: P.mustard },
+  neutral: { bg: P.line2, fg: P.ink2 },
+};
+
 export function PAvatar({
   name,
   size = 36,
@@ -122,22 +129,7 @@ export function PAvatar({
   tone?: PAvatarTone;
   style?: CSSProperties;
 }) {
-  const bg =
-    tone === "terra"
-      ? P.terraSoft
-      : tone === "sage"
-        ? P.sageSoft
-        : tone === "mustard"
-          ? P.mustardSoft
-          : P.line2;
-  const fg =
-    tone === "terra"
-      ? P.terra
-      : tone === "sage"
-        ? P.sage
-        : tone === "mustard"
-          ? P.mustard
-          : P.ink2;
+  const { bg, fg } = PAVATAR_TONES[tone];
   const initials = name
     .split(/\s+/)
     .filter(Boolean)

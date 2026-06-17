@@ -1,9 +1,20 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { P } from "@/lib/pastoral";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { LaunchPlanningRiskLevel } from "@/lib/admin/launch-planning";
+import { CANDIDATE_STATUS_LABEL } from "@/lib/admin/multiplication";
+import type { MultiplicationCandidateStatus } from "@/types/enums";
+import type { MultiplicationDashboardSummary } from "@/lib/dashboard/types";
 import { StatusCard } from "@/components/dashboard/cards";
 import { FROZEN_SURFACE_EXPLAINER } from "@/lib/admin/frozen-surface-copy";
+
+// Candidate statuses in the order both multiplication-candidate lines render.
+const CANDIDATE_ORDER: MultiplicationCandidateStatus[] = [
+  "watching",
+  "planned",
+  "launched",
+  "deferred",
+];
 
 // Shared building blocks for the warm executive overview on /admin, on the
 // design-system anatomy: sentence-case labels, serif figures, surfaceAlt
@@ -72,6 +83,24 @@ export function StatTile({
   );
 }
 
+// The muted empty-state paragraph shared by the overview cards' "nothing here
+// yet" branch (health pulse, Interest Funnel, multiplication readiness, leader
+// pipeline, guest funnel). Renders the exact inline style the cards used inline.
+export function CardNote({ children }: { children: ReactNode }) {
+  return (
+    <p
+      style={{
+        margin: 0,
+        fontFamily: fontBody,
+        fontSize: 12.5,
+        color: P.ink3,
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
 export function StatTileGrid({ children }: { children: ReactNode }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(124px,1fr))] gap-2.5">
@@ -120,6 +149,63 @@ export function FrozenStatusCard({
         {FROZEN_SURFACE_EXPLAINER}
       </p>
     </StatusCard>
+  );
+}
+
+// Divider row + candidate-counts line shared by the Launch planning and
+// Multiply overview cards. `eyebrow` is the leading uppercase label
+// ("Multiplication" or "Planner"). Renders an explicit unavailable note rather
+// than dropping the line, so a failed candidate read never reads as
+// "no candidates".
+export function CandidateCountsLine({
+  eyebrow,
+  multiplication,
+}: {
+  eyebrow: string;
+  multiplication: MultiplicationDashboardSummary;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 14,
+        paddingTop: 12,
+        borderTop: `1px solid ${P.line2}`,
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        flexWrap: "wrap",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: fontSans,
+          fontSize: 12,
+          textTransform: "uppercase",
+          letterSpacing: 0,
+          color: P.ink3,
+          fontWeight: 600,
+        }}
+      >
+        {eyebrow}
+      </span>
+      <span
+        style={{
+          fontFamily: fontBody,
+          fontSize: 12.5,
+          color: multiplication.available ? P.ink2 : P.ink3,
+          fontStyle: multiplication.available ? "normal" : "italic",
+        }}
+      >
+        {multiplication.available
+          ? CANDIDATE_ORDER.map(
+              (s, i) =>
+                `${CANDIDATE_STATUS_LABEL[s]} ${multiplication.counts[s]}${
+                  i < CANDIDATE_ORDER.length - 1 ? "  ·  " : ""
+                }`
+            ).join("")
+          : "Data unavailable"}
+      </span>
+    </div>
   );
 }
 
