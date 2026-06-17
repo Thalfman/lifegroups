@@ -66,15 +66,20 @@ echo "# (skips http(s)://, mailto:, and pure #anchor links)"
 dead=0
 for f in "${FILES[@]}"; do
   dir=$(dirname "$f")
-  # Extract markdown link targets in two forms, so parens inside a target don't
-  # truncate it:
-  #   1. angle-wrapped  ](<...>)  — target may contain '(' ')' e.g. Next.js
-  #      route groups like (protected); read everything between < and >.
-  #   2. plain          ](target) — target has no '<' and no ')'; stop at ')'.
-  while IFS= read -r target; do
-    [ -z "$target" ] && continue
+  # Extract link destinations in the standard Markdown forms so the existence
+  # check sees a real path, not a title or a truncated route group:
+  #   inline angle-wrapped  ](<dest> "title")  — dest may contain '(' ')'
+  #   inline plain          ](dest "title")    — dest has no '<', stops at ')'
+  #   reference definition  [id]: dest "title" — excludes footnotes ([^id]:)
+  # Per-candidate normalization (in the loop) unwraps <…> and drops the title.
+  while IFS= read -r raw; do
+    [ -z "$raw" ] && continue
+    case "$raw" in
+      \<*) target="${raw#<}"; target="${target%%>*}" ;;  # angle: inside <…>
+      *)   target="${raw%%[[:space:]]*}" ;;              # plain: drop title
+    esac
     case "$target" in
-      http://*|https://*|mailto:*|\#*|/*) continue ;;  # external / abs / anchor
+      ""|http://*|https://*|mailto:*|\#*|/*) continue ;;  # external / abs / anchor
     esac
     # strip anchor and query
     path="${target%%#*}"; path="${path%%\?*}"
@@ -86,10 +91,12 @@ for f in "${FILES[@]}"; do
   done < <(
     {
       # `|| true` so a no-match grep (exit 1 under `set -o pipefail`) does not
-      # abort the block before the second extractor runs.
-      { grep -oE '\]\(<[^>]*>\)' "$f" 2>/dev/null | sed -E 's/^\]\(<//; s/>\)$//'; } || true
+      # abort the block before the later extractors run.
+      { grep -oE '\]\(<[^>]*>[^)]*\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//'; } || true
       { grep -oE '\]\([^<)][^)]*\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//'; } || true
-    }
+      { grep -oE '^[[:space:]]*\[[^^][^]]*\]:[[:space:]]+[^[:space:]]+' "$f" 2>/dev/null \
+          | sed -E 's/^[[:space:]]*\[[^]]+\]:[[:space:]]+//'; } || true
+    } | sort -u
   )
 done
 [ "$dead" -eq 0 ] && echo "  none found"
