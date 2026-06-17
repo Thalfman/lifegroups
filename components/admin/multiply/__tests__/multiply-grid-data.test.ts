@@ -6,10 +6,8 @@ import {
   type MultiplyGridReads,
 } from "@/components/admin/multiply/multiply-grid-data";
 import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
-import {
-  EMPTY_CELL_ACTIVE_GROUP_SIZES,
-  EMPTY_CELL_HEALTH_GRADES,
-} from "@/lib/supabase/multiplication-config-reads";
+import { EMPTY_CELL_ACTIVE_GROUP_SIZES } from "@/lib/supabase/multiplication-config-reads";
+import { EMPTY_CELL_HEALTH_GRADES } from "@/lib/admin/cell-health";
 import type { ReadResult } from "@/lib/supabase/read-core";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });

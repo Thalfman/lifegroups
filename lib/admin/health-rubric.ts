@@ -85,6 +85,49 @@ export const HEALTH_GRADE_LADDER: GroupHealthLetter[] = [
   "F",
 ];
 
+// ---------------------------------------------------------------------------
+// Grade roll-up: average a body of A–F letters into one letter.
+// ---------------------------------------------------------------------------
+
+// Numeric weight of each A–F letter for averaging: A=4 … F=0 (the classic GPA
+// scale). `rollUpGrades` averages these and bands the mean back to a letter.
+const LETTER_POINTS: Record<GroupHealthLetter, number> = {
+  A: 4,
+  B: 3,
+  C: 2,
+  D: 1,
+  F: 0,
+};
+
+// Round a GPA-style mean (0–4) back to an A–F letter. Half-up at each boundary
+// (≥3.5 ⇒ A, ≥2.5 ⇒ B, …) so a body of grades lands on the nearest letter.
+function letterForMeanPoints(mean: number): GroupHealthLetter {
+  if (mean >= 3.5) return "A";
+  if (mean >= 2.5) return "B";
+  if (mean >= 1.5) return "C";
+  if (mean >= 0.5) return "D";
+  return "F";
+}
+
+// Roll a body of A–F grades up to a single letter by averaging their points and
+// banding the mean. Returns null when there are no grades — rendered as "—"
+// (health stays blank until grades exist). Non-letter entries are ignored
+// defensively; an all-ignored array is treated as empty.
+//
+// The single home for the cross-group / cross-cell roll-up: the per-TYPE board
+// (`computePillars`, lib/admin/multiplication-pillars.ts) and the per-CELL health
+// facet (`resolveCellHealth`, lib/admin/cell-health.ts) both call this, so the
+// averaging rule lives in one place — next to the grade ladder it bands against,
+// not borrowed from the board module.
+export function rollUpGrades(
+  grades: GroupHealthLetter[]
+): GroupHealthLetter | null {
+  const valid = grades.filter((g) => HEALTH_GRADE_LADDER.includes(g));
+  if (valid.length === 0) return null;
+  const total = valid.reduce((sum, g) => sum + LETTER_POINTS[g], 0);
+  return letterForMeanPoints(total / valid.length);
+}
+
 // Decode a stored rubric's raw jsonb `criteria` (read through the column
 // allowlist as `unknown`) into a clean RubricCriterion[]. Drops any malformed
 // entry rather than throwing, so a partially-corrupt row still surfaces its

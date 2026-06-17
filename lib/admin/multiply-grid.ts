@@ -1,14 +1,7 @@
 import type { GroupAudienceCategory } from "@/types/enums";
 import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
-import {
-  evaluateCellReadiness,
-  resolveReadinessRule,
-  type CellReadinessInputs,
-  type CellReadinessOverride,
-  type CellReadinessSignal,
-  type PerTypeReadinessRule,
-  type ReadinessRule,
-} from "@/lib/admin/cell-readiness";
+import type { CellReadinessSignal } from "@/lib/admin/cell-readiness";
+import type { ResolvedCell } from "@/lib/admin/cell";
 import { cellKey } from "@/lib/admin/cell-coordinate";
 
 // The Multiply matrix grid (#403 / PRD §2.5), as a pure data structure. This is
@@ -16,18 +9,19 @@ import { cellKey } from "@/lib/admin/cell-coordinate";
 //   * rows    = categories (the live catalog),
 //   * columns = the three top types (Men's / Women's / Mixed).
 // Each ACTIVE cell (the category is applied to that type) carries its per-cell
-// READINESS signal (#402, the recast natural-unit rule resolved global+override)
-// and its `have X of Y` COVERAGE (#400). A cell where the category is NOT applied
-// to that type renders BLANK — it carries no readout.
+// READINESS signal (#402) and its `have X of Y` COVERAGE (#400). A cell where the
+// category is NOT applied to that type renders BLANK — it carries no readout.
 //
-// Like lib/admin/cell-coverage.ts, this is
-// a pure function of its inputs (no I/O, no Supabase), so the grid assembly, the
-// blank inactive cells, and the per-cell readiness + coverage readout are all
-// testable with no database (ADR 0015). The loader
-// (components/admin/multiply/multiply-grid-data.ts) supplies the inputs — the
-// catalog, each cell's applied flag + target + override, and the per-cell natural-
-// unit readiness inputs (interest headcount, capacity issue, the two health
-// letters) plus the coverage X — and this resolver assembles the grid.
+// This builder is now pure ARRANGEMENT: it places already-resolved live Cells
+// (lib/admin/cell.ts — the unit carrying coverage, inputs, and the resolved
+// readiness signal) into the rows × columns matrix and blanks the cells with no
+// resolved Cell or an unapplied one. The per-cell resolution — reading each
+// facet through one cellKey and resolving the three-tier readiness cascade — lives
+// in `resolveCell`; this file no longer touches the readiness rule. Pure (no I/O,
+// no Supabase), so the arrangement, the blank inactive cells, and the readout
+// pass-through are testable with no database (ADR 0015). The loader
+// (components/admin/multiply/multiply-grid-data.ts) gathers the reads and resolves
+// the Cells; this builder arranges them.
 
 // The three top types, in display order — the canonical Audience vocabulary.
 export const GRID_TYPES = AUDIENCE_CATEGORIES;
@@ -36,22 +30,6 @@ export const GRID_TYPES = AUDIENCE_CATEGORIES;
 export type GridCategoryInput = {
   id: string;
   label: string;
-};
-
-// One cell's full input: the (type × category) coordinate, whether the category
-// is APPLIED to that type (active), its coverage target (Y) and current have (X),
-// the per-cell readiness override (a partial of the global rule), and the per-cell
-// readiness inputs in their natural units (interest headcount, capacity issue, the
-// two health letters). An inactive cell is rendered blank, so its readiness inputs
-// are never evaluated — the loader still passes them for a uniform shape.
-export type GridCellInput = {
-  audienceCategory: GroupAudienceCategory;
-  categoryId: string;
-  active: boolean;
-  have: number;
-  target: number;
-  override: CellReadinessOverride;
-  inputs: CellReadinessInputs;
 };
 
 // The `have X of Y` coverage readout shown on an active cell.
@@ -117,58 +95,37 @@ export function buildMultiplyHomeSummary(
   return { readyCells, activeCells };
 }
 
-// Build the Multiply grid: for every catalog category, derive its three cells from
-// the cell inputs. A cell with no input row, or an input whose `active` flag is
-// false, renders BLANK (applied: false, readout: null) — the category is not
-// applied to that type. An ACTIVE cell resolves its effective readiness rule down
-// the THREE-TIER cascade (#410 / ADR 0021) — global rule, then the column's
-// per-type rule, then the cell's own override — and evaluates it against the
-// cell's natural-unit inputs, pairing the signal with the cell's `have X of Y`
-// coverage. `perTypeRules` is keyed by top type; a type with no entry inherits the
-// global rule for every pillar (the additive default — the per-type tier is empty
-// until a rule is set). Cells whose category isn't in the catalog are dropped (the
-// rows are keyed off the catalog), so an archived category's stale cells never
-// surface.
+// Arrange resolved live Cells into the matrix: for every catalog category, place
+// its three cells (one per top type). A category/type with no resolved Cell, or
+// one that isn't applied, renders BLANK (applied: false, readout: null). An
+// APPLIED cell carries its already-resolved readiness signal paired with its
+// `have X of Y` coverage — `resolveCell` (lib/admin/cell.ts) did the cascade and
+// the evaluation; this builder only reads the result. Cells whose category isn't
+// in the catalog are dropped (the rows are keyed off the catalog), so an archived
+// category's stale cells never surface.
 export function buildMultiplyGrid(
   categories: GridCategoryInput[],
-  cells: GridCellInput[],
-  globalRule: ReadinessRule,
-  perTypeRules: Partial<
-    Record<GroupAudienceCategory, PerTypeReadinessRule>
-  > = {}
+  cells: ResolvedCell[]
 ): MultiplyGrid {
-  // Index the cell inputs by `${audience_category}:${category_id}` for O(1) lookup.
-  const inputByKey = new Map<string, GridCellInput>();
+  // Index the resolved cells by their canonical key for O(1) lookup.
+  const cellByKey = new Map<string, ResolvedCell>();
   for (const cell of cells) {
-    inputByKey.set(
-      cellKey({ audience: cell.audienceCategory, categoryId: cell.categoryId }),
-      cell
-    );
+    cellByKey.set(cellKey(cell.coordinate), cell);
   }
 
   const rows: MultiplyGridRow[] = categories.map((category) => {
     const cellsForRow = {} as Record<GroupAudienceCategory, MultiplyGridCell>;
     for (const type of GRID_TYPES) {
-      const input = inputByKey.get(
+      const resolved = cellByKey.get(
         cellKey({ audience: type, categoryId: category.id })
       );
-      const applied = input?.active ?? false;
+      const applied = resolved?.applied ?? false;
 
-      // Only an applied cell carries a readout; an unapplied cell stays blank, so
-      // its readiness inputs are never evaluated.
+      // An applied cell always carries a readiness signal (resolveCell evaluates
+      // it only when active); a blank cell has none.
       const readout: GridCellReadout | null =
-        applied && input
-          ? {
-              signal: evaluateCellReadiness(
-                resolveReadinessRule(
-                  globalRule,
-                  perTypeRules[type] ?? {},
-                  input.override
-                ),
-                input.inputs
-              ),
-              coverage: { have: input.have, target: input.target },
-            }
+        applied && resolved && resolved.signal
+          ? { signal: resolved.signal, coverage: resolved.coverage }
           : null;
 
       cellsForRow[type] = {

@@ -3,52 +3,54 @@ import {
   buildMultiplyGrid,
   buildMultiplyHomeSummary,
   GRID_TYPES,
-  type GridCellInput,
 } from "@/lib/admin/multiply-grid";
-import {
-  BUILT_IN_READINESS_RULE,
-  type CellReadinessInputs,
-  type ReadinessRule,
-} from "@/lib/admin/cell-readiness";
+import type { ResolvedCell } from "@/lib/admin/cell";
+import type { CellReadinessSignal } from "@/lib/admin/cell-readiness";
 import type { GroupAudienceCategory } from "@/types/enums";
 
-// The pure Multiply grid builder (#403 / PRD §2.5). Rows = categories, columns =
-// the three top types; each ACTIVE cell carries its readiness signal (#402) + its
-// `have X of Y` coverage (#400); a not-applied cell renders blank. These tests pin
-// the grid assembly, the blank inactive cells, and the per-cell readiness +
-// coverage readout — all with no database.
+// The pure Multiply grid builder (#403 / PRD §2.5), now an ARRANGEMENT of
+// already-resolved live Cells (lib/admin/cell.ts): rows = categories, columns = the
+// three top types; an APPLIED cell carries its resolved readiness signal + its
+// `have X of Y` coverage, a not-applied cell renders blank. These tests pin the
+// arrangement, the blank cells, the readout pass-through, and the Home X-of-Y
+// summary — the per-cell resolution + cascade is covered in cell.test.ts.
 
 const CAT = "cat-2030";
 
-// The built-in global rule: interest ≥ 3 required, capacity required, health not.
-const GLOBAL: ReadinessRule = BUILT_IN_READINESS_RULE;
+const READY: CellReadinessSignal = { ready: true, outcomes: [], blockers: [] };
+const BLOCKED: CellReadinessSignal = {
+  ready: false,
+  outcomes: [],
+  blockers: ["interest", "capacity"],
+};
 
-function inputs(over: Partial<CellReadinessInputs> = {}): CellReadinessInputs {
+// A resolved live Cell fixture. Defaults to an applied, ready Men's cell; an
+// inactive cell passes `applied: false, signal: null`.
+function resolved(
+  over: Partial<ResolvedCell> & {
+    audience?: GroupAudienceCategory;
+    categoryId?: string;
+  } = {}
+): ResolvedCell {
+  const { audience = "men", categoryId = CAT, ...rest } = over;
   return {
-    interestCount: 0,
-    capacityIssue: false,
-    groupHealth: null,
-    leaderHealth: null,
-    ...over,
+    coordinate: { audience, categoryId },
+    applied: true,
+    coverage: { have: 0, target: 0 },
+    inputs: {
+      interestCount: 0,
+      capacityIssue: false,
+      groupHealth: null,
+      leaderHealth: null,
+    },
+    signal: READY,
+    ...rest,
   };
 }
 
-function cell(over: Partial<GridCellInput> = {}): GridCellInput {
-  return {
-    audienceCategory: "men",
-    categoryId: CAT,
-    active: true,
-    have: 0,
-    target: 0,
-    override: {},
-    inputs: inputs(),
-    ...over,
-  };
-}
-
-describe("buildMultiplyGrid — grid assembly", () => {
+describe("buildMultiplyGrid — grid arrangement", () => {
   it("renders a row per category with a cell for each of the three top types", () => {
-    const grid = buildMultiplyGrid([{ id: CAT, label: "20-30s" }], [], GLOBAL);
+    const grid = buildMultiplyGrid([{ id: CAT, label: "20-30s" }], []);
     expect(grid.rows).toHaveLength(1);
     const row = grid.rows[0];
     expect(row.label).toBe("20-30s");
@@ -56,20 +58,19 @@ describe("buildMultiplyGrid — grid assembly", () => {
   });
 
   it("carries each cell's category id and top type", () => {
-    const grid = buildMultiplyGrid([{ id: CAT, label: "20-30s" }], [], GLOBAL);
+    const grid = buildMultiplyGrid([{ id: CAT, label: "20-30s" }], []);
     expect(grid.rows[0].cells.women).toMatchObject({
       categoryId: CAT,
       audienceCategory: "women",
     });
   });
 
-  it("drops cell inputs whose category is not in the catalog", () => {
+  it("drops resolved cells whose category is not in the catalog", () => {
     // An archived category's stale cell must not surface — rows are keyed off the
-    // catalog, so an input for an unknown category is simply ignored.
+    // catalog, so a resolved cell for an unknown category is simply ignored.
     const grid = buildMultiplyGrid(
       [{ id: CAT, label: "20-30s" }],
-      [cell({ categoryId: "ghost", active: true })],
-      GLOBAL
+      [resolved({ categoryId: "ghost" })]
     );
     expect(grid.rows).toHaveLength(1);
     for (const type of GRID_TYPES) {
@@ -78,9 +79,9 @@ describe("buildMultiplyGrid — grid assembly", () => {
   });
 });
 
-describe("buildMultiplyGrid — blank inactive cells", () => {
-  it("renders a cell with no input as blank (not applied, no readout)", () => {
-    const grid = buildMultiplyGrid([{ id: CAT, label: "20-30s" }], [], GLOBAL);
+describe("buildMultiplyGrid — blank cells", () => {
+  it("renders a cell with no resolved cell as blank (not applied, no readout)", () => {
+    const grid = buildMultiplyGrid([{ id: CAT, label: "20-30s" }], []);
     for (const type of GRID_TYPES) {
       const c = grid.rows[0].cells[type];
       expect(c.applied).toBe(false);
@@ -88,19 +89,17 @@ describe("buildMultiplyGrid — blank inactive cells", () => {
     }
   });
 
-  it("renders an explicitly inactive cell as blank even with inputs present", () => {
+  it("renders an unapplied resolved cell as blank even with coverage present", () => {
     const grid = buildMultiplyGrid(
       [{ id: CAT, label: "20-30s" }],
       [
-        cell({
-          audienceCategory: "men",
-          active: false,
-          have: 2,
-          target: 3,
-          inputs: inputs({ interestCount: 9 }),
+        resolved({
+          audience: "men",
+          applied: false,
+          signal: null,
+          coverage: { have: 2, target: 3 },
         }),
-      ],
-      GLOBAL
+      ]
     );
     const men = grid.rows[0].cells.men;
     expect(men.applied).toBe(false);
@@ -108,170 +107,58 @@ describe("buildMultiplyGrid — blank inactive cells", () => {
   });
 });
 
-describe("buildMultiplyGrid — per-cell readiness + coverage readout", () => {
-  it("an active cell shows its coverage have X of Y", () => {
+describe("buildMultiplyGrid — readout pass-through", () => {
+  it("an applied cell shows its coverage have X of Y", () => {
     const grid = buildMultiplyGrid(
       [{ id: CAT, label: "20-30s" }],
-      [cell({ audienceCategory: "men", active: true, have: 1, target: 2 })],
-      GLOBAL
+      [resolved({ audience: "men", coverage: { have: 1, target: 2 } })]
     );
     const readout = grid.rows[0].cells.men.readout;
     expect(readout).not.toBeNull();
     expect(readout?.coverage).toEqual({ have: 1, target: 2 });
   });
 
-  it("an active cell is ready when its readiness rule clears (interest ≥ 3, no capacity issue)", () => {
+  it("passes the resolved readiness signal through to the readout", () => {
     const grid = buildMultiplyGrid(
       [{ id: CAT, label: "20-30s" }],
-      [
-        cell({
-          audienceCategory: "men",
-          active: true,
-          inputs: inputs({ interestCount: 3, capacityIssue: false }),
-        }),
-      ],
-      GLOBAL
+      [resolved({ audience: "men", signal: READY })]
     );
     expect(grid.rows[0].cells.men.readout?.signal.ready).toBe(true);
   });
 
-  it("an active cell is not ready and names its blockers when a required pillar falls short", () => {
+  it("a blocked cell's readout names its blockers", () => {
     const grid = buildMultiplyGrid(
       [{ id: CAT, label: "20-30s" }],
-      [
-        cell({
-          audienceCategory: "men",
-          active: true,
-          // interest below 3 AND a capacity issue → both required pillars block.
-          inputs: inputs({ interestCount: 1, capacityIssue: true }),
-        }),
-      ],
-      GLOBAL
+      [resolved({ audience: "men", signal: BLOCKED })]
     );
     const signal = grid.rows[0].cells.men.readout?.signal;
     expect(signal?.ready).toBe(false);
     expect(signal?.blockers).toEqual(["interest", "capacity"]);
   });
 
-  it("applies a per-cell override over the global rule (interest ≥ 5 flips a 3-prospect cell to not ready)", () => {
-    const ready = inputs({ interestCount: 3, capacityIssue: false });
-    // Under the global rule (≥ 3) this cell is ready…
-    const base = buildMultiplyGrid(
-      [{ id: CAT, label: "20-30s" }],
-      [cell({ audienceCategory: "men", active: true, inputs: ready })],
-      GLOBAL
-    );
-    expect(base.rows[0].cells.men.readout?.signal.ready).toBe(true);
-    // …but a cell override of interest ≥ 5 makes the same 3-prospect cell not ready.
-    const overridden = buildMultiplyGrid(
-      [{ id: CAT, label: "20-30s" }],
-      [
-        cell({
-          audienceCategory: "men",
-          active: true,
-          inputs: ready,
-          override: { interest: { required: true, min: 5 } },
-        }),
-      ],
-      GLOBAL
-    );
-    const signal = overridden.rows[0].cells.men.readout?.signal;
-    expect(signal?.ready).toBe(false);
-    expect(signal?.blockers).toContain("interest");
-  });
-
-  it("a per-type rule changes only that type's cells that don't override it (#410 / ADR 0021)", () => {
-    // Every cell has exactly 3 interested prospects: ready under the global rule
-    // (interest ≥ 3), and ready for Men's, Women's, Mixed alike — until a per-type
-    // rule raises one column's bar.
-    const ready = inputs({ interestCount: 3, capacityIssue: false });
-    const cells: GridCellInput[] = GRID_TYPES.map((type) =>
-      cell({ audienceCategory: type, active: true, inputs: ready })
-    );
-    // A Men's-wide Interest ≥ 5 rule: the MIDDLE tier, set for Men's only.
-    const grid = buildMultiplyGrid(
-      [{ id: CAT, label: "20-30s" }],
-      cells,
-      GLOBAL,
-      { men: { interest: { required: true, min: 5 } } }
-    );
-    const row = grid.rows[0];
-    // Men's now needs ≥ 5 → the 3-prospect Men's cell is NOT ready…
-    expect(row.cells.men.readout?.signal.ready).toBe(false);
-    expect(row.cells.men.readout?.signal.blockers).toContain("interest");
-    // …while Women's and Mixed still follow the global ≥ 3 and stay ready.
-    expect(row.cells.women.readout?.signal.ready).toBe(true);
-    expect(row.cells.mixed.readout?.signal.ready).toBe(true);
-  });
-
-  it("a per-cell override beats the per-type rule for that cell only", () => {
-    const ready = inputs({ interestCount: 3, capacityIssue: false });
-    const grid = buildMultiplyGrid(
-      [{ id: CAT, label: "20-30s" }],
-      [
-        // This Men's cell overrides interest back down to ≥ 3, beating the
-        // per-type ≥ 5 — so it stays ready even under the stricter column rule.
-        cell({
-          audienceCategory: "men",
-          active: true,
-          inputs: ready,
-          override: { interest: { required: true, min: 3 } },
-        }),
-      ],
-      GLOBAL,
-      { men: { interest: { required: true, min: 5 } } }
-    );
-    expect(grid.rows[0].cells.men.readout?.signal.ready).toBe(true);
-  });
-
-  it("with no per-type rules supplied, behaviour is identical to global-only (additive)", () => {
-    const ready = inputs({ interestCount: 3, capacityIssue: false });
-    const cells: GridCellInput[] = GRID_TYPES.map((type) =>
-      cell({ audienceCategory: type, active: true, inputs: ready })
-    );
-    // The 4th arg defaults to {} — every cell resolves straight off the global rule.
-    const grid = buildMultiplyGrid(
-      [{ id: CAT, label: "20-30s" }],
-      cells,
-      GLOBAL
-    );
-    for (const type of GRID_TYPES) {
-      expect(grid.rows[0].cells[type].readout?.signal.ready).toBe(true);
-    }
-  });
-
   it("assembles a mixed row — some cells applied (with readouts), others blank", () => {
     const applied: GroupAudienceCategory[] = ["men", "mixed"];
-    const cells: GridCellInput[] = applied.map((type) =>
-      cell({
-        audienceCategory: type,
-        active: true,
-        have: 1,
-        target: 2,
-        inputs: inputs({ interestCount: 3 }),
-      })
-    );
     const grid = buildMultiplyGrid(
       [{ id: CAT, label: "20-30s" }],
-      cells,
-      GLOBAL
+      applied.map((type) =>
+        resolved({
+          audience: type,
+          coverage: { have: 1, target: 2 },
+          signal: READY,
+        })
+      )
     );
     const row = grid.rows[0];
     expect(row.cells.men.applied).toBe(true);
     expect(row.cells.men.readout?.signal.ready).toBe(true);
     expect(row.cells.mixed.applied).toBe(true);
-    // women has no input → blank.
+    // women has no resolved cell → blank.
     expect(row.cells.women.applied).toBe(false);
     expect(row.cells.women.readout).toBeNull();
   });
 });
 
 describe("buildMultiplyHomeSummary — Home's X of Y cells ready (#470)", () => {
-  // Readiness inputs that clear the built-in rule (interest ≥ 3, no capacity
-  // issue) vs inputs that block it.
-  const READY = inputs({ interestCount: 3, capacityIssue: false });
-  const NOT_READY = inputs({ interestCount: 0, capacityIssue: true });
-
   it("counts ready cells over active cells across rows and types", () => {
     const grid = buildMultiplyGrid(
       [
@@ -279,16 +166,10 @@ describe("buildMultiplyHomeSummary — Home's X of Y cells ready (#470)", () => 
         { id: "cat-fam", label: "Families" },
       ],
       [
-        cell({ audienceCategory: "men", active: true, inputs: READY }),
-        cell({ audienceCategory: "women", active: true, inputs: NOT_READY }),
-        cell({
-          audienceCategory: "mixed",
-          categoryId: "cat-fam",
-          active: true,
-          inputs: READY,
-        }),
-      ],
-      GLOBAL
+        resolved({ audience: "men", signal: READY }),
+        resolved({ audience: "women", signal: BLOCKED }),
+        resolved({ audience: "mixed", categoryId: "cat-fam", signal: READY }),
+      ]
     );
     expect(buildMultiplyHomeSummary(grid)).toEqual({
       readyCells: 2,
@@ -297,15 +178,12 @@ describe("buildMultiplyHomeSummary — Home's X of Y cells ready (#470)", () => 
   });
 
   it("ignores blank (not-applied) cells on both sides of X of Y", () => {
-    // One applied-and-ready cell; the category's other two type cells are
-    // blank and the inactive cell below must not count as an active cell.
     const grid = buildMultiplyGrid(
       [{ id: CAT, label: "20-30s" }],
       [
-        cell({ audienceCategory: "men", active: true, inputs: READY }),
-        cell({ audienceCategory: "women", active: false, inputs: READY }),
-      ],
-      GLOBAL
+        resolved({ audience: "men", signal: READY }),
+        resolved({ audience: "women", applied: false, signal: null }),
+      ]
     );
     expect(buildMultiplyHomeSummary(grid)).toEqual({
       readyCells: 1,
@@ -314,7 +192,7 @@ describe("buildMultiplyHomeSummary — Home's X of Y cells ready (#470)", () => 
   });
 
   it("returns 0 of 0 for an empty grid (no categories applied anywhere)", () => {
-    const grid = buildMultiplyGrid([], [], GLOBAL);
+    const grid = buildMultiplyGrid([], []);
     expect(buildMultiplyHomeSummary(grid)).toEqual({
       readyCells: 0,
       activeCells: 0,
@@ -324,10 +202,7 @@ describe("buildMultiplyHomeSummary — Home's X of Y cells ready (#470)", () => 
   it("reports 0 ready of N active when every active cell is blocked", () => {
     const grid = buildMultiplyGrid(
       [{ id: CAT, label: "20-30s" }],
-      GRID_TYPES.map((type) =>
-        cell({ audienceCategory: type, active: true, inputs: NOT_READY })
-      ),
-      GLOBAL
+      GRID_TYPES.map((type) => resolved({ audience: type, signal: BLOCKED }))
     );
     expect(buildMultiplyHomeSummary(grid)).toEqual({
       readyCells: 0,

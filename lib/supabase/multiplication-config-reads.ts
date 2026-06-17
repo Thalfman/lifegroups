@@ -8,6 +8,12 @@ import {
 import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
 import { isAudienceCategory } from "@/lib/admin/audience";
 import { cellKey } from "@/lib/admin/cell-coordinate";
+import {
+  tallyCellHealthGrades,
+  type CellHealthGrades,
+  type ResolvedCellGroupGrade,
+  type ResolvedCellLeaderGrade,
+} from "@/lib/admin/cell-health";
 import { fetchHealthRubric } from "./health-rubric-reads";
 import {
   tallyCellInterest,
@@ -431,67 +437,10 @@ const GRADE_SCORE_COLUMNS =
 // default page size and grade the pillar on a partial set.
 const HEALTH_GRADE_PAGE_LIMIT = 10000;
 
-// A grade already resolved to its effective letter, ready for per-cell bucketing.
-type ResolvedCellGroupGrade = {
-  type: GroupAudienceCategory | null;
-  categoryId: string | null;
-  isClosed: boolean;
-  letter: GroupHealthLetter | null;
-};
-type ResolvedCellLeaderGrade = {
-  // Every cell key (type:categoryId) of an active, non-closed, categorised group
-  // this leader leads.
-  cells: ReadonlySet<string>;
-  letter: GroupHealthLetter | null;
-};
-
-// The per-CELL effective A–F letter arrays feeding the two health pillars, keyed
-// by the canonical Cell coordinate key (cellKey) — the same key every per-cell
-// map uses. A cell with no grades is simply absent from the map.
-export type CellHealthGrades = Map<
-  string,
-  { groupGrades: GroupHealthLetter[]; leaderGrades: GroupHealthLetter[] }
->;
-
-export const EMPTY_CELL_HEALTH_GRADES: CellHealthGrades = new Map();
-
-function isCategory(value: unknown): value is GroupAudienceCategory {
-  return value === "men" || value === "women" || value === "mixed";
-}
-
-// Pure bucketer (exported for testing): bucket each resolved group grade under its
-// CELL (dropping closed groups, ungraded rows, and rows with no type/category) and
-// each resolved leader grade under EVERY cell that leader actively leads, so a
-// leader spanning more than one cell feeds each cell's Leader Health pillar.
-export function tallyCellHealthGrades(
-  groupGrades: ResolvedCellGroupGrade[],
-  leaderGrades: ResolvedCellLeaderGrade[]
-): CellHealthGrades {
-  const out: CellHealthGrades = new Map();
-  const ensure = (key: string) => {
-    let entry = out.get(key);
-    if (!entry) {
-      entry = { groupGrades: [], leaderGrades: [] };
-      out.set(key, entry);
-    }
-    return entry;
-  };
-
-  for (const g of groupGrades) {
-    if (!g.letter || g.isClosed) continue;
-    if (!isCategory(g.type) || g.categoryId == null) continue;
-    ensure(
-      cellKey({ audience: g.type, categoryId: g.categoryId })
-    ).groupGrades.push(g.letter);
-  }
-
-  for (const l of leaderGrades) {
-    if (!l.letter) continue;
-    for (const key of l.cells) ensure(key).leaderGrades.push(l.letter);
-  }
-
-  return out;
-}
+// The per-cell health grade types, the empty map, and the pure bucketer
+// (`tallyCellHealthGrades`) now live in lib/admin/cell-health.ts — the one home
+// for the Cell Health concept. This read resolves each grade to its effective
+// letter, then hands the bare rows to that bucketer.
 
 // Read + resolve the per-CELL Group/Leader Health grade arrays for a ministry
 // year. Reads both rubrics (to recompute live), the two grade tables' scores +
@@ -571,7 +520,7 @@ export async function fetchCellHealthGrades(
     if (profileRole !== "leader" && profileRole !== "co_leader") continue;
     const type = row.group?.audience_category ?? null;
     const categoryId = row.group?.category_id ?? null;
-    if (!isCategory(type) || categoryId == null) continue;
+    if (!isAudienceCategory(type) || categoryId == null) continue;
     const set = leaderCellsByProfile.get(row.profile_id) ?? new Set();
     set.add(cellKey({ audience: type, categoryId }));
     leaderCellsByProfile.set(row.profile_id, set);

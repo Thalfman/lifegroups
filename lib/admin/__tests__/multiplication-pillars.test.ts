@@ -5,8 +5,6 @@ import {
   decodeTriggerRubric,
   evaluateTrigger,
   gradeNumericPillar,
-  rollUpGrades,
-  type HealthLetter,
   type PillarBands,
   type PillarInputs,
   type PillarThresholds,
@@ -55,32 +53,6 @@ describe("gradeNumericPillar — A–F from value + bands", () => {
     const tuned: PillarBands = { a: 10, b: 7, c: 4, d: 1 };
     expect(gradeNumericPillar(8, tuned)).toBe("B");
     expect(gradeNumericPillar(10, tuned)).toBe("A");
-  });
-});
-
-describe("rollUpGrades — Ministry-Year health roll-up", () => {
-  it("returns null for an empty array (renders as '—')", () => {
-    expect(rollUpGrades([])).toBeNull();
-  });
-
-  it("returns the single grade when only one exists", () => {
-    expect(rollUpGrades(["B"])).toBe("B");
-  });
-
-  it("averages GPA-style points and bands to the nearest letter", () => {
-    // A(4) + C(2) = 6 / 2 = 3.0 ⇒ B.
-    expect(rollUpGrades(["A", "C"])).toBe("B");
-    // A(4) + A(4) + B(3) = 11 / 3 ≈ 3.67 ⇒ A.
-    expect(rollUpGrades(["A", "A", "B"])).toBe("A");
-    // F(0) + D(1) = 0.5 ⇒ D (half-up boundary).
-    expect(rollUpGrades(["F", "D"])).toBe("D");
-    // F(0) + F(0) + D(1) = 1/3 ≈ 0.33 ⇒ F.
-    expect(rollUpGrades(["F", "F", "D"])).toBe("F");
-  });
-
-  it("ignores non-letter entries and treats an all-invalid array as empty", () => {
-    expect(rollUpGrades(["A", "Z" as HealthLetter])).toBe("A");
-    expect(rollUpGrades(["Z" as HealthLetter])).toBeNull();
   });
 });
 

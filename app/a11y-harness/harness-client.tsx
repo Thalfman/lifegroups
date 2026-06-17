@@ -75,6 +75,8 @@ import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 import { ShepherdCareDirectoryTable } from "@/components/admin/shepherd-care/directory-table";
 import { MultiplyGridView } from "@/components/admin/multiply/multiply-grid";
 import { buildMultiplyGrid } from "@/lib/admin/multiply-grid";
+import { resolveCells } from "@/lib/admin/cell";
+import { cellKey } from "@/lib/admin/cell-coordinate";
 import { BUILT_IN_READINESS_RULE } from "@/lib/admin/cell-readiness";
 import type {
   ActiveShepherdCoverageAssignmentSummary,
@@ -693,42 +695,52 @@ const CARE_DIRECTORY_COVERAGE = new Map<
 // Multiply readiness grid (#567 mobile stacking). A small grid with one
 // category applied to two top types (one ready, one held back) so the mobile-
 // smoke spec can assert the stacked category cards render at 375px while the
-// matrix table renders at md+. Built with the same pure builder the live
-// surface uses, so the readout shape can't drift from production.
-const MULTIPLY_GRID = buildMultiplyGrid(
-  [{ id: "cat-2030", label: "20-30s" }],
-  [
-    {
-      audienceCategory: "men",
-      categoryId: "cat-2030",
-      active: true,
-      have: 2,
-      target: 2,
-      override: {},
-      inputs: {
-        interestCount: 5,
-        capacityIssue: false,
-        groupHealth: "B",
-        leaderHealth: "B",
+// matrix table renders at md+. Built with the same resolveCells + buildMultiplyGrid
+// the live surface uses, so the resolved readout shape can't drift from production.
+const MULTIPLY_GRID = (() => {
+  const menKey = cellKey({ audience: "men", categoryId: "cat-2030" });
+  const womenKey = cellKey({ audience: "women", categoryId: "cat-2030" });
+  return buildMultiplyGrid(
+    [{ id: "cat-2030", label: "20-30s" }],
+    resolveCells(
+      [
+        {
+          id: "cell-men",
+          audience_category: "men",
+          category_id: "cat-2030",
+          active: true,
+          target_count: 2,
+          trigger_overrides: {},
+        },
+        {
+          id: "cell-women",
+          audience_category: "women",
+          category_id: "cat-2030",
+          active: true,
+          target_count: 2,
+          trigger_overrides: {},
+        },
+      ],
+      {
+        // Men's: interest 5, two joinable groups (no capacity issue), B/B health
+        // → ready. Women's: no interest, no joinable group (capacity issue) → held.
+        interest: { [menKey]: 5 },
+        cellSizes: {
+          byCell: new Map([[menKey, [5, 6]]]),
+          keys: new Map(),
+        },
+        cellHealth: new Map([
+          [menKey, { groupGrades: ["B"], leaderGrades: ["B"] }],
+        ]),
+        haveByKey: new Map([
+          [menKey, 2],
+          [womenKey, 1],
+        ]),
       },
-    },
-    {
-      audienceCategory: "women",
-      categoryId: "cat-2030",
-      active: true,
-      have: 1,
-      target: 2,
-      override: {},
-      inputs: {
-        interestCount: 0,
-        capacityIssue: true,
-        groupHealth: null,
-        leaderHealth: null,
-      },
-    },
-  ],
-  BUILT_IN_READINESS_RULE
-);
+      { globalRule: BUILT_IN_READINESS_RULE, perTypeRules: {} }
+    )
+  );
+})();
 
 const SETTINGS_DATA: SettingsShellData = {
   defaults: DEMO_METRIC_DEFAULTS,

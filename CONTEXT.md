@@ -137,10 +137,27 @@ _Avoid_: Segment, segmented, unsegmented (as user-facing labels).
 The live unit of the groups overhaul: one `category_type_targets` row =
 (Audience × Category). A cell is **active** when the category is applied to that
 top type. Each active cell carries its own **target group count**, derived
-**coverage**, derived **capacity issue**, per-cell **interest**, and readiness
-signal. A category not applied to a type has no active cell there (blank on the
-Multiply grid).
+**coverage**, derived **capacity issue**, per-cell **interest**, **Cell Health**,
+and readiness signal. A category not applied to a type has no active cell there
+(blank on the Multiply grid). The live Cell has one home — `resolveCell`
+(`lib/admin/cell.ts`) — which composes the per-cell facet modules (coverage,
+capacity, interest, health) through a single `cellKey` and resolves the readiness
+cascade, yielding a fully-resolved Cell. The Multiply grid builder only arranges
+resolved Cells into the rows × columns matrix; it no longer resolves them.
 _Avoid_: Tile, slot, segment (the internal umbrella name, not this row).
+
+**Cell Health**:
+The per-**Cell** A–F roll-up of that cell's Group-Health and Leader-Health grades
+over the **Ministry Year** — the facet feeding the **Group Health** and **Leader
+Health** Multiplication Pillars on the Multiply grid. One concept with one home
+(`lib/admin/cell-health.ts`): it **buckets** each resolved grade under its cell
+coordinate (a leader feeds every cell they actively lead; closed, ungraded, and
+uncategorised rows drop) and **rolls** each cell's grades up to a letter through
+the shared grade averaging (`rollUpGrades`, `lib/admin/health-rubric.ts`), so a
+body of grades grades identically whether rolled up per **Cell** or per type
+(the per-type board's pillars). Null until a cell has any grade (shown as "—").
+_Avoid_: Cell-Health Grade (there is no separate rubric — it rolls up the
+existing Group/Leader grades), cell score.
 
 **Cell coordinate**:
 The bare identity of a Cell — the **Audience × `category_id`** pair that names

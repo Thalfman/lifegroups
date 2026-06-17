@@ -22,7 +22,7 @@
 //     takes the grades as plain A–F arrays so the board ships and shows "—" when
 //     none are fed.
 
-import { HEALTH_GRADE_LADDER } from "@/lib/admin/health-rubric";
+import { HEALTH_GRADE_LADDER, rollUpGrades } from "@/lib/admin/health-rubric";
 import type { GroupHealthLetter } from "@/types/enums";
 import { isRecord } from "@/lib/shared/validation-primitives";
 
@@ -105,43 +105,13 @@ export function gradeNumericPillar(
 }
 
 // ---------------------------------------------------------------------------
-// Health pillar roll-up (Ministry-Year grades → one letter).
-// ---------------------------------------------------------------------------
-
-// Numeric weight of each A–F letter for averaging: A=4 … F=0 (the classic GPA
-// scale). The roll-up averages these and bands the mean back to a letter.
-const LETTER_POINTS: Record<HealthLetter, number> = {
-  A: 4,
-  B: 3,
-  C: 2,
-  D: 1,
-  F: 0,
-};
-
-// Round a GPA-style mean (0–4) back to an A–F letter. Half-up at each boundary
-// (≥3.5 ⇒ A, ≥2.5 ⇒ B, …) so a body of grades lands on the nearest letter.
-function letterForMeanPoints(mean: number): HealthLetter {
-  if (mean >= 3.5) return "A";
-  if (mean >= 2.5) return "B";
-  if (mean >= 1.5) return "C";
-  if (mean >= 0.5) return "D";
-  return "F";
-}
-
-// Roll a body of A–F grades up to a single letter by averaging their points and
-// banding the mean. Returns null when there are no grades — the board renders
-// that as "—" (the health pillars are blank until grades exist). Non-letter
-// entries are ignored defensively; an all-ignored array is treated as empty.
-export function rollUpGrades(grades: HealthLetter[]): HealthLetter | null {
-  const valid = grades.filter((g) => HEALTH_GRADE_LADDER.includes(g));
-  if (valid.length === 0) return null;
-  const total = valid.reduce((sum, g) => sum + LETTER_POINTS[g], 0);
-  return letterForMeanPoints(total / valid.length);
-}
-
-// ---------------------------------------------------------------------------
 // computePillars — the A–F pillar resolver for one type.
 // ---------------------------------------------------------------------------
+//
+// The two health pillars roll a type's Ministry-Year grades up to one letter via
+// `rollUpGrades` (lib/admin/health-rubric.ts) — the same A–F averaging the
+// per-cell health facet uses, so the board and the grid grade a body of grades
+// identically.
 
 // Grade the A–F pillars for one group type. Interest comes from the funnel volume
 // + thresholds; the two health pillars from the supplied grades, restricted to the
