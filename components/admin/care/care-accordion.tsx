@@ -37,13 +37,6 @@ function attentionLabel(count: number): string {
   return `${count} ${count === 1 ? "needs" : "need"} attention`;
 }
 
-function isHiddenArea(
-  hiddenNavAreas: readonly string[] | undefined,
-  href: string
-): boolean {
-  return hiddenNavAreas?.includes(href) ?? false;
-}
-
 function CarePane({
   pane,
   isSuperAdmin,
@@ -142,18 +135,14 @@ export function CareAccordion({
   panes,
   isSuperAdmin = false,
   gradeEntry,
-  hiddenNavAreas,
 }: {
   panes: CareAccordionPane[];
   isSuperAdmin?: boolean;
   // ADR 0023 — the inline grade editors' inputs; passed straight through to
   // each leader panel so the pure accordion model stays untouched.
   gradeEntry?: CareGradeEntryBundle;
-  hiddenNavAreas?: readonly string[];
 }) {
   const hasAnyLeaders = panes.some((pane) => pane.leaders.length > 0);
-  const peopleHidden = isHiddenArea(hiddenNavAreas, "/admin/people");
-  const showPeopleCta = isSuperAdmin || !peopleHidden;
   return (
     <div className="grid gap-4">
       <p className="m-0 font-sans text-sm text-ink2">
@@ -166,14 +155,12 @@ export function CareAccordion({
             <p className="m-0 font-sans text-sm text-ink2">
               No active leaders are available for care coverage yet.
             </p>
-            {showPeopleCta ? (
-              <Link
-                href={PEOPLE_IMPORT_HREF}
-                className={buttonClassName("ghost", "sm")}
-              >
-                Import people
-              </Link>
-            ) : null}
+            <Link
+              href={PEOPLE_IMPORT_HREF}
+              className={buttonClassName("ghost", "sm")}
+            >
+              Import people
+            </Link>
           </div>
         ) : (
           panes.map((pane) => (

@@ -45,7 +45,6 @@ export type CareWorkspaceInput = {
   care: CareData;
   enrichment: CareAccordionEnrichment;
   notesFeed: NotesFeedData;
-  hiddenNavAreas: readonly string[];
 };
 
 export type CareWorkspace = {
@@ -138,7 +137,6 @@ export function buildCareWorkspace({
   care,
   enrichment,
   notesFeed,
-  hiddenNavAreas,
 }: CareWorkspaceInput): CareWorkspace {
   const ownerNameByShepherdId = new Map<string, string>();
   for (const a of care.assignments) {
@@ -236,7 +234,6 @@ export function buildCareWorkspace({
   const needsAttentionEntries = care.entries.filter((e) => e.needs_attention);
   const rosterEntries =
     rosterFilter === "needs_attention" ? needsAttentionEntries : care.entries;
-  const peopleHidden = hiddenNavAreas.includes("/admin/people");
 
   const tabs: CareTab[] = [
     {
@@ -249,7 +246,6 @@ export function buildCareWorkspace({
             panes={accordionPanes}
             isSuperAdmin={isSuperAdmin}
             gradeEntry={enrichment.gradeEntry}
-            hiddenNavAreas={hiddenNavAreas}
           />
         </div>
       ),
@@ -297,12 +293,10 @@ export function buildCareWorkspace({
                       label: "Show all leaders",
                     }
                   : care.entries.length === 0
-                    ? isSuperAdmin || !peopleHidden
-                      ? {
-                          href: PEOPLE_IMPORT_HREF,
-                          label: "Import people",
-                        }
-                      : undefined
+                    ? {
+                        href: PEOPLE_IMPORT_HREF,
+                        label: "Import people",
+                      }
                     : undefined
               }
             />

@@ -247,14 +247,19 @@ describe("buildSetupRecoveryChecklist", () => {
     });
   });
 
-  it("suppresses setup links for hidden Groups and People surfaces", () => {
+  it("keeps the import step but suppresses Groups-targeted steps when those surfaces are hidden", () => {
     const checklist = buildSetupRecoveryChecklist(launchRecoveryDashboard(), {
       isSuperAdmin: true,
       hiddenNavAreas: ["/admin/groups", "/admin/people"],
     });
 
-    expect(checklist.show).toBe(false);
-    expect(checklist.steps).toEqual([]);
+    // Import lives in always-reachable Settings, so hiding the People nav does
+    // NOT drop it; only the Groups-targeted setup steps are suppressed.
+    expect(checklist.steps.map((step) => step.key)).toEqual(["import_people"]);
+    expect(checklist.steps[0].href).toBe(
+      "/admin/settings?tab=system&from=setup#people-import"
+    );
+    expect(checklist.show).toBe(true);
     expect(checklist.setupGapCount).toBe(0);
   });
 });

@@ -79,7 +79,6 @@ export function buildSetupRecoveryChecklist(
     ? data.shepherdCare.totalActiveShepherds
     : null;
   const groupsHidden = hasHiddenArea(options.hiddenNavAreas, "/admin/groups");
-  const peopleHidden = hasHiddenArea(options.hiddenNavAreas, "/admin/people");
 
   const rawSetupGapCount =
     data.setupGaps.counts.noCapacity +
@@ -125,27 +124,29 @@ export function buildSetupRecoveryChecklist(
 
   const steps: SetupRecoveryChecklistRow[] = [];
 
-  if (!peopleHidden) {
-    steps.push({
-      key: "import_people",
-      status:
-        currentParticipants === null
-          ? "unavailable"
-          : peopleNeedImport
-            ? "needs_action"
-            : statusFromCount(importPeopleNeeds),
-      count: currentParticipants ?? 0,
-      href: importHref,
-      label: "Import people",
-      actionLabel: "Import people",
-      detail:
-        currentParticipants === null
-          ? "People counts could not be read, so confirm the roster before launch."
-          : currentParticipants === 0
-            ? "No people are currently attached to active groups."
-            : `${plural(currentParticipants, "person", "people")} already attached to active groups.`,
-    });
-  }
+  // The import step is NOT gated on People-nav visibility: bulk import now lives
+  // in Settings > System (always reachable by admins), so hiding the People tab
+  // must not drop the only roster-import CTA. (Group-setup steps below still
+  // follow Groups visibility, since they deep-link into the Groups surface.)
+  steps.push({
+    key: "import_people",
+    status:
+      currentParticipants === null
+        ? "unavailable"
+        : peopleNeedImport
+          ? "needs_action"
+          : statusFromCount(importPeopleNeeds),
+    count: currentParticipants ?? 0,
+    href: importHref,
+    label: "Import people",
+    actionLabel: "Import people",
+    detail:
+      currentParticipants === null
+        ? "People counts could not be read, so confirm the roster before launch."
+        : currentParticipants === 0
+          ? "No people are currently attached to active groups."
+          : `${plural(currentParticipants, "person", "people")} already attached to active groups.`,
+  });
 
   if (!groupsHidden) {
     steps.push(
