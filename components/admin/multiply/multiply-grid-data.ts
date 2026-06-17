@@ -6,11 +6,10 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
 import {
   buildMultiplyGrid,
-  type GridCellInput,
   type MultiplyGrid,
 } from "@/lib/admin/multiply-grid";
+import { resolveCells } from "@/lib/admin/cell";
 import {
-  decodeCellOverride,
   decodePerTypeRule,
   decodeReadinessRuleWithReport,
   type PerTypeReadinessRule,
@@ -24,7 +23,6 @@ import {
   fetchGroupCategories,
   fetchCategoryTypeTargetCells,
   fetchGroupCellLifecycleRows,
-  type CategoryTypeTargetRow,
 } from "@/lib/supabase/group-categories-reads";
 import {
   buildCellCoverage,
@@ -36,15 +34,8 @@ import {
   fetchCellActiveGroupSizes,
   fetchCellHealthGrades,
   fetchCellInterestCounts,
-  type CellActiveGroupSizes,
 } from "@/lib/supabase/multiplication-config-reads";
-import { computeCellCapacityIssue } from "@/lib/admin/cell-capacity";
-import {
-  EMPTY_CELL_HEALTH_GRADES,
-  resolveCellHealth,
-  type CellHealthGrades,
-} from "@/lib/admin/cell-health";
-import type { CellInterestTally } from "@/lib/admin/prospect-interest";
+import { EMPTY_CELL_HEALTH_GRADES } from "@/lib/admin/cell-health";
 import { cellKey } from "@/lib/admin/cell-coordinate";
 
 // The Multiply GRID surface's data (#403 / PRD §2.5). This loader replaces the old
@@ -106,48 +97,6 @@ export function supabaseMultiplyGridReads(
     fetchCellInterestCounts,
     fetchCellActiveGroupSizes,
     fetchCellHealthGrades,
-  });
-}
-
-// Pure per-cell input assembly: turn the raw per-cell reads into the
-// GridCellInput[] the pure grid builder consumes. Every pillar for a cell is read
-// through ONE canonical cellKey — interest, capacity, both health roll-ups, and
-// coverage all index the same key, so a cell's readiness inputs can never be
-// stitched from mismatched coordinates. No I/O: the loader gathers the reads
-// (defaulting a failed read to its empty shape) and hands them here, so this
-// assembly — and its edge cases — is unit-testable with plain fixtures, never a
-// Supabase client. Coverage (`haveByKey`) is computed by buildCellCoverage and
-// passed in; this assembler never recomputes it.
-export function buildGridCellInputs(args: {
-  targetCells: readonly CategoryTypeTargetRow[];
-  interest: CellInterestTally;
-  cellSizes: CellActiveGroupSizes;
-  cellHealth: CellHealthGrades;
-  haveByKey: ReadonlyMap<string, number>;
-}): GridCellInput[] {
-  const { targetCells, interest, cellSizes, cellHealth, haveByKey } = args;
-  return targetCells.map((cell) => {
-    const audienceCategory = cell.audience_category;
-    const categoryId = cell.category_id;
-    // One coordinate, one encoder — every pillar lookup for this cell reads from
-    // the same key.
-    const key = cellKey({ audience: audienceCategory, categoryId });
-    const { groupHealth, leaderHealth } = resolveCellHealth(cellHealth, key);
-    return {
-      audienceCategory,
-      categoryId,
-      active: cell.active,
-      have: haveByKey.get(key) ?? 0,
-      target: cell.target_count,
-      override: decodeCellOverride(cell.trigger_overrides),
-      inputs: {
-        interestCount: interest[key] ?? 0,
-        capacityIssue: computeCellCapacityIssue(cellSizes.byCell.get(key) ?? [])
-          .isIssue,
-        groupHealth,
-        leaderHealth,
-      },
-    };
   });
 }
 
@@ -246,16 +195,15 @@ export async function buildMultiplyGridData(
     targetCells.filter((cell) => cell.active).map((cell) => cell.category_id)
   );
 
-  // Assemble one GridCellInput per cell row through the pure assembler. The pure
-  // grid builder pairs these against the catalog rows, so a cell whose category
-  // isn't live is dropped there.
-  const cells = buildGridCellInputs({
+  // Resolve one live Cell per cell row (lib/admin/cell.ts): each reads its facets
+  // through one cellKey and resolves the three-tier readiness cascade. The grid
+  // builder pairs these against the catalog rows, so a cell whose category isn't
+  // live is dropped there.
+  const cells = resolveCells(
     targetCells,
-    interest,
-    cellSizes,
-    cellHealth,
-    haveByKey,
-  });
+    { interest, cellSizes, cellHealth, haveByKey },
+    { globalRule, perTypeRules }
+  );
 
   return {
     ministryYear,
@@ -269,9 +217,7 @@ export async function buildMultiplyGridData(
       categories
         .filter((c) => activeCategoryIds.has(c.id))
         .map((c) => ({ id: c.id, label: c.label })),
-      cells,
-      globalRule,
-      perTypeRules
+      cells
     ),
     ruleFellBack: decodedRule.fellBack,
     // The first failure in the batch's declaration order above.

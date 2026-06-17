@@ -137,9 +137,13 @@ _Avoid_: Segment, segmented, unsegmented (as user-facing labels).
 The live unit of the groups overhaul: one `category_type_targets` row =
 (Audience × Category). A cell is **active** when the category is applied to that
 top type. Each active cell carries its own **target group count**, derived
-**coverage**, derived **capacity issue**, per-cell **interest**, and readiness
-signal. A category not applied to a type has no active cell there (blank on the
-Multiply grid).
+**coverage**, derived **capacity issue**, per-cell **interest**, **Cell Health**,
+and readiness signal. A category not applied to a type has no active cell there
+(blank on the Multiply grid). The live Cell has one home — `resolveCell`
+(`lib/admin/cell.ts`) — which composes the per-cell facet modules (coverage,
+capacity, interest, health) through a single `cellKey` and resolves the readiness
+cascade, yielding a fully-resolved Cell. The Multiply grid builder only arranges
+resolved Cells into the rows × columns matrix; it no longer resolves them.
 _Avoid_: Tile, slot, segment (the internal umbrella name, not this row).
 
 **Cell Health**:
