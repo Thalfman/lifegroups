@@ -5,6 +5,7 @@ import { DisclosureChevron } from "@/components/admin/care/disclosure-chevron";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
+import { PEOPLE_IMPORT_HREF } from "@/lib/admin/people-import";
 import {
   countLeadersNeedingAttention,
   type CareAccordionPane,
@@ -152,9 +153,6 @@ export function CareAccordion({
 }) {
   const hasAnyLeaders = panes.some((pane) => pane.leaders.length > 0);
   const peopleHidden = isHiddenArea(hiddenNavAreas, "/admin/people");
-  const peopleHref = isSuperAdmin
-    ? "/admin/super-admin#people-import"
-    : "/admin/people";
   const showPeopleCta = isSuperAdmin || !peopleHidden;
   return (
     <div className="grid gap-4">
@@ -170,10 +168,10 @@ export function CareAccordion({
             </p>
             {showPeopleCta ? (
               <Link
-                href={peopleHref}
+                href={PEOPLE_IMPORT_HREF}
                 className={buttonClassName("ghost", "sm")}
               >
-                {isSuperAdmin ? "Import people" : "Open People"}
+                Import people
               </Link>
             ) : null}
           </div>

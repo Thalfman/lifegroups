@@ -24,6 +24,7 @@ import {
   openFollowUpCountsByQueue,
 } from "@/lib/admin/care-area";
 import { buildCareAccordion } from "@/lib/admin/care-accordion";
+import { PEOPLE_IMPORT_HREF } from "@/lib/admin/people-import";
 import type { CareAccordionEnrichment } from "@/lib/supabase/care-accordion-reads";
 import type { ActiveShepherdCoverageAssignmentSummary } from "@/lib/supabase/read-models";
 import type { GroupsRow } from "@/types/database";
@@ -91,16 +92,12 @@ function CareSetupNotice({
   hasCoverage: boolean;
 }) {
   const nextHref = !hasLeaders
-    ? isSuperAdmin
-      ? "/admin/super-admin#people-import"
-      : "/admin/people"
+    ? PEOPLE_IMPORT_HREF
     : isSuperAdmin
       ? "/admin/super-admin#coverage"
       : "/admin/people";
   const nextLabel = !hasLeaders
-    ? isSuperAdmin
-      ? "Import people"
-      : "Open People"
+    ? "Import people"
     : isSuperAdmin
       ? "Assign coverage"
       : "Review leaders";
@@ -302,10 +299,8 @@ export function buildCareWorkspace({
                   : care.entries.length === 0
                     ? isSuperAdmin || !peopleHidden
                       ? {
-                          href: isSuperAdmin
-                            ? "/admin/super-admin#people-import"
-                            : "/admin/people",
-                          label: isSuperAdmin ? "Import people" : "Open People",
+                          href: PEOPLE_IMPORT_HREF,
+                          label: "Import people",
                         }
                       : undefined
                     : undefined
