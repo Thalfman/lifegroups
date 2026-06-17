@@ -404,8 +404,12 @@ export function AdminFollowUpsShell({
                     </div>
                   </div>
                   <ul className="m-0 list-none p-0">
+                    {/* No content-visibility on these rows: for a super admin
+                        each FollowUpRow hosts SuperAdminInlineDelete, whose
+                        confirmation dialog is absolutely positioned below the
+                        row; paint containment would clip it. */}
                     {list.map((fu) => (
-                      <li key={fu.id} className="lg-cv-row mb-3">
+                      <li key={fu.id} className="mb-3">
                         <FollowUpRow
                           followUp={fu}
                           groupsById={groupsById}
