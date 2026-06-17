@@ -39,15 +39,13 @@ export type InstallPlatform = {
 function isIos(userAgent: string, maxTouchPoints: number): boolean {
   const isClassicIos = /iphone|ipad|ipod/i.test(userAgent);
 
-  // iPadOS in its default desktop-class mode masquerades as a Mac; a
-  // touch-capable Mac-identifying Safari is really an iPad. Exclude desktop
-  // Chrome/Edge on macOS (which also carry a "Safari" token) and real Macs
-  // (no touch points).
-  const isMacSafari =
-    /macintosh/i.test(userAgent) &&
-    /safari/i.test(userAgent) &&
-    !/chrome|chromium|crios|edg/i.test(userAgent);
-  const isDesktopModeIpad = isMacSafari && maxTouchPoints > 1;
+  // iPadOS in its default desktop-class mode masquerades as a Mac — and it does
+  // so in Safari, Chrome (CriOS), and Edge (EdgiOS) alike. The reliable tell is
+  // touch points: a real Mac reports 0, only an iPad exposes them. So a
+  // Macintosh UA with touch points is an iPad regardless of the browser token
+  // (classifying the browser is left to detectPlatform). Keying off the browser
+  // token here would wrongly hide install help for iPadOS Chrome/Edge.
+  const isDesktopModeIpad = /macintosh/i.test(userAgent) && maxTouchPoints > 1;
 
   return isClassicIos || isDesktopModeIpad;
 }

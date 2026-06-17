@@ -64,11 +64,19 @@ export function InstallNudge() {
     null
   );
   const [installed, setInstalled] = useState(false);
+  // True once any control consumed the native prompt (accept/decline) — see the
+  // store. Suppresses the nudge so a decline elsewhere (e.g. a page-header
+  // button) doesn't flip us into the manual fallback for the same prompt.
+  const [promptConsumed, setPromptConsumed] = useState(false);
   // Read once at init (SSR-safe: readDismissed swallows the no-localStorage
   // case). Everything stays gated behind `ready` until the mount effect, so a
   // server/client difference here never reaches the DOM.
   const [dismissed, setDismissed] = useState(() => readDismissed());
   const [guideOpen, setGuideOpen] = useState(false);
+  // The guide chosen when the user opened the modal. Held independently of the
+  // live affordance so an incoming beforeinstallprompt (which flips the
+  // affordance to native) can't unmount the modal mid-read.
+  const [activeGuide, setActiveGuide] = useState<InstallGuideKind | null>(null);
 
   useEffect(() => {
     startInstallPromptCapture();
@@ -76,6 +84,7 @@ export function InstallNudge() {
       const snapshot = getInstallSnapshot();
       setDeferred(snapshot.deferred);
       setInstalled(snapshot.installed);
+      setPromptConsumed(snapshot.promptConsumed);
     };
     sync();
     // Reveal only after the first client-side sync so server and first-client
@@ -114,7 +123,16 @@ export function InstallNudge() {
     platform,
   });
 
-  if (!shouldShowInstallNudge({ affordance, platform, dismissed })) return null;
+  // A consumed native prompt suppresses the nudge like a dismissal: the user
+  // already made a choice about installing this session.
+  if (
+    !shouldShowInstallNudge({
+      affordance,
+      platform,
+      dismissed: dismissed || promptConsumed,
+    })
+  )
+    return null;
 
   // shouldShowInstallNudge guarantees the affordance is native or guide here.
   const guide: InstallGuideKind | null =
@@ -132,7 +150,14 @@ export function InstallNudge() {
         <Button
           variant="primary"
           size="sm"
-          onClick={guide ? () => setGuideOpen(true) : promptNative}
+          onClick={
+            guide
+              ? () => {
+                  setActiveGuide(guide);
+                  setGuideOpen(true);
+                }
+              : promptNative
+          }
         >
           Add
         </Button>
@@ -145,11 +170,14 @@ export function InstallNudge() {
           <Icon name="x" />
         </button>
       </div>
-      {guide ? (
+      {activeGuide ? (
         <InstallGuideModal
-          guide={guide}
+          guide={activeGuide}
           open={guideOpen}
-          onOpenChange={setGuideOpen}
+          onOpenChange={(open) => {
+            setGuideOpen(open);
+            if (!open) setActiveGuide(null);
+          }}
         />
       ) : null}
     </>

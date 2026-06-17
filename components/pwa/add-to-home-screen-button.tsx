@@ -8,6 +8,7 @@ import {
   decideInstallAffordance,
   detectPlatform,
   type BeforeInstallPromptEvent,
+  type InstallGuideKind,
   type InstallPlatform,
 } from "@/lib/pwa/install";
 import {
@@ -49,6 +50,10 @@ export function AddToHomeScreenButton() {
   );
   const [installed, setInstalled] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  // The guide chosen when the modal was opened, held independently of the live
+  // affordance so an incoming beforeinstallprompt (which flips the affordance to
+  // native) can't unmount the open modal mid-read.
+  const [activeGuide, setActiveGuide] = useState<InstallGuideKind | null>(null);
 
   useEffect(() => {
     // Idempotent — the root PwaClientSetup normally starts this already; calling
@@ -59,7 +64,10 @@ export function AddToHomeScreenButton() {
       const snapshot = getInstallSnapshot();
       setDeferred(snapshot.deferred);
       setInstalled(snapshot.installed);
-      if (snapshot.installed) setGuideOpen(false);
+      if (snapshot.installed) {
+        setGuideOpen(false);
+        setActiveGuide(null);
+      }
     };
     sync();
     // Reveal only after mounting + the initial sync from the client-only
@@ -97,17 +105,25 @@ export function AddToHomeScreenButton() {
         variant="ghost"
         size="sm"
         onClick={
-          affordance.kind === "native" ? promptNative : () => setGuideOpen(true)
+          affordance.kind === "native"
+            ? promptNative
+            : () => {
+                setActiveGuide(affordance.guide);
+                setGuideOpen(true);
+              }
         }
       >
         <Icon name="plus" />
         Add to Home Screen
       </Button>
-      {affordance.kind === "guide" ? (
+      {activeGuide ? (
         <InstallGuideModal
-          guide={affordance.guide}
+          guide={activeGuide}
           open={guideOpen}
-          onOpenChange={setGuideOpen}
+          onOpenChange={(open) => {
+            setGuideOpen(open);
+            if (!open) setActiveGuide(null);
+          }}
         />
       ) : null}
     </>

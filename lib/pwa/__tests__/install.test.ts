@@ -23,6 +23,10 @@ const UA = {
   // navigator.maxTouchPoints tells them apart.
   macOrIpadSafari:
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
+  // iPadOS Chrome in desktop-class mode: a Macintosh UA carrying the CriOS token.
+  // Touch points are what mark it as an iPad, not the browser string.
+  ipadDesktopChrome:
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0 Safari/605.1.15",
   androidChrome:
     "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
   desktopChrome:
@@ -91,6 +95,18 @@ describe("detectPlatform", () => {
   it("resolves the iPadOS-vs-Mac ambiguity via touch points", () => {
     expect(detectPlatform(UA.macOrIpadSafari, 5).ios).toBe(true);
     expect(detectPlatform(UA.macOrIpadSafari, 0).ios).toBe(false);
+  });
+
+  it("treats touch-capable Macintosh-UA Chrome (CriOS) as iPadOS Chrome, not a dead end", () => {
+    // The regression Codex flagged: keying iPad detection off the browser token
+    // would exclude CriOS here and hide install help on a real iOS browser.
+    expect(detectPlatform(UA.ipadDesktopChrome, 5)).toEqual({
+      ios: true,
+      android: false,
+      iosBrowser: "chrome",
+    });
+    // A real Mac running desktop Chrome (no touch points) stays non-iOS.
+    expect(detectPlatform(UA.ipadDesktopChrome, 0).ios).toBe(false);
   });
 });
 
