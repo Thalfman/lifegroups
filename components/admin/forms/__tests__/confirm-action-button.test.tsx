@@ -364,18 +364,22 @@ describe("#664 — non-blocking confirmation dialog flow", () => {
     expect(action).not.toHaveBeenCalled();
   });
 
-  it("Escape cancels the dialog without running the action", async () => {
+  it("Escape cancels the dialog, runs no action, and restores focus to the opener", async () => {
     const user = userEvent.setup();
     const { action } = setup("Archive Bayside Men?");
 
-    await user.click(
-      screen.getByRole("button", { name: "Archive Bayside Men" })
-    );
+    const opener = screen.getByRole("button", {
+      name: "Archive Bayside Men",
+    });
+    await user.click(opener);
     await screen.findByRole("alertdialog");
     await user.keyboard("{Escape}");
 
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(action).not.toHaveBeenCalled();
+    // AlertDialogTrigger hands Radix the opener ref, so focus returns to it
+    // (not <body>) on close — the #664 focus-restore guarantee.
+    expect(document.activeElement).toBe(opener);
   });
 
   it("confirming submits the form (with hidden fields) through the action", async () => {

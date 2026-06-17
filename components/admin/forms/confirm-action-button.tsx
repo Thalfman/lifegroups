@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { PButton, type PButtonTone } from "@/components/pastoral/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
@@ -77,7 +77,6 @@ export function ConfirmActionButton<T>({
 }) {
   const { state, formAction, pending } = useActionForm<T>(action);
   const formRef = useRef<HTMLFormElement>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (state?.ok) onSuccess?.();
@@ -95,10 +94,23 @@ export function ConfirmActionButton<T>({
     successText,
   });
 
-  // A `null` message submits straight through (no dialog); otherwise the
-  // visible button only opens the dialog, and the dialog's confirm button
-  // submits the form.
+  // A `null` message submits straight through (no dialog); otherwise the opener
+  // only opens the confirmation dialog, and the dialog's confirm button submits
+  // the form. The opener stays inside the form either way, so Radix restores
+  // focus to it on close and `requestSubmit` still serializes the hidden fields.
   const gated = confirmActionSubmitMode(confirmMessage) === "confirm";
+
+  const opener = (
+    <PButton
+      type={gated ? "button" : "submit"}
+      tone={tone}
+      size="sm"
+      disabled={view.disabled}
+      aria-label={ariaLabel}
+    >
+      {view.label}
+    </PButton>
+  );
 
   return (
     // `gap` is a caller-supplied number (component API), so it stays a dynamic
@@ -116,28 +128,19 @@ export function ConfirmActionButton<T>({
             value={field.value}
           />
         ))}
-        <PButton
-          type={gated ? "button" : "submit"}
-          tone={tone}
-          size="sm"
-          disabled={view.disabled}
-          aria-label={ariaLabel}
-          onClick={gated ? () => setConfirmOpen(true) : undefined}
-        >
-          {view.label}
-        </PButton>
+        {gated ? (
+          <ConfirmDialog
+            trigger={opener}
+            title={idleLabel}
+            message={confirmMessage}
+            confirmLabel={idleLabel}
+            confirmTone={tone}
+            onConfirm={() => formRef.current?.requestSubmit()}
+          />
+        ) : (
+          opener
+        )}
       </form>
-      {gated && (
-        <ConfirmDialog
-          open={confirmOpen}
-          onOpenChange={setConfirmOpen}
-          title={idleLabel}
-          message={confirmMessage}
-          confirmLabel={idleLabel}
-          confirmTone={tone}
-          onConfirm={() => formRef.current?.requestSubmit()}
-        />
-      )}
       {helperText}
       <FormStatusLine view={view.status} />
     </div>

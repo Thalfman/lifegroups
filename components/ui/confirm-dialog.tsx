@@ -3,6 +3,7 @@
 import { type ReactNode } from "react";
 import {
   AlertDialog,
+  AlertDialogTrigger,
   AlertDialogPortal,
   AlertDialogOverlay,
   AlertDialogContent,
@@ -18,12 +19,13 @@ import { P, fontSans, fontBody } from "@/lib/pastoral";
 // `window.confirm` gate: opening it paints immediately (the initiating click
 // returns at once, so operator think-time no longer counts against that
 // interaction's INP), while staying keyboard- and screen-reader-correct via
-// Radix `AlertDialog` (focus trap, Escape cancels, focus restore, labelled
-// title + description). The destructive action submits from the dialog's
-// confirm button, not the initiating click.
+// Radix `AlertDialog`. The caller supplies its own opener as `trigger`; wiring
+// it through `AlertDialogTrigger` hands Radix the trigger ref, so it both
+// announces the control (aria-haspopup/expanded) and restores focus to it on
+// close (Escape, Cancel, or confirm). The destructive action submits from the
+// dialog's confirm button, not the initiating click.
 export function ConfirmDialog({
-  open,
-  onOpenChange,
+  trigger,
   title,
   message,
   confirmLabel,
@@ -31,8 +33,9 @@ export function ConfirmDialog({
   confirmTone = "terra",
   onConfirm,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  // The opener control. Radix renders it via AlertDialogTrigger (asChild), so
+  // it must forward props/ref to a real focusable element (PButton does).
+  trigger: ReactNode;
   // Short accessible heading; defaults to the confirm label when omitted so a
   // dialog is never unlabelled.
   title?: string;
@@ -47,7 +50,8 @@ export function ConfirmDialog({
   onConfirm: () => void;
 }) {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
       <AlertDialogPortal>
         <AlertDialogOverlay
           style={{
