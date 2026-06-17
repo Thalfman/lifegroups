@@ -17,6 +17,7 @@ import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
 import { gradeAtOrBelow } from "@/lib/admin/group-health";
 import type { GroupHealthLetter } from "@/types/enums";
 import { GroupHealthEditorDrawer } from "@/components/admin/group-health/group-health-editor";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PButton } from "@/components/pastoral/button";
 import { buttonClassName } from "@/components/ui/button";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
@@ -131,6 +132,9 @@ export function GroupHealthTriage({
 }) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  // Whether the non-blocking discard prompt is open (replaces the old blocking
+  // `window.confirm` so the dismissal click paints immediately).
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   // Saved views & filters (PRD req 12, #263): remember the chosen triage
   // filter per admin across reloads and return visits.
@@ -150,12 +154,17 @@ export function GroupHealthTriage({
   const openRow = rows.find((r) => r.group_id === openGroupId) ?? null;
 
   const requestClose = () => {
-    if (
-      dirtyRef.current &&
-      !window.confirm("Discard unsaved changes to this group's ratings?")
-    ) {
+    if (dirtyRef.current) {
+      setDiscardOpen(true);
       return;
     }
+    dirtyRef.current = false;
+    setOpenGroupId(null);
+  };
+
+  // The discard prompt's confirm button: drop the unsaved edits and close.
+  const confirmDiscard = () => {
+    setDiscardOpen(false);
     dirtyRef.current = false;
     setOpenGroupId(null);
   };
@@ -291,6 +300,14 @@ export function GroupHealthTriage({
         onRequestClose={requestClose}
         onSaved={forceClose}
         isSuperAdmin={isSuperAdmin}
+      />
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard changes?"
+        message="Discard unsaved changes to this group's ratings?"
+        confirmLabel="Discard"
+        onConfirm={confirmDiscard}
       />
     </div>
   );

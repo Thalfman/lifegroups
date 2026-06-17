@@ -19,13 +19,24 @@ import { P, fontSans, fontBody } from "@/lib/pastoral";
 // `window.confirm` gate: opening it paints immediately (the initiating click
 // returns at once, so operator think-time no longer counts against that
 // interaction's INP), while staying keyboard- and screen-reader-correct via
-// Radix `AlertDialog`. The caller supplies its own opener as `trigger`; wiring
-// it through `AlertDialogTrigger` hands Radix the trigger ref, so it both
-// announces the control (aria-haspopup/expanded) and restores focus to it on
-// close (Escape, Cancel, or confirm). The destructive action submits from the
-// dialog's confirm button, not the initiating click.
+// Radix `AlertDialog`. It opens in one of two modes:
+//
+//   - Trigger mode (default): pass `trigger`, the opener control. Radix renders
+//     it via `AlertDialogTrigger` (asChild) — it must forward props/ref to a
+//     real focusable element (PButton does) — and owns open/close plus focus
+//     restore to it on dismissal. Used by confirm-then-submit button flows.
+//   - Controlled mode: pass `open` + `onOpenChange` and omit `trigger`. The host
+//     raises the dialog programmatically — used by discard-on-close flows, where
+//     the confirmation is triggered by Escape / overlay / × / Cancel on a drawer
+//     rather than a dedicated button. Radix restores focus to whatever was
+//     focused before it opened (the drawer control the user came from).
+//
+// The destructive action submits from the dialog's confirm button, not the
+// initiating interaction.
 export function ConfirmDialog({
   trigger,
+  open,
+  onOpenChange,
   title,
   message,
   confirmLabel,
@@ -33,9 +44,12 @@ export function ConfirmDialog({
   confirmTone = "terra",
   onConfirm,
 }: {
-  // The opener control. Radix renders it via AlertDialogTrigger (asChild), so
-  // it must forward props/ref to a real focusable element (PButton does).
-  trigger: ReactNode;
+  // The opener control (trigger mode). Omit it for controlled mode.
+  trigger?: ReactNode;
+  // Controlled open state. Provide with `onOpenChange` to drive the dialog
+  // programmatically; leave undefined to let the `trigger` own open state.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   // Short accessible heading; defaults to the confirm label when omitted so a
   // dialog is never unlabelled.
   title?: string;
@@ -50,8 +64,12 @@ export function ConfirmDialog({
   onConfirm: () => void;
 }) {
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+    // `open`/`onOpenChange` undefined leaves Radix uncontrolled, so the trigger
+    // drives it; supplied, the host drives it (no trigger needed).
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      {trigger ? (
+        <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      ) : null}
       <AlertDialogPortal>
         <AlertDialogOverlay
           style={{

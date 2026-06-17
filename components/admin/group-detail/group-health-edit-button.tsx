@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
 import { GroupHealthEditorDrawer } from "@/components/admin/group-health/group-health-editor";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function GroupHealthEditButton({
   row,
@@ -25,17 +26,25 @@ export function GroupHealthEditButton({
   isSuperAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Whether the non-blocking discard prompt is open (replaces the old blocking
+  // `window.confirm` so the dismissal click paints immediately).
+  const [discardOpen, setDiscardOpen] = useState(false);
   // Unsaved-edit flag, written by the open editor's form and read on close so
   // we can warn before discarding (the triage's exact protocol).
   const dirtyRef = useRef(false);
 
   const requestClose = () => {
-    if (
-      dirtyRef.current &&
-      !window.confirm("Discard unsaved changes to this group's ratings?")
-    ) {
+    if (dirtyRef.current) {
+      setDiscardOpen(true);
       return;
     }
+    dirtyRef.current = false;
+    setOpen(false);
+  };
+
+  // The discard prompt's confirm button: drop the unsaved edits and close.
+  const confirmDiscard = () => {
+    setDiscardOpen(false);
     dirtyRef.current = false;
     setOpen(false);
   };
@@ -69,6 +78,14 @@ export function GroupHealthEditButton({
         onRequestClose={requestClose}
         onSaved={forceClose}
         isSuperAdmin={isSuperAdmin}
+      />
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard changes?"
+        message="Discard unsaved changes to this group's ratings?"
+        confirmLabel="Discard"
+        onConfirm={confirmDiscard}
       />
     </>
   );

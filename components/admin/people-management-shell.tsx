@@ -263,6 +263,7 @@ export function PeopleManagementShell({
           />
         )}
       </EditingSurface>
+      {drawer.discardDialog}
     </div>
   );
 }

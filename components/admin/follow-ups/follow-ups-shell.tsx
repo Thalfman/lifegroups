@@ -446,6 +446,7 @@ export function AdminFollowUpsShell({
           onSaved={drawer.markSaved}
         />
       </EditingSurface>
+      {drawer.discardDialog}
     </div>
   );
 }

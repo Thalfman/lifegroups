@@ -290,6 +290,7 @@ export function GroupAssignmentsManager({
           </div>
         ) : null}
       </EditingSurface>
+      {drawer.discardDialog}
     </section>
   );
 }

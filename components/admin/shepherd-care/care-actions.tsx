@@ -182,6 +182,7 @@ export function CareActions({
       >
         {open?.form ?? null}
       </EditingSurface>
+      {drawer.discardDialog}
     </div>
   );
 }

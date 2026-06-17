@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // The Editing Pattern drawer state machine, shared by every list-to-detail
 // surface that edits in the EditingSurface drawer (Group health #259,
@@ -35,6 +36,10 @@ export function useEditingDrawer<T = true>(
   const router = useRouter();
 
   const [target, setTarget] = useState<T | null>(null);
+  // Whether the non-blocking "discard unsaved changes?" prompt is open. State
+  // (not a ref) because the rendered dialog reads it; raising it replaces the
+  // old blocking `window.confirm` so the dismissal click paints immediately.
+  const [discardOpen, setDiscardOpen] = useState(false);
   const dirtyRef = useRef(false);
   const submittingRef = useRef(false);
 
@@ -57,9 +62,19 @@ export function useEditingDrawer<T = true>(
     // Cancel) so we don't unmount the form mid-write — it closes via markSaved
     // when the write lands.
     if (submittingRef.current) return;
-    if (dirtyRef.current && !window.confirm("Discard your unsaved changes?")) {
+    // Dirty form: raise the non-blocking confirm dialog instead of closing, and
+    // leave the drawer open until the operator answers it (confirmDiscard).
+    if (dirtyRef.current) {
+      setDiscardOpen(true);
       return;
     }
+    dirtyRef.current = false;
+    setTarget(null);
+  }, []);
+
+  // The discard prompt's confirm button: drop the unsaved edits and close.
+  const confirmDiscard = useCallback(() => {
+    setDiscardOpen(false);
     dirtyRef.current = false;
     setTarget(null);
   }, []);
@@ -81,5 +96,18 @@ export function useEditingDrawer<T = true>(
     reportPending,
     requestClose,
     markSaved,
+    // The non-blocking discard guard, owned here so the protocol stays in one
+    // place. Consumers render it once alongside their EditingSurface; it only
+    // becomes visible after `requestClose` finds a dirty form.
+    discardDialog: (
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard changes?"
+        message="Discard your unsaved changes?"
+        confirmLabel="Discard"
+        onConfirm={confirmDiscard}
+      />
+    ),
   };
 }

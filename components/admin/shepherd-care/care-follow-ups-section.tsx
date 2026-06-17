@@ -84,6 +84,7 @@ export function CareFollowUpsSection({
           onSaved={drawer.markSaved}
         />
       </EditingSurface>
+      {drawer.discardDialog}
     </div>
   );
 }
