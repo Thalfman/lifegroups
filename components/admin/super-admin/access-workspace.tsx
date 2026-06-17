@@ -1,4 +1,3 @@
-import { buttonClassName } from "@/components/ui/button";
 import { WorkspaceSectionNav } from "@/components/admin/workspace-section-nav";
 import { RoleChangeForm } from "@/components/admin/forms/role-change-form";
 import { InviteWorkflowForm } from "@/components/admin/forms/invite-workflow-form";
@@ -133,22 +132,11 @@ function PeopleImportCard() {
       <SetupReturnBanner />
       <PanelTitle>People import</PanelTitle>
       <p className="m-0 font-sans text-sm text-ink2">
-        Paste CSV to create leader profiles and member records in one audited
-        batch. Parsing and de-duplication run before any write; skipped rows are
-        reported back.
+        Upload a CSV file or paste rows to create leader profiles and member
+        records in one audited batch. Parsing and de-duplication run before any
+        write; skipped rows are reported back. (The same importer lives in
+        Settings → System.)
       </p>
-      {/* A correctly-shaped empty template the operator can fill in and paste
-          straight back (#289). Plain anchor, not a Link, so the browser follows
-          the attachment download. */}
-      <div>
-        <a
-          href="/admin/super-admin/people-import-template"
-          download
-          className={buttonClassName("ghost", "sm")}
-        >
-          Download CSV template
-        </a>
-      </div>
       <PeopleImportForm />
     </Panel>
   );

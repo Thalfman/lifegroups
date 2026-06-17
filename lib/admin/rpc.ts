@@ -780,6 +780,12 @@ export type AdminTextRpcArgs = {
   // which rejects any non-uuid string as null, so every successful import
   // would read as a failure.
   super_admin_bulk_import_people: { p_rows: Array<Record<string, unknown>> };
+  // Admin-gated bulk people import (20260707000000): same parsed + de-duped row
+  // array and `text` created-count return as the super-admin importer above,
+  // behind auth_is_admin() instead of the super-admin gate, so the Settings >
+  // System importer is a normal ministry-admin capability. Same text-channel
+  // reasoning applies.
+  admin_bulk_import_people: { p_rows: Array<Record<string, unknown>> };
 };
 
 // ---------------------------------------------------------------------------

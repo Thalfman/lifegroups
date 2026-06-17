@@ -14,6 +14,12 @@
 //   * phone     (optional)
 //   * role      (optional; "leader" | "member"; defaults to "member")
 
+// Canonical destination of the bulk people importer. It lives in Settings >
+// System (an ordinary admin surface, no Super-Admin console hop), anchored so a
+// deep-link scrolls to the import section. The single source of truth for every
+// "Import people" affordance (the home setup checklist, the Settings panel).
+export const PEOPLE_IMPORT_HREF = "/admin/settings?tab=system#people-import";
+
 // The kind of person a row creates. Leaders become auth-capable leader profiles;
 // members are non-auth participant records. Mirrors the existing
 // admin_create_leader_profile / admin_create_member split.
