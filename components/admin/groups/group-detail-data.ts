@@ -370,9 +370,11 @@ async function buildPeopleTab(
   // so derive the roster rows from it instead of a second round-trip fetching
   // the same records by id. This drops the People tab's one serial read (the
   // batch above all resolves in parallel; `fetchMembersByIds` was awaited after
-  // it). An archived group skips the pool (its roster is read-only), so it
-  // still needs the targeted by-id read. The roster fails closed on whichever
-  // read backs it.
+  // it). `fetchAllMembers` is range-widened past the PostgREST row cap, so the
+  // pool reliably contains every roster member — a member can't sort off the
+  // first page and silently vanish from the roster. An archived group skips the
+  // pool (its roster is read-only), so it still needs the targeted by-id read.
+  // The roster fails closed on whichever read backs it.
   const membersRes = archived
     ? await reads.fetchMembersByIds(memberIds)
     : allMembersRes;

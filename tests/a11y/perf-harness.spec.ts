@@ -12,9 +12,16 @@ import { gotoHarness, surface } from "./harness";
 // (Navigation Timing, first paint, main-thread long tasks, and per-surface DOM
 // node counts) rather than asserting a threshold. A flaky timing gate would
 // cost more than it catches; the artifact is the baseline a later change is
-// compared against (e.g. the multiply lazy-mount should lower the harness's
-// long-task total / node count). It does NOT measure server read latency —
-// that is a production signal (the `read_bundle` logs + Vercel SpeedInsights).
+// compared against. It does NOT measure server read latency — that is a
+// production signal (the `read_bundle` logs + Vercel SpeedInsights).
+//
+// Scope note: the harness mounts each surface standalone (e.g.
+// `multiply-readiness-grid` is a bare `MultiplyGridView`, NOT wrapped in
+// `MultiplyShell`), so this baseline captures each heavy component's own
+// hydration/paint cost — it does NOT isolate the `/admin/multiply` lazy-mount
+// win. That win is a server/initial-render reduction (inactive panels stop
+// rendering + hydrating on the "plan" path), visible via `npm run analyze` and
+// the production `read_bundle` lines, not in a standalone-surface harness.
 //
 // The only hard assertion is that the harness actually rendered, so a 404 or
 // blank page (gate off) can't pass silently as "fast".
