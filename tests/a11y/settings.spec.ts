@@ -458,20 +458,25 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     );
   });
 
-  test("System tab is a deep-link only — no bulk-import write controls (pivot, ADR 0016)", async ({
+  test("System tab hosts the admin people importer — upload + template, no Super-Admin hop", async ({
     page,
   }) => {
     await page
       .locator(`${SETTINGS} [role="tab"]`, { hasText: "System" })
       .click();
     const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
-    // The tab surfaces the bulk-import capability and links into the Super Admin
-    // Console; it does NOT render a file/upload control or any import write form.
+    // Bulk people import is now an ordinary admin capability rendered here (it
+    // posts to the admin-gated admin_bulk_import_people RPC), so the tab carries
+    // the importer's file-upload control, its write form, and an admin-scoped
+    // CSV template link — and no longer deep-links into the Super Admin Console.
+    await expect(panel.locator('input[type="file"]').first()).toBeVisible();
+    expect(await panel.locator("form").count()).toBeGreaterThan(0);
     await expect(
-      panel.locator('a[href^="/admin/super-admin"]').first()
+      panel.locator('a[href="/admin/settings/people-import-template"]').first()
     ).toBeVisible();
-    expect(await panel.locator('input[type="file"]').count()).toBe(0);
-    expect(await panel.locator("form").count()).toBe(0);
+    expect(await panel.locator('a[href^="/admin/super-admin"]').count()).toBe(
+      0
+    );
   });
 
   test("tabs are keyboard navigable with arrow keys (issue 304)", async ({
