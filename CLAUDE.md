@@ -31,6 +31,7 @@ but stay hidden behind Super-Admin nav flags (turned off, not deleted).
 | -------------------------- | ------------------------------------------- |
 | `npm run dev`              | Next dev server (http://localhost:3000)     |
 | `npm run build`            | Production build                            |
+| `npm run analyze`          | Build + Turbopack bundle analyzer (sizes)   |
 | `npm run start`            | Serve the production build                  |
 | `npm run lint`             | ESLint CLI (`next/core-web-vitals`)         |
 | `npm run typecheck`        | `tsc --noEmit` (strict)                     |
@@ -48,6 +49,18 @@ but stay hidden behind Super-Admin nav flags (turned off, not deleted).
 - Env vars are **optional** for build (`cp .env.example .env.local` only to wire
   up live Supabase data and sign-in). Without them, public preview routes render
   typed demo data and protected routes redirect to `/login`.
+- **Performance baselines.** Next 16's Turbopack build no longer prints the
+  per-route First Load JS table, so bundle sizing goes through
+  `npm run analyze` — it writes a Turbopack-accurate report to
+  `.next/diagnostics/analyze/` (drop `--output` from the script to explore it
+  interactively on `:4000`). For **client render/paint** cost, the
+  `tests/a11y/perf-harness.spec.ts` spec captures Navigation Timing, first
+  paint, long tasks, and per-surface DOM-node counts against the gated
+  `/a11y-harness` route and attaches a JSON artifact (measurement-only, no
+  threshold gate). **Server** read latency is a production signal: the
+  `measureReadBundle` wrappers (`lib/observability/read-timing.ts`) emit
+  `read_bundle` lines collectable from the log drain — authed `/admin/*` routes
+  can't be timed locally (they redirect to `/login` without Supabase env).
 
 ## Repo map
 

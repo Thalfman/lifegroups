@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "analyze": "next build && next experimental-analyze --output",
     "start": "next start",
     "verify:toolchain": "node scripts/verify-toolchain.mjs",
     "lint": "npm run verify:toolchain && eslint .",
