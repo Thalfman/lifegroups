@@ -63,6 +63,13 @@ can be scheduled, scoped down, or deferred on its own.
   `check_ins` frozen gate (ADR 0002/0009) independent of the live `/leader/**`
   surface — it must keep showing its current frozen notice, not get folded into
   the Leader surface.
+- The base routes above stand in for their **live detail route families**, which
+  are equally part of the contract: `/admin/groups/[groupId]` and
+  `/admin/groups/[groupId]/calendar`, `/admin/people/[kind]/[personId]`,
+  `/leader/[groupId]/care` and `/leader/[groupId]/calendar`, and
+  `/over-shepherd/[profileId]` (see `docs/architecture/ARCHITECTURE.md` and the
+  matching `app/(protected)/**/page.tsx`). No-change tests must cover these
+  bookmarked detail flows, not just the list landings.
 - Keep the existing `ActionResult` form contract, server-action exports,
   Supabase RPC names, feature-flag keys, and route search-param compatibility.
   `?tab=`/`?view=`/`?filter=` is a live contract on **every** surface, not just
@@ -72,6 +79,12 @@ can be scheduled, scoped down, or deferred on its own.
   aliases (e.g. `?tab=groups`/`?tab=multiply`), `resolveGroupListTab` (Groups,
   e.g. `?tab=needs_setup`), and the People tabs. `lib/nav/active-nav.ts`'s
   `NAV_ALIAS_TO_CANONICAL` stays the source of truth for active-nav ownership.
+  **Non-tab params are equally part of the contract** and must keep working:
+  `?from=setup` (ADR 0027 back-to-setup links via
+  `components/lg/admin/back-to-setup-link.tsx`, read by `/admin`, `/admin/groups`,
+  `/admin/people`), `?week=` (check-ins), and `?month=`/`?archived=1`
+  (group + leader calendars). Include each non-tab normalizer in the test plan,
+  not just `?tab=`.
 - No migrations, no RLS changes, no dropped tables/columns, no deleted frozen
   surfaces, no renamed user-facing concepts.
 
@@ -186,7 +199,24 @@ Land after waves 1–4 are green. Extract a generic `AssignmentForm` from
 + `components/admin/shepherd-care/coverage-assignment-form.tsx`, and a shared
 `NoteForm` body from `care-note-write-form.tsx` / `group-note-write-form.tsx`
 (keeping role/visibility gating + per-surface actions intact). The action called,
-field names posted, and validation contract must be identical before/after.
+field names posted, and validation contract must be identical before/after —
+**and so are the host-integration semantics**:
+
+- **`AssignmentForm` must keep the drawer lifecycle callbacks.**
+  `AssignLeaderForm`/`AssignMemberForm` fire `onSaved` (clears dirty state after a
+  successful write so the EditingSurface drawer doesn't falsely warn) and
+  `onPendingChange` (blocks dismissal mid-submit), wired in
+  `components/admin/group-assignments-manager.tsx`. Preserving only
+  action/fields/validation would leave the drawer dirty after save or dismissible
+  mid-submit, so these callbacks are part of the extraction contract.
+- **`NoteForm` must keep per-instance id-prefix + contextual aria-labels.**
+  `CareNoteWriteForm` is rendered repeatedly in the Care accordion, using a
+  subject-specific `idPrefix` (`cn`/`pr`-`${subjectProfileId}`) and `subjectName`
+  in the submit button's accessible name; `GroupNoteWriteForm` can use static ids
+  because it is one form per panel. The shared body must carry id-prefix and
+  contextual aria-label parity, or the admin accordion regresses to duplicate
+  textarea ids / ambiguous repeated submit controls.
+
 **Only extract where shapes genuinely converge** — forced unification behind many
 conditional props is not simplification. In particular,
 `components/admin/shepherd-care/coverage-assignment-form.tsx` is **not** a pure
