@@ -22,7 +22,7 @@ import {
   resolveAttentionBaseline,
   type AttentionBaselines,
 } from "@/lib/admin/attention-reset";
-import { formatDueLabel, laterIso } from "@/lib/admin/care-temporal";
+import { formatDueLabel } from "@/lib/admin/care-temporal";
 
 // Re-exported from the shared attention engine so existing importers (and the
 // __test__ surface below) keep their path.
@@ -373,6 +373,10 @@ function buildAttentionQueue(
   return items;
 }
 
+// Shared empty follow-up map for stale_last_contact derivation, which never
+// reads it (see buildSummary).
+const EMPTY_FOLLOW_UP_STATS: Map<string, CareFollowUpShepherdStats> = new Map();
+
 function buildSummary(
   entries: ShepherdCareDirectoryEntry[],
   assignedShepherdIds: Set<string>,
@@ -397,24 +401,25 @@ function buildSummary(
     ) {
       overdueTouchpoints += 1;
     }
-    // "Not contacted recently" measures staleness from the later of the real
-    // last contact and any reset baseline, so a reset clears this count too
-    // (it must agree with the baseline-aware needs_attention chip above). The
-    // same floor the attention engine applies — laterIso is the shared rule.
-    const effectiveContact = laterIso(
-      entry.care?.last_contact_at ?? null,
-      resolveAttentionBaseline(baselines, entry.profile.id)
+    // "Not contacted recently" is the queue's stale_last_contact reason for this
+    // entry — derived from the SAME per-entry reasons source the triage queue
+    // uses (detectReasons), rather than re-deriving the staleness predicate on a
+    // separate path here. detectReasons applies the baseline-aware laterIso floor
+    // and the per-tier stale window, so the count, the chip, and the queue can't
+    // drift apart.
+    // stale_last_contact is independent of the follow-up feed, so an empty
+    // followUpStats map here yields the identical staleness verdict (it would
+    // only change the unrelated overdue_care_follow_up reason).
+    const reasons = detectReasons(
+      entry,
+      assignedShepherdIds,
+      todayIso,
+      coverageAvailable,
+      windows,
+      EMPTY_FOLLOW_UP_STATS,
+      baselines
     );
-    if (
-      effectiveContact &&
-      differenceInDaysIso(todayIso, effectiveContact) >
-        staleDaysForEntry(
-          entry.profile.id,
-          assignedShepherdIds,
-          coverageAvailable,
-          windows
-        )
-    ) {
+    if (reasons.includes("stale_last_contact")) {
       notContactedRecently += 1;
     }
     if (coverageAvailable && !assignedShepherdIds.has(entry.profile.id)) {

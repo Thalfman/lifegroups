@@ -4,6 +4,7 @@ import type {
   GuestPipelineStage,
   FollowUpType,
   FollowUpPriority,
+  FollowUpStatus,
   AttendanceSessionStatus,
   ShepherdCareFollowUpStatus,
   ShepherdCareInteractionType,
@@ -60,6 +61,13 @@ const followUpPriorityLabels: Record<FollowUpPriority, string> = {
   low: "Low",
   normal: "Normal",
   high: "High",
+};
+
+const followUpStatusLabels: Record<FollowUpStatus, string> = {
+  open: "Open",
+  in_progress: "In progress",
+  done: "Done",
+  snoozed: "Snoozed",
 };
 
 const sessionStatusLabels: Record<AttendanceSessionStatus, string> = {
@@ -188,6 +196,10 @@ export function followUpTypeLabel(type: FollowUpType): string {
 
 export function followUpPriorityLabel(priority: FollowUpPriority): string {
   return followUpPriorityLabels[priority] ?? priority;
+}
+
+export function followUpStatusLabel(status: FollowUpStatus): string {
+  return followUpStatusLabels[status] ?? status;
 }
 
 export function sessionStatusLabel(status: AttendanceSessionStatus): string {

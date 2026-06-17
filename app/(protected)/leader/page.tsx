@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import { requireLeader } from "@/lib/auth/session";
+import { toShellUser } from "@/lib/auth/shell-user";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchLeaderGroupsByIds,
@@ -16,6 +17,8 @@ import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
 import { FirstRunCard } from "@/components/orientation/first-run-card";
 
 export const dynamic = "force-dynamic";
+
+const MAX_WIDTH = 720;
 
 // Leader landing — the care dashboard (#382, ADR 0017 / ADR 0020).
 //
@@ -28,12 +31,7 @@ export const dynamic = "force-dynamic";
 // about caring for the group, not counting it.
 export default async function LeaderPage() {
   const session = await requireLeader();
-  const user = {
-    name: session.profile.full_name,
-    email: session.profile.email,
-    role: session.profile.role,
-  };
-  const MAX_WIDTH = 720;
+  const user = toShellUser(session.profile);
 
   const client = await createSupabaseServerClient();
   const groupIds = session.assignedGroupIds;

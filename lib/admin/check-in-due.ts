@@ -71,6 +71,27 @@ type ChurchClockParts = {
   dayOfWeek: number;
 };
 
+// A UTC-midnight Date for a church-local calendar date (year, month, day). The
+// UTC anchor is intentional: only weekday math / day-stepping is done on it, so
+// the absolute zone is irrelevant.
+function churchLocalDateFromYmd(
+  year: number,
+  month: number,
+  day: number
+): Date {
+  const yearStr = String(year).padStart(4, "0");
+  const monthStr = String(month).padStart(2, "0");
+  const dayStr = String(day).padStart(2, "0");
+  return new Date(`${yearStr}-${monthStr}-${dayStr}T00:00:00Z`);
+}
+
+// Days to step from a week's Monday to reach JS weekday `day` (Sun=0..Sat=6):
+// Mon=0, Tue=1, … Sun=6. Also the days to step BACK from `day` to its week's
+// Monday. (targetDay + 6) % 7.
+function daysFromMondayTo(day: number): number {
+  return (day + 6) % 7;
+}
+
 function churchClockParts(d: Date): ChurchClockParts {
   const parts = CHURCH_DATE_PARTS_FMT.formatToParts(d);
   const out: Record<string, string> = {};
@@ -86,11 +107,7 @@ function churchClockParts(d: Date): ChurchClockParts {
   const minute = Number.parseInt(out.minute ?? "0", 10);
   // Determine day-of-week using the church-local calendar date (UTC anchor
   // of that ymd is safe because we only need weekday math).
-  const yearStr = String(year).padStart(4, "0");
-  const monthStr = String(month).padStart(2, "0");
-  const dayStr = String(day).padStart(2, "0");
-  const anchor = new Date(`${yearStr}-${monthStr}-${dayStr}T00:00:00Z`);
-  const dayOfWeek = anchor.getUTCDay();
+  const dayOfWeek = churchLocalDateFromYmd(year, month, day).getUTCDay();
   return { year, month, day, hour, minute, dayOfWeek };
 }
 
@@ -146,10 +163,11 @@ function lastMeetingChurchLocal(
     }
   }
   // Walk back `daysBack` church-local calendar days.
-  const yearStr = String(nowParts.year).padStart(4, "0");
-  const monthStr = String(nowParts.month).padStart(2, "0");
-  const dayStr = String(nowParts.day).padStart(2, "0");
-  const anchor = new Date(`${yearStr}-${monthStr}-${dayStr}T00:00:00Z`);
+  const anchor = churchLocalDateFromYmd(
+    nowParts.year,
+    nowParts.month,
+    nowParts.day
+  );
   anchor.setUTCDate(anchor.getUTCDate() - daysBack);
   return {
     year: anchor.getUTCFullYear(),
@@ -177,8 +195,7 @@ function meetingOccurrenceInWeek(
   if (Number.isNaN(anchor.getTime())) return null;
   // Monday is JS day-of-week 1; offset to target day.
   // Days from Monday to target: Sun=6, Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5.
-  const daysFromMonday = (targetDay + 6) % 7;
-  anchor.setUTCDate(anchor.getUTCDate() + daysFromMonday);
+  anchor.setUTCDate(anchor.getUTCDate() + daysFromMondayTo(targetDay));
   return {
     year: anchor.getUTCFullYear(),
     month: anchor.getUTCMonth() + 1,
@@ -338,8 +355,7 @@ export function expectedMeetingDateForWeek(
   const targetDay = DAY_INDEX[dayName];
   const anchor = new Date(`${meetingWeekIso}T00:00:00Z`);
   if (Number.isNaN(anchor.getTime())) return null;
-  const daysFromMonday = (targetDay + 6) % 7;
-  anchor.setUTCDate(anchor.getUTCDate() + daysFromMonday);
+  anchor.setUTCDate(anchor.getUTCDate() + daysFromMondayTo(targetDay));
   return anchor.toISOString().slice(0, 10);
 }
 
@@ -498,13 +514,8 @@ export function computeCheckInDue(args: {
 // given calendar date. Mirrors lib/leader/validation.isoWeekStart for
 // a (year, month, day) triple instead of a Date.
 function mondayOfWeekIso(year: number, month: number, day: number): string {
-  const yearStr = String(year).padStart(4, "0");
-  const monthStr = String(month).padStart(2, "0");
-  const dayStr = String(day).padStart(2, "0");
-  const anchor = new Date(`${yearStr}-${monthStr}-${dayStr}T00:00:00Z`);
-  const dayOfWeek = anchor.getUTCDay();
-  const mondayOffset = (dayOfWeek + 6) % 7;
-  anchor.setUTCDate(anchor.getUTCDate() - mondayOffset);
+  const anchor = churchLocalDateFromYmd(year, month, day);
+  anchor.setUTCDate(anchor.getUTCDate() - daysFromMondayTo(anchor.getUTCDay()));
   return anchor.toISOString().slice(0, 10);
 }
 
@@ -573,6 +584,9 @@ export function formatCheckInDueLabel(
   return `${dayName}, ${month} ${due.day} at ${formatHourMinute(due.hour, due.minute)}`;
 }
 
+// Above this many hours the relative label switches from "Nh" to "Nd".
+const RELATIVE_HOURS_TO_DAYS_CUTOFF = 48;
+
 // "due in 4h" / "due 2h ago"
 export function formatCheckInDueRelative(result: {
   minutesUntilDue: number;
@@ -587,7 +601,7 @@ export function formatCheckInDueRelative(result: {
     return `due in ${abs}m`;
   }
   const hours = Math.round(abs / 60);
-  if (hours < 48) {
+  if (hours < RELATIVE_HOURS_TO_DAYS_CUTOFF) {
     if (past) return `due ${hours}h ago`;
     return `due in ${hours}h`;
   }

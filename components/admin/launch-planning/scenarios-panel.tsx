@@ -5,6 +5,19 @@ import dynamic from "next/dynamic";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import { PButton } from "@/components/pastoral/button";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
+import type {
+  LaunchPlanningAssumptions,
+  LaunchPlanningInputs,
+  LaunchPlanningOutputs,
+  LaunchPlanningScenario,
+  LaunchPlanningScenarioComparisonEntry,
+} from "@/lib/admin/launch-planning";
+import { fmtNumber, riskTone } from "@/lib/admin/launch-planning";
+import {
+  eyebrowStyle,
+  panelTitleStyle as titleStyle,
+  sectionStyle,
+} from "./section-styles";
 
 // Both scenario forms are only mounted behind a click (create / select-to-edit)
 // and never render on the server, so keep their code out of this route's First
@@ -23,60 +36,6 @@ const EditScenarioForm = dynamic(
     ),
   { ssr: false }
 );
-import type {
-  LaunchPlanningAssumptions,
-  LaunchPlanningInputs,
-  LaunchPlanningOutputs,
-  LaunchPlanningRiskLevel,
-  LaunchPlanningScenario,
-  LaunchPlanningScenarioComparisonEntry,
-} from "@/lib/admin/launch-planning";
-
-function riskTone(level: LaunchPlanningRiskLevel): {
-  label: string;
-  accent: string;
-} {
-  switch (level) {
-    case "ok":
-      return { label: "OK", accent: P.sage };
-    case "watch":
-      return { label: "Watch", accent: P.terra };
-    case "launch_needed":
-      return { label: "Launch needed", accent: "#923220" };
-  }
-}
-
-function fmtNumber(n: number, fractionDigits = 0): string {
-  if (!Number.isFinite(n)) return "—";
-  return n.toLocaleString(undefined, {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  });
-}
-
-const sectionStyle = {
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  borderRadius: 14,
-  padding: "22px 24px",
-} as const;
-
-const eyebrowStyle = {
-  fontFamily: fontSans,
-  fontSize: 10,
-  letterSpacing: 1.5,
-  textTransform: "uppercase",
-  color: P.ink3,
-  fontWeight: 600,
-} as const;
-
-const titleStyle = {
-  margin: "4px 0 0",
-  fontFamily: fontBody,
-  fontSize: 18,
-  color: P.ink,
-  fontWeight: 600,
-} as const;
 
 export type ScenariosPanelProps = {
   scenarios: LaunchPlanningScenario[];

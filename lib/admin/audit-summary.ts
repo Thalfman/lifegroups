@@ -113,6 +113,14 @@ function asNumber(v: unknown): number | null {
   return typeof v === "number" ? v : null;
 }
 
+// The string members of a value that should be an array of strings (e.g. an
+// audit row's `submitted_keys`); a non-array reads as empty.
+function asStringArray(v: unknown): string[] {
+  return Array.isArray(v)
+    ? v.filter((k): k is string => typeof k === "string")
+    : [];
+}
+
 // Mirrors the canonical `shepherd_care_interaction_type` enum
 // (call | text | in_person | meeting | other). The string returned
 // here is the lowercase noun used inline in the audit summary —
@@ -145,9 +153,13 @@ export function summarizeAuditEvent(
   maps: AuditSummaryMaps
 ): string {
   const { profilesById, membersById, groupsById } = maps;
-  const md = isRecord(event.metadata) ? event.metadata : {};
-  const after = isRecord(md.after) ? md.after : {};
-  const before = isRecord(md.before) ? md.before : {};
+  const md: Record<string, unknown> = isRecord(event.metadata)
+    ? event.metadata
+    : {};
+  const after: Record<string, unknown> = isRecord(md.after) ? md.after : {};
+  // `before` is always a record here (the `{}` fallback included), so the
+  // per-branch `isRecord(before)` re-guards below are unnecessary.
+  const before: Record<string, unknown> = isRecord(md.before) ? md.before : {};
   const fullName = asString(after.full_name);
 
   switch (event.action) {
@@ -183,7 +195,7 @@ export function summarizeAuditEvent(
         count > 0
           ? ` (closed ${count} active assignment${count === 1 ? "" : "s"})`
           : "";
-      const previousStatus = isRecord(before) ? asString(before.status) : null;
+      const previousStatus = asString(before.status);
       return `Deactivated profile ${entityProfile?.full_name ?? ""}${
         previousStatus ? ` (was ${previousStatus})` : ""
       }${cascade}`.trim();
@@ -271,11 +283,7 @@ export function summarizeAuditEvent(
     case "admin.reset_metric_defaults":
       return "Reset metric defaults to baseline";
     case "admin.update_metric_defaults": {
-      const submittedKeys = Array.isArray(md.submitted_keys)
-        ? (md.submitted_keys as unknown[]).filter(
-            (k): k is string => typeof k === "string"
-          )
-        : [];
+      const submittedKeys = asStringArray(md.submitted_keys);
       return submittedKeys.length > 0
         ? `Updated metric defaults (${submittedKeys.join(", ")})`
         : "Updated metric defaults";
@@ -292,7 +300,7 @@ export function summarizeAuditEvent(
       const target = event.entity_id
         ? profilesById.get(event.entity_id)
         : undefined;
-      const beforeRole = isRecord(before) ? asString(before.role) : null;
+      const beforeRole = asString(before.role);
       const afterRole = asString(after.role);
       const name = target?.full_name ?? "(unknown profile)";
       if (beforeRole && afterRole) {
@@ -330,15 +338,12 @@ export function summarizeAuditEvent(
       return `Added over-shepherd ${name}`;
     }
     case "admin.update_over_shepherd": {
-      const beforeName = isRecord(before) ? asString(before.full_name) : null;
+      const beforeName = asString(before.full_name);
       const afterName = asString(after.full_name) ?? "(unknown)";
-      const beforeActive = isRecord(before)
-        ? typeof before.active === "boolean"
-          ? (before.active as boolean)
-          : null
-        : null;
+      const beforeActive =
+        typeof before.active === "boolean" ? before.active : null;
       const afterActive =
-        typeof after.active === "boolean" ? (after.active as boolean) : null;
+        typeof after.active === "boolean" ? after.active : null;
       if (beforeActive === true && afterActive === false) {
         return `Archived over-shepherd ${afterName}`;
       }
@@ -374,9 +379,7 @@ export function summarizeAuditEvent(
       const shepherd = shepherdId ? profilesById.get(shepherdId) : undefined;
       const name = shepherd?.full_name ?? "a shepherd";
       const wasJustCreated = md.was_just_created === true;
-      const beforeStatus = isRecord(before)
-        ? asString(before.current_status)
-        : null;
+      const beforeStatus = asString(before.current_status);
       const afterStatus = asString(after.current_status);
       if (wasJustCreated) {
         return `Created care profile for ${name}`;
@@ -408,11 +411,7 @@ export function summarizeAuditEvent(
       return `Logged ${type} with ${name}${datePart}`;
     }
     case "admin.update_launch_planning_assumptions": {
-      const submittedKeys = Array.isArray(md.submitted_keys)
-        ? (md.submitted_keys as unknown[]).filter(
-            (k): k is string => typeof k === "string"
-          )
-        : [];
+      const submittedKeys = asStringArray(md.submitted_keys);
       return submittedKeys.length > 0
         ? `Updated launch baseline (${submittedKeys.join(", ")})`
         : "Updated launch baseline";
@@ -425,11 +424,9 @@ export function summarizeAuditEvent(
         : `Created launch scenario ${name}`;
     }
     case "admin.update_launch_planning_scenario": {
-      const beforeName = isRecord(before) ? asString(before.name) : null;
+      const beforeName = asString(before.name);
       const afterName = asString(after.name) ?? "(unnamed)";
-      const beforeCurrent = isRecord(before)
-        ? before.is_current === true
-        : false;
+      const beforeCurrent = before.is_current === true;
       const afterCurrent = after.is_current === true;
       if (!beforeCurrent && afterCurrent) {
         return `Made launch scenario ${afterName} current`;
@@ -440,10 +437,7 @@ export function summarizeAuditEvent(
       return `Updated launch scenario ${afterName}`;
     }
     case "admin.archive_launch_planning_scenario": {
-      const name =
-        (isRecord(before) ? asString(before.name) : null) ??
-        asString(after.name) ??
-        "(unnamed)";
+      const name = asString(before.name) ?? asString(after.name) ?? "(unnamed)";
       return `Archived launch scenario ${name}`;
     }
     case "admin.set_current_launch_planning_scenario": {

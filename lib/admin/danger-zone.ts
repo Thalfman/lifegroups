@@ -43,6 +43,20 @@ export const RESET_ALL_CONFIRM_PHRASE = "RESET EVERYTHING";
 // so only this specific no-op is reclassified; every other token stays an error.
 export const NOTHING_TO_WIPE_TOKEN = "nothing_to_wipe";
 
+// Shared type-to-confirm guard for every danger-zone action. Trims the raw
+// confirm value and compares it to the exact required phrase; returns the
+// supplied error `message` on a mismatch, or `null` when it matches. Centralizes
+// the copy-pasted `typeof raw === "string" ? raw.trim() : ""` + equality check
+// while keeping each call site's wording its own argument.
+export function requireConfirmPhrase(
+  raw: unknown,
+  phrase: string,
+  message: string
+): string | null {
+  const confirm = typeof raw === "string" ? raw.trim() : "";
+  return confirm === phrase ? null : message;
+}
+
 // ADR 0014 (#312): the exact phrase the operator must type to permanently
 // delete a curated entity (physical removal, captured to a tombstone).
 export const PERMANENT_DELETE_CONFIRM_PHRASE = "PERMANENTLY DELETE";

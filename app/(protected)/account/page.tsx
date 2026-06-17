@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { getCurrentSession } from "@/lib/auth/session";
+import { toShellUser } from "@/lib/auth/shell-user";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { AccountDeletionPanel } from "./account-deletion-panel";
 
@@ -21,11 +22,7 @@ export default async function AccountPage() {
   if (session.profile.status !== "active") redirect("/unauthorized");
 
   const { profile } = session;
-  const user = {
-    name: profile.full_name,
-    email: profile.email,
-    role: profile.role,
-  };
+  const user = toShellUser(profile);
   const roleLabel = ROLE_LABELS[profile.role] ?? profile.role;
 
   return (

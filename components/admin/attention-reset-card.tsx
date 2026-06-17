@@ -45,18 +45,7 @@ import {
   DangerCard,
   DangerPill,
 } from "@/components/admin/danger-zone-card-shell";
-
-// Fixed locale + UTC so server and client render the same string (no hydration
-// mismatch). Mirrors the Reset-by-category card's snapshot formatter.
-function formatSnapshotTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-US", {
-    timeZone: "UTC",
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
+import { formatIsoDateTimeUtc } from "@/lib/shared/date";
 
 const CONFIRM_PHRASE: Record<AttentionResetSurface, string> = {
   care: RESET_CARE_ATTENTION_CONFIRM_PHRASE,
@@ -247,8 +236,8 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
             <DangerPill label="Reversible" tone="reversible" />
           </div>
           <div className="font-sans text-xs text-ink2">
-            Recoverable reset captured {formatSnapshotTime(snapshot.createdAt)}{" "}
-            UTC.
+            Recoverable reset captured{" "}
+            {formatIsoDateTimeUtc(snapshot.createdAt)} UTC.
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-40 flex-1 basis-44">
@@ -322,8 +311,8 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
                 value={entityRestoreConfirm}
               />
               <span className="font-sans text-xs text-ink2">
-                {es.entityId.slice(0, 8)}… · {formatSnapshotTime(es.createdAt)}{" "}
-                UTC
+                {es.entityId.slice(0, 8)}… ·{" "}
+                {formatIsoDateTimeUtc(es.createdAt)} UTC
               </span>
               <PButton
                 type="submit"

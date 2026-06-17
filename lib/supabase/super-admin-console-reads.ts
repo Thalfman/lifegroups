@@ -7,6 +7,7 @@
 // the two pools the assign form draws from. No writes here.
 
 import type { AppSupabaseClient } from "./types";
+import { fetchProfileNamesByIds } from "./care-note-feed-reads";
 
 export type SuperAdminConsoleCoverageAssignment = {
   id: string;
@@ -82,18 +83,13 @@ export async function fetchCurrentCoverageAssignments(
   );
   const overIds = Array.from(new Set(rows.map((r) => r.over_shepherd_id)));
 
-  const [profilesRes, oversRes] = await Promise.all([
-    client.from("profiles").select("id, full_name").in("id", shepherdIds),
+  const [profileNamesRes, oversRes] = await Promise.all([
+    fetchProfileNamesByIds(client, shepherdIds),
     client.from("over_shepherds").select("id, full_name").in("id", overIds),
   ]);
 
-  const profileName = new Map<string, string>();
-  for (const p of (profilesRes.data as Array<{
-    id: string;
-    full_name: string;
-  }> | null) ?? []) {
-    profileName.set(p.id, p.full_name);
-  }
+  // Degrades to an empty map (a missing name renders as the fallback label).
+  const profileName = profileNamesRes.data ?? new Map<string, string>();
   const overName = new Map<string, string>();
   for (const o of (oversRes.data as Array<{
     id: string;

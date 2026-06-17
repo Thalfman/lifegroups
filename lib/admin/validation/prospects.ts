@@ -13,6 +13,7 @@ import {
   isEmail,
   isPhone,
   normalizeUuid,
+  makeIdPayloadValidator,
 } from "./shared";
 
 // ---------------------------------------------------------------------------
@@ -149,18 +150,10 @@ export function validateUpdateProspectPayload(
 // Admin UX: soft-archive a Prospect (cleanup). Shape-only.
 export type ArchiveProspectPayload = { prospect_id: string };
 
-export function validateArchiveProspectPayload(
+export const validateArchiveProspectPayload: (
   input: unknown
-): ValidationResult<ArchiveProspectPayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.prospect_id))
-    return { ok: false, errors: ["prospect_id must be a uuid"] };
-  return {
-    ok: true,
-    value: { prospect_id: normalizeUuid(input.prospect_id as string) },
-  };
-}
+) => ValidationResult<ArchiveProspectPayload> =
+  makeIdPayloadValidator("prospect_id");
 
 export type TransitionProspectPayload = {
   prospect_id: string;

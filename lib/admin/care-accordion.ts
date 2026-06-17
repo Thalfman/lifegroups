@@ -167,8 +167,10 @@ function buildLedGroupsByLeaderId(
     byLeader.set(gl.profile_id, list);
   }
   for (const [leaderId, list] of byLeader) {
-    list.sort((a, b) => a.name.localeCompare(b.name));
-    byLeader.set(leaderId, list);
+    byLeader.set(
+      leaderId,
+      [...list].sort((a, b) => a.name.localeCompare(b.name))
+    );
   }
   return byLeader;
 }

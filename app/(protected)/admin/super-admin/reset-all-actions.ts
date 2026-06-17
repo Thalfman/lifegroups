@@ -11,6 +11,7 @@ import {
 import { adminRpc } from "@/lib/admin/rpc";
 import {
   RESET_ALL_CONFIRM_PHRASE,
+  requireConfirmPhrase,
   type ResetAllSuccess,
 } from "@/lib/admin/danger-zone";
 import { LAUNCH_MUTE_FLAG_KEYS } from "@/lib/admin/feature-flags";
@@ -57,15 +58,12 @@ const RESET_ALL_SPEC: AdminWriteActionSpec<
   auth: requireSuperAdminSession,
   keys: ["confirm"],
   validate: (raw): ValidationResult<Record<string, never>> => {
-    const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-    if (confirm !== RESET_ALL_CONFIRM_PHRASE) {
-      return {
-        ok: false,
-        errors: [
-          `Type ${RESET_ALL_CONFIRM_PHRASE} exactly to confirm resetting everything.`,
-        ],
-      };
-    }
+    const error = requireConfirmPhrase(
+      raw.confirm,
+      RESET_ALL_CONFIRM_PHRASE,
+      `Type ${RESET_ALL_CONFIRM_PHRASE} exactly to confirm resetting everything.`
+    );
+    if (error) return { ok: false, errors: [error] };
     return { ok: true, value: {} };
   },
   rpc: async (client) => {

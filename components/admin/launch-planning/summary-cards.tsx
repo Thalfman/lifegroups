@@ -4,8 +4,8 @@ import { P, fontSans } from "@/lib/pastoral";
 import type {
   LaunchPlanningInputs,
   LaunchPlanningOutputs,
-  LaunchPlanningRiskLevel,
 } from "@/lib/admin/launch-planning";
+import { riskTone } from "@/lib/admin/launch-planning";
 
 // Small uppercase tier label, matching the eyebrow treatment used on the cards
 // themselves, so the two tiers read as "answer" then "the inputs behind it".
@@ -18,24 +18,6 @@ const TIER_LABEL: CSSProperties = {
   fontWeight: 600,
   marginBottom: 10,
 };
-
-// Map the three risk-level tokens to a card accent + plain-English label.
-// Risk-level colors are intentionally distinct from the capacity-status
-// colours used on the admin dashboard so a quick scan tells you which
-// page you're looking at.
-function riskTone(level: LaunchPlanningRiskLevel): {
-  label: string;
-  accent: string;
-} {
-  switch (level) {
-    case "ok":
-      return { label: "OK", accent: P.sage };
-    case "watch":
-      return { label: "Watch", accent: P.terra };
-    case "launch_needed":
-      return { label: "Launch needed", accent: "#923220" };
-  }
-}
 
 const EMPTY_METRIC_LABEL = "No data yet";
 

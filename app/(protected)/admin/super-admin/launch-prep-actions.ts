@@ -11,6 +11,7 @@ import {
 import { adminRpc } from "@/lib/admin/rpc";
 import {
   LAUNCH_PREP_CONFIRM_PHRASE,
+  requireConfirmPhrase,
   type LaunchPrepSuccess,
 } from "@/lib/admin/danger-zone";
 import { LAUNCH_MUTE_FLAG_KEYS } from "@/lib/admin/feature-flags";
@@ -58,15 +59,12 @@ const LAUNCH_PREP_SPEC: AdminWriteActionSpec<
   auth: requireSuperAdminSession,
   keys: ["confirm"],
   validate: (raw): ValidationResult<Record<string, never>> => {
-    const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-    if (confirm !== LAUNCH_PREP_CONFIRM_PHRASE) {
-      return {
-        ok: false,
-        errors: [
-          `Type ${LAUNCH_PREP_CONFIRM_PHRASE} exactly to confirm preparing for launch.`,
-        ],
-      };
-    }
+    const error = requireConfirmPhrase(
+      raw.confirm,
+      LAUNCH_PREP_CONFIRM_PHRASE,
+      `Type ${LAUNCH_PREP_CONFIRM_PHRASE} exactly to confirm preparing for launch.`
+    );
+    if (error) return { ok: false, errors: [error] };
     return { ok: true, value: {} };
   },
   rpc: async (client) => {

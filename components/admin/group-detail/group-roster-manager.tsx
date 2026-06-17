@@ -12,12 +12,13 @@ import {
   adminUnassignLeaderFromGroup,
 } from "@/app/(protected)/admin/people/actions";
 import {
-  errorTextClassName,
   fieldLabelClassName,
   fieldSelectClassName,
-  successTextClassName,
 } from "@/components/admin/forms/field-styles";
-import { useActionForm } from "@/components/admin/forms/action-form";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
 import { LeaderProfileForm } from "@/components/admin/forms/leader-profile-form";
@@ -452,18 +453,7 @@ function RosterAssignRow({
           </Link>
         )}
       </div>
-      {state && !state.ok ? (
-        <ul className="m-0 grid list-none gap-1.5 p-0">
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p className={errorTextClassName}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? (
-        <p className={successTextClassName}>Assigned to {groupName}.</p>
-      ) : null}
+      <FormStatus state={state} successText={`Assigned to ${groupName}.`} />
     </form>
   );
 }

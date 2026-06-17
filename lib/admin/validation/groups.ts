@@ -12,6 +12,8 @@ import {
   readOptionalString,
   normalizeUuid,
   isIsoDate,
+  makeIdPayloadValidator,
+  readOptionalUuid,
 } from "./shared";
 
 // ---------------------------------------------------------------------------
@@ -183,12 +185,12 @@ function validateGroupWritablePayload(
   // A non-empty value must be a uuid (the catalog id); the RPC re-checks it is
   // a live category. The picker is filtered to the group's top type client-side,
   // so we only enforce the uuid shape here.
-  const categoryRaw = readOptionalString(input.category_id);
-  let categoryId: string | undefined;
-  if (categoryRaw !== undefined) {
-    if (!isUuid(categoryRaw)) errors.push("Category is not a valid value.");
-    else categoryId = normalizeUuid(categoryRaw);
-  }
+  const categoryId =
+    readOptionalUuid(
+      input.category_id,
+      errors,
+      "Category is not a valid value."
+    ) ?? undefined;
 
   const launchedOnRaw = readOptionalString(input.launched_on);
   let launchedOn: string | undefined;
@@ -241,25 +243,16 @@ export function validateUpdateGroupPayload(
     ok: true,
     value: {
       ...inner.value,
-      group_id: normalizeUuid(input.group_id as string),
+      group_id: normalizeUuid(input.group_id),
     },
   };
 }
 
 export type GroupIdPayload = { group_id: string };
 
-export function validateGroupIdPayload(
+export const validateGroupIdPayload: (
   input: unknown
-): ValidationResult<GroupIdPayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.group_id))
-    return { ok: false, errors: ["group_id must be a uuid"] };
-  return {
-    ok: true,
-    value: { group_id: normalizeUuid(input.group_id as string) },
-  };
-}
+) => ValidationResult<GroupIdPayload> = makeIdPayloadValidator("group_id");
 
 // Settings › Groups "+ Add existing group": tag a group into a specific cell
 // (audience × category). Unlike the full group update this carries ONLY the

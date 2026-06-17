@@ -1,7 +1,7 @@
 import { StatusCard } from "@/components/dashboard/cards";
-import { P, fontBody } from "@/lib/pastoral";
+import { P } from "@/lib/pastoral";
 import type { HealthSummary } from "@/lib/dashboard/types";
-import { MiniBarRow, OpenLink } from "./overview-primitives";
+import { CardNote, MiniBarRow, OpenLink } from "./overview-primitives";
 
 // Group-health pulse distribution (healthy / watch / needs follow-up).
 //
@@ -37,17 +37,10 @@ export function HealthDistributionCard({
       action={<OpenLink href="/admin/care" label="Review group health" />}
     >
       {total === 0 ? (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink3,
-          }}
-        >
+        <CardNote>
           No groups are meeting yet — the health pulse will gather here as
           groups begin.
-        </p>
+        </CardNote>
       ) : (
         <div>
           <MiniBarRow

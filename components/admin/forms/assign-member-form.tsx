@@ -3,13 +3,8 @@
 import { useEffect } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminAssignMemberToGroup } from "@/app/(protected)/admin/people/actions";
-import {
-  errorTextClassName,
-  fieldLabelClassName,
-  fieldSelectClassName,
-  successTextClassName,
-} from "./field-styles";
-import { useActionForm } from "./action-form";
+import { fieldLabelClassName, fieldSelectClassName } from "./field-styles";
+import { useActionForm, FormStatus } from "./action-form";
 
 export function AssignMemberForm({
   groupId,
@@ -86,18 +81,7 @@ export function AssignMemberForm({
           Add a member record above before placing one in this group.
         </p>
       ) : null}
-      {state && !state.ok ? (
-        <ul className="m-0 grid list-none gap-1.5 p-0">
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p className={errorTextClassName}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? (
-        <p className={successTextClassName}>Member added to group.</p>
-      ) : null}
+      <FormStatus state={state} successText="Member added to group." />
     </form>
   );
 }

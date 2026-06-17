@@ -43,6 +43,10 @@ import { resolveCareNeedsContact } from "@/lib/admin/care-needs-contact";
 // the live client through `supabaseCareReads`; a test binds an in-memory adapter
 // satisfying the same interface. Two adapters, one seam.
 
+// How many rows each capped activity read pulls for the Care surface.
+const RECENT_INTERACTIONS_LIMIT = 30;
+const COMPLETED_FOLLOW_UPS_LIMIT = 50;
+
 export type CareData = {
   entries: ShepherdCareDirectoryEntry[];
   assignments: ActiveShepherdCoverageAssignmentSummary[];
@@ -142,9 +146,9 @@ export async function buildCareData(
   ] = await Promise.all([
     Promise.all([
       reads.fetchOverShepherds({ includeArchived: true }),
-      reads.fetchRecentInteractions({ limit: 30 }),
+      reads.fetchRecentInteractions({ limit: RECENT_INTERACTIONS_LIMIT }),
       reads.fetchOutstandingFollowUps(),
-      reads.fetchCompletedFollowUps({ limit: 50 }),
+      reads.fetchCompletedFollowUps({ limit: COMPLETED_FOLLOW_UPS_LIMIT }),
       reads.fetchGroupLeaders({ activeOnly: true }),
     ]),
     resolveCareNeedsContact(

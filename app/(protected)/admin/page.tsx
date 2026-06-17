@@ -19,6 +19,7 @@ import type {
 } from "@/lib/dashboard/types";
 import { resolveOverviewGrain } from "@/lib/admin/overview-period";
 import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
+import { firstParam } from "@/lib/shared/search-params";
 import { getMutedAttentionKeys } from "@/lib/admin/needs-attention-mutes";
 import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
 
@@ -40,8 +41,7 @@ export default async function AdminPage({
   const grain = resolveOverviewGrain(params.period);
   // ADR 0027: a setup deep-link's "← Back to setup" affordance returns here with
   // ?from=setup, so Home re-focuses the next incomplete step.
-  const fromSetup =
-    (Array.isArray(params.from) ? params.from[0] : params.from) === "setup";
+  const fromSetup = firstParam(params.from) === "setup";
 
   const client = await createSupabaseServerClient();
   // The guest pipeline is frozen by default (ADR 0002 / 0009). Resolve the flag

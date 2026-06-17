@@ -34,7 +34,11 @@ type SetupRecoveryOptions = {
   hiddenNavAreas?: ReadonlySet<string> | readonly string[];
 };
 
-function plural(value: number, singular: string, pluralLabel = `${singular}s`) {
+function countWithNoun(
+  value: number,
+  singular: string,
+  pluralLabel = `${singular}s`
+) {
   return `${value} ${value === 1 ? singular : pluralLabel}`;
 }
 
@@ -145,7 +149,7 @@ export function buildSetupRecoveryChecklist(
         ? "People counts could not be read, so confirm the roster before launch."
         : currentParticipants === 0
           ? "No people are currently attached to active groups."
-          : `${plural(currentParticipants, "person", "people")} already attached to active groups.`,
+          : `${countWithNoun(currentParticipants, "person", "people")} already attached to active groups.`,
   });
 
   if (!groupsHidden) {
@@ -162,7 +166,7 @@ export function buildSetupRecoveryChecklist(
           activeLeaders === null
             ? "Leader counts could not be read, so review groups before launch."
             : leaderNeeds > 0
-              ? `${plural(leaderNeeds, "group")} need a leader.`
+              ? `${countWithNoun(leaderNeeds, "group")} need a leader.`
               : "Every active group has a leader.",
       },
       {
@@ -179,7 +183,7 @@ export function buildSetupRecoveryChecklist(
           currentParticipants === null
             ? "Member counts could not be read, so review rosters before launch."
             : memberNeeds > 0
-              ? `${plural(memberNeeds, "group")} need members.`
+              ? `${countWithNoun(memberNeeds, "group")} need members.`
               : "Every active group has at least one member.",
       },
       {
@@ -191,7 +195,7 @@ export function buildSetupRecoveryChecklist(
         actionLabel: "Set capacity",
         detail:
           data.setupGaps.counts.noCapacity > 0
-            ? `${plural(data.setupGaps.counts.noCapacity, "group")} need capacity.`
+            ? `${countWithNoun(data.setupGaps.counts.noCapacity, "group")} need capacity.`
             : "Every active group has capacity set.",
       },
       {
@@ -203,7 +207,7 @@ export function buildSetupRecoveryChecklist(
         actionLabel: "Set meeting info",
         detail:
           data.setupGaps.counts.noMeetingDayTime > 0
-            ? `${plural(data.setupGaps.counts.noMeetingDayTime, "group")} need day and time.`
+            ? `${countWithNoun(data.setupGaps.counts.noMeetingDayTime, "group")} need day and time.`
             : "Every active group has day and time set.",
       },
       {
@@ -215,7 +219,7 @@ export function buildSetupRecoveryChecklist(
         actionLabel: "Assess health",
         detail:
           healthNeedsCount > 0
-            ? `${plural(healthNeedsCount, "group")} need a health check.`
+            ? `${countWithNoun(healthNeedsCount, "group")} need a health check.`
             : "Every group has a current health signal.",
       }
     );

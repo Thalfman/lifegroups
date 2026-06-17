@@ -3,13 +3,8 @@
 import { useEffect } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminAssignLeaderToGroup } from "@/app/(protected)/admin/people/actions";
-import {
-  errorTextClassName,
-  fieldLabelClassName,
-  fieldSelectClassName,
-  successTextClassName,
-} from "./field-styles";
-import { useActionForm } from "./action-form";
+import { fieldLabelClassName, fieldSelectClassName } from "./field-styles";
+import { useActionForm, FormStatus } from "./action-form";
 
 export function AssignLeaderForm({
   groupId,
@@ -105,18 +100,7 @@ export function AssignLeaderForm({
           Add a leader profile above before assigning one to this group.
         </p>
       ) : null}
-      {state && !state.ok ? (
-        <ul className="m-0 grid list-none gap-1.5 p-0">
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p className={errorTextClassName}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? (
-        <p className={successTextClassName}>Leader assigned.</p>
-      ) : null}
+      <FormStatus state={state} successText="Leader assigned." />
     </form>
   );
 }

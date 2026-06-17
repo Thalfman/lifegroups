@@ -4,6 +4,7 @@ import { PBadge } from "@/components/pastoral/atoms";
 import { EmptyState, StatusCard } from "@/components/dashboard/cards";
 import {
   followUpPriorityLabel,
+  followUpStatusLabel,
   followUpTypeLabel,
 } from "@/lib/dashboard/labels";
 import { cn } from "@/lib/utils";
@@ -31,13 +32,6 @@ export type LeaderFollowUpItem = {
   relatedGuestId: string | null;
   relatedGuestName: string | null;
   leaderVisibleNote: string | null;
-};
-
-const STATUS_LABEL: Record<FollowUpStatus, string> = {
-  open: "Open",
-  in_progress: "In progress",
-  done: "Done",
-  snoozed: "Snoozed",
 };
 
 export function LeaderFollowUpsSection({
@@ -111,7 +105,7 @@ function LeaderFollowUpRow({ item }: { item: LeaderFollowUpItem }) {
           </div>
           <div className="mt-1 flex flex-wrap gap-2 font-sans text-sm text-ink3">
             <span>{followUpTypeLabel(item.type)}</span>
-            <span>· {STATUS_LABEL[item.status]}</span>
+            <span>· {followUpStatusLabel(item.status)}</span>
             {item.dueDate ? <span>· Due {item.dueDate}</span> : null}
           </div>
           {(item.relatedGroupName || guestLabel) && (

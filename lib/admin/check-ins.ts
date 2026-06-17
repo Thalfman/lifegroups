@@ -385,7 +385,11 @@ function leaderNamesByGroup(
     list.push(name);
     m.set(row.group_id, list);
   }
-  for (const list of m.values()) list.sort((a, b) => a.localeCompare(b));
+  for (const [groupId, list] of m)
+    m.set(
+      groupId,
+      [...list].sort((a, b) => a.localeCompare(b))
+    );
   return m;
 }
 

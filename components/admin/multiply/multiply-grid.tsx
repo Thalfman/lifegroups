@@ -12,7 +12,7 @@ import {
   type MultiplyGridRow,
 } from "@/lib/admin/multiply-grid";
 import { segmentAnchorId, segmentLabel } from "@/lib/admin/multiplication";
-import type { GroupAudienceCategory } from "@/types/enums";
+import { MULTIPLY_TYPE_LABEL } from "@/components/admin/multiply/multiply-data";
 
 // Presentational Multiply GRID (#403 / PRD §2.5). Rows = categories, columns = the
 // three top types (Men's / Women's / Mixed). Each ACTIVE cell shows its readiness
@@ -27,12 +27,6 @@ import type { GroupAudienceCategory } from "@/types/enums";
 // each card lists only that category's APPLIED top types, one per labelled block.
 // At `md`+ the matrix table takes over, visually identical to before. Both views
 // render from the same `grid`, so behavior and data are unchanged.
-
-const TYPE_LABEL: Record<GroupAudienceCategory, string> = {
-  men: "Men's",
-  women: "Women's",
-  mixed: "Mixed",
-};
 
 // Blocker labels for the compact "held back by" line under a not-ready cell.
 const BLOCKER_LABEL: Record<ReadinessPillarKey, string> = {
@@ -77,7 +71,7 @@ function GridCellContent({
   cell: MultiplyGridCell;
   categoryLabel: string;
 }) {
-  const typeLabel = TYPE_LABEL[cell.audienceCategory];
+  const typeLabel = MULTIPLY_TYPE_LABEL[cell.audienceCategory];
   if (!cell.applied || !cell.readout) return null;
   const { signal, coverage } = cell.readout;
   const blockers = signal.blockers.map((b) => BLOCKER_LABEL[b]).join(", ");
@@ -120,7 +114,7 @@ function GridCell({
   cell: MultiplyGridCell;
   categoryLabel: string;
 }) {
-  const typeLabel = TYPE_LABEL[cell.audienceCategory];
+  const typeLabel = MULTIPLY_TYPE_LABEL[cell.audienceCategory];
 
   if (!cell.applied || !cell.readout) {
     return (
@@ -164,7 +158,7 @@ function GridCategoryCard({ row }: { row: MultiplyGridRow }) {
               className="grid gap-1.5 border-t border-lineSoft pt-3 first:border-t-0 first:pt-0"
             >
               <span className="font-sans text-xs font-semibold text-ink3">
-                {TYPE_LABEL[cell.audienceCategory]}
+                {MULTIPLY_TYPE_LABEL[cell.audienceCategory]}
               </span>
               <GridCellContent cell={cell} categoryLabel={row.label} />
             </div>
@@ -270,7 +264,7 @@ export function MultiplyGridView({
                   // content below (badge → coverage → blockers → plan link).
                   className="border-b border-line bg-surfaceAlt px-3.5 py-3 text-left font-sans text-xs font-semibold text-ink3"
                 >
-                  {TYPE_LABEL[type]}
+                  {MULTIPLY_TYPE_LABEL[type]}
                 </th>
               ))}
             </tr>

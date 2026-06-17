@@ -4,10 +4,12 @@
 // re-validates everything at the database layer (it is the real trust boundary).
 
 import { isUuid } from "@/lib/shared/uuid";
+import {
+  isRecord,
+  type ValidationResult,
+} from "@/lib/shared/validation-primitives";
 
-export type ValidationResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; errors: string[] };
+export type { ValidationResult };
 
 // Generous-but-bounded body length; the RPC enforces the same 4000-char ceiling.
 const NOTE_BODY_MAX = 4000;
@@ -17,10 +19,8 @@ export type LeaderGroupNotePayload = {
   body: string;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
+// Empty/whitespace-only collapses to null (this surface treats a blank note as
+// absent), which the shared trimString does not do — so it stays local.
 function trimString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();

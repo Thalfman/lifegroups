@@ -78,7 +78,7 @@ function weekdayIndexFromIso(iso: string): number {
 
 export async function loadMasterCalendar(
   client: AppSupabaseClient,
-  { monthIso }: { monthIso: string },
+  { monthIso }: { monthIso: string }
 ): Promise<MasterCalendarData> {
   const bounds = monthBounds(monthIso);
   if (!bounds) {
@@ -98,7 +98,7 @@ export async function loadMasterCalendar(
   if (profilesResult.error) throw profilesResult.error;
 
   const visibleGroups = (groupsResult.data ?? []).filter(
-    (g) => g.lifecycle_status !== "closed",
+    (g) => g.lifecycle_status !== "closed"
   );
   if (visibleGroups.length === 0) {
     return { occurrences: [], groups: [], leaderOptions: [] };
@@ -120,7 +120,8 @@ export async function loadMasterCalendar(
     const name = profileNameById.get(row.profile_id);
     if (!name) continue;
     const bucket =
-      leadersByGroup.get(row.group_id) ?? new Map<string, MasterCalendarLeader>();
+      leadersByGroup.get(row.group_id) ??
+      new Map<string, MasterCalendarLeader>();
     if (!bucket.has(row.profile_id)) {
       bucket.set(row.profile_id, { profileId: row.profile_id, name });
     }
@@ -135,7 +136,10 @@ export async function loadMasterCalendar(
   });
   if (eventsResult.error) throw eventsResult.error;
 
-  const eventsByGroup = new Map<string, typeof eventsResult.data>();
+  const eventsByGroup = new Map<
+    string,
+    NonNullable<typeof eventsResult.data>
+  >();
   for (const ev of eventsResult.data ?? []) {
     const bucket = eventsByGroup.get(ev.group_id) ?? [];
     bucket.push(ev);
@@ -151,10 +155,10 @@ export async function loadMasterCalendar(
       meetingTime: g.meeting_time,
       meetingFrequency: g.meeting_frequency,
       meetingWeekParity: g.meeting_week_parity,
-      leaders: Array.from((leadersByGroup.get(g.id) ?? new Map()).values()).sort(
-        (a, b) => a.name.localeCompare(b.name),
-      ),
-    }),
+      leaders: Array.from(
+        (leadersByGroup.get(g.id) ?? new Map()).values()
+      ).sort((a, b) => a.name.localeCompare(b.name)),
+    })
   );
 
   // Iterate groupSummaries directly (O(N) total over groups) instead of
@@ -168,7 +172,7 @@ export async function loadMasterCalendar(
         meetingFrequency: summary.meetingFrequency,
         meetingWeekParity: summary.meetingWeekParity,
       },
-      monthIso,
+      monthIso
     );
     const saved = toSavedOverrides(eventsByGroup.get(summary.groupId) ?? []);
     const resolved = mergeOverrides(generated, saved, summary.meetingTime);
@@ -189,7 +193,7 @@ export async function loadMasterCalendar(
     }
   }
 
-  occurrences.sort((a, b) => {
+  const sortedOccurrences = [...occurrences].sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? -1 : 1;
     return a.groupName.localeCompare(b.groupName);
   });
@@ -206,11 +210,11 @@ export async function loadMasterCalendar(
     }
   }
   const leaderOptions = Array.from(leaderOptionsMap.values()).sort((a, b) =>
-    a.name.localeCompare(b.name),
+    a.name.localeCompare(b.name)
   );
 
   return {
-    occurrences,
+    occurrences: sortedOccurrences,
     groups: groupSummaries,
     leaderOptions,
   };

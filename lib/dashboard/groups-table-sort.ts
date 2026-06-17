@@ -133,9 +133,8 @@ function compareOptionalDimension(
   const verdict = missingLastVerdict(aValue === null, bValue === null);
   if (verdict !== null) {
     // Exactly one missing → that row trails, invariant of direction. Both
-    // missing → 0, defer to the next dimension / tie-break.
-    if (verdict !== 0) return verdict;
-    return 0;
+    // missing → 0 (verdict), defer to the next dimension / tie-break.
+    return verdict;
   }
   const value = (aValue as number) - (bValue as number);
   return dir === "asc" ? value : -value;
@@ -277,9 +276,8 @@ export function meetingMinutesFromTime(time: string | null): number | null {
 }
 
 // Map a latest-week attendance-session status (or its absence) to the sortable
-// check-in rank. Centralized here so the worst-first ordering stays in lockstock
+// check-in rank. Centralized here so the worst-first ordering stays in lockstep
 // with CHECKIN_RANK and the directory never re-derives it. An unknown status
-//
 // falls back to the "no record" rank rather than throwing.
 export function checkinRankForStatus(status: string | null): number {
   switch (status) {

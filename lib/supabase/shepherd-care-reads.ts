@@ -700,10 +700,7 @@ export async function fetchRecentShepherdCareInteractionsForAdmin(
     .from("shepherd_care_interactions")
     .select(SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS)
     .eq("care_profile.shepherd.status", "active")
-    .in(
-      "care_profile.shepherd.role",
-      ELIGIBLE_SHEPHERD_ROLES as unknown as string[]
-    )
+    .in("care_profile.shepherd.role", ELIGIBLE_SHEPHERD_ROLES)
     .order("interaction_at", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -889,7 +886,7 @@ const ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT =
 // 20260518180000_phase5d1_over_shepherd_coverage_hardening.sql closes
 // the row on deactivation, but role-change RPCs from earlier phases
 // don't, so this read-side filter is the belt-and-braces.
-const ELIGIBLE_SHEPHERD_ROLES = ["leader", "co_leader"] as const;
+const ELIGIBLE_SHEPHERD_ROLES: string[] = ["leader", "co_leader"];
 
 /**
  * Admin-only list of currently active coverage assignments, joined with
@@ -911,7 +908,7 @@ export async function fetchActiveShepherdCoverageAssignmentsForAdmin(
     .select(ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT)
     .eq("active", true)
     .eq("shepherd.status", "active")
-    .in("shepherd.role", ELIGIBLE_SHEPHERD_ROLES as unknown as string[]);
+    .in("shepherd.role", ELIGIBLE_SHEPHERD_ROLES);
   if (error) {
     return {
       data: null,
@@ -985,7 +982,7 @@ export async function fetchShepherdsCoveredByOverShepherdForAdmin(
     .eq("over_shepherd_id", overShepherdId)
     .eq("active", true)
     .eq("shepherd.status", "active")
-    .in("shepherd.role", ELIGIBLE_SHEPHERD_ROLES as unknown as string[]);
+    .in("shepherd.role", ELIGIBLE_SHEPHERD_ROLES);
   if (error) {
     return {
       data: null,

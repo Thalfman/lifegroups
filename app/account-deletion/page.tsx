@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PublicPageShell } from "@/components/lg/PublicPageShell";
+import { firstParam } from "@/lib/shared/search-params";
 
 export const metadata: Metadata = {
   title: "Account deletion — Fox Valley Church Life Groups",
@@ -20,8 +21,7 @@ export default async function AccountDeletionPage({
   searchParams?: Promise<{ status?: string | string[] }>;
 }) {
   const statusRaw = (await searchParams)?.status;
-  const requested =
-    (Array.isArray(statusRaw) ? statusRaw[0] : statusRaw) === "requested";
+  const requested = firstParam(statusRaw) === "requested";
 
   return (
     <PublicPageShell>

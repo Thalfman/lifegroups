@@ -42,7 +42,13 @@ export function FormStatusLine({ view }: { view: FormStatusView }) {
   if (view.kind === "none") return null;
   if (view.kind === "success")
     return <span className={successTextClassName}>{view.text}</span>;
-  return <p className={errorTextClassName}>{view.text}</p>;
+  // role="alert" makes the failure an assertive live region so screen readers
+  // announce it (focus stays on the submit button after a failed submit).
+  return (
+    <p role="alert" className={errorTextClassName}>
+      {view.text}
+    </p>
+  );
 }
 
 // The standardized success / error line. Pass `successText` to show a sage

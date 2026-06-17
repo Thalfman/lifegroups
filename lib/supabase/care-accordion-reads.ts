@@ -6,7 +6,11 @@ import type {
   LeaderHealthLetter,
   GroupHealthOverrideScope,
 } from "@/types/enums";
-import { wrapError, type ReadResult } from "@/lib/supabase/read-core";
+import {
+  wrapError,
+  decodeNumericRecord,
+  type ReadResult,
+} from "@/lib/supabase/read-core";
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
 import { fetchLeaderHealthRubric } from "@/lib/admin/leader-health-read";
 import { decodeRubricCriteria, type Rubric } from "@/lib/admin/health-rubric";
@@ -30,15 +34,6 @@ import {
 // types, so their selects are cast here — the same trust seam the per-leader
 // grade reads use. The note/prayer/grant reads go through the typed client and
 // return only what the caller's RLS admits (sealed Leaders contribute nothing).
-
-function decodeScores(raw: unknown): Record<string, number> {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
-  const out: Record<string, number> = {};
-  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
-  }
-  return out;
-}
 
 type PersistedLeaderGrade = {
   profile_id: string;
@@ -69,7 +64,7 @@ export async function fetchLeaderRubricGradesForYear(
   return {
     data: rows.map((r) => ({
       profile_id: r.profile_id,
-      criterion_scores: decodeScores(r.criterion_scores),
+      criterion_scores: decodeNumericRecord(r.criterion_scores),
       override_letter: r.override_letter,
       override_scope: r.override_scope,
       override_period_month: r.override_period_month,
@@ -107,7 +102,7 @@ export async function fetchGroupRubricGradesForYear(
   return {
     data: rows.map((r) => ({
       group_id: r.group_id,
-      criterion_scores: decodeScores(r.criterion_scores),
+      criterion_scores: decodeNumericRecord(r.criterion_scores),
       override_letter: r.override_letter,
       override_scope: r.override_scope,
       override_period_month: r.override_period_month,
@@ -134,46 +129,28 @@ async function fetchGrantedSubjectIds(
   return { data: ids, error: null };
 }
 
-// The subject_profile_id of each profile-scoped Care Note the caller can read
-// (RLS returns rows for granted subjects PLUS the caller's own authored rows —
-// since ADR 0023 an admin can author, so readable is wider than granted and
-// must not be treated as a grant signal). One id per row, so the caller can
-// count notes per Leader. Group-subject notes are excluded.
+// The subject_profile_id of each profile-scoped row the caller can read from a
+// subject-keyed table (`care_notes` / `prayer_requests`). RLS returns rows for
+// granted subjects PLUS the caller's own authored rows — since ADR 0023 an
+// admin can author, so readable is wider than granted and must not be treated
+// as a grant signal. One id per row, so the caller can count per Leader.
+// Group-subject rows (subject_profile_id null) are dropped by the Boolean
+// filter, so no SQL null-filter is needed.
 //
-// Known scale debt: this ships one row per readable note just to count in JS.
+// Known scale debt: this ships one row per readable row just to count in JS.
 // Acceptable while note volume is small-church scale; if it grows, replace
 // with a count aggregate — but note the counts must stay RLS-scoped (what the
 // VIEWER can read), so a SECURITY DEFINER count RPC would have to re-encode
 // the grant logic rather than lean on RLS. See docs/ui-followups.md.
-async function fetchProfileSubjectCareNoteIds(
-  client: AppSupabaseClient
+async function fetchSubjectProfileIds(
+  client: AppSupabaseClient,
+  table: "care_notes" | "prayer_requests"
 ): Promise<ReadResult<string[]>> {
-  // Group-subject notes (subject_profile_id null) are dropped by the Boolean
-  // filter below, so no SQL null-filter is needed.
-  const { data, error } = await client
-    .from("care_notes")
-    .select("subject_profile_id");
+  const { data, error } = await client.from(table).select("subject_profile_id");
   if (error)
     return {
       data: null,
-      error: wrapError("fetchProfileSubjectCareNoteIds", error),
-    };
-  const ids = (data ?? [])
-    .map((r) => (r as { subject_profile_id: string | null }).subject_profile_id)
-    .filter((id): id is string => Boolean(id));
-  return { data: ids, error: null };
-}
-
-async function fetchProfileSubjectPrayerIds(
-  client: AppSupabaseClient
-): Promise<ReadResult<string[]>> {
-  const { data, error } = await client
-    .from("prayer_requests")
-    .select("subject_profile_id");
-  if (error)
-    return {
-      data: null,
-      error: wrapError("fetchProfileSubjectPrayerIds", error),
+      error: wrapError(`fetchSubjectProfileIds(${table})`, error),
     };
   const ids = (data ?? [])
     .map((r) => (r as { subject_profile_id: string | null }).subject_profile_id)
@@ -262,8 +239,8 @@ export async function loadCareAccordionEnrichment(
       ? fetchGroupRubricGradesForYear(client, ministryYear)
       : Promise.resolve(emptyGroupRows),
     fetchGrantedSubjectIds(client),
-    fetchProfileSubjectCareNoteIds(client),
-    fetchProfileSubjectPrayerIds(client),
+    fetchSubjectProfileIds(client, "care_notes"),
+    fetchSubjectProfileIds(client, "prayer_requests"),
   ]);
 
   // Leader-Health letters (#378). Resolve only when in a year and both the

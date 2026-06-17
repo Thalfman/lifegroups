@@ -24,6 +24,7 @@
 
 import { HEALTH_GRADE_LADDER } from "@/lib/admin/health-rubric";
 import type { GroupHealthLetter } from "@/types/enums";
+import { isRecord } from "@/lib/shared/validation-primitives";
 
 // The A–F letter the pillars grade to. Reuses the health-rubric ladder's letter
 // type so the Multiply pillars and the Health rubric share one A–F vocabulary.
@@ -331,10 +332,6 @@ export function evaluateTrigger(
 // to the built-in default for any malformed field rather than throwing — a
 // partially-corrupt row still renders sane pillars. The single decode shared by
 // the Settings read and the board read.
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function decodeBands(raw: unknown, fallback: PillarBands): PillarBands {
   if (!isRecord(raw)) return fallback;

@@ -2,7 +2,12 @@ import { StatusCard } from "@/components/dashboard/cards";
 import { P, fontBody } from "@/lib/pastoral";
 import type { GuestPipelineStage } from "@/types/enums";
 import type { PipelineStageCount } from "@/lib/dashboard/types";
-import { FrozenStatusCard, MiniBarRow, OpenLink } from "./overview-primitives";
+import {
+  CardNote,
+  FrozenStatusCard,
+  MiniBarRow,
+  OpenLink,
+} from "./overview-primitives";
 
 // Tone the funnel so the destination stages read as "good" and the parked
 // stage reads muted; everything in-flight is terra.
@@ -51,16 +56,9 @@ export function GuestPipelineFunnelCard({
           `guests` table, not Prospects in the Interest Funnel — but drops the
           mechanical "in the pipeline yet" phrasing. */}
       {barTotal === 0 ? (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink3,
-          }}
-        >
+        <CardNote>
           No guests are waiting right now — new arrivals will gather here.
-        </p>
+        </CardNote>
       ) : (
         <div>
           {breakdown.map((s) => (

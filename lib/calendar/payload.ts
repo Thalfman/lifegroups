@@ -11,17 +11,18 @@
 // NULL into the time columns. The columns remain on the table for
 // schema continuity but are unused.
 
+import type { PTone } from "@/components/pastoral/atoms";
 import type {
   GroupCalendarEventStatus,
   GroupCalendarEventType,
 } from "@/types/enums";
+import type { ValidationResult } from "@/lib/shared/validation-primitives";
 
-export type ValidationResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; errors: string[] };
+export type { ValidationResult };
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Calendar dates are bounded to a reasonable planning horizon: 1 year
 // in the past, 2 years in the future. Prevents typo dates (2999-01-01)
@@ -78,7 +79,7 @@ function isWithinPlanningHorizon(value: string, now: Date): boolean {
   const parsed = new Date(`${value}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return false;
   const today = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   );
   const minDate = new Date(today);
   minDate.setUTCDate(minDate.getUTCDate() - PAST_BOUND_DAYS);
@@ -92,11 +93,17 @@ function isUuid(value: unknown): value is string {
 }
 
 function isEventType(value: unknown): value is GroupCalendarEventType {
-  return typeof value === "string" && EVENT_TYPES.has(value as GroupCalendarEventType);
+  return (
+    typeof value === "string" &&
+    EVENT_TYPES.has(value as GroupCalendarEventType)
+  );
 }
 
 function isEventStatus(value: unknown): value is GroupCalendarEventStatus {
-  return typeof value === "string" && EVENT_STATUSES.has(value as GroupCalendarEventStatus);
+  return (
+    typeof value === "string" &&
+    EVENT_STATUSES.has(value as GroupCalendarEventStatus)
+  );
 }
 
 export type CalendarEventWritablePayload = {
@@ -125,7 +132,7 @@ export type CalendarEventArchivePayload = {
 // the RPC enforce the same invariant.
 function coerceEventType(
   status: GroupCalendarEventStatus,
-  eventType: GroupCalendarEventType,
+  eventType: GroupCalendarEventType
 ): GroupCalendarEventType {
   if (status === "off") return "off";
   if (status === "cancelled") return "cancelled";
@@ -135,7 +142,7 @@ function coerceEventType(
 }
 
 function validateWritable(
-  input: Record<string, unknown>,
+  input: Record<string, unknown>
 ): ValidationResult<CalendarEventWritablePayload> {
   const errors: string[] = [];
 
@@ -146,7 +153,7 @@ function validateWritable(
     errors.push("event_date must be a real ISO date in YYYY-MM-DD form.");
   } else if (!isWithinPlanningHorizon(eventDate, new Date())) {
     errors.push(
-      "event_date must be within the planning horizon: 1 year in the past or 2 years in the future.",
+      "event_date must be within the planning horizon: 1 year in the past or 2 years in the future."
     );
   }
 
@@ -192,7 +199,7 @@ function validateWritable(
 }
 
 export function validateCalendarEventCreatePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CalendarEventCreatePayload> {
   if (!isRecord(input)) {
     return { ok: false, errors: ["payload must be an object."] };
@@ -207,7 +214,7 @@ export function validateCalendarEventCreatePayload(
 }
 
 export function validateCalendarEventUpdatePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CalendarEventUpdatePayload> {
   if (!isRecord(input)) {
     return { ok: false, errors: ["payload must be an object."] };
@@ -222,7 +229,7 @@ export function validateCalendarEventUpdatePayload(
 }
 
 export function validateCalendarEventIdPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CalendarEventArchivePayload> {
   if (!isRecord(input)) {
     return { ok: false, errors: ["payload must be an object."] };
@@ -261,7 +268,9 @@ export function friendlyEventTypeLabel(type: GroupCalendarEventType): string {
   return EVENT_TYPE_LABELS[type] ?? "Other";
 }
 
-export function friendlyEventStatusLabel(status: GroupCalendarEventStatus): string {
+export function friendlyEventStatusLabel(
+  status: GroupCalendarEventStatus
+): string {
   return EVENT_STATUS_LABELS[status] ?? "Scheduled";
 }
 
@@ -279,19 +288,55 @@ export function eventDisplayLabel(event: {
 
 // All event type options ordered for the create / edit form select.
 // Excludes off / cancelled which are status-coerced.
-export const EVENT_TYPE_OPTIONS: { value: GroupCalendarEventType; label: string }[] = [
+export const EVENT_TYPE_OPTIONS: {
+  value: GroupCalendarEventType;
+  label: string;
+}[] = [
   { value: "study", label: EVENT_TYPE_LABELS.study },
   { value: "community_night", label: EVENT_TYPE_LABELS.community_night },
-  { value: "mens_transformation", label: EVENT_TYPE_LABELS.mens_transformation },
-  { value: "womens_transformation", label: EVENT_TYPE_LABELS.womens_transformation },
+  {
+    value: "mens_transformation",
+    label: EVENT_TYPE_LABELS.mens_transformation,
+  },
+  {
+    value: "womens_transformation",
+    label: EVENT_TYPE_LABELS.womens_transformation,
+  },
   { value: "social", label: EVENT_TYPE_LABELS.social },
   { value: "service", label: EVENT_TYPE_LABELS.service },
   { value: "prayer", label: EVENT_TYPE_LABELS.prayer },
   { value: "other", label: EVENT_TYPE_LABELS.other },
 ];
 
-export const EVENT_STATUS_OPTIONS: { value: GroupCalendarEventStatus; label: string }[] = [
+export const EVENT_STATUS_OPTIONS: {
+  value: GroupCalendarEventStatus;
+  label: string;
+}[] = [
   { value: "scheduled", label: EVENT_STATUS_LABELS.scheduled },
   { value: "off", label: EVENT_STATUS_LABELS.off },
   { value: "cancelled", label: EVENT_STATUS_LABELS.cancelled },
 ];
+
+// Shared badge tone for a calendar event/occurrence status, used by the
+// calendar list, month grid, and upcoming-events strip.
+export function statusTone(status: GroupCalendarEventStatus): PTone {
+  if (status === "off") return "pause";
+  if (status === "cancelled") return "followup";
+  return "healthy";
+}
+
+// "Sat, May 16" — weekday + short-month + day, UTC-anchored. Shared by the
+// calendar list and upcoming-events strip. Distinct from occurrences.ts
+// `dateLabel`, which uses a different (longer) format.
+const WEEKDAY_DATE_FMT = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+export function weekdayDateLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return WEEKDAY_DATE_FMT.format(d);
+}

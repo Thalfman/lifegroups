@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
-import { friendlyEventStatusLabel } from "@/lib/calendar/payload";
+import { PBadge } from "@/components/pastoral/atoms";
+import { formatClock } from "@/lib/calendar/occurrences";
+import {
+  friendlyEventStatusLabel,
+  statusTone,
+  weekdayDateLabel,
+} from "@/lib/calendar/payload";
 import type { GroupCalendarEventStatus } from "@/types/enums";
 
 export type UpcomingCalendarEvent = {
@@ -10,35 +15,6 @@ export type UpcomingCalendarEvent = {
   status: GroupCalendarEventStatus;
   startTime: string | null;
 };
-
-function statusTone(status: GroupCalendarEventStatus): PTone {
-  if (status === "off") return "pause";
-  if (status === "cancelled") return "followup";
-  return "healthy";
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function formatStart(t: string | null): string | null {
-  if (!t) return null;
-  const [h, m] = t.split(":");
-  const hour = Number.parseInt(h ?? "0", 10);
-  const minute = Number.parseInt(m ?? "0", 10);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
-  const suffix = hour >= 12 ? "PM" : "AM";
-  const display = ((hour + 11) % 12) + 1;
-  const minuteStr = minute === 0 ? "" : `:${String(minute).padStart(2, "0")}`;
-  return `${display}${minuteStr} ${suffix}`;
-}
 
 export function UpcomingEventsStrip({
   events,
@@ -108,10 +84,18 @@ export function UpcomingEventsStrip({
       >
         {eyebrow}
       </div>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+      <ul
+        style={{
+          listStyle: "none",
+          padding: 0,
+          margin: 0,
+          display: "grid",
+          gap: 6,
+        }}
+      >
         {events.map((event, idx) => {
-          const dateLabel = formatDate(event.date);
-          const startLabel = formatStart(event.startTime);
+          const dateLabel = weekdayDateLabel(event.date);
+          const startLabel = formatClock(event.startTime);
           return (
             <li
               key={`${event.date}-${idx}`}
@@ -125,11 +109,19 @@ export function UpcomingEventsStrip({
                 color: P.ink,
               }}
             >
-              <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  minWidth: 0,
+                }}
+              >
                 <span style={{ fontWeight: 500 }}>{event.label}</span>
                 <span style={{ color: P.ink2, fontSize: 12 }}>
                   {dateLabel}
-                  {startLabel && event.status === "scheduled" ? ` · ${startLabel}` : ""}
+                  {startLabel && event.status === "scheduled"
+                    ? ` · ${startLabel}`
+                    : ""}
                 </span>
               </div>
               <PBadge tone={statusTone(event.status)}>

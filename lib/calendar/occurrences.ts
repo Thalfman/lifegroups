@@ -214,7 +214,10 @@ function groupMeetsOnDate(
   // monthly
   const anchor = new Date(`${iso}T00:00:00Z`);
   const dayOfMonth = anchor.getUTCDate();
-  return dayOfMonth <= 7; // first matching weekday within the first calendar week
+  // The first matching weekday always lands within the first calendar week
+  // (days 1–7) of the month.
+  const FIRST_CALENDAR_WEEK_LAST_DAY = 7;
+  return dayOfMonth <= FIRST_CALENDAR_WEEK_LAST_DAY;
 }
 
 export function generateMonthOccurrences(
@@ -314,16 +317,20 @@ export function mergeOverrides(
     }
     // Special one-off date with no generated occurrence on it. Time is
     // inherited from the group schedule too -- per spec, the calendar
-    // editor never sets a per-event time.
+    // editor never sets a per-event time. With no generated occurrence the
+    // date must have come from a saved-override key, so override is present.
+    if (!override) {
+      throw new Error(`mergeOverrides: missing override for ${date}`);
+    }
     return {
       date,
       meetingTime: normalizedGroupTime,
       isMeetingOccurrence: false,
-      eventType: override!.eventType,
-      status: override!.status,
-      title: override!.title,
-      description: override!.description,
-      overrideId: override!.id,
+      eventType: override.eventType,
+      status: override.status,
+      title: override.title,
+      description: override.description,
+      overrideId: override.id,
     };
   });
 }
@@ -355,6 +362,11 @@ export type GridCell = {
   isToday: boolean;
 };
 
+// A month grid is always a full 6-week block (42 cells) so the layout never
+// reflows between months.
+const GRID_WEEKS = 6;
+const GRID_CELL_COUNT = GRID_WEEKS * 7;
+
 // Returns a 6-week grid (always 42 cells) for the given month. Leading
 // cells fill in from the previous month so the first row starts on
 // Sunday; trailing cells fill in from the next month. inMonth=false
@@ -369,7 +381,7 @@ export function gridCellsForMonth(
   const start = addDaysIso(bounds.firstIso, -firstDow);
   const cells: GridCell[] = [];
   let cursor = start;
-  for (let i = 0; i < 42; i++) {
+  for (let i = 0; i < GRID_CELL_COUNT; i++) {
     cells.push({
       date: cursor,
       inMonth: cursor >= bounds.firstIso && cursor <= bounds.lastIso,

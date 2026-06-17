@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin/care-note-feed";
 import { prayerRequestStatusChipLabel } from "@/lib/admin/prayer-request-status";
 import { formatIsoDateOr } from "@/lib/shared/date";
+import { pluralize } from "@/lib/shared/pluralize";
 
 // ADR 0023 — the Care area's Notes tab: every note the viewer may read, in one
 // newest-first feed, with a presence-only summary of what stays sealed. The
@@ -161,16 +162,10 @@ function SealedSummaryBlock({
 function summaryCounts(s: SealedLeaderSummary): string {
   const parts: string[] = [];
   if (s.careNoteCount > 0) {
-    parts.push(
-      s.careNoteCount === 1 ? "1 care note" : `${s.careNoteCount} care notes`
-    );
+    parts.push(pluralize(s.careNoteCount, "care note"));
   }
   if (s.prayerRequestCount > 0) {
-    parts.push(
-      s.prayerRequestCount === 1
-        ? "1 prayer request"
-        : `${s.prayerRequestCount} prayer requests`
-    );
+    parts.push(pluralize(s.prayerRequestCount, "prayer request"));
   }
   return `${parts.join(" · ")} sealed`;
 }

@@ -1,10 +1,57 @@
 // Phase 5A.0 validation contracts: pure TypeScript, no I/O, no Supabase. Reused by Phase 5A.1 server actions when writes are enabled.
 
+import { isUuid } from "@/lib/shared/uuid";
+import {
+  isRecord,
+  normalizeUuid,
+  type ValidationResult,
+} from "@/lib/shared/validation-primitives";
+
 export {
   isRecord,
   normalizeUuid,
   type ValidationResult,
 } from "@/lib/shared/validation-primitives";
+
+// The single-uuid-id payload was the most-copied validator shape in this
+// layer: reject a non-object, reject a missing/malformed uuid, otherwise return
+// the canonicalized id under its field name. `makeIdPayloadValidator(field)`
+// builds exactly that validator so each surface keeps its own exported name and
+// payload type while the body lives here once.
+export function makeIdPayloadValidator<F extends string>(
+  fieldName: F
+): (input: unknown) => ValidationResult<Record<F, string>> {
+  return (input) => {
+    if (!isRecord(input))
+      return { ok: false, errors: ["payload must be an object"] };
+    const value = input[fieldName];
+    if (!isUuid(value))
+      return { ok: false, errors: [`${fieldName} must be a uuid`] };
+    return {
+      ok: true,
+      value: { [fieldName]: normalizeUuid(value) } as Record<F, string>,
+    };
+  };
+}
+
+// The "optional uuid field" micro-pattern: a form posts "" for an absent select,
+// which `readOptionalString` collapses to undefined (= leave unset). A present
+// value must be a uuid; on failure push `message` and return null, otherwise
+// return the canonicalized id. Returns undefined when the field is absent so the
+// caller can keep its "leave unset" branch.
+export function readOptionalUuid(
+  value: unknown,
+  errors: string[],
+  message: string
+): string | null | undefined {
+  const raw = readOptionalString(value);
+  if (raw === undefined) return undefined;
+  if (!isUuid(raw)) {
+    errors.push(message);
+    return null;
+  }
+  return normalizeUuid(raw);
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // At least one digit; allow common phone punctuation; 7–20 chars total.

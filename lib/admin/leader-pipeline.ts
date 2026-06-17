@@ -95,7 +95,7 @@ export function buildPipelineRollup(
   const stages: PipelineStageGroup[] = LEADER_READINESS_STAGES.map((stage) => ({
     stage,
     label: STAGE_LABEL[stage],
-    apprentices: (byStage.get(stage) ?? []).sort((a, b) =>
+    apprentices: [...(byStage.get(stage) ?? [])].sort((a, b) =>
       a.groupName.localeCompare(b.groupName)
     ),
   }));

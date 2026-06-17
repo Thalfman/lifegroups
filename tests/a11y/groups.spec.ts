@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
+import { expectNoBlockingAxeViolations, gotoHarness, PHONE } from "./harness";
 
 // Issue 266 — Admin Interaction Model req 1: propagate the validated Editing
 // Pattern (proven on Group health in #259) to the Groups list. This suite gates
@@ -356,7 +356,7 @@ test.describe("groups directory editing surface", () => {
   test("phone viewport renders cards without table-only controls", async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
+    await page.setViewportSize(PHONE);
     await gotoHarness(page);
     const surface = page.locator(SURFACE);
 

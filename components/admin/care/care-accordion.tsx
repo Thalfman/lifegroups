@@ -11,6 +11,7 @@ import {
   type CareAccordionPane,
   type CareGradeEntryBundle,
 } from "@/lib/admin/care-accordion";
+import { pluralize } from "@/lib/shared/pluralize";
 
 // The canonical Care view (#373, ADR 0016): a collapsible accordion grouped by
 // Over-Shepherd, COLLAPSED BY DEFAULT. Each pane expands to the Leaders that
@@ -30,7 +31,7 @@ import {
 // roll-up, so a collapsed pane signals where the work is without expanding it.
 
 function leaderCountLabel(count: number): string {
-  return `${count} leader${count === 1 ? "" : "s"}`;
+  return pluralize(count, "leader");
 }
 
 function attentionLabel(count: number): string {

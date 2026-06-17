@@ -1,56 +1,24 @@
 "use server";
 
-import { headers } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { log } from "@/lib/observability/logger";
 import { hashEmail, newCorrelationId } from "@/lib/observability/identifiers";
 import { checkForgotPasswordLimit } from "@/lib/security/rate-limit";
+import { extractClientIp } from "@/lib/security/client-ip";
+import { isEmail } from "@/lib/admin/validation/shared";
 
 export type ForgotPasswordState = {
   submitted?: boolean;
   error?: string;
 };
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROUTE = "forgot-password";
 
 function getSiteUrl(): string | null {
   const raw =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    process.env.SITE_URL?.trim();
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.SITE_URL?.trim();
   if (!raw) return null;
   return raw.replace(/\/+$/, "");
-}
-
-// Returns a client IP only when the deployment has explicitly declared
-// which proxy header to trust via TRUSTED_PROXY. Otherwise returns null
-// and the per-IP bucket is skipped — preventing both header spoofing (on
-// self-hosted/direct-to-origin deploys where platform headers are
-// attacker-controlled) and the cross-user shared-bucket DoS that would
-// happen if every IP-less request hashed to the same key.
-//
-// Accepted values:
-//   - "vercel"     -> trust x-vercel-forwarded-for
-//   - "cloudflare" -> trust cf-connecting-ip
-//   - "generic"    -> trust x-forwarded-for (first) then x-real-ip; only set
-//                     this when the deployment terminates at a proxy that
-//                     overwrites these headers.
-//   - unset/other  -> no per-IP throttle (per-email throttle still applies)
-async function extractClientIp(): Promise<string | null> {
-  const h = await headers();
-  const trusted = process.env.TRUSTED_PROXY?.trim().toLowerCase();
-  if (trusted === "vercel") {
-    return h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || null;
-  }
-  if (trusted === "cloudflare") {
-    return h.get("cf-connecting-ip")?.trim() || null;
-  }
-  if (trusted === "generic") {
-    const fwd = h.get("x-forwarded-for")?.split(",")[0]?.trim();
-    if (fwd) return fwd;
-    return h.get("x-real-ip")?.trim() || null;
-  }
-  return null;
 }
 
 // Always returns the same generic success state so the form cannot be
@@ -59,11 +27,13 @@ async function extractClientIp(): Promise<string | null> {
 // server-side but never surfaced to the user.
 export async function forgotPasswordAction(
   _prev: ForgotPasswordState,
-  formData: FormData,
+  formData: FormData
 ): Promise<ForgotPasswordState> {
   const requestId = newCorrelationId();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!email || !EMAIL_RE.test(email)) {
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  if (!email || !isEmail(email)) {
     return { error: "Enter a valid email address." };
   }
 

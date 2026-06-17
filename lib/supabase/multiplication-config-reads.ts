@@ -1,5 +1,10 @@
 import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  wrapError,
+  decodeNumericRecord,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
 import { isAudienceCategory } from "@/lib/admin/audience";
 import { cellKey } from "@/lib/admin/cell-coordinate";
@@ -379,17 +384,6 @@ type GradeScoreFields = {
   override_period_month: string | null;
 };
 
-// Decode raw jsonb criterion_scores into clean numeric scores at the trust
-// boundary, dropping any non-numeric value (mirrors the Care grade readers).
-function decodeScores(raw: unknown): RubricScores {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
-  const out: Record<string, number> = {};
-  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
-  }
-  return out;
-}
-
 // Decode a stored grade row's override columns into the structured override the
 // grade facades consume, or null when no override is set. The this-month expiry
 // pivots on the override's own stored month (falling back to the period only when
@@ -590,7 +584,7 @@ export async function fetchCellHealthGrades(
       isClosed: row.group?.lifecycle_status === "closed",
       letter: resolveGroupRubricGrade({
         rubric: groupRubric,
-        scores: decodeScores(row.criterion_scores),
+        scores: decodeNumericRecord(row.criterion_scores),
         override: rowGradeOverride(row, periodMonthIso),
         periodMonth: periodMonthIso,
       }).effective_letter,
@@ -602,7 +596,7 @@ export async function fetchCellHealthGrades(
       cells: leaderCellsByProfile.get(row.profile_id) ?? new Set(),
       letter: resolveLeaderGrade({
         rubric: leaderRubric,
-        scores: decodeScores(row.criterion_scores),
+        scores: decodeNumericRecord(row.criterion_scores),
         override: rowGradeOverride(row, periodMonthIso),
         ministryYear,
         currentPeriodMonth: periodMonthIso,

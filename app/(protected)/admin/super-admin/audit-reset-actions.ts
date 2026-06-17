@@ -8,7 +8,10 @@ import {
   type ValidationResult,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
-import { AUDIT_RESET_CONFIRM_PHRASE } from "@/lib/admin/danger-zone";
+import {
+  AUDIT_RESET_CONFIRM_PHRASE,
+  requireConfirmPhrase,
+} from "@/lib/admin/danger-zone";
 
 const REVALIDATE_PATH = "/admin/super-admin";
 
@@ -18,15 +21,12 @@ type AuditResetPayload = Record<string, never>;
 function validateAuditResetPayload(
   raw: Record<string, unknown>
 ): ValidationResult<AuditResetPayload> {
-  const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-  if (confirm !== AUDIT_RESET_CONFIRM_PHRASE) {
-    return {
-      ok: false,
-      errors: [
-        `Type ${AUDIT_RESET_CONFIRM_PHRASE} exactly to confirm resetting the audit log.`,
-      ],
-    };
-  }
+  const error = requireConfirmPhrase(
+    raw.confirm,
+    AUDIT_RESET_CONFIRM_PHRASE,
+    `Type ${AUDIT_RESET_CONFIRM_PHRASE} exactly to confirm resetting the audit log.`
+  );
+  if (error) return { ok: false, errors: [error] };
   return { ok: true, value: {} };
 }
 

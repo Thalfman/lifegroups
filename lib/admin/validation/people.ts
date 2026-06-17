@@ -9,6 +9,7 @@ import {
   isEmail,
   isPhone,
   normalizeUuid,
+  makeIdPayloadValidator,
 } from "./shared";
 
 export type CreateMinistryAdminPayload = {
@@ -261,33 +262,17 @@ export function validateEndGroupMembershipPayload(
 
 export type DeactivateProfilePayload = { profile_id: string };
 
-export function validateDeactivateProfilePayload(
+export const validateDeactivateProfilePayload: (
   input: unknown
-): ValidationResult<DeactivateProfilePayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.profile_id))
-    return { ok: false, errors: ["profile_id must be a uuid"] };
-  return {
-    ok: true,
-    value: { profile_id: normalizeUuid(input.profile_id as string) },
-  };
-}
+) => ValidationResult<DeactivateProfilePayload> =
+  makeIdPayloadValidator("profile_id");
 
 export type DeactivateMemberPayload = { member_id: string };
 
-export function validateDeactivateMemberPayload(
+export const validateDeactivateMemberPayload: (
   input: unknown
-): ValidationResult<DeactivateMemberPayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.member_id))
-    return { ok: false, errors: ["member_id must be a uuid"] };
-  return {
-    ok: true,
-    value: { member_id: normalizeUuid(input.member_id as string) },
-  };
-}
+) => ValidationResult<DeactivateMemberPayload> =
+  makeIdPayloadValidator("member_id");
 
 export type ChangeUserRolePayload = {
   profile_id: string;

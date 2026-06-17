@@ -15,25 +15,13 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
+import { readFormPayload } from "@/lib/shared/form-data";
 
 // Calendar forms may post arbitrary entries, so the runner lifts the whole
 // FormData rather than a fixed key list. The id-keyed actions (update,
 // archive, restore) carry `group_id` only so the success path can
 // revalidate the right detail page; it is not part of the validated
 // payload, so it is read off `raw`.
-function payloadFromInput(input: unknown): Record<string, unknown> {
-  if (input instanceof FormData) {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of input.entries()) {
-      out[key] = typeof value === "string" ? value : undefined;
-    }
-    return out;
-  }
-  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
-    return input as Record<string, unknown>;
-  }
-  return {};
-}
 
 function calendarPaths(groupId: string): string[] {
   return [
@@ -69,7 +57,7 @@ const CREATE_EVENT_SPEC: AdminWriteActionSpec<
   { id: string }
 > = {
   name: "admin.calendar.create_event",
-  read: payloadFromInput,
+  read: readFormPayload,
   validate: validateCalendarEventCreatePayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   okFields: (value, id) => ({ event_type: value.event_type, new_event_id: id }),
@@ -104,7 +92,7 @@ const UPDATE_EVENT_SPEC: AdminWriteActionSpec<
   { id: string }
 > = {
   name: "admin.calendar.update_event",
-  read: payloadFromInput,
+  read: readFormPayload,
   validate: validateCalendarEventUpdatePayload,
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
   okFields: (_value, _id, raw) => ({ target_group_id: groupIdFromRaw(raw) }),
@@ -137,7 +125,7 @@ export async function adminUpdateCalendarEvent(
 
 const ARCHIVE_EVENT_SPEC: AdminWriteActionSpec<EventIdValue, { id: string }> = {
   name: "admin.calendar.archive_event",
-  read: payloadFromInput,
+  read: readFormPayload,
   validate: validateCalendarEventIdPayload,
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
   okFields: (_value, _id, raw) => ({ target_group_id: groupIdFromRaw(raw) }),
@@ -163,7 +151,7 @@ export async function adminArchiveCalendarEvent(
 
 const RESTORE_EVENT_SPEC: AdminWriteActionSpec<EventIdValue, { id: string }> = {
   name: "admin.calendar.restore_event",
-  read: payloadFromInput,
+  read: readFormPayload,
   validate: validateCalendarEventIdPayload,
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
   okFields: (_value, _id, raw) => ({ target_group_id: groupIdFromRaw(raw) }),
