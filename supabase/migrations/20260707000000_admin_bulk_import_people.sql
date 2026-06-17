@@ -52,12 +52,14 @@ begin
     raise exception 'invalid_input';
   end if;
 
-  -- Enforce the per-batch row cap at the security boundary too, not only in the
-  -- TS parser (PEOPLE_IMPORT_MAX_ROWS = 500 in lib/admin/people-import.ts): this
-  -- SECURITY DEFINER function is granted to authenticated admins, so a direct
-  -- RPC call that bypasses the parser must not be able to insert an unbounded
-  -- batch in one audited transaction.
-  if jsonb_array_length(p_rows) > 500 then
+  -- Enforce the per-batch row bounds at the security boundary too, not only in
+  -- the TS parser (1..PEOPLE_IMPORT_MAX_ROWS = 500 in lib/admin/people-import
+  -- .ts): this SECURITY DEFINER function is granted to authenticated admins, so
+  -- a direct RPC call that bypasses the parser must not insert an unbounded
+  -- batch — nor write a no-op audit_events row for an empty array (the action
+  -- rejects empty imports, but a direct caller would otherwise pollute the audit
+  -- log with zero-row import events) — in one transaction.
+  if jsonb_array_length(p_rows) < 1 or jsonb_array_length(p_rows) > 500 then
     raise exception 'invalid_input';
   end if;
 

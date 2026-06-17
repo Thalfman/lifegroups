@@ -94,9 +94,10 @@ describe("migration — admin_bulk_import_people", () => {
     );
   });
 
-  it("enforces the per-batch row cap at the security boundary", () => {
-    // Defense-in-depth: the 500-row cap must hold even for direct RPC callers
-    // that bypass the TS parser (PEOPLE_IMPORT_MAX_ROWS).
+  it("enforces the per-batch row bounds at the security boundary", () => {
+    // Defense-in-depth: reject empty batches (no no-op audit rows) AND the
+    // 500-row cap, even for direct RPC callers that bypass the TS parser.
+    expect(adminSql.lower).toContain("jsonb_array_length(p_rows) < 1");
     expect(adminSql.lower).toContain("jsonb_array_length(p_rows) > 500");
   });
 

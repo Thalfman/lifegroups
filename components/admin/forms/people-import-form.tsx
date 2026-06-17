@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminBulkImportPeople,
@@ -28,19 +28,25 @@ import { useActionForm, FormStatus } from "./action-form";
 // exact header to fill. Used by both Settings > System and the Super Admin
 // Console; the action is admin-gated.
 export function PeopleImportForm() {
-  // resetOnSuccess clears the form after a successful import: the textarea +
-  // file input are uncontrolled, so the native form reset empties both. Members
-  // aren't de-duplicated across separate imports, so clearing the last batch
-  // avoids an accidental duplicate re-submit; the success counts live on
-  // `state`, so they stay visible after the fields clear.
   const { state, formAction, pending, formRef } =
-    useActionForm<BulkImportPeopleSuccess>(adminBulkImportPeople, {
-      resetOnSuccess: true,
-    });
+    useActionForm<BulkImportPeopleSuccess>(adminBulkImportPeople);
   const [fileError, setFileError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileId = useId();
   const payloadId = useId();
+
+  // Reset the form only after a CLEAN import (no skipped rows). The textarea +
+  // file input are uncontrolled, so a native reset clears both — but if any rows
+  // were skipped we KEEP the submitted CSV in place so the admin can fix the
+  // flagged lines and re-import (the per-row errors show only line numbers, not
+  // the row text, so clearing would lose the data). Clearing on a clean import
+  // also avoids an accidental duplicate re-submit (members aren't de-duplicated
+  // across separate imports). Calling .reset() is a DOM side effect, not state.
+  useEffect(() => {
+    if (state?.ok && state.value.perRowErrors.length === 0) {
+      formRef.current?.reset();
+    }
+  }, [state, formRef]);
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     setFileError(null);
