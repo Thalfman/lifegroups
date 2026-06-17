@@ -4,7 +4,7 @@ import type { ProspectState } from "@/types/enums";
 import { PROSPECT_STATE_LABEL } from "@/lib/admin/prospect-funnel";
 import { ACTIVE_BOARD_STATES } from "@/lib/supabase/prospect-reads";
 import type { InterestFunnelDashboardSummary } from "@/lib/dashboard/types";
-import { MiniBarRow, OpenLink } from "./overview-primitives";
+import { CardNote, MiniBarRow, OpenLink } from "./overview-primitives";
 
 // Tone the funnel by state, matching the board's colour story: interested is
 // the warm intake (yellow), matched is in-flight, not-at-this-time reads as
@@ -58,17 +58,10 @@ export function InterestFunnelOverviewCard({
       action={<OpenLink href="/admin/plan" label="Work the funnel" />}
     >
       {activeTotal === 0 && joined === 0 ? (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink3,
-          }}
-        >
+        <CardNote>
           No Prospects in the Interest Funnel yet — new interest will gather
           here.
-        </p>
+        </CardNote>
       ) : (
         <div>
           {ACTIVE_BOARD_STATES.map((state) => (

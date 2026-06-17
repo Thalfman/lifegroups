@@ -11,6 +11,7 @@
 // NULL into the time columns. The columns remain on the table for
 // schema continuity but are unused.
 
+import type { PTone } from "@/components/pastoral/atoms";
 import type {
   GroupCalendarEventStatus,
   GroupCalendarEventType,
@@ -315,3 +316,27 @@ export const EVENT_STATUS_OPTIONS: {
   { value: "off", label: EVENT_STATUS_LABELS.off },
   { value: "cancelled", label: EVENT_STATUS_LABELS.cancelled },
 ];
+
+// Shared badge tone for a calendar event/occurrence status, used by the
+// calendar list, month grid, and upcoming-events strip.
+export function statusTone(status: GroupCalendarEventStatus): PTone {
+  if (status === "off") return "pause";
+  if (status === "cancelled") return "followup";
+  return "healthy";
+}
+
+// "Sat, May 16" — weekday + short-month + day, UTC-anchored. Shared by the
+// calendar list and upcoming-events strip. Distinct from occurrences.ts
+// `dateLabel`, which uses a different (longer) format.
+const WEEKDAY_DATE_FMT = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+export function weekdayDateLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return WEEKDAY_DATE_FMT.format(d);
+}

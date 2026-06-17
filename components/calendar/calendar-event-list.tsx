@@ -1,29 +1,14 @@
 import type { ReactNode } from "react";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
+import { PBadge } from "@/components/pastoral/atoms";
 import {
   eventDisplayLabel,
   friendlyEventStatusLabel,
   friendlyEventTypeLabel,
+  statusTone,
+  weekdayDateLabel,
 } from "@/lib/calendar/payload";
 import type { GroupCalendarEventsRow } from "@/types/database";
-
-function statusTone(status: GroupCalendarEventsRow["status"]): PTone {
-  if (status === "off") return "pause";
-  if (status === "cancelled") return "followup";
-  return "healthy";
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
 
 // Phase 5A.6 (corrected): list used by the archived tab. The main
 // calendar surface is now the grid + modal editor. We no longer render
@@ -176,7 +161,7 @@ function CalendarEventRow({
   renderActions?: (event: GroupCalendarEventsRow) => ReactNode;
   archived?: boolean;
 }) {
-  const dateLabel = formatDate(event.event_date);
+  const dateLabel = weekdayDateLabel(event.event_date);
   const displayLabel = eventDisplayLabel(event);
   const typeLabel = friendlyEventTypeLabel(event.event_type);
   const statusLabel = friendlyEventStatusLabel(event.status);

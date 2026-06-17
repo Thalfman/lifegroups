@@ -5,11 +5,11 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { PAvatar } from "@/components/pastoral/atoms";
 import { PButton } from "@/components/pastoral/button";
 import { leaderSubmitCheckinAndReturn } from "@/app/(protected)/leader/actions";
-import { useActionForm } from "@/components/admin/forms/action-form";
 import {
-  errorTextClassName,
-  fieldInputClassName,
-} from "@/components/admin/forms/field-styles";
+  FormStatus,
+  useActionForm,
+} from "@/components/admin/forms/action-form";
+import { fieldInputClassName } from "@/components/admin/forms/field-styles";
 import { cn } from "@/lib/utils";
 // Match the church-local timezone the server uses for "today" so the
 // meeting_date prefill is the leader's wall-clock day even if their
@@ -438,15 +438,7 @@ export function CheckInForm({
         </PButton>
       </div>
 
-      {state && !state.ok ? (
-        <ul role="alert" className="m-0 grid list-none gap-1.5 p-0">
-          {state.errors.map((err, i) => (
-            <li key={i} className={errorTextClassName}>
-              {err}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <FormStatus state={state} />
     </form>
   );
 }

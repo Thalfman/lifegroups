@@ -11,6 +11,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { cn } from "@/lib/utils";
 
 // The over-shepherd write surface is deliberately one field: a broad note.
 // No care-status, touchpoint, interaction-type, admin-summary, or private-note
@@ -42,10 +43,10 @@ export function LogBroadNoteForm({
           rows={3}
           maxLength={2000}
           required
-          className={`${fieldInputClassName} min-h-20 resize-y`}
+          className={cn(fieldInputClassName, "min-h-20 resize-y")}
           placeholder="A broad, shareable note on how this Leader is doing."
         />
-        <p className={`${formNoteClassName} mt-1.5`}>
+        <p className={cn(formNoteClassName, "mt-1.5")}>
           Broad notes are visible to ministry admins. Keep anything private out
           of this field.
         </p>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
+import { PBadge } from "@/components/pastoral/atoms";
 import {
   CalendarOccurrenceEditor,
   type CalendarOccurrenceEditorActions,
@@ -18,14 +18,9 @@ import {
   eventDisplayLabel,
   friendlyEventStatusLabel,
   friendlyEventTypeLabel,
+  statusTone,
 } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
-
-function statusTone(status: ResolvedOccurrence["status"]): PTone {
-  if (status === "off") return "pause";
-  if (status === "cancelled") return "followup";
-  return "healthy";
-}
 
 // Build an explicit, meaningful accessible name for a calendar cell's edit
 // trigger (#322). Without it the button's name is the concatenated child text
