@@ -5,6 +5,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { CheckInForm } from "@/components/leader/check-in-form";
 import { FrozenSurfaceNotice } from "@/components/admin/frozen-surface-notice";
 import { requireLeader } from "@/lib/auth/session";
+import { toShellUser } from "@/lib/auth/shell-user";
 import { readFrozenSurfaceFlagForLeader } from "@/lib/auth/leader-surface-flag";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -41,13 +42,15 @@ export const dynamic = "force-dynamic";
 
 type Params = { groupId: string };
 
+type AttendanceStatus = "present" | "absent" | "excused";
+
 type CheckInPrefill = {
   status: "submitted" | "did_not_meet" | "planned_pause";
   meetingDate: string | null;
   leaderNote: string;
   pulse: "healthy" | "watch" | "needs_follow_up" | "";
   followUpNeeded: boolean;
-  attendance: Record<string, "present" | "absent" | "excused">;
+  attendance: Record<string, AttendanceStatus>;
 };
 
 const EMPTY_PREFILL: CheckInPrefill = {
@@ -143,7 +146,7 @@ export default async function CheckInPage({
 
   const existingSession =
     ((sessionResult.data ?? []) as AttendanceSessionsRow[])[0] ?? null;
-  const attendanceMap: Record<string, "present" | "absent" | "excused"> = {};
+  const attendanceMap: Record<string, AttendanceStatus> = {};
   if (existingSession) {
     const recordsResult = await fetchAttendanceRecordsForSessions(client, [
       existingSession.id,
@@ -241,11 +244,7 @@ export default async function CheckInPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      currentUser={{
-        name: session.profile.full_name,
-        email: session.profile.email,
-        role: session.profile.role,
-      }}
+      currentUser={toShellUser(session.profile)}
       eyebrow="Check-in"
       title={group.name}
       titleItalic={existingSession ? "— update" : "— this week"}

@@ -14,25 +14,12 @@ import {
   type LeaderWriteActionSpec,
 } from "@/lib/leader/run-action";
 import { leaderRpc, type LeaderUuidRpcArgs } from "@/lib/leader/rpc";
+import { readFormPayload } from "@/lib/shared/form-data";
 
 type ActionInput<T> = T | FormData;
 
 const CALENDAR_NOT_ASSIGNED =
   "Only the assigned leader or co-leader can manage that group's calendar.";
-
-function payloadFromInput(input: unknown): Record<string, unknown> {
-  if (input instanceof FormData) {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of input.entries()) {
-      out[key] = typeof value === "string" ? value : undefined;
-    }
-    return out;
-  }
-  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
-    return input as Record<string, unknown>;
-  }
-  return {};
-}
 
 function leaderCalendarPaths(groupId: string): string[] {
   return [
@@ -102,7 +89,7 @@ const CREATE_EVENT_SPEC: LeaderWriteActionSpec<
   { id: string }
 > = {
   name: "leader.calendar.create_event",
-  read: payloadFromInput,
+  read: readFormPayload,
   validate: validateCalendarEventCreatePayload,
   // Defense-in-depth: the RPC also enforces auth_is_leader_of(group_id), but
   // rejecting locally avoids surfacing a generic insufficient_privilege
@@ -153,7 +140,7 @@ const UPDATE_EVENT_SPEC: LeaderWriteActionSpec<
   { id: string }
 > = {
   name: "leader.calendar.update_event",
-  read: payloadFromInput,
+  read: readFormPayload,
   guardRaw: ownershipGuard,
   validate: validateCalendarEventUpdatePayload,
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
@@ -186,7 +173,7 @@ const ARCHIVE_EVENT_SPEC: LeaderWriteActionSpec<
   { id: string }
 > = {
   name: "leader.calendar.archive_event",
-  read: payloadFromInput,
+  read: readFormPayload,
   guardRaw: ownershipGuard,
   validate: validateCalendarEventIdPayload,
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
@@ -212,7 +199,7 @@ const RESTORE_EVENT_SPEC: LeaderWriteActionSpec<
   { id: string }
 > = {
   name: "leader.calendar.restore_event",
-  read: payloadFromInput,
+  read: readFormPayload,
   guardRaw: ownershipGuard,
   validate: validateCalendarEventIdPayload,
   fields: (_actor, value) => ({ target_event_id: value.event_id }),

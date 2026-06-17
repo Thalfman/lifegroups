@@ -1,15 +1,15 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { startActionLog } from "@/lib/observability/instrument";
 import { checkInviteRedeemLimit } from "@/lib/security/rate-limit";
+import { extractClientIp } from "@/lib/security/client-ip";
+import { isEmail } from "@/lib/admin/validation/shared";
 
 export type RedeemInviteState = { error?: string };
 
 const MIN_PASSWORD_LENGTH = 8;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type EdgeResponse = {
   ok?: boolean;
@@ -44,25 +44,6 @@ function mapCode(code: string | undefined): string {
   return "We couldn't complete your signup. Please try again.";
 }
 
-// Mirrors forgot-password's trusted-proxy IP extraction: only trust a forwarded
-// header the deployment has explicitly opted into via TRUSTED_PROXY.
-async function extractClientIp(): Promise<string | null> {
-  const h = await headers();
-  const trusted = process.env.TRUSTED_PROXY?.trim().toLowerCase();
-  if (trusted === "vercel") {
-    return h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || null;
-  }
-  if (trusted === "cloudflare") {
-    return h.get("cf-connecting-ip")?.trim() || null;
-  }
-  if (trusted === "generic") {
-    const fwd = h.get("x-forwarded-for")?.split(",")[0]?.trim();
-    if (fwd) return fwd;
-    return h.get("x-real-ip")?.trim() || null;
-  }
-  return null;
-}
-
 export async function redeemInviteAction(
   _prev: RedeemInviteState,
   formData: FormData
@@ -85,7 +66,7 @@ export async function redeemInviteAction(
     ctx.finish("fail", { error_code: "missing_name" });
     return { error: "Enter your full name." };
   }
-  if (!email || !EMAIL_RE.test(email)) {
+  if (!email || !isEmail(email)) {
     ctx.finish("fail", { error_code: "invalid_email" });
     return { error: "Enter a valid email address." };
   }

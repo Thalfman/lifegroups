@@ -11,6 +11,7 @@ import {
   type LeaderWriteActionSpec,
 } from "@/lib/leader/run-action";
 import { leaderRpc } from "@/lib/leader/rpc";
+import { readFormPayload } from "@/lib/shared/form-data";
 
 // Pivot slice 11 (#382 / ADR 0020) server actions: a leader's group-scoped
 // Care Note + Prayer Request. Both reuse the shared leader write-action runner
@@ -23,20 +24,6 @@ type ActionInput<T> = T | FormData;
 
 const NOT_ASSIGNED =
   "Only the assigned leader or co-leader can write notes for that group.";
-
-function payloadFromInput(input: unknown): Record<string, unknown> {
-  if (input instanceof FormData) {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of input.entries()) {
-      out[key] = typeof value === "string" ? value : undefined;
-    }
-    return out;
-  }
-  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
-    return input as Record<string, unknown>;
-  }
-  return {};
-}
 
 function leaderCarePaths(groupId: string): string[] {
   return [`/leader/${groupId}/care`, "/leader"];
@@ -65,7 +52,7 @@ const CARE_NOTE_SPEC: LeaderWriteActionSpec<
   { id: string }
 > = {
   name: "leader.care_note.write",
-  read: payloadFromInput,
+  read: readFormPayload,
   validate: validateLeaderGroupCareNotePayload,
   guard: assignedGuard,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
@@ -93,7 +80,7 @@ const PRAYER_REQUEST_SPEC: LeaderWriteActionSpec<
   { id: string }
 > = {
   name: "leader.prayer_request.write",
-  read: payloadFromInput,
+  read: readFormPayload,
   validate: validateLeaderGroupPrayerRequestPayload,
   guard: assignedGuard,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),

@@ -4,6 +4,7 @@ import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
 import { CheckInDetailShell } from "@/components/admin/check-in-detail-shell";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/shared/uuid";
 import {
   buildCheckInDetailData,
   emptyCheckInDetail,
@@ -16,9 +17,6 @@ export const dynamic = "force-dynamic";
 
 type Params = { groupId: string };
 type SearchParams = { week?: string | string[] };
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Binds the live client and runs the pure buildCheckInDetailData assembly
 // (ADR 0015). The seam interface, adapter, and build live in
@@ -52,7 +50,7 @@ export default async function AdminCheckInDetailPage({
 }) {
   await requireAdmin();
   const { groupId } = await params;
-  if (!UUID_RE.test(groupId)) notFound();
+  if (!isUuid(groupId)) notFound();
 
   const sp = (await searchParams) ?? {};
   const meetingWeek = validateWeekParam(sp.week);

@@ -14,6 +14,7 @@ import {
   HISTORY_RESET_CONFIRM_PHRASE,
   CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
   NOTHING_TO_WIPE_TOKEN,
+  requireConfirmPhrase,
   type HistoryResetSuccess,
   type HistoryResetRevertSuccess,
 } from "@/lib/admin/danger-zone";
@@ -76,15 +77,12 @@ const RESET_HISTORY_CATEGORY_SPEC: AdminWriteActionSpec<
         ],
       };
     }
-    const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-    if (confirm !== HISTORY_RESET_CONFIRM_PHRASE) {
-      return {
-        ok: false,
-        errors: [
-          `Type ${HISTORY_RESET_CONFIRM_PHRASE} exactly to confirm clearing this category.`,
-        ],
-      };
-    }
+    const confirmError = requireConfirmPhrase(
+      raw.confirm,
+      HISTORY_RESET_CONFIRM_PHRASE,
+      `Type ${HISTORY_RESET_CONFIRM_PHRASE} exactly to confirm clearing this category.`
+    );
+    if (confirmError) return { ok: false, errors: [confirmError] };
     return { ok: true, value: { category } };
   },
   fields: (_actor, value) => ({ history_category: value.category }),
@@ -148,15 +146,12 @@ const RESET_HISTORY_CATEGORY_REVERT_SPEC: AdminWriteActionSpec<
   auth: requireSuperAdminSession,
   keys: ["confirm", "snapshotId"],
   validate: (raw): ValidationResult<{ snapshotId: string }> => {
-    const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-    if (confirm !== CLEAN_SLATE_RESTORE_CONFIRM_PHRASE) {
-      return {
-        ok: false,
-        errors: [
-          `Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} exactly to confirm restoring this category.`,
-        ],
-      };
-    }
+    const confirmError = requireConfirmPhrase(
+      raw.confirm,
+      CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
+      `Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} exactly to confirm restoring this category.`
+    );
+    if (confirmError) return { ok: false, errors: [confirmError] };
     const submittedId =
       typeof raw.snapshotId === "string" ? raw.snapshotId.trim() : "";
     if (!isUuid(submittedId)) {

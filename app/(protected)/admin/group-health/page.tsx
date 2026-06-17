@@ -4,6 +4,32 @@ import { requireAdmin } from "@/lib/auth/session";
 import { loadGroupHealthData } from "@/components/admin/group-health/group-health-data";
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 
+// One render path for the two degraded-read states (no database vs. failed
+// read): same page chrome, only the message and tone differ.
+function GroupHealthNotice({
+  message,
+  tone,
+}: {
+  message: string;
+  tone: "muted" | "rose";
+}) {
+  return (
+    <>
+      <FrozenSurfaceBanner />
+      <PageHeader eyebrow="Groups" title="Group health" />
+      <PageBody>
+        <p
+          className={`font-sans text-base ${
+            tone === "rose" ? "text-rose" : "text-ink2"
+          }`}
+        >
+          {message}
+        </p>
+      </PageBody>
+    </>
+  );
+}
+
 // Group health triage workflow (#259, Admin Interaction Model PRD req 2 — the
 // Editing Pattern reference implementation). The repeated per-row form-table is
 // gone: this is a review/triage table, and editing one group at a time happens
@@ -18,29 +44,19 @@ export default async function GroupHealthPage() {
 
   if (view.status === "no-db") {
     return (
-      <>
-        <FrozenSurfaceBanner />
-        <PageHeader eyebrow="Groups" title="Group health" />
-        <PageBody>
-          <p className="font-sans text-base text-ink2">
-            The database isn&apos;t configured, so grades can&apos;t be loaded.
-          </p>
-        </PageBody>
-      </>
+      <GroupHealthNotice
+        message="The database isn't configured, so grades can't be loaded."
+        tone="muted"
+      />
     );
   }
 
   if (view.status === "error") {
     return (
-      <>
-        <FrozenSurfaceBanner />
-        <PageHeader eyebrow="Groups" title="Group health" />
-        <PageBody>
-          <p className="font-sans text-base text-rose">
-            Couldn&apos;t load group-health grades. Refresh to try again.
-          </p>
-        </PageBody>
-      </>
+      <GroupHealthNotice
+        message="Couldn't load group-health grades. Refresh to try again."
+        tone="rose"
+      />
     );
   }
 

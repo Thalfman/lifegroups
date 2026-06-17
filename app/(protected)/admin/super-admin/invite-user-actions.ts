@@ -13,6 +13,14 @@ import {
   type InviteUserPayload,
   validateInviteUserPayload,
 } from "@/lib/admin/validation";
+import {
+  buildErrorLines,
+  extractErrorBody,
+  makeMapFnError,
+  makeTokenForStatus,
+  redact,
+} from "@/lib/admin/edge-fn-error";
+import { readFormPayloadStringified } from "@/lib/shared/form-data";
 
 const REVALIDATE_PATHS = ["/admin/super-admin", "/admin/people"] as const;
 
@@ -88,84 +96,15 @@ const FN_ERROR_MESSAGES: Record<string, string> = {
   method_not_allowed: "Internal error: wrong HTTP method.",
 };
 
-function mapFnError(raw: string): string {
-  if (FN_ERROR_MESSAGES[raw]) return FN_ERROR_MESSAGES[raw];
-  return raw;
-}
+const mapFnError = makeMapFnError(FN_ERROR_MESSAGES);
 
-// A JWT (header.payload.signature) so error text can't leak a live token into
-// the Super-Admin diagnostics panel.
-const JWT_PATTERN = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
-
-function redact(message: string): string {
-  return message.replace(JWT_PATTERN, "[REDACTED_JWT]");
-}
-
-async function extractErrorBody(
-  err: unknown
-): Promise<{ status: number | null; body: Partial<EdgeFnResponse> | null }> {
-  if (!err || typeof err !== "object") return { status: null, body: null };
-  const ctx = (err as { context?: unknown }).context;
-  if (!(ctx instanceof Response)) return { status: null, body: null };
-  const status = ctx.status;
-  try {
-    const text = await ctx.clone().text();
-    if (!text) return { status, body: null };
-    return { status, body: JSON.parse(text) as Partial<EdgeFnResponse> };
-  } catch {
-    return { status, body: null };
-  }
-}
-
-function tokenForStatus(status: number | null): string {
-  if (status === 401) return "invalid_or_expired_session";
-  if (status === 403) return "super_admin_required";
-  if (status === 404) return "function_not_deployed_or_wrong_name";
-  if (status && status >= 500) return "db_error";
-  return "db_error";
-}
-
-function buildErrorLines(args: {
-  status: number | null;
-  code: string;
-  missing?: string[];
-  postgrestError?: EdgeFnResponse["postgrestError"];
-  duplicateProfileInfo?: EdgeFnResponse["duplicateProfileInfo"];
-  extras?: string[];
-  warnings?: string[];
-}): string[] {
-  const lines: string[] = [];
-  const statusLabel = args.status ?? "?";
-  lines.push(`HTTP ${statusLabel} ${args.code}`);
-  lines.push(mapFnError(args.code));
-  if (args.missing && args.missing.length > 0) {
-    lines.push(`Missing Edge Function secrets: ${args.missing.join(", ")}`);
-  }
-  if (args.postgrestError) {
-    const pg = args.postgrestError;
-    if (pg.code) lines.push(`PostgREST code: ${pg.code}`);
-    if (pg.message) lines.push(`PostgREST message: ${pg.message}`);
-    if (pg.details) lines.push(`PostgREST details: ${pg.details}`);
-    if (pg.hint) lines.push(`PostgREST hint: ${pg.hint}`);
-  }
-  if (args.duplicateProfileInfo) {
-    const d = args.duplicateProfileInfo;
-    lines.push(`Duplicate profile rows seen: ${d.rowCountSeen}`);
-  }
-  if (args.warnings && args.warnings.length > 0) {
-    for (const w of args.warnings) lines.push(`Warning: ${w}`);
-  }
-  if (args.extras && args.extras.length > 0) {
-    for (const e of args.extras) {
-      // Skip the bare repeat of the code token; we've already mapped it.
-      if (e === args.code) continue;
-      // Skip known token-only errors mapped above.
-      if (FN_ERROR_MESSAGES[e]) continue;
-      lines.push(e);
-    }
-  }
-  return lines.map(redact);
-}
+const tokenForStatus = makeTokenForStatus({
+  unauthorized: "invalid_or_expired_session",
+  forbidden: "super_admin_required",
+  notFound: "function_not_deployed_or_wrong_name",
+  serverError: "db_error",
+  fallback: "db_error",
+});
 
 // Map an Edge Function failure response to display lines. Both failure paths —
 // the thrown-Response body and the `ok: false` data payload — carry the same
@@ -179,26 +118,16 @@ function errorLinesFrom(
   return buildErrorLines({
     status,
     code,
+    mapFnError,
+    messages: FN_ERROR_MESSAGES,
     missing: source.missing,
     postgrestError: source.postgrestError,
     duplicateProfileInfo: source.duplicateProfileInfo,
+    formatDuplicateLine: (d) =>
+      `Duplicate profile rows seen: ${d.rowCountSeen}`,
     extras: source.errors,
     warnings: source.warnings,
   });
-}
-
-function readFromForm(input: unknown): Record<string, unknown> {
-  if (input instanceof FormData) {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of input.entries()) {
-      out[key] = value === null ? undefined : String(value);
-    }
-    return out;
-  }
-  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
-    return input as Record<string, unknown>;
-  }
-  return {};
 }
 
 // Shared invite workflow. `delivery` selects how the credential reaches the
@@ -212,7 +141,7 @@ async function runInvite(
   const auth = await requireSuperAdminSession();
   if (!auth.ok) return actionFail([auth.error]);
 
-  const raw = readFromForm(input);
+  const raw = readFormPayloadStringified(input);
   const v = validateInviteUserPayload(raw);
   if (!v.ok) return actionFail(v.errors);
 
@@ -242,7 +171,7 @@ async function runInvite(
   );
 
   if (error) {
-    const { status, body } = await extractErrorBody(error);
+    const { status, body } = await extractErrorBody<EdgeFnResponse>(error);
     return actionFail(errorLinesFrom(body ?? {}, status));
   }
 
