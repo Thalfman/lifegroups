@@ -261,16 +261,20 @@ test.describe("group health triage + editing surface", () => {
     await page.keyboard.press("Escape");
 
     // The non-blocking prompt appears with the rating-specific copy; the drawer
-    // stays open behind it (Escape did not discard).
+    // stays open behind it (Escape did not discard). While the modal prompt is
+    // up Radix marks the drawer aria-hidden, so it drops out of the ARIA-role
+    // tree — assert it is still mounted and visible via its element, not its
+    // role, here.
     const prompt = page.getByRole("alertdialog");
     await expect(prompt).toBeVisible();
     await expect(
       prompt.getByText("Discard unsaved changes to this group's ratings?")
     ).toBeVisible();
-    await expect(dialog).toBeVisible();
+    await expect(page.locator('[role="dialog"]')).toBeVisible();
 
     // Cancel must dismiss only the prompt and leave the editor open to keep
-    // editing — the #669 regression: clicking Cancel left the prompt stuck.
+    // editing — the #669 regression: clicking Cancel left the prompt stuck. Once
+    // the prompt is gone the drawer is back in the ARIA tree as a dialog.
     await prompt.getByRole("button", { name: "Cancel" }).click();
     await expect(page.getByRole("alertdialog")).toHaveCount(0);
     await expect(dialog).toBeVisible();
