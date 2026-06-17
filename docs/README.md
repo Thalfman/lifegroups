@@ -51,6 +51,7 @@ has been archived.
 | [`plans/ADMIN_INTERACTION_MODEL_PRD.md`](./plans/ADMIN_INTERACTION_MODEL_PRD.md)             | Admin interaction model for progressive disclosure, density reduction, and accessible list-to-detail editing across `/admin`. |
 | [`plans/CONCEPT_RECONCILIATION.md`](./plans/CONCEPT_RECONCILIATION.md)                       | 🧹 Backlog/audit of where the pre-pivot "broad platform" concept still lingers in code, schema, and copy. Not a build spec.   |
 | [`plans/FRESH_SLATE_AND_ADMIN_COCKPIT_PRD.md`](./plans/FRESH_SLATE_AND_ADMIN_COCKPIT_PRD.md) | Proposed (design-only) — Super-Admin "Danger Zone" power tools + admin landing-page ergonomics. Not yet built.                |
+| [`plans/REPO_CONSOLIDATION_SIMPLIFICATION.md`](./plans/REPO_CONSOLIDATION_SIMPLIFICATION.md) | 🧹 Proposal — behavior- and interface-preserving internal consolidation (read-seam, dedup, shared primitives, monolith splits, docs hygiene). Not yet built. |
 
 ## Engineering reference
 
