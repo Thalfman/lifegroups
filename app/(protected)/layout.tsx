@@ -4,6 +4,7 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { namePendingRedirectTarget } from "@/lib/auth/name-pending";
 import { UsageBeacon } from "@/components/usage/usage-beacon";
 import { OfflineBanner } from "@/components/lg/OfflineBanner";
+import { InstallNudge } from "@/components/pwa/install-nudge";
 
 export default async function ProtectedLayout({
   children,
@@ -31,6 +32,7 @@ export default async function ProtectedLayout({
       return (
         <>
           <OfflineBanner />
+          <InstallNudge />
           <UsageBeacon />
           {children}
         </>

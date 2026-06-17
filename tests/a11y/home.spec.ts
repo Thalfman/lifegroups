@@ -183,7 +183,10 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
     // ADR 0027: setup deep-links carry the from=setup return marker.
     await expect(
       checklist.getByRole("link", { name: /Import people/ })
-    ).toHaveAttribute("href", "/admin/super-admin?from=setup#people-import");
+    ).toHaveAttribute(
+      "href",
+      "/admin/settings?tab=system&from=setup#people-import"
+    );
     await expect(
       checklist.getByRole("link", { name: /Assign leaders/ })
     ).toHaveAttribute("href", "/admin/groups?tab=needs_setup&from=setup");

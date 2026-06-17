@@ -10,6 +10,7 @@ import { isStandalone, type BeforeInstallPromptEvent } from "./install";
 
 let deferred: BeforeInstallPromptEvent | null = null;
 let installed = false;
+let promptConsumed = false;
 let started = false;
 const listeners = new Set<() => void>();
 
@@ -41,8 +42,14 @@ export function startInstallPromptCapture(): void {
 export function getInstallSnapshot(): {
   deferred: BeforeInstallPromptEvent | null;
   installed: boolean;
+  // True once any in-app control has shown the native prompt and the user has
+  // resolved it (accepted or declined). App-wide, so a decline on one control
+  // (e.g. a page-header button) stops a second control (the nudge) from
+  // immediately offering the manual fallback for a prompt the user just
+  // dismissed.
+  promptConsumed: boolean;
 } {
-  return { deferred, installed };
+  return { deferred, installed, promptConsumed };
 }
 
 export function subscribeInstallPrompt(listener: () => void): () => void {
@@ -52,9 +59,14 @@ export function subscribeInstallPrompt(listener: () => void): () => void {
   };
 }
 
-/** A deferred prompt can only be used once; drop it after prompting. */
+/**
+ * A deferred prompt can only be used once; drop it after prompting. Records that
+ * the native prompt was consumed so other mounted controls don't treat the
+ * now-empty prompt as "fall back to the manual guide".
+ */
 export function clearDeferredPrompt(): void {
   if (deferred === null) return;
   deferred = null;
+  promptConsumed = true;
   notify();
 }
