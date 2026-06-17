@@ -48,16 +48,26 @@ can be scheduled, scoped down, or deferred on its own.
   `/leader`, `/over-shepherd`, the public auth routes, and **all frozen/off-nav
   routes** (`/admin/planning`, `/admin/launch-planning`, `/admin/calendar`,
   `/admin/guests`, `/admin/follow-ups`, `/admin/group-health`,
-  `/admin/leader-pipeline`, `/admin/check-ins/**`) resolving exactly as today.
+  `/admin/leader-pipeline`, `/admin/shepherd-care/**`, `/admin/check-ins/**`,
+  and the leader-facing `/leader/[groupId]/checkin`) resolving exactly as today.
   Note `/admin/leader-pipeline` is a Care-owned frozen alias in
   `lib/nav/active-nav.ts` with a live revalidation path in
   `app/(protected)/admin/leader-pipeline/actions.ts` — bookmarked URLs and that
-  action must keep working.
+  action must keep working. `/admin/shepherd-care/**` (host + descendants like
+  `/over-shepherds`) is also Care-owned in `active-nav.ts`, so the whole family
+  is preserved, not just the host. `/leader/[groupId]/checkin` carries its **own**
+  `check_ins` frozen gate (ADR 0002/0009) independent of the live `/leader/**`
+  surface — it must keep showing its current frozen notice, not get folded into
+  the Leader surface.
 - Keep the existing `ActionResult` form contract, server-action exports,
-  Supabase RPC names, feature-flag keys, and route search-param compatibility
-  (legacy `?tab=`/`?view=`/`?filter=` keys keep selecting the same canonical
-  view via `normalizeCareTabKey` and `lib/nav/active-nav.ts`'s
-  `NAV_ALIAS_TO_CANONICAL`, which stays the source of truth).
+  Supabase RPC names, feature-flag keys, and route search-param compatibility.
+  `?tab=`/`?view=`/`?filter=` is a live contract on **every** surface, not just
+  Care — each route's own normalizer must keep selecting the same panel:
+  `normalizeCareTabKey` (Care), `resolveMultiplyInitialTab` (Multiply, incl.
+  `/admin/multiply?tab=leaders`), Settings' `?tab=` deep links from the Multiply
+  aliases (e.g. `?tab=groups`/`?tab=multiply`), `resolveGroupListTab` (Groups,
+  e.g. `?tab=needs_setup`), and the People tabs. `lib/nav/active-nav.ts`'s
+  `NAV_ALIAS_TO_CANONICAL` stays the source of truth for active-nav ownership.
 - No migrations, no RLS changes, no dropped tables/columns, no deleted frozen
   surfaces, no renamed user-facing concepts.
 
@@ -202,6 +212,16 @@ links stay stable while internals stop duplicating loaders.
 `NAV_ALIAS_TO_CANONICAL` and its tests remain the source of truth for active-nav
 behavior.
 
+**Per-alias prop/search parity is part of the contract — not just "200 + nav
+ownership".** Aliases intentionally diverge from their canonical host in the
+props they pass: e.g. `app/(protected)/admin/planning/page.tsx` passes
+`planningViews` while `app/(protected)/admin/calendar/page.tsx` deliberately
+omits it to keep the frozen calendar on its pre-#331 behavior. Routing
+`/admin/calendar` through the canonical component without reproducing that
+omission would silently add the Planning saved-view UI. So each alias must be
+captured with its exact current props + search behavior, and tests must assert
+that parity (rendered surface, not only status code), alias by alias.
+
 ### 9. Documentation hygiene
 
 - **Resolve the ADR-0022 filename collision.** Two files share `0022`:
@@ -280,9 +300,13 @@ behavior.
 - **Read-seam:** pure `buildXData` tests for success, failed-read degradation,
   missing-client fallback, and permission/not-found behavior; existing column-
   allowlist tests stay green; no `select("*")` introduced.
-- **Route compatibility:** frozen & alias routes still render (200, not 302);
-  legacy search params still select the same canonical tab/view; active nav maps
-  aliases to the correct canonical area.
+- **Route compatibility:** frozen & alias routes still render with their
+  **current** status (200 where they render, the existing `redirect()` where they
+  redirect); each alias keeps its exact props/rendered surface (e.g. calendar
+  without the Planning saved-view UI); every route's `?tab=`/`?view=`/`?filter=`
+  normalizer still selects the same panel; active nav maps aliases to the correct
+  canonical area; the `/leader/[groupId]/checkin` frozen gate still shows its
+  notice.
 - **Write-action:** existing action tests stay green; any deduplicated helper
   gets tests for validation failure, guard failure, RPC error mapping, success,
   and revalidate targets; no direct `.insert/.update/.delete/.upsert` from
