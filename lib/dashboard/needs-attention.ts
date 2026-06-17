@@ -200,7 +200,7 @@ const TOP_ACTION_RANK: Record<string, number> = {
   follow_ups: 4,
 };
 
-function plural(n: number, one: string, many: string): string {
+function pluralWord(n: number, one: string, many: string): string {
   return n === 1 ? one : many;
 }
 
@@ -208,19 +208,19 @@ function imperativeAction(item: NeedsAttentionItem): string {
   const n = item.count;
   switch (item.key) {
     case "no_leader":
-      return `Assign ${plural(n, "a leader", "leaders")} to ${n} ${plural(n, "group", "groups")}`;
+      return `Assign ${pluralWord(n, "a leader", "leaders")} to ${n} ${pluralWord(n, "group", "groups")}`;
     case "setup_gaps":
       // count sums noCapacity + noMeetingDayTime + noMembers, so it is a count
       // of gaps (one group can contribute several), not a count of groups.
-      return `Resolve ${n} setup ${plural(n, "gap", "gaps")}`;
+      return `Resolve ${n} setup ${pluralWord(n, "gap", "gaps")}`;
     case "care_attention":
-      return `Reach out to ${n} ${plural(n, "leader", "leaders")} needing care`;
+      return `Reach out to ${n} ${pluralWord(n, "leader", "leaders")} needing care`;
     case "health":
       // count = missing + needs_follow_up; "missing" checks were never done, so
       // they are not "overdue" — mirror the #260 "overdue or missing" wording.
-      return `Review ${n} overdue or missing health ${plural(n, "check", "checks")}`;
+      return `Review ${n} overdue or missing health ${pluralWord(n, "check", "checks")}`;
     case "follow_ups":
-      return `Resolve ${n}${item.plus ? "+" : ""} open ${plural(n, "follow-up", "follow-ups")}`;
+      return `Resolve ${n}${item.plus ? "+" : ""} open ${pluralWord(n, "follow-up", "follow-ups")}`;
     default:
       return `${item.label}: ${n}${item.plus ? "+" : ""}`;
   }

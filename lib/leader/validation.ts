@@ -101,8 +101,10 @@ function readAttendance(raw: unknown): {
   if (!Array.isArray(raw))
     return { entries: [], errors: ["Attendance data was malformed."] };
 
-  const seen = new Set<string>();
-  const entries: LeaderCheckinAttendanceEntry[] = [];
+  // Last entry wins on a duplicate member id (the RPC also de-dupes
+  // server-side); a Map keyed by the normalized id makes that an O(1) overwrite
+  // that keeps the member's original position, instead of a linear re-scan.
+  const byMember = new Map<string, LeaderCheckinAttendanceEntry>();
   const errors: string[] = [];
 
   for (const item of raw) {
@@ -121,22 +123,13 @@ function readAttendance(raw: unknown): {
       continue;
     }
     const normalized = normalizeUuid(memberId);
-    if (seen.has(normalized)) {
-      // Last entry wins; the RPC also de-dupes server-side.
-      // Replace the prior entry to keep client and server in sync.
-      const existing = entries.findIndex((e) => e.member_id === normalized);
-      if (existing >= 0)
-        entries[existing] = {
-          member_id: normalized,
-          attendance_status: status,
-        };
-      continue;
-    }
-    seen.add(normalized);
-    entries.push({ member_id: normalized, attendance_status: status });
+    byMember.set(normalized, {
+      member_id: normalized,
+      attendance_status: status,
+    });
   }
 
-  return { entries, errors };
+  return { entries: [...byMember.values()], errors };
 }
 
 export function validateLeaderCheckinPayload(

@@ -4,7 +4,10 @@
 // re-validates everything at the database layer (it is the real trust boundary).
 
 import { isUuid } from "@/lib/shared/uuid";
-import type { ValidationResult } from "@/lib/shared/validation-primitives";
+import {
+  isRecord,
+  type ValidationResult,
+} from "@/lib/shared/validation-primitives";
 
 export type { ValidationResult };
 
@@ -16,10 +19,8 @@ export type LeaderGroupNotePayload = {
   body: string;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
+// Empty/whitespace-only collapses to null (this surface treats a blank note as
+// absent), which the shared trimString does not do — so it stays local.
 function trimString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
