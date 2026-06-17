@@ -1,13 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
+import { expectNoBlockingAxeViolations, gotoHarness, PHONE } from "./harness";
 
 // Branded offline / network-error state (#559). Verifies the reusable app-like
 // error state and the offline banner render in the app's visual language with a
 // clear retry path, and stay accessible — at a phone viewport, since the state
 // is most likely to be hit on mobile / an installed PWA.
 
-const PHONE = { width: 375, height: 812 };
 const SURFACE = '[data-a11y-surface="offline-error"]';
 
 test.describe("offline / error state (#559)", () => {

@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { seededCreds, signIn } from "./harness";
 
 // #597 — seeded-auth ROLE-ROUTING smoke. The leader-routes + mobile-smoke specs
 // already render the LIVE admin and Leader surfaces under a real session; this
@@ -14,19 +15,11 @@ import { expect, test, type Page } from "@playwright/test";
 // stands up a local seeded Supabase and supplies the creds. It never broadens
 // auth: it only asserts the gates already in place.
 
-const ADMIN_EMAIL = process.env.A11Y_ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.A11Y_ADMIN_PASSWORD;
-const ADMIN_CREDS = Boolean(ADMIN_EMAIL && ADMIN_PASSWORD);
-
-const LEADER_EMAIL = process.env.A11Y_LEADER_EMAIL;
-const LEADER_PASSWORD = process.env.A11Y_LEADER_PASSWORD;
-const LEADER_CREDS = Boolean(LEADER_EMAIL && LEADER_PASSWORD);
-
-const OVER_SHEPHERD_EMAIL = process.env.A11Y_OVER_SHEPHERD_EMAIL;
-const OVER_SHEPHERD_PASSWORD = process.env.A11Y_OVER_SHEPHERD_PASSWORD;
-const OVER_SHEPHERD_CREDS = Boolean(
-  OVER_SHEPHERD_EMAIL && OVER_SHEPHERD_PASSWORD
-);
+const {
+  admin: ADMIN,
+  leader: LEADER,
+  overShepherd: OVER_SHEPHERD,
+} = seededCreds();
 
 const ADMIN_SKIP =
   "Set A11Y_ADMIN_EMAIL + A11Y_ADMIN_PASSWORD (npm run seed:test-auth) and " +
@@ -38,18 +31,6 @@ const OVER_SHEPHERD_SKIP =
   "Set A11Y_OVER_SHEPHERD_EMAIL + A11Y_OVER_SHEPHERD_PASSWORD (npm run " +
   "seed:test-auth) and serve against a local seeded Supabase to exercise " +
   "over-shepherd routing.";
-
-async function signIn(
-  page: Page,
-  email: string,
-  password: string
-): Promise<void> {
-  await page.goto("/login", { waitUntil: "networkidle" });
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
-}
 
 test.describe("seeded-auth route smoke — anonymous boundary", () => {
   // No creds needed: an unauthenticated visit to a protected route must land on
@@ -72,8 +53,8 @@ test.describe("seeded-auth route smoke — anonymous boundary", () => {
 
 test.describe("seeded-auth route smoke — Ministry Admin routing", () => {
   test.beforeEach(async ({ page }) => {
-    test.skip(!ADMIN_CREDS, ADMIN_SKIP);
-    await signIn(page, ADMIN_EMAIL!, ADMIN_PASSWORD!);
+    test.skip(!ADMIN.present, ADMIN_SKIP);
+    await signIn(page, ADMIN.email!, ADMIN.password!);
   });
 
   for (const path of [
@@ -109,8 +90,8 @@ test.describe("seeded-auth route smoke — Over-Shepherd routing boundary", () =
   // from the admin and Super Admin surfaces. Gated on over-shepherd creds, so it
   // skips cleanly until the seed tooling provisions an over-shepherd auth user.
   test.beforeEach(async ({ page }) => {
-    test.skip(!OVER_SHEPHERD_CREDS, OVER_SHEPHERD_SKIP);
-    await signIn(page, OVER_SHEPHERD_EMAIL!, OVER_SHEPHERD_PASSWORD!);
+    test.skip(!OVER_SHEPHERD.present, OVER_SHEPHERD_SKIP);
+    await signIn(page, OVER_SHEPHERD.email!, OVER_SHEPHERD.password!);
   });
 
   test("an Over-Shepherd lands on their own surface", async ({ page }) => {
@@ -134,8 +115,8 @@ test.describe("seeded-auth route smoke — Over-Shepherd routing boundary", () =
 
 test.describe("seeded-auth route smoke — Leader routing boundary", () => {
   test.beforeEach(async ({ page }) => {
-    test.skip(!LEADER_CREDS, LEADER_SKIP);
-    await signIn(page, LEADER_EMAIL!, LEADER_PASSWORD!);
+    test.skip(!LEADER.present, LEADER_SKIP);
+    await signIn(page, LEADER.email!, LEADER.password!);
   });
 
   test("a Leader lands on their own care surface", async ({ page }) => {

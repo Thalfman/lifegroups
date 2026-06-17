@@ -1,6 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { expectNoBlockingAxeViolations, gotoHarness, HARNESS } from "./harness";
+import {
+  expectNoBlockingAxeViolations,
+  gotoHarness,
+  gotoSetupHome,
+} from "./harness";
 
 // Issue #480 (P2.4, HOME_CARE_SETTINGS_FINISH_LINE_PLAN) — Home a11y spec.
 // Mirrors the Settings suite: the real DashboardClient tree rendered in the
@@ -169,11 +173,7 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
   });
 
   test("setup checklist exposes guided recovery CTAs", async ({ page }) => {
-    const response = await page.goto(`${HARNESS}?homeVariant=setup`, {
-      waitUntil: "networkidle",
-    });
-    expect(response?.status(), "harness route must be enabled").toBe(200);
-    await expect(page.locator(HOME)).toBeVisible();
+    await gotoSetupHome(page);
 
     const checklist = page.locator(
       `${HOME} section[aria-labelledby="setup-recovery-checklist"]`

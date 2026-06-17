@@ -1,6 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
+import {
+  expectNoBlockingAxeViolations,
+  expectNoHorizontalOverflow,
+  gotoHarness,
+  PHONE,
+  surface,
+} from "./harness";
 
 // Admin Interaction Model req 13 (#264) — full responsive audit. The P0 work
 // already added the mobile helper classes (.lg-m-grid-stack, .lg-m-filterbar,
@@ -22,10 +28,6 @@ import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 // harness, so a new surface joins it automatically; the per-surface overflow
 // check iterates the explicit SURFACE_IDS list below, so a new surface must be
 // added there to be checked for horizontal overflow.
-
-// A narrow phone. 375px is the iPhone SE / mini class width and sits under the
-// repo's 767px mobile breakpoint, so the .lg-m-* rules are active.
-const PHONE = { width: 375, height: 812 };
 
 // Every surface mounted in the harness, listed explicitly so the per-surface
 // overflow loop covers each one (add a new harness surface here too). An id
@@ -58,26 +60,19 @@ test.describe("admin surfaces are usable on a phone viewport", () => {
 
   for (const id of SURFACE_IDS) {
     test(`${id}: no horizontal page overflow at 375px`, async ({ page }) => {
-      const surface = page.locator(`[data-a11y-surface="${id}"]`);
-      await expect(surface).toBeVisible();
-
       // scrollWidth > clientWidth means a descendant overflowed the section's
       // content box. A 1px slack absorbs sub-pixel rounding. Content that is
       // legitimately wide (a 7-column data table) lives inside an
       // `overflow-x: auto` wrapper, which clips here and does not widen the
       // section — so this stays green while the table scrolls inside its own
       // region.
-      const overflow = await surface.evaluate((el) => {
-        const target = el as HTMLElement;
-        return target.scrollWidth - target.clientWidth;
-      });
-      expect(
-        overflow,
-        `surface "${id}" overflows its content box by ${overflow}px at 375px ` +
+      await expectNoHorizontalOverflow(
+        surface(page, id),
+        `surface "${id}" overflows its content box by {overflow}px at 375px ` +
           `(content wider than the viewport forces horizontal page scroll — ` +
           `give the wide element its own overflow-x:auto wrapper or a mobile ` +
           `collapse helper)`
-      ).toBeLessThanOrEqual(1);
+      );
     });
   }
 
