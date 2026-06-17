@@ -75,14 +75,28 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
   }
 
   // A Readiness-grid cell deep-links to /admin/multiply?tab=plan#seg-…, but the
-  // Plan panel is dynamically imported (ssr:false), so the seg- anchor is absent
-  // when the browser does its native fragment scroll on a cold load. Re-run the
-  // scroll once the panel chunk mounts and the target element exists.
+  // Plan panel is dynamically imported (ssr:false) and only mounts once its tab
+  // is active, so the seg- anchor is absent when the browser performs its hash
+  // scroll. Re-run the scroll once the target exists — on mount (cold load),
+  // whenever the active tab changes (a client-side "View plan" click mounts the
+  // Plan panel after the hash has already changed), and on any later hashchange
+  // (jumping between segments on the same tab). scrollToHashTarget polls until
+  // the element appears, so it tolerates the chunk still loading.
   useEffect(() => {
-    const raw = decodeURIComponent(window.location.hash.replace(/^#/, ""));
-    if (!raw) return;
-    return scrollToHashTarget(raw);
-  }, []);
+    let cancel = () => {};
+    const run = () => {
+      const raw = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+      if (!raw) return;
+      cancel();
+      cancel = scrollToHashTarget(raw);
+    };
+    run();
+    window.addEventListener("hashchange", run);
+    return () => {
+      cancel();
+      window.removeEventListener("hashchange", run);
+    };
+  }, [active]);
 
   function selectTab(key: MultiplyTabKey) {
     if (key === active) return;
