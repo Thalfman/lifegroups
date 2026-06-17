@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
 import { cn } from "@/lib/utils";
+import { PEOPLE_IMPORT_HREF } from "@/lib/admin/people-import";
 import { PeopleDirectory } from "@/components/admin/people-directory";
 import { LeaderProfileForm } from "@/components/admin/forms/leader-profile-form";
 import { MemberForm } from "@/components/admin/forms/member-form";
@@ -290,7 +291,7 @@ function PeopleSetupPath({
       <div className="mt-3 flex flex-wrap items-center gap-2.5 font-sans text-sm">
         {isSuperAdmin ? (
           <Link
-            href="/admin/super-admin#people-import"
+            href={PEOPLE_IMPORT_HREF}
             className="font-semibold text-clay no-underline hover:underline"
           >
             Import people
