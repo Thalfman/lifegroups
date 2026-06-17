@@ -6,12 +6,13 @@ import {
   adminAssignMemberToGroup,
 } from "@/app/(protected)/admin/people/actions";
 import {
-  errorTextClassName,
   fieldLabelClassName,
   fieldSelectClassName,
-  successTextClassName,
 } from "@/components/admin/forms/field-styles";
-import { useActionForm } from "@/components/admin/forms/action-form";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import { cn } from "@/lib/utils";
 
 // Person-centric placement: the person is fixed (this detail page) and the
@@ -114,18 +115,7 @@ export function PersonGroupAssign({
           There are no active groups to assign this person to yet.
         </p>
       ) : null}
-      {state && !state.ok ? (
-        <ul className="m-0 grid list-none gap-1.5 p-0">
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p className={errorTextClassName}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? (
-        <p className={successTextClassName}>Assigned to group.</p>
-      ) : null}
+      <FormStatus state={state} successText="Assigned to group." />
     </form>
   );
 }

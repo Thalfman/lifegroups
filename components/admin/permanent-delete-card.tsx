@@ -41,16 +41,7 @@ import {
   DangerCard,
   DangerSection,
 } from "@/components/admin/danger-zone-card-shell";
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-US", {
-    timeZone: "UTC",
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
+import { formatIsoDateTimeUtc } from "@/lib/shared/date";
 
 export function PermanentDeleteCard({
   targets,
@@ -346,11 +337,12 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
           <strong className="text-ink">{tombstone.label}</strong>{" "}
           <span className="text-ink3">({tombstone.entityType})</span>
         </span>
-        <span>{formatTime(tombstone.deletedAt)} UTC</span>
+        <span>{formatIsoDateTimeUtc(tombstone.deletedAt)} UTC</span>
       </div>
       {alreadyRestored ? (
         <span className="font-sans text-xs text-ink3">
-          Already restored {formatTime(tombstone.restoredAt as string)} UTC.
+          Already restored{" "}
+          {formatIsoDateTimeUtc(tombstone.restoredAt as string)} UTC.
         </span>
       ) : (
         <div className="flex flex-wrap items-center gap-2">

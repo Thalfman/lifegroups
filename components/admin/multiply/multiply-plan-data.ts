@@ -40,6 +40,15 @@ export type MultiplyPlanReads = {
   fetchCategoriesForAudience: OmitClient<typeof fetchCategoriesForAudience>;
 };
 
+// Project a category read (which may have failed → null) into the bare
+// `{ id, label }` options the group-type picker takes, degrading to an empty
+// list rather than blocking the plan.
+function toOpts(
+  rows: ReadonlyArray<{ id: string; label: string }> | null
+): { id: string; label: string }[] {
+  return (rows ?? []).map((c) => ({ id: c.id, label: c.label }));
+}
+
 export function supabaseMultiplyPlanReads(
   client: AppSupabaseClient
 ): MultiplyPlanReads {
@@ -90,18 +99,9 @@ export async function buildMultiplyPlanData(
   // The type picker degrades to empty rather than blocking the plan on a
   // category read failure — the edit form preserves a candidate's existing type.
   const typeOptions = buildGroupTypeOptions({
-    men: (batch.results.menCats.data ?? []).map((c) => ({
-      id: c.id,
-      label: c.label,
-    })),
-    women: (batch.results.womenCats.data ?? []).map((c) => ({
-      id: c.id,
-      label: c.label,
-    })),
-    mixed: (batch.results.mixedCats.data ?? []).map((c) => ({
-      id: c.id,
-      label: c.label,
-    })),
+    men: toOpts(batch.results.menCats.data),
+    women: toOpts(batch.results.womenCats.data),
+    mixed: toOpts(batch.results.mixedCats.data),
   });
 
   const todayIso = new Date().toISOString().slice(0, 10);

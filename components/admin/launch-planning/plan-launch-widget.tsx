@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { P, fontBody } from "@/lib/pastoral";
 import { PButton } from "@/components/pastoral/button";
+import { eyebrowStyle, panelTitleStyle } from "./section-styles";
 import type { LaunchPlanningAssumptions } from "@/lib/admin/launch-planning";
 
 // The scenario form is only mounted after "Plan a launch" is clicked, so its
@@ -80,20 +81,3 @@ export function PlanLaunchWidget({
     </div>
   );
 }
-
-const eyebrowStyle: CSSProperties = {
-  fontFamily: fontSans,
-  fontSize: 10,
-  letterSpacing: 1.5,
-  textTransform: "uppercase",
-  color: P.ink3,
-  fontWeight: 600,
-};
-
-const panelTitleStyle: CSSProperties = {
-  margin: "4px 0 0",
-  fontFamily: fontBody,
-  fontSize: 18,
-  color: P.ink,
-  fontWeight: 600,
-};

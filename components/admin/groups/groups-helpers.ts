@@ -6,6 +6,7 @@ import type {
   ProfilesRow,
 } from "@/types/database";
 import type { AttendanceSessionStatus } from "@/types/enums";
+import { formatMeetingTime } from "@/lib/shared/meeting-time";
 
 // The resolved "leader · co-leader" text, or null when the group has no active
 // leader. Shared by the card's Setup zone and the table's Leader column so both
@@ -58,17 +59,6 @@ function cadenceLabel(group: GroupsRow): string | null {
   if (group.meeting_week_parity === "odd") return "Bi-weekly · odd weeks";
   if (group.meeting_week_parity === "even") return "Bi-weekly · even weeks";
   return "Bi-weekly";
-}
-
-function formatMeetingTime(value: string | null): string | null {
-  if (!value) return null;
-  const match = /^(\d{2}):(\d{2})/.exec(value);
-  if (!match) return value;
-  const hour = Number.parseInt(match[1], 10);
-  const minute = match[2];
-  const suffix = hour >= 12 ? "p" : "a";
-  const display = ((hour + 11) % 12) + 1;
-  return `${display}:${minute}${suffix}`;
 }
 
 export function formatWeek(iso: string): string {

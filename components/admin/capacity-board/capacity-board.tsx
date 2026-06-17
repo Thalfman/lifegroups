@@ -216,13 +216,13 @@ const STATUS_OPTIONS: CapacityStatus[] = [
 
 export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
   const [segment, setSegment] = useState<string>("all");
-  const [status, setStatus] = useState<string>("all");
+  const [status, setStatus] = useState<CapacityStatus | "all">("all");
 
   const visible = useMemo(
     () =>
       filterBoard(model.rows, {
         segment: segment === "all" ? null : segment,
-        status: status === "all" ? null : (status as CapacityStatus),
+        status: status === "all" ? null : status,
       }),
     [model.rows, segment, status]
   );
@@ -338,7 +338,9 @@ export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
             <select
               id="cb-status"
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              onChange={(e) =>
+                setStatus(e.target.value as CapacityStatus | "all")
+              }
               style={fieldSelectStyle}
             >
               <option value="all">All statuses</option>

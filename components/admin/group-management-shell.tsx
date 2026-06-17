@@ -89,15 +89,7 @@ export function GroupManagementShell({
   // ADR 0027: arrived via a setup deep-link; carry the marker into detail links.
   fromSetup?: boolean;
 }) {
-  const anyError =
-    data.errors.groups ||
-    data.errors.leaders ||
-    data.errors.profiles ||
-    data.errors.memberships ||
-    data.errors.sessions ||
-    data.errors.settings ||
-    data.errors.health ||
-    data.errors.categoryOptions;
+  const anyError = Object.values(data.errors).some(Boolean);
 
   return (
     <div className="grid gap-9">

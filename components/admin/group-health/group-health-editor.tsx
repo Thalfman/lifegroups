@@ -19,6 +19,10 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
+import {
+  GROUP_HEALTH_RATING_MIN,
+  GROUP_HEALTH_RATING_MAX,
+} from "@/lib/admin/validation/group-health";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
 import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
 import { PButton } from "@/components/pastoral/button";
@@ -163,8 +167,8 @@ function GroupHealthEditorBody({
             className={FIELD_INPUT}
             type="number"
             name="spiritual_growth_score"
-            min={1}
-            max={5}
+            min={GROUP_HEALTH_RATING_MIN}
+            max={GROUP_HEALTH_RATING_MAX}
             defaultValue={row.spiritual_growth_score ?? ""}
           />
         </div>
@@ -181,8 +185,8 @@ function GroupHealthEditorBody({
             className={FIELD_INPUT}
             type="number"
             name="group_question_score"
-            min={1}
-            max={5}
+            min={GROUP_HEALTH_RATING_MIN}
+            max={GROUP_HEALTH_RATING_MAX}
             defaultValue={row.group_question_score ?? ""}
           />
         </div>

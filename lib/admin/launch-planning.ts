@@ -34,6 +34,41 @@ import {
   countActiveMembersByGroup,
   indexOverridesByGroup,
 } from "@/lib/admin/group-capacity-inputs";
+import { P } from "@/lib/pastoral";
+
+// ---------------------------------------------------------------------------
+// Presentation helpers (shared across the launch-planning panels)
+// ---------------------------------------------------------------------------
+
+/**
+ * Format a number with a fixed number of fraction digits, falling back to
+ * an em-dash for non-finite values. Shared by the results / scenarios panels.
+ */
+export function fmtNumber(n: number, fractionDigits = 0): string {
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+}
+
+/**
+ * The label + accent color for a launch-planning risk level. Shared by the
+ * results / scenarios / summary panels so they read identically.
+ */
+export function riskTone(level: LaunchPlanningRiskLevel): {
+  label: string;
+  accent: string;
+} {
+  switch (level) {
+    case "ok":
+      return { label: "OK", accent: P.sage };
+    case "watch":
+      return { label: "Watch", accent: P.terra };
+    case "launch_needed":
+      return { label: "Launch needed", accent: "#923220" };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Assumptions: typed shape + defaults + decoder

@@ -1,10 +1,7 @@
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
+import { CareRowLink } from "@/components/admin/shepherd-care/care-row-link";
 import type { CareUpcomingTouchpoint } from "@/lib/admin/shepherd-care-dashboard";
-
-const ROW_LINK =
-  "flex min-h-11 items-baseline justify-between gap-3 border-b border-lineSoft py-2.5 text-inherit no-underline transition-colors duration-150 hover:bg-surfaceAlt";
 
 export function UpcomingTouchpointsCard({
   items,
@@ -23,28 +20,22 @@ export function UpcomingTouchpointsCard({
           {items.map((item) => {
             const overdue = item.daysFromToday < 0;
             return (
-              <Link
+              <CareRowLink
                 key={item.shepherdProfileId}
                 href={item.href}
-                className={ROW_LINK}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="font-sans text-base font-semibold text-ink [overflow-wrap:anywhere]">
-                    {item.shepherdName}
+                title={item.shepherdName}
+                subtitle={`Due ${item.dueOn}`}
+                trailing={
+                  <div
+                    className={cn(
+                      "whitespace-nowrap font-sans text-xs font-semibold",
+                      overdue ? "text-clayDeep" : "text-ink2"
+                    )}
+                  >
+                    {item.relativeLabel}
                   </div>
-                  <div className="mt-0.5 font-sans text-sm text-ink3">
-                    Due {item.dueOn}
-                  </div>
-                </div>
-                <div
-                  className={cn(
-                    "whitespace-nowrap font-sans text-xs font-semibold",
-                    overdue ? "text-clayDeep" : "text-ink2"
-                  )}
-                >
-                  {item.relativeLabel}
-                </div>
-              </Link>
+                }
+              />
             );
           })}
         </div>

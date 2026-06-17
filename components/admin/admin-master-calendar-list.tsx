@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef } from "react";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
+import { PBadge } from "@/components/pastoral/atoms";
 import { dateLabel, formatClock } from "@/lib/calendar/occurrences";
 import {
   friendlyEventStatusLabel,
@@ -14,13 +14,10 @@ import {
   occurrenceAccessibleName,
   occurrenceCalendarLinkName,
 } from "@/lib/admin/master-calendar-label";
-import { statusStripeColor } from "./admin-master-calendar-status";
-
-function statusTone(status: MasterOccurrence["status"]): PTone {
-  if (status === "off") return "pause";
-  if (status === "cancelled") return "followup";
-  return "healthy";
-}
+import {
+  occurrenceStatusTone,
+  statusStripeColor,
+} from "./admin-master-calendar-status";
 
 export function AdminMasterCalendarList({
   occurrences,
@@ -146,7 +143,7 @@ function OccurrenceCard({
 }) {
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
-  const tone = statusTone(occurrence.status);
+  const tone = occurrenceStatusTone(occurrence.status);
   // Explicit, meaningful accessible name (#322): without it the button's name
   // is the concatenated child text (group + status/type + clock + leaders),
   // which reads as a run-on. The shared helper leads with the group, then the

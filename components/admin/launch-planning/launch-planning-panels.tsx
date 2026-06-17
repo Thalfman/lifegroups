@@ -16,7 +16,8 @@ import {
   MultiplicationPlanner,
   ScenariosPanel,
 } from "@/components/admin/launch-planning/lazy-panels";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { P, fontBody } from "@/lib/pastoral";
+import { SectionEyebrow } from "./section-styles";
 import type { LaunchPlanningPageData } from "./launch-planning-data";
 
 // The tab panels for launch planning, built once from the shared loader and
@@ -40,23 +41,6 @@ export type LaunchPlanningPanels = {
   capacityBoard: ReactNode;
   multiplicationPlanner: ReactNode;
 };
-
-function SectionEyebrow({ children }: { children: ReactNode }) {
-  return (
-    <span
-      style={{
-        fontFamily: fontSans,
-        fontSize: 10,
-        letterSpacing: 1.5,
-        textTransform: "uppercase",
-        color: P.ink3,
-        fontWeight: 600,
-      }}
-    >
-      {children}
-    </span>
-  );
-}
 
 export function buildLaunchPlanningPanels(
   data: LaunchPlanningPageData

@@ -5,7 +5,6 @@ import { PButton } from "@/components/pastoral/button";
 import { adminSetLeaderRubricGrade } from "@/app/(protected)/admin/shepherd-care/leader-grade-actions";
 import type { Rubric, RubricCriterion } from "@/lib/admin/health-rubric";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
-import type { GradeOverrideScope } from "@/lib/admin/group-health-override";
 import type {
   GroupHealthOverrideScope,
   LeaderHealthLetter,
@@ -76,10 +75,10 @@ export function LeaderHealthGradeEditor({
           : "",
     }))
   );
-  const [overrideLetter, setOverrideLetter] = useState<string>(
+  const [overrideLetter, setOverrideLetter] = useState<LeaderHealthLetter | "">(
     initialOverrideLetter ?? ""
   );
-  const [overrideScope, setOverrideScope] = useState<string>(
+  const [overrideScope, setOverrideScope] = useState<GroupHealthOverrideScope>(
     initialOverrideScope ?? "this_month"
   );
 
@@ -94,36 +93,10 @@ export function LeaderHealthGradeEditor({
     if (r.score.trim() !== "" && Number.isFinite(n)) scores[r.key] = n;
   }
 
-  const rubric: Rubric = { criteria };
-  const hasOverride = overrideLetter !== "";
-  // Live preview through the SAME Leader-Health facade the server recomputes
-  // with, so the preview never lies about what will be persisted. The override
-  // is being set FOR the current period, so key the resolution to a stable
-  // first-of-month in this ministry year and judge the override against that
-  // same month — a freshly-set "this month" override therefore reads as active.
-  const previewPeriodMonth = `${ministryYear ?? 0}-08-01`;
-  const resolved = resolveLeaderGrade({
-    rubric,
-    scores,
-    override: hasOverride
-      ? {
-          letter: overrideLetter as LeaderHealthLetter,
-          scope: overrideScope as GradeOverrideScope,
-          period_month: previewPeriodMonth,
-        }
-      : null,
-    ministryYear: ministryYear ?? 0,
-    currentPeriodMonth: previewPeriodMonth,
-  });
-  const computedLetter = resolved.computed_letter;
-  const effectiveLetter = resolved.letter;
-
-  const scoresJson = JSON.stringify(scores);
-  const noRubric = criteria.length === 0;
-  const offSeason = ministryYear === null;
-  const canSave = !noRubric && !offSeason && !pending;
-
-  if (offSeason) {
+  // Grading is closed in the Jun/Jul off-season (no active ministry year).
+  // Return before the preview computation so the rest of the component can
+  // treat `ministryYear` as a concrete number (no sentinel fallback).
+  if (ministryYear === null) {
     return (
       <p className={NOTE}>
         Grading is closed during the June–July off-season — it resumes in the
@@ -131,6 +104,35 @@ export function LeaderHealthGradeEditor({
       </p>
     );
   }
+
+  const rubric: Rubric = { criteria };
+  const hasOverride = overrideLetter !== "";
+  // Live preview through the SAME Leader-Health facade the server recomputes
+  // with, so the preview never lies about what will be persisted. The override
+  // is being set FOR the current period, so key the resolution to a stable
+  // first-of-month in this ministry year and judge the override against that
+  // same month — a freshly-set "this month" override therefore reads as active.
+  const previewPeriodMonth = `${ministryYear}-08-01`;
+  const resolved = resolveLeaderGrade({
+    rubric,
+    scores,
+    override:
+      overrideLetter !== ""
+        ? {
+            letter: overrideLetter,
+            scope: overrideScope,
+            period_month: previewPeriodMonth,
+          }
+        : null,
+    ministryYear,
+    currentPeriodMonth: previewPeriodMonth,
+  });
+  const computedLetter = resolved.computed_letter;
+  const effectiveLetter = resolved.letter;
+
+  const scoresJson = JSON.stringify(scores);
+  const noRubric = criteria.length === 0;
+  const canSave = !noRubric && !pending;
 
   if (noRubric) {
     return (
@@ -159,8 +161,8 @@ export function LeaderHealthGradeEditor({
 
       <p className={NOTE}>
         Score {leaderName} on each criterion (0–100). The scores roll up to a
-        Leader-Health Grade for the {ministryYear}–{(ministryYear ?? 0) + 1}{" "}
-        ministry year. This is distinct from their Care Status.
+        Leader-Health Grade for the {ministryYear}–{ministryYear + 1} ministry
+        year. This is distinct from their Care Status.
       </p>
 
       <div className="grid gap-3">
@@ -226,7 +228,9 @@ export function LeaderHealthGradeEditor({
           <select
             name="override_letter_display"
             value={overrideLetter}
-            onChange={(e) => setOverrideLetter(e.target.value)}
+            onChange={(e) =>
+              setOverrideLetter(e.target.value as LeaderHealthLetter | "")
+            }
             className={FIELD_INPUT}
             aria-label="Override letter"
           >
@@ -239,7 +243,9 @@ export function LeaderHealthGradeEditor({
           </select>
           <select
             value={overrideScope}
-            onChange={(e) => setOverrideScope(e.target.value)}
+            onChange={(e) =>
+              setOverrideScope(e.target.value as GroupHealthOverrideScope)
+            }
             disabled={!hasOverride}
             className={FIELD_INPUT}
             aria-label="Override scope"

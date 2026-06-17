@@ -8,12 +8,11 @@ import { adminChangeLeaderRole } from "@/app/(protected)/admin/people/actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 import {
-  errorTextClassName,
   fieldLabelClassName,
   fieldSelectClassName,
   successTextClassName,
 } from "./field-styles";
-import { useActionForm } from "./action-form";
+import { useActionForm, FormStatus } from "./action-form";
 
 type LeaderRole = "leader" | "co_leader";
 
@@ -161,15 +160,7 @@ export function ChangeLeaderRoleForm({
           </Button>
         )}
       </div>
-      {state && !state.ok ? (
-        <ul className="m-0 grid list-none gap-1 p-0">
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p className={errorTextClassName}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <FormStatus state={state} />
     </form>
   );
 }
