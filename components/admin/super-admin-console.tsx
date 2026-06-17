@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "@/lib/utils";
+import { scrollToHashTarget } from "@/lib/nav/scroll-to-hash";
 
 // Super Admin Console workspace switcher (Super Admin redesign).
 //
@@ -70,6 +71,7 @@ export function SuperAdminConsole({
   });
 
   useEffect(() => {
+    let cancelScroll = () => {};
     function applyHash() {
       const raw = decodeURIComponent(window.location.hash.replace(/^#/, ""));
       if (!raw) return;
@@ -78,21 +80,21 @@ export function SuperAdminConsole({
       const target = ids.has(raw) ? raw : aliasesRef.current?.[raw];
       if (!target || !ids.has(target)) return;
       setActiveId(target);
-      // The target workspace panel mounts on the next render, so the element the
-      // hash names (e.g. the import card inside Access) doesn't exist yet. Defer
-      // past the commit with a double rAF, then scroll to it — restoring the old
-      // anchor's land-on-the-section behaviour instead of stopping at the top.
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => {
-          document
-            .getElementById(raw)
-            ?.scrollIntoView({ block: "start", behavior: "auto" });
-        })
-      );
+      // The target workspace panel mounts on the next render, and now that the
+      // workspaces are dynamically imported (ssr:false) the element the hash
+      // names (e.g. the import card inside Access) is absent until that chunk
+      // loads. Poll past the commit until it appears, then scroll to it —
+      // restoring the anchor's land-on-the-section behaviour instead of stopping
+      // at the top. Cancel any in-flight scroll first so a second hashchange wins.
+      cancelScroll();
+      cancelScroll = scrollToHashTarget(raw);
     }
     applyHash();
     window.addEventListener("hashchange", applyHash);
-    return () => window.removeEventListener("hashchange", applyHash);
+    return () => {
+      cancelScroll();
+      window.removeEventListener("hashchange", applyHash);
+    };
   }, []);
 
   function focusTab(id: string) {

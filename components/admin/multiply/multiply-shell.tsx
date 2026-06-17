@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { type KeyboardEvent, type ReactNode, useRef } from "react";
+import { type KeyboardEvent, type ReactNode, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { scrollToHashTarget } from "@/lib/nav/scroll-to-hash";
 import {
   resolveMultiplyInitialTab,
   type MultiplyTabKey,
@@ -48,6 +49,16 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
   const active = resolveMultiplyInitialTab(
     searchParams.get("tab") ?? undefined
   );
+
+  // A Readiness-grid cell deep-links to /admin/multiply?tab=plan#seg-…, but the
+  // Plan panel is dynamically imported (ssr:false), so the seg- anchor is absent
+  // when the browser does its native fragment scroll on a cold load. Re-run the
+  // scroll once the panel chunk mounts and the target element exists.
+  useEffect(() => {
+    const raw = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    if (!raw) return;
+    return scrollToHashTarget(raw);
+  }, []);
 
   function selectTab(key: MultiplyTabKey) {
     if (key === active) return;
