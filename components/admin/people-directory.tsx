@@ -518,7 +518,7 @@ function RowMoreMenu({
 // One directory row: identity block left, row actions right; stacks to a
 // single column on mobile.
 const ROW_CLASS =
-  "grid grid-cols-1 items-start gap-3 border-b border-lineSoft px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto]";
+  "lg-cv-row grid grid-cols-1 items-start gap-3 border-b border-lineSoft px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto]";
 const ROW_NAME_CLASS = "font-display text-md font-medium text-ink";
 const ROW_BADGES_CLASS = "flex flex-wrap items-center gap-2.5";
 const ROW_CONTACT_CLASS =

@@ -9,6 +9,14 @@ import { describe, expect, it, vi } from "vitest";
 // section names its own failing read, so a single failed group-types read no
 // longer blanks the Groups and Multiply tabs with identical copy.
 
+// The per-tab editors are loaded lazily (next/dynamic, ssr:false — see
+// settings/lazy-editors.tsx), so in this synchronous static render the editor
+// branch renders the editor's loading skeleton, not the editor itself. That is
+// exactly what these tests need: #469 is a SHELL-branching contract (a failed
+// read shows the calm notice and NO editor over it; a healthy read opens the
+// editor), so asserting "the editor placeholder is/ isn't present" verifies the
+// branch precisely. The editors' own internals are covered by their own tests.
+//
 // The shell's editors bind "use server" actions; stub both action modules so
 // static rendering never pulls server-only deps (the markup never invokes
 // them). Same approach as prospect-create-form.test.tsx.
@@ -120,9 +128,12 @@ function count(html: string, marker: string): number {
 const COULD_NOT_LOAD =
   "couldn't be loaded right now. Your saved configuration is unchanged — refresh to try again.";
 const NOT_CONFIGURED = "isn't configured in this environment yet";
-const RUBRIC_EDITOR = "Save rubric"; // HealthRubricEditor submit
-const GROUPS_EDITOR = "+ Add a group type"; // GroupsCatalogEditor create flow
-const MULTIPLY_EDITOR = "multiply-trigger-level"; // MultiplyTriggerEditor scope picker
+// Each editor is lazy, so the "editor branch was taken" marker is the editor's
+// loading-skeleton aria-label (settings/lazy-editors.tsx), not editor-internal
+// copy. The skeleton renders only when the shell chose the editor over a notice.
+const RUBRIC_EDITOR = "Loading health rubric editor";
+const GROUPS_EDITOR = "Loading group types editor";
+const MULTIPLY_EDITOR = "Loading multiplication trigger editor";
 describe("buildSettingsWorkspace", () => {
   it("scopes Settings shell data into tab-specific models", () => {
     const data = shellData({
@@ -199,8 +210,6 @@ describe("SettingsShell Groups tab — group-types read error (#469)", () => {
   it("opens the empty-seed editor when the reads succeeded with no group types", () => {
     const html = render(shellData(), "groups");
 
-    expect(html).toContain("Current group-type map");
-    expect(html).toContain("Expand an audience, then a group type");
     expect(html).toContain(GROUPS_EDITOR);
     expect(html).not.toContain(COULD_NOT_LOAD);
     expect(html).not.toContain(NOT_CONFIGURED);
@@ -233,8 +242,6 @@ describe("SettingsShell Multiply tab — trigger read errors (#469)", () => {
   it("opens the editor when the reads succeeded (built-in rule, no cells)", () => {
     const html = render(shellData(), "multiply");
 
-    expect(html).toContain("Current state");
-    expect(html).toContain("Edit this readiness rule");
     expect(html).toContain(MULTIPLY_EDITOR);
     expect(html).not.toContain(COULD_NOT_LOAD);
     expect(html).not.toContain(NOT_CONFIGURED);

@@ -2,11 +2,15 @@ import type { ReactNode } from "react";
 import { requireAdmin } from "@/lib/auth/session";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { loadMultiplyGridData } from "@/components/admin/multiply/multiply-grid-data";
-import { MultiplyGridView } from "@/components/admin/multiply/multiply-grid";
 import { loadMultiplyPlanData } from "@/components/admin/multiply/multiply-plan-data";
-import { MultiplicationPlanner } from "@/components/admin/multiplication/multiplication-planner";
 import { loadLeaderPipelineData } from "@/components/admin/leader-pipeline/leader-pipeline-data";
-import { LeaderPipeline } from "@/components/admin/leader-pipeline/leader-pipeline";
+// The three tab panels are loaded lazily (ssr:false) so their code lands in
+// post-hydration chunks instead of this route's First Load JS (see lazy-panels).
+import {
+  MultiplicationPlanner,
+  MultiplyGridView,
+  LeaderPipeline,
+} from "@/components/admin/multiply/lazy-panels";
 import {
   MultiplyShell,
   type MultiplyTab,

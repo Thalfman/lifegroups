@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: projectRoot,
   experimental: {
+    // Tree-shake named imports from these packages so a single `import { X }`
+    // pulls only X's module, not the package's whole entry graph. Cheap, global
+    // First Load JS win for the icon and Radix primitives used across surfaces.
+    optimizePackageImports: [
+      "lucide-react",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-alert-dialog",
+    ],
     // Short client-side Router Cache so navigating between admin surfaces —
     // and back/forward — renders the already-fetched RSC payload instantly
     // instead of re-running the server read on every visit. Combined with the

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import { SectionHeader } from "@/components/layout/shell";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
@@ -405,7 +405,7 @@ export function AdminFollowUpsShell({
                   </div>
                   <ul className="m-0 list-none p-0">
                     {list.map((fu) => (
-                      <li key={fu.id} className="mb-3">
+                      <li key={fu.id} className="lg-cv-row mb-3">
                         <FollowUpRow
                           followUp={fu}
                           groupsById={groupsById}
@@ -451,7 +451,10 @@ export function AdminFollowUpsShell({
   );
 }
 
-function FollowUpRow({
+// Memoized: the queue re-renders on every filter/status-tab change, but the
+// lookup Maps and `today` are stable (memoized in the parent) and each followUp
+// object is stable, so rows that stayed in the list skip re-rendering.
+const FollowUpRow = memo(function FollowUpRow({
   followUp,
   groupsById,
   membersById,
@@ -557,7 +560,7 @@ function FollowUpRow({
       </div>
     </article>
   );
-}
+});
 
 function priorityTone(priority: FollowUpPriority) {
   if (priority === "high") return "followup" as const;
