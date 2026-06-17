@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PButton, type PButtonTone } from "@/components/pastoral/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import {
   confirmActionButtonView,
-  gateSubmitOnConfirm,
+  confirmActionSubmitMode,
 } from "@/lib/forms/confirm-action-view";
 import {
   useActionForm,
@@ -18,11 +19,16 @@ import {
 // member, Clear group metric overrides, Reset metric defaults, Archive
 // prospect, Archive/Restore over-shepherd, Archive care follow-up, Delete
 // unused category — used to re-wire the same lifecycle by hand:
-// useActionForm → window.confirm gate → hidden fields → FormStatus, plus
+// useActionForm → confirm gate → hidden fields → FormStatus, plus
 // pending/aria handling. This module owns that lifecycle once; the buttons
 // are declarative configs of it (action + confirmation copy + hidden fields
 // + labels). The pure decisions live in lib/forms/confirm-action-view.ts so
 // the lifecycle is unit-tested once.
+//
+// The confirm gate is a non-blocking Radix `AlertDialog` (#664), not the old
+// synchronous `window.confirm`: opening it paints immediately, so operator
+// think-time stops being attributed to the initiating click's INP. The action
+// submits from the dialog's confirm button.
 
 // A hidden input serialized into the form, e.g. { name: "group_id", value: id }.
 export type ConfirmActionHiddenField = { name: string; value: string };
@@ -43,9 +49,9 @@ export function ConfirmActionButton<T>({
   onPendingChange,
 }: {
   action: ServerAction<T>;
-  // Passed verbatim to window.confirm before the submit is allowed through.
-  // Null means this direction needs no dialog (e.g. restoring an archived
-  // over-shepherd) — the submit goes straight through.
+  // Shown verbatim in the confirmation dialog before the submit is allowed
+  // through. Null means this direction needs no dialog (e.g. restoring an
+  // archived over-shepherd) — the submit goes straight through.
   confirmMessage: string | null;
   hiddenFields?: readonly ConfirmActionHiddenField[];
   idleLabel: string;
@@ -70,6 +76,8 @@ export function ConfirmActionButton<T>({
   onPendingChange?: (pending: boolean) => void;
 }) {
   const { state, formAction, pending } = useActionForm<T>(action);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (state?.ok) onSuccess?.();
@@ -87,10 +95,10 @@ export function ConfirmActionButton<T>({
     successText,
   });
 
-  function confirmSubmit(e: FormEvent<HTMLFormElement>) {
-    if (confirmMessage === null) return;
-    gateSubmitOnConfirm(window.confirm(confirmMessage), e);
-  }
+  // A `null` message submits straight through (no dialog); otherwise the
+  // visible button only opens the dialog, and the dialog's confirm button
+  // submits the form.
+  const gated = confirmActionSubmitMode(confirmMessage) === "confirm";
 
   return (
     // `gap` is a caller-supplied number (component API), so it stays a dynamic
@@ -99,7 +107,7 @@ export function ConfirmActionButton<T>({
       className={cn("grid", alignEnd && "justify-items-end")}
       style={{ gap }}
     >
-      <form action={formAction} onSubmit={confirmSubmit}>
+      <form action={formAction} ref={formRef}>
         {hiddenFields.map((field) => (
           <input
             key={field.name}
@@ -109,15 +117,27 @@ export function ConfirmActionButton<T>({
           />
         ))}
         <PButton
-          type="submit"
+          type={gated ? "button" : "submit"}
           tone={tone}
           size="sm"
           disabled={view.disabled}
           aria-label={ariaLabel}
+          onClick={gated ? () => setConfirmOpen(true) : undefined}
         >
           {view.label}
         </PButton>
       </form>
+      {gated && confirmMessage !== null && (
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={idleLabel}
+          message={confirmMessage}
+          confirmLabel={idleLabel}
+          confirmTone={tone}
+          onConfirm={() => formRef.current?.requestSubmit()}
+        />
+      )}
       {helperText}
       <FormStatusLine view={view.status} />
     </div>

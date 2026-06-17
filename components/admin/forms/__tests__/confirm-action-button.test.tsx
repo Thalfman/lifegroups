@@ -1,5 +1,16 @@
+// @vitest-environment jsdom
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import {
+  render,
+  screen,
+  within,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { actionOk } from "@/lib/shared/action-result";
+import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
 
 // The confirm-action configs bind "use server" actions; stub the modules
 // so static rendering never pulls server-only deps (the markup never invokes
@@ -294,5 +305,108 @@ describe("#494 configs — labels, aria-labels, and hidden fields", () => {
       'aria-label="Archive follow-up: Call about Tuesday (due 2026-06-12)"'
     );
     expect(html).toContain(">Archive</button>");
+  });
+});
+
+// #664 swapped the blocking `window.confirm` gate for a non-blocking Radix
+// `AlertDialog`. The initiating click no longer submits — it only opens the
+// dialog (so operator think-time stops counting against that click's INP);
+// the action submits from the dialog's confirm button, and a null message
+// still submits straight through.
+describe("#664 — non-blocking confirmation dialog flow", () => {
+  afterEach(cleanup);
+
+  function setup(confirmMessage: string | null) {
+    const action = vi.fn(async (_prev: unknown, _formData: FormData) =>
+      actionOk({ id: "g1" })
+    );
+    render(
+      <ConfirmActionButton
+        action={action}
+        confirmMessage={confirmMessage}
+        hiddenFields={[{ name: "group_id", value: "g1" }]}
+        idleLabel="Archive group"
+        pendingLabel="Archiving…"
+        tone="terra"
+        ariaLabel="Archive Bayside Men"
+        successText="Group archived."
+      />
+    );
+    return { action };
+  }
+
+  it("opens the dialog instead of submitting on the initiating click", async () => {
+    const user = userEvent.setup();
+    const { action } = setup("Archive Bayside Men?");
+
+    // No dialog before the click, and the trigger does not submit.
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await user.click(
+      screen.getByRole("button", { name: "Archive Bayside Men" })
+    );
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Archive Bayside Men?")).toBeTruthy();
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it("cancelling the dialog never runs the action", async () => {
+    const user = userEvent.setup();
+    const { action } = setup("Archive Bayside Men?");
+
+    await user.click(
+      screen.getByRole("button", { name: "Archive Bayside Men" })
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it("Escape cancels the dialog without running the action", async () => {
+    const user = userEvent.setup();
+    const { action } = setup("Archive Bayside Men?");
+
+    await user.click(
+      screen.getByRole("button", { name: "Archive Bayside Men" })
+    );
+    await screen.findByRole("alertdialog");
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it("confirming submits the form (with hidden fields) through the action", async () => {
+    const user = userEvent.setup();
+    const { action } = setup("Archive Bayside Men?");
+
+    await user.click(
+      screen.getByRole("button", { name: "Archive Bayside Men" })
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    // Two "Archive group" controls exist (trigger + confirm); confirm from
+    // inside the dialog.
+    await user.click(
+      within(dialog).getByRole("button", { name: "Archive group" })
+    );
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    const formData = action.mock.calls[0][1];
+    expect(formData.get("group_id")).toBe("g1");
+    await screen.findByText("Group archived.");
+  });
+
+  it("a null message submits straight through with no dialog", async () => {
+    const user = userEvent.setup();
+    const { action } = setup(null);
+
+    await user.click(
+      screen.getByRole("button", { name: "Archive Bayside Men" })
+    );
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 });
