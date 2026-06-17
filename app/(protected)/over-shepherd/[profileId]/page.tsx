@@ -10,6 +10,7 @@ import { LogBroadNoteForm } from "@/components/over-shepherd/log-broad-note-form
 import { CareNoteWriteForm } from "@/components/admin/shepherd-care/care-note-write-form";
 import { MyCareNotes } from "@/components/over-shepherd/my-care-notes";
 import { requireOverShepherd } from "@/lib/auth/session";
+import { toShellUser } from "@/lib/auth/shell-user";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchOverShepherdCoverageForCaller,
@@ -33,6 +34,14 @@ import { formatIsoDateOr } from "@/lib/shared/date";
 
 export const dynamic = "force-dynamic";
 
+// The single inline `profiles` read on this page only needs the display name;
+// the other columns are read so the allowlist matches the existing query.
+type ShepherdProfileRow = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+};
+
 // Per-Shepherd care history for the Over-Shepherd surface — read-only, scoped
 // to a Shepherd the caller actively covers
 // (docs/adr/0002-oversight-ladder-and-leader-gating.md). Defense-in-depth:
@@ -48,6 +57,7 @@ export default async function OverShepherdShepherdPage({
   if (!isUuid(profileId)) notFound();
 
   const client = await createSupabaseServerClient();
+  if (!client) notFound();
 
   const coverageResult = await fetchOverShepherdCoverageForCaller(client);
   // Treat a backend failure as not-found rather than leaking a 500 or, worse,
@@ -55,11 +65,7 @@ export default async function OverShepherdShepherdPage({
   if (coverageResult.error) notFound();
   if (!isCoveredShepherd(coverageResult.data, profileId)) notFound();
 
-  const user = {
-    name: session.profile.full_name,
-    email: session.profile.email,
-    role: session.profile.role,
-  };
+  const user = toShellUser(session.profile);
 
   // The name read and the care-profile read are both keyed only on profileId
   // and independent, so issue them in parallel. Only the interaction history
@@ -67,28 +73,26 @@ export default async function OverShepherdShepherdPage({
   // covered profiles.)
   const [profileQuery, careResult, careNotesResult, prayerRequestsResult] =
     await Promise.all([
-      client!
+      client
         .from("profiles")
         .select("id, full_name, email")
         .eq("id", profileId)
-        .maybeSingle(),
-      fetchOverShepherdCareProfileByShepherdId(client!, profileId),
+        .maybeSingle<ShepherdProfileRow>(),
+      fetchOverShepherdCareProfileByShepherdId(client, profileId),
       // The caller's OWN author-private notes/prayers about this Leader, read
       // back so they can verify what they saved. RLS returns the author's rows
       // regardless of the transparency toggle.
-      fetchCareNotesForSubject(client!, profileId),
-      fetchPrayerRequestsForSubject(client!, profileId),
+      fetchCareNotesForSubject(client, profileId),
+      fetchPrayerRequestsForSubject(client, profileId),
     ]);
   const myCareNotes: CareNotesRow[] = careNotesResult.data ?? [];
   const myPrayerRequests: PrayerRequestsRow[] = prayerRequestsResult.data ?? [];
-  const shepherdName =
-    (profileQuery.data as { full_name?: string } | null)?.full_name ??
-    "This Leader";
+  const shepherdName = profileQuery.data?.full_name ?? "This Leader";
 
   let interactions: ShepherdCareInteractionsRow[] = [];
   if (careResult.data) {
     const inter = await fetchOverShepherdCareInteractions(
-      client!,
+      client,
       careResult.data.id
     );
     if (!inter.error) interactions = inter.data;

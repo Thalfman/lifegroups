@@ -21,6 +21,7 @@ import {
   CLEAN_SLATE_CONFIRM_PHRASE,
   CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
   NOTHING_TO_WIPE_TOKEN,
+  requireConfirmPhrase,
   type CleanSlateWipeSuccess,
   type CleanSlateRevertSuccess,
   type CleanSlateImportSuccess,
@@ -32,18 +33,6 @@ import {
 import type { CleanSlateSnapshotsRow } from "@/types/database";
 
 const REVALIDATE_PATHS = ["/admin/super-admin", "/admin"] as const;
-
-function readForm(input: unknown): Record<string, unknown> {
-  if (input instanceof FormData) {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of input.entries()) {
-      out[key] = value === null ? undefined : String(value);
-    }
-    return out;
-  }
-  if (isRecord(input)) return input;
-  return {};
-}
 
 // Read the per-table counts back from a snapshot row by id (RLS-gated SELECT) —
 // never through the uuid return channel. Shared by the wipe + revert success
@@ -80,15 +69,12 @@ const CLEAN_SLATE_WIPE_SPEC: AdminWriteActionSpec<
   auth: requireSuperAdminSession,
   keys: ["confirm"],
   validate: (raw): ValidationResult<Record<string, never>> => {
-    const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-    if (confirm !== CLEAN_SLATE_CONFIRM_PHRASE) {
-      return {
-        ok: false,
-        errors: [
-          `Type ${CLEAN_SLATE_CONFIRM_PHRASE} exactly to confirm clearing all history.`,
-        ],
-      };
-    }
+    const error = requireConfirmPhrase(
+      raw.confirm,
+      CLEAN_SLATE_CONFIRM_PHRASE,
+      `Type ${CLEAN_SLATE_CONFIRM_PHRASE} exactly to confirm clearing all history.`
+    );
+    if (error) return { ok: false, errors: [error] };
     return { ok: true, value: {} };
   },
   rpc: async (client) => {
@@ -156,15 +142,12 @@ const CLEAN_SLATE_REVERT_SPEC: AdminWriteActionSpec<
   auth: requireSuperAdminSession,
   keys: ["confirm", "snapshotId"],
   validate: (raw): ValidationResult<{ snapshotId: string }> => {
-    const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-    if (confirm !== CLEAN_SLATE_RESTORE_CONFIRM_PHRASE) {
-      return {
-        ok: false,
-        errors: [
-          `Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} exactly to confirm restoring the snapshot.`,
-        ],
-      };
-    }
+    const confirmError = requireConfirmPhrase(
+      raw.confirm,
+      CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
+      `Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} exactly to confirm restoring the snapshot.`
+    );
+    if (confirmError) return { ok: false, errors: [confirmError] };
     const submittedId =
       typeof raw.snapshotId === "string" ? raw.snapshotId.trim() : "";
     if (!isUuid(submittedId)) {
@@ -242,12 +225,13 @@ export async function superAdminCleanSlateImport(
     return actionFail(["No file was uploaded. Choose a snapshot file."]);
   }
 
-  const confirmRaw = input.get("confirm");
-  const confirm = typeof confirmRaw === "string" ? confirmRaw.trim() : "";
-  if (confirm !== CLEAN_SLATE_RESTORE_CONFIRM_PHRASE) {
-    return actionFail([
-      `Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} exactly to confirm importing the snapshot.`,
-    ]);
+  const confirmError = requireConfirmPhrase(
+    input.get("confirm"),
+    CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
+    `Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} exactly to confirm importing the snapshot.`
+  );
+  if (confirmError) {
+    return actionFail([confirmError]);
   }
 
   const file = input.get("file");

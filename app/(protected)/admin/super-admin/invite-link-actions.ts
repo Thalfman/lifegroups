@@ -16,6 +16,7 @@ import {
   hashInviteToken,
 } from "@/lib/shared/invite-token";
 import { startActionLog } from "@/lib/observability/instrument";
+import { readFormPayloadStringified } from "@/lib/shared/form-data";
 
 export type CreateInviteLinkSuccess = {
   url: string;
@@ -23,20 +24,6 @@ export type CreateInviteLinkSuccess = {
   singleUse: boolean;
   expiresAt: string;
 };
-
-function readForm(input: unknown): Record<string, unknown> {
-  if (input instanceof FormData) {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of input.entries()) {
-      out[key] = value === null ? undefined : String(value);
-    }
-    return out;
-  }
-  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
-    return input as Record<string, unknown>;
-  }
-  return {};
-}
 
 // Invoked directly from the "Generate invite link" button. Mints a single
 // invitation row (super-admin gated in the RPC) and returns the shareable URL.
@@ -52,7 +39,7 @@ export async function superAdminCreateInviteLink(
     return actionFail([auth.error]);
   }
 
-  const v = validateCreateInviteLinkPayload(readForm(input));
+  const v = validateCreateInviteLinkPayload(readFormPayloadStringified(input));
   if (!v.ok) {
     ctx.finish("fail", { error_code: "validation_failed" });
     return actionFail(v.errors);

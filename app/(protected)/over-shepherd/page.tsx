@@ -6,6 +6,7 @@ import { AddToHomeScreenButton } from "@/components/pwa/add-to-home-screen-butto
 import { EmptyState } from "@/components/dashboard/cards";
 import { MyShepherdsTable } from "@/components/over-shepherd/my-shepherds-table";
 import { requireOverShepherd } from "@/lib/auth/session";
+import { toShellUser } from "@/lib/auth/shell-user";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
 import { FirstRunCard } from "@/components/orientation/first-run-card";
@@ -27,11 +28,7 @@ export default async function OverShepherdPage() {
   const session = await requireOverShepherd();
   const client = await createSupabaseServerClient();
 
-  const user = {
-    name: session.profile.full_name,
-    email: session.profile.email,
-    role: session.profile.role,
-  };
+  const user = toShellUser(session.profile);
 
   const SHELL_MAX_WIDTH = 980;
   const shell = (lede: string, body: ReactNode) => (

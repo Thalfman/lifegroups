@@ -14,6 +14,7 @@ import {
   RESET_CARE_ATTENTION_CONFIRM_PHRASE,
   RESET_HEALTH_ATTENTION_CONFIRM_PHRASE,
   CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
+  requireConfirmPhrase,
   type AttentionResetSuccess,
   type AttentionResetRevertSuccess,
 } from "@/lib/admin/danger-zone";
@@ -70,13 +71,12 @@ function validateResetInput(
     }
     return { ok: true, value: { scope, entityId } };
   }
-  const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-  if (confirm !== confirmPhrase) {
-    return {
-      ok: false,
-      errors: [`Type ${confirmPhrase} exactly to confirm this reset.`],
-    };
-  }
+  const confirmError = requireConfirmPhrase(
+    raw.confirm,
+    confirmPhrase,
+    `Type ${confirmPhrase} exactly to confirm this reset.`
+  );
+  if (confirmError) return { ok: false, errors: [confirmError] };
   return { ok: true, value: { scope, entityId: null } };
 }
 
@@ -188,15 +188,12 @@ const RESET_ATTENTION_REVERT_SPEC: AdminWriteActionSpec<
   validate: (
     raw
   ): ValidationResult<{ snapshotId: string; surface: "care" | "health" }> => {
-    const confirm = typeof raw.confirm === "string" ? raw.confirm.trim() : "";
-    if (confirm !== CLEAN_SLATE_RESTORE_CONFIRM_PHRASE) {
-      return {
-        ok: false,
-        errors: [
-          `Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} exactly to confirm restoring this reset.`,
-        ],
-      };
-    }
+    const confirmError = requireConfirmPhrase(
+      raw.confirm,
+      CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
+      `Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} exactly to confirm restoring this reset.`
+    );
+    if (confirmError) return { ok: false, errors: [confirmError] };
     const submittedId =
       typeof raw.snapshotId === "string" ? raw.snapshotId.trim() : "";
     if (!isUuid(submittedId)) {

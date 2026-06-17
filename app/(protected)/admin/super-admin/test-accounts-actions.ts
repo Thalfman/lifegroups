@@ -3,7 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireSuperAdminSession } from "@/lib/auth/session";
-import { type ActionResult, actionFail, actionOk } from "@/lib/admin/action-result";
+import {
+  type ActionResult,
+  actionFail,
+  actionOk,
+} from "@/lib/admin/action-result";
+import {
+  buildErrorLines,
+  extractErrorBody,
+  makeMapFnError,
+  makeTokenForStatus,
+  redact,
+} from "@/lib/admin/edge-fn-error";
 
 const REVALIDATE_PATH = "/admin/super-admin";
 
@@ -11,8 +22,20 @@ export type TestAccountUserRow = {
   key: "admin" | "leader1" | "leader2" | "coleader";
   email: string;
   role: string;
-  authUser: "exists" | "missing" | "created" | "updated" | "deleted" | "skipped";
-  profile: "active" | "inactive" | "missing" | "created" | "updated" | "skipped";
+  authUser:
+    | "exists"
+    | "missing"
+    | "created"
+    | "updated"
+    | "deleted"
+    | "skipped";
+  profile:
+    | "active"
+    | "inactive"
+    | "missing"
+    | "created"
+    | "updated"
+    | "skipped";
   groupAssignment: "active" | "inactive" | "none" | "added" | "deactivated";
   groupName: string | null;
   skipReason: string | null;
@@ -36,7 +59,11 @@ export type DiagnosticsReport = {
     queried: boolean;
     succeeded: boolean;
     rowCount: number;
-    profile?: { email: string | null; role: string | null; status: string | null };
+    profile?: {
+      email: string | null;
+      role: string | null;
+      status: string | null;
+    };
     postgrestError?: PostgrestErrorPayload;
   };
   envPresent: Record<string, boolean>;
@@ -111,105 +138,49 @@ const FN_ERROR_MESSAGES: Record<string, string> = {
     "The Edge Function ran but couldn't finish the seed. See per-row errors below or check the Supabase function logs.",
 };
 
-function mapFnError(raw: string): string {
-  if (FN_ERROR_MESSAGES[raw]) return FN_ERROR_MESSAGES[raw];
-  return raw;
-}
-
-function redact(message: string): string {
-  return message.replace(
-    /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
-    "[REDACTED_JWT]",
-  );
-}
-
-// supabase-js v2.45 returns `FunctionsHttpError` (and friends) on non-2xx
-// responses. The original Response is on `.context`. The Edge Function's
-// JSON body is the only way to surface its structured `code` / `missing`
-// fields to the panel, since `error.message` is just the generic
-// "Edge Function returned a non-2xx status code".
-async function extractErrorBody(
-  err: unknown,
-): Promise<{ status: number | null; body: Partial<TestAccountsResponse> | null }> {
-  if (!err || typeof err !== "object") return { status: null, body: null };
-  const ctx = (err as { context?: unknown }).context;
-  if (!(ctx instanceof Response)) return { status: null, body: null };
-  const status = ctx.status;
-  try {
-    const text = await ctx.clone().text();
-    if (!text) return { status, body: null };
-    return { status, body: JSON.parse(text) as Partial<TestAccountsResponse> };
-  } catch {
-    return { status, body: null };
-  }
-}
+const mapFnError = makeMapFnError(FN_ERROR_MESSAGES);
 
 // Synthesize a token from HTTP status when no structured body is
 // available (e.g. infra-level 404 from the gateway, or unparseable body).
-function tokenForStatus(status: number | null): string {
-  if (status === 401) return "missing_or_invalid_session";
-  if (status === 403) return "super_admin_required";
-  if (status === 404) return "function_not_deployed_or_wrong_name";
-  if (status && status >= 500) return "test_account_seed_failed";
-  return "unknown_error";
-}
-
-function buildErrorLines(args: {
-  status: number | null;
-  code: string;
-  missing: string[] | undefined;
-  postgrestError?: PostgrestErrorPayload;
-  duplicateProfileInfo?: DuplicateProfileInfo;
-}): string[] {
-  const lines: string[] = [];
-  const statusLabel = args.status ?? "?";
-  lines.push(`HTTP ${statusLabel} ${args.code}`);
-  lines.push(mapFnError(args.code));
-  if (args.missing && args.missing.length > 0) {
-    lines.push(`Missing Edge Function secrets: ${args.missing.join(", ")}`);
-  }
-  if (args.postgrestError) {
-    const pg = args.postgrestError;
-    if (pg.code) lines.push(`PostgREST code: ${pg.code}`);
-    if (pg.message) lines.push(`PostgREST message: ${pg.message}`);
-    if (pg.details) lines.push(`PostgREST details: ${pg.details}`);
-    if (pg.hint) lines.push(`PostgREST hint: ${pg.hint}`);
-  }
-  if (args.duplicateProfileInfo) {
-    const d = args.duplicateProfileInfo;
-    lines.push(`Duplicate profile rows: auth_user_id=${d.authUserId} rowCount≥${d.rowCountSeen}`);
-  }
-  return lines.map(redact);
-}
+const tokenForStatus = makeTokenForStatus({
+  unauthorized: "missing_or_invalid_session",
+  forbidden: "super_admin_required",
+  notFound: "function_not_deployed_or_wrong_name",
+  serverError: "test_account_seed_failed",
+  fallback: "unknown_error",
+});
 
 async function callEdgeFn(
-  action: "status" | "enable" | "disable" | "diagnose",
+  action: "status" | "enable" | "disable" | "diagnose"
 ): Promise<ActionResult<TestAccountsResponse>> {
   const auth = await requireSuperAdminSession();
   if (!auth.ok) return actionFail([auth.error]);
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["The database is not configured on this deployment."]);
+  if (!client)
+    return actionFail(["The database is not configured on this deployment."]);
 
   const { data, error } = await client.functions.invoke<TestAccountsResponse>(
     "manage-test-auth-users",
-    { body: { action } },
+    { body: { action } }
   );
 
   if (error) {
-    const { status, body } = await extractErrorBody(error);
-    const code =
-      body?.code ??
-      body?.errors?.[0] ??
-      tokenForStatus(status);
+    const { status, body } =
+      await extractErrorBody<TestAccountsResponse>(error);
+    const code = body?.code ?? body?.errors?.[0] ?? tokenForStatus(status);
     return actionFail(
       buildErrorLines({
         status,
         code,
+        mapFnError,
+        messages: FN_ERROR_MESSAGES,
         missing: body?.missing,
         postgrestError: body?.postgrestError,
         duplicateProfileInfo: body?.duplicateProfileInfo,
-      }),
+        formatDuplicateLine: (d) =>
+          `Duplicate profile rows: auth_user_id=${d.authUserId} rowCount≥${d.rowCountSeen}`,
+      })
     );
   }
   if (!data) {
@@ -226,22 +197,30 @@ async function callEdgeFn(
   return actionOk(mapped);
 }
 
-export async function testAccountsStatus(): Promise<ActionResult<TestAccountsResponse>> {
+export async function testAccountsStatus(): Promise<
+  ActionResult<TestAccountsResponse>
+> {
   return callEdgeFn("status");
 }
 
-export async function testAccountsEnable(): Promise<ActionResult<TestAccountsResponse>> {
+export async function testAccountsEnable(): Promise<
+  ActionResult<TestAccountsResponse>
+> {
   const result = await callEdgeFn("enable");
   if (result.ok) revalidatePath(REVALIDATE_PATH);
   return result;
 }
 
-export async function testAccountsDisable(): Promise<ActionResult<TestAccountsResponse>> {
+export async function testAccountsDisable(): Promise<
+  ActionResult<TestAccountsResponse>
+> {
   const result = await callEdgeFn("disable");
   if (result.ok) revalidatePath(REVALIDATE_PATH);
   return result;
 }
 
-export async function testAccountsDiagnose(): Promise<ActionResult<TestAccountsResponse>> {
+export async function testAccountsDiagnose(): Promise<
+  ActionResult<TestAccountsResponse>
+> {
   return callEdgeFn("diagnose");
 }

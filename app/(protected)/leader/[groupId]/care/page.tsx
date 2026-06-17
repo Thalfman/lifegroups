@@ -5,6 +5,7 @@ import { UserPill } from "@/components/auth/user-pill";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { GroupNoteWriteForm } from "@/components/leader/group-note-write-form";
 import { requireLeader } from "@/lib/auth/session";
+import { toShellUser } from "@/lib/auth/shell-user";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -58,11 +59,7 @@ export default async function LeaderGroupCarePage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      currentUser={{
-        name: session.profile.full_name,
-        email: session.profile.email,
-        role: session.profile.role,
-      }}
+      currentUser={toShellUser(session.profile)}
       eyebrow="Care"
       title={group.name}
       titleItalic="— care notes"

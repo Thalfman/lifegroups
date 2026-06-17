@@ -2,6 +2,7 @@ import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { SettingsShell } from "@/components/admin/settings-shell";
 import { loadSettingsData } from "@/components/admin/settings/settings-data";
 import { requireAdmin } from "@/lib/auth/session";
+import { firstParam } from "@/lib/shared/search-params";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export default async function AdminSettingsPage({
   const data = await loadSettingsData(isSuperAdmin);
 
   const tabRaw = (await searchParams)?.tab;
-  const initialTabId = Array.isArray(tabRaw) ? tabRaw[0] : tabRaw;
+  const initialTabId = firstParam(tabRaw);
 
   return (
     <>

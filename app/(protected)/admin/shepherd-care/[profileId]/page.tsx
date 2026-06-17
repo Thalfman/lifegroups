@@ -30,6 +30,7 @@ import {
 import { currentUtcDateIso } from "@/lib/supabase/read-models";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
+import { firstParam } from "@/lib/shared/search-params";
 import { LeaderHealthGradeEditor } from "@/components/admin/shepherd-care/leader-health-grade";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
 
@@ -100,7 +101,7 @@ export default async function AdminShepherdCareDetailPage({
   if (spine.kind === "not_found") notFound();
 
   const tabRaw = (await searchParams)?.tab;
-  const tabParam = Array.isArray(tabRaw) ? tabRaw[0] : tabRaw;
+  const tabParam = firstParam(tabRaw);
 
   return (
     <>

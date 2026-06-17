@@ -12,6 +12,7 @@ import { ArchivedRestoreButton } from "@/components/calendar/calendar-archived-a
 import { buttonClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { requireLeader } from "@/lib/auth/session";
+import { toShellUser } from "@/lib/auth/shell-user";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -122,11 +123,7 @@ export default async function LeaderCalendarPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      currentUser={{
-        name: session.profile.full_name,
-        email: session.profile.email,
-        role: session.profile.role,
-      }}
+      currentUser={toShellUser(session.profile)}
       eyebrow="Calendar"
       title={group.name}
       titleItalic={showArchived ? "— archived" : "— calendar"}

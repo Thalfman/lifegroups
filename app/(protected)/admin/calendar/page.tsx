@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth/session";
 import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
 import { PlanningView } from "@/components/admin/planning/planning-view";
-import { monthBounds } from "@/lib/calendar/occurrences";
+import { pickMonthParam } from "@/lib/calendar/month-param";
 import { churchMonthIso } from "@/lib/shared/church-time";
 
 // Frozen /admin/calendar alias (ADR 0013, #329). This is a THIN entry to the
@@ -14,13 +14,6 @@ import { churchMonthIso } from "@/lib/shared/church-time";
 export const dynamic = "force-dynamic";
 
 type SearchParams = { month?: string | string[] };
-
-function pickMonthParam(value: string | string[] | undefined): string | null {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (typeof raw !== "string") return null;
-  if (!/^\d{4}-\d{2}$/.test(raw)) return null;
-  return monthBounds(raw) ? raw : null;
-}
 
 export default async function AdminCalendarPage({
   searchParams,

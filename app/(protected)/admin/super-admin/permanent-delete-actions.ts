@@ -15,10 +15,12 @@ import {
 } from "@/lib/admin/run-action";
 import { isRecord } from "@/lib/admin/validation";
 import { isUuid } from "@/lib/shared/uuid";
+import { readFormPayloadStringified } from "@/lib/shared/form-data";
 import { adminJsonRpc, adminRpc } from "@/lib/admin/rpc";
 import {
   PERMANENT_DELETE_CONFIRM_PHRASE,
   TOMBSTONE_RESTORE_CONFIRM_PHRASE,
+  requireConfirmPhrase,
   type DeletionPreflight,
   type DeletionBlocker,
   type PermanentDeleteSuccess,
@@ -30,18 +32,6 @@ import {
 } from "@/lib/admin/permanent-deletion";
 
 const REVALIDATE_PATHS = ["/admin/super-admin", "/admin"] as const;
-
-function readForm(input: unknown): Record<string, unknown> {
-  if (input instanceof FormData) {
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of input.entries()) {
-      out[key] = value === null ? undefined : String(value);
-    }
-    return out;
-  }
-  if (isRecord(input)) return input;
-  return {};
-}
 
 function readStr(raw: Record<string, unknown>, key: string): string {
   return typeof raw[key] === "string" ? (raw[key] as string).trim() : "";
@@ -117,7 +107,7 @@ export async function superAdminPermanentDeletePreflight(
   const auth = await requireSuperAdminSession();
   if (!auth.ok) return actionFail([auth.error]);
 
-  const raw = readForm(input);
+  const raw = readFormPayloadStringified(input);
   const target = readTarget(raw);
   if (!target.ok) return actionFail([target.error]);
 
@@ -168,15 +158,12 @@ const PERMANENT_DELETE_SPEC: AdminWriteActionSpec<
   validate: (raw): ValidationResult<DeleteTarget> => {
     const target = readTarget(raw);
     if (!target.ok) return { ok: false, errors: [target.error] };
-    const confirm = readStr(raw, "confirm");
-    if (confirm !== PERMANENT_DELETE_CONFIRM_PHRASE) {
-      return {
-        ok: false,
-        errors: [
-          `Type ${PERMANENT_DELETE_CONFIRM_PHRASE} exactly to confirm permanent deletion.`,
-        ],
-      };
-    }
+    const confirmError = requireConfirmPhrase(
+      raw.confirm,
+      PERMANENT_DELETE_CONFIRM_PHRASE,
+      `Type ${PERMANENT_DELETE_CONFIRM_PHRASE} exactly to confirm permanent deletion.`
+    );
+    if (confirmError) return { ok: false, errors: [confirmError] };
     return {
       ok: true,
       value: { entityType: target.entityType, id: target.id },
@@ -287,15 +274,12 @@ const RESTORE_TOMBSTONE_SPEC: AdminWriteActionSpec<
         ],
       };
     }
-    const confirm = readStr(raw, "confirm");
-    if (confirm !== TOMBSTONE_RESTORE_CONFIRM_PHRASE) {
-      return {
-        ok: false,
-        errors: [
-          `Type ${TOMBSTONE_RESTORE_CONFIRM_PHRASE} exactly to confirm restoring the record.`,
-        ],
-      };
-    }
+    const confirmError = requireConfirmPhrase(
+      raw.confirm,
+      TOMBSTONE_RESTORE_CONFIRM_PHRASE,
+      `Type ${TOMBSTONE_RESTORE_CONFIRM_PHRASE} exactly to confirm restoring the record.`
+    );
+    if (confirmError) return { ok: false, errors: [confirmError] };
     return { ok: true, value: { tombstoneId } };
   },
   rpc: async (client, value) => {
