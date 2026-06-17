@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
+import { PBadge } from "@/components/pastoral/atoms";
 import { dateLabel, formatClock } from "@/lib/calendar/occurrences";
 import {
   friendlyEventStatusLabel,
@@ -19,12 +19,7 @@ import {
   occurrenceNeedsCoverage,
   type LeaderGroup,
 } from "@/lib/admin/planning-views";
-
-function statusTone(status: MasterOccurrence["status"]): PTone {
-  if (status === "off") return "pause";
-  if (status === "cancelled") return "followup";
-  return "healthy";
-}
+import { occurrenceStatusTone } from "../admin-master-calendar-status";
 
 // "By leader" opinionated view (#331). Buckets the month's occurrences under
 // each leader/co-leader (and a trailing "Unassigned" bucket for coverage gaps),
@@ -240,7 +235,7 @@ function OccurrenceRow({
 }) {
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
-  const tone = statusTone(occurrence.status);
+  const tone = occurrenceStatusTone(occurrence.status);
   const needsCoverage = occurrenceNeedsCoverage(occurrence);
   return (
     <li

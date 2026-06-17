@@ -5,6 +5,7 @@ import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import { DisclosureChevron } from "@/components/admin/care/disclosure-chevron";
 import { formatIsoDateOr } from "@/lib/shared/date";
+import { pluralize } from "@/lib/shared/pluralize";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { NoteTransparencyToggle } from "@/components/admin/shepherd-care/note-transparency-toggle";
 import { CareNoteWriteForm } from "@/components/admin/shepherd-care/care-note-write-form";
@@ -70,8 +71,8 @@ function CareNoteCounts({ notes }: { notes: CareAccordionLeader["notes"] }) {
     return <span className={MUTED_TEXT}>None yet.</span>;
   }
   const parts = [
-    `${notes.careNoteCount} care note${notes.careNoteCount === 1 ? "" : "s"}`,
-    `${notes.prayerCount} prayer request${notes.prayerCount === 1 ? "" : "s"}`,
+    pluralize(notes.careNoteCount, "care note"),
+    pluralize(notes.prayerCount, "prayer request"),
   ];
   return <span className={VALUE_TEXT}>{parts.join(" · ")}</span>;
 }

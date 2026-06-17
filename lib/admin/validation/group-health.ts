@@ -14,6 +14,11 @@ import {
 // for the group's month, so the payload IS the desired row (an empty score is an
 // explicit clear). The leader-reported provenance of the group question is
 // forced server-side in the RPC, so it is not a client input here.
+// The inclusive bounds of a Group-Health rating (1–5). Exported so the editor's
+// number inputs and this validator share one source of truth.
+export const GROUP_HEALTH_RATING_MIN = 1;
+export const GROUP_HEALTH_RATING_MAX = 5;
+
 export type GroupHealthRatingsPayload = {
   group_id: string;
   spiritual_growth_score: number | null;
@@ -41,7 +46,7 @@ export function validateGroupHealthRatingsPayload(
       return null;
     }
     if (n === undefined) return null;
-    if (n < 1 || n > 5) {
+    if (n < GROUP_HEALTH_RATING_MIN || n > GROUP_HEALTH_RATING_MAX) {
       errors.push(`${label} rating must be between 1 and 5.`);
       return null;
     }

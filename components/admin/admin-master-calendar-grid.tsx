@@ -1,6 +1,6 @@
 "use client";
 
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
+import { PBadge } from "@/components/pastoral/atoms";
 import {
   WEEKDAY_HEADERS,
   dayNumberLabel,
@@ -15,17 +15,14 @@ import {
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
 import { occurrenceAccessibleName } from "@/lib/admin/master-calendar-label";
-import { statusStripeColor } from "./admin-master-calendar-status";
+import {
+  occurrenceStatusTone,
+  statusStripeColor,
+} from "./admin-master-calendar-status";
 
 export type DayClickPayload = { date: string };
 
 const MAX_PILLS_PER_CELL = 3;
-
-function statusTone(status: MasterOccurrence["status"]): PTone {
-  if (status === "off") return "pause";
-  if (status === "cancelled") return "followup";
-  return "healthy";
-}
 
 export function AdminMasterCalendarGrid({
   monthIso,
@@ -203,7 +200,7 @@ function OccurrencePill({
 }) {
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
-  const tone = statusTone(occurrence.status);
+  const tone = occurrenceStatusTone(occurrence.status);
   const showStatusBadge = occurrence.status !== "scheduled";
   // Explicit, meaningful accessible name (#322): the pill's child text reads as
   // a run-on to a screen reader. The shared helper keeps it unique across a

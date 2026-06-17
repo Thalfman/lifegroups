@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRef } from "react";
 import {
   Dialog,
@@ -10,7 +9,7 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
+import { PBadge } from "@/components/pastoral/atoms";
 import { PLinkButton } from "@/components/pastoral/button";
 import { dateLabel, formatClock } from "@/lib/calendar/occurrences";
 import {
@@ -19,12 +18,7 @@ import {
 } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
-
-function statusTone(status: MasterOccurrence["status"]): PTone {
-  if (status === "off") return "pause";
-  if (status === "cancelled") return "followup";
-  return "healthy";
-}
+import { occurrenceStatusTone } from "./admin-master-calendar-status";
 
 export function AdminMasterCalendarDrawer({
   monthIso,
@@ -111,7 +105,7 @@ function DrawerBody({
 }) {
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
-  const tone = statusTone(occurrence.status);
+  const tone = occurrenceStatusTone(occurrence.status);
   const sourceLabel = occurrence.isGenerated ? "Generated" : "Override";
   const groupCalendarHref = `/admin/groups/${occurrence.groupId}/calendar?month=${monthIso}`;
   const groupDetailHref = `/admin/groups/${occurrence.groupId}`;

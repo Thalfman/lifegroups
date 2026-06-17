@@ -7,6 +7,17 @@ import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-de
 import { Button, LinkButton, buttonClassName } from "@/components/ui/button";
 import type { GroupsRow } from "@/types/database";
 
+// Popover geometry for the portal-rendered menu. MENU_WIDTH must stay in sync
+// with the `min-w-[190px]` utility on the menu element below (Tailwind can't
+// read a JS const, so the literal class is kept). The two heights cover the
+// taller Super-Admin variant (extra danger-zone row) and the default.
+const MENU_WIDTH = 190;
+const MENU_HEIGHT_SUPER_ADMIN = 170;
+const MENU_HEIGHT_DEFAULT = 100;
+// Viewport edge inset and the gap between the trigger and the menu.
+const VIEWPORT_INSET = 8;
+const TRIGGER_GAP = 6;
+
 export function GroupActionsMenu({
   group,
   groupLabel,
@@ -31,17 +42,19 @@ export function GroupActionsMenu({
     const button = buttonRef.current;
     if (!button) return;
     const rect = button.getBoundingClientRect();
-    const menuWidth = 190;
-    const menuHeight = isSuperAdmin ? 170 : 100;
+    const menuWidth = MENU_WIDTH;
+    const menuHeight = isSuperAdmin
+      ? MENU_HEIGHT_SUPER_ADMIN
+      : MENU_HEIGHT_DEFAULT;
     const left = Math.min(
-      Math.max(8, rect.right - menuWidth),
-      Math.max(8, window.innerWidth - menuWidth - 8)
+      Math.max(VIEWPORT_INSET, rect.right - menuWidth),
+      Math.max(VIEWPORT_INSET, window.innerWidth - menuWidth - VIEWPORT_INSET)
     );
-    const below = rect.bottom + 6;
+    const below = rect.bottom + TRIGGER_GAP;
     const top =
-      below + menuHeight <= window.innerHeight - 8
+      below + menuHeight <= window.innerHeight - VIEWPORT_INSET
         ? below
-        : Math.max(8, rect.top - menuHeight - 6);
+        : Math.max(VIEWPORT_INSET, rect.top - menuHeight - TRIGGER_GAP);
     setMenuPosition({ left, top });
   }, [isSuperAdmin]);
 

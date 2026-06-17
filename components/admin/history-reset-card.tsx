@@ -40,18 +40,7 @@ import {
   DangerCard,
   DangerPill,
 } from "@/components/admin/danger-zone-card-shell";
-
-// Fixed locale + UTC so server and client render the same string (no hydration
-// mismatch). Mirrors the Clean Slate card's snapshot formatter.
-function formatSnapshotTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-US", {
-    timeZone: "UTC",
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
+import { formatIsoDateTimeUtc } from "@/lib/shared/date";
 
 export function HistoryResetCard({
   state,
@@ -200,7 +189,7 @@ function CategoryResetRow({
           <div className="font-sans text-xs text-ink2">
             Recoverable snapshot: {snapshot.totalRows} row
             {snapshot.totalRows === 1 ? "" : "s"} captured{" "}
-            {formatSnapshotTime(snapshot.createdAt)} UTC.
+            {formatIsoDateTimeUtc(snapshot.createdAt)} UTC.
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-40 flex-1 basis-44">

@@ -8,49 +8,10 @@ import {
   lifecycleStatusLabel,
   type CheckInDetailData,
   type CheckInDetailMember,
-  type SessionReviewStatus,
 } from "@/lib/admin/check-ins";
-
-function formatMeetingTime(value: string | null): string | null {
-  if (!value) return null;
-  const match = /^(\d{2}):(\d{2})/.exec(value);
-  if (!match) return value;
-  const hour = Number.parseInt(match[1], 10);
-  const minute = match[2];
-  const suffix = hour >= 12 ? "p" : "a";
-  const display = ((hour + 11) % 12) + 1;
-  return `${display}:${minute}${suffix}`;
-}
-
-function meetingLine(day: string | null, time: string | null): string | null {
-  const t = formatMeetingTime(time);
-  const d = day?.trim() ?? null;
-  if (d && t) return `${d} · ${t}`;
-  if (d) return d;
-  if (t) return t;
-  return null;
-}
-
-function statusBadge(status: SessionReviewStatus) {
-  switch (status) {
-    case "submitted":
-      return <PBadge tone="healthy">Submitted</PBadge>;
-    case "admin_entered":
-      return (
-        <PBadge tone="healthy" outline>
-          Submitted · admin
-        </PBadge>
-      );
-    case "missing":
-      return <PBadge tone="followup">Missing</PBadge>;
-    case "did_not_meet":
-      return <PBadge tone="neutral">Did not meet</PBadge>;
-    case "planned_pause":
-      return <PBadge tone="pause">Planned pause</PBadge>;
-    default:
-      return <PBadge tone="neutral">{status}</PBadge>;
-  }
-}
+import { meetingLine } from "@/lib/shared/meeting-time";
+import { SessionStatusBadge } from "@/components/admin/session-status-badge";
+import { AttendanceSummary } from "@/components/admin/attendance-summary";
 
 function attendanceBadge(status: CheckInDetailMember["attendanceStatus"]) {
   if (status === "present") return <PBadge tone="healthy">Present</PBadge>;
@@ -137,15 +98,7 @@ export function CheckInDetailShell({
   data: CheckInDetailData;
   meetingWeek: string;
 }) {
-  const anyError =
-    data.errors.group ||
-    data.errors.leaders ||
-    data.errors.profiles ||
-    data.errors.session ||
-    data.errors.records ||
-    data.errors.health ||
-    data.errors.memberships ||
-    data.errors.members;
+  const anyError = Object.values(data.errors).some(Boolean);
 
   const { group, session, sessionStatus, health, members } = data;
   const meta = group
@@ -180,7 +133,7 @@ export function CheckInDetailShell({
             <h2 className="m-0 font-display text-2xl font-medium text-ink">
               {group.name}
             </h2>
-            {statusBadge(sessionStatus)}
+            <SessionStatusBadge status={sessionStatus} />
             <PBadge tone="neutral" outline>
               {lifecycleStatusLabel(group.lifecycle_status)}
             </PBadge>
@@ -203,7 +156,10 @@ export function CheckInDetailShell({
       ) : (
         <Card>
           <SectionLabel>Check-in</SectionLabel>
-          <FieldRow label="Status" value={statusBadge(sessionStatus)} />
+          <FieldRow
+            label="Status"
+            value={<SessionStatusBadge status={sessionStatus} />}
+          />
           <FieldRow
             label="Meeting date"
             value={formatMeetingDate(session.meeting_date) ?? "—"}
@@ -221,18 +177,7 @@ export function CheckInDetailShell({
               label="Attendance"
               value={
                 <span>
-                  <strong className="font-semibold">
-                    {data.attendance.present}
-                  </strong>{" "}
-                  present ·{" "}
-                  <strong className="font-semibold">
-                    {data.attendance.absent}
-                  </strong>{" "}
-                  absent ·{" "}
-                  <strong className="font-semibold">
-                    {data.attendance.excused}
-                  </strong>{" "}
-                  excused
+                  <AttendanceSummary attendance={data.attendance} />
                 </span>
               }
             />

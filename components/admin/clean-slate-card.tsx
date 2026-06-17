@@ -39,6 +39,7 @@ import {
   DangerCard,
   DangerSection,
 } from "@/components/admin/danger-zone-card-shell";
+import { formatIsoDateTimeUtc } from "@/lib/shared/date";
 
 // Human-readable labels for the history tables shown in the impact preview.
 const TABLE_LABELS: Record<string, string> = {
@@ -53,18 +54,6 @@ const TABLE_LABELS: Record<string, string> = {
   shepherd_care_interactions: "Shepherd-care interactions",
   shepherd_care_follow_ups: "Shepherd-care follow-ups",
 };
-
-// Format a snapshot's capture time for the recovery section. Fixed locale +
-// UTC so server and client render the same string (no hydration mismatch).
-function formatSnapshotTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-US", {
-    timeZone: "UTC",
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
 
 export function CleanSlateCard({
   impact,
@@ -243,7 +232,7 @@ function CleanSlateRecovery({
           <div className="flex justify-between gap-3">
             <span>Snapshot captured</span>
             <strong className="text-ink">
-              {formatSnapshotTime(snapshot.createdAt)} UTC
+              {formatIsoDateTimeUtc(snapshot.createdAt)} UTC
             </strong>
           </div>
           <div className="flex justify-between gap-3">

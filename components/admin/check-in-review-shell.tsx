@@ -11,64 +11,12 @@ import {
   lifecycleStatusLabel,
   type GroupReviewRow,
   type LeaderPulseDisplay,
-  type SessionReviewStatus,
   type WeekOption,
   type WeeklyReviewData,
 } from "@/lib/admin/check-ins";
-
-function formatMeetingTime(value: string | null): string | null {
-  if (!value) return null;
-  const match = /^(\d{2}):(\d{2})/.exec(value);
-  if (!match) return value;
-  const hour = Number.parseInt(match[1], 10);
-  const minute = match[2];
-  const suffix = hour >= 12 ? "p" : "a";
-  const display = ((hour + 11) % 12) + 1;
-  return `${display}:${minute}${suffix}`;
-}
-
-function meetingLine(day: string | null, time: string | null): string | null {
-  const t = formatMeetingTime(time);
-  const d = day?.trim() ?? null;
-  if (d && t) return `${d} · ${t}`;
-  if (d) return d;
-  if (t) return t;
-  return null;
-}
-
-function statusBadge(
-  status: SessionReviewStatus,
-  isScheduledThisWeek: boolean
-) {
-  switch (status) {
-    case "submitted":
-      return <PBadge tone="healthy">Submitted</PBadge>;
-    case "admin_entered":
-      return (
-        <PBadge tone="healthy" outline>
-          Submitted · admin
-        </PBadge>
-      );
-    case "missing":
-      // Bi-weekly off-parity groups shouldn't be accused of missing a
-      // check-in for a week they weren't scheduled to meet. Surface them
-      // as "Off-week" instead so admins know nothing is broken.
-      if (!isScheduledThisWeek) {
-        return (
-          <PBadge tone="neutral" outline>
-            Off-week
-          </PBadge>
-        );
-      }
-      return <PBadge tone="followup">Missing</PBadge>;
-    case "did_not_meet":
-      return <PBadge tone="neutral">Did not meet</PBadge>;
-    case "planned_pause":
-      return <PBadge tone="pause">Planned pause</PBadge>;
-    default:
-      return <PBadge tone="neutral">{status}</PBadge>;
-  }
-}
+import { meetingLine } from "@/lib/shared/meeting-time";
+import { SessionStatusBadge } from "@/components/admin/session-status-badge";
+import { AttendanceSummary } from "@/components/admin/attendance-summary";
 
 function pulseBadge(pulse: LeaderPulseDisplay | null) {
   if (!pulse) return null;
@@ -178,7 +126,10 @@ function ReviewCard({
             <h3 className="m-0 font-display text-lg font-medium text-ink">
               {row.groupName}
             </h3>
-            {statusBadge(row.sessionStatus, row.isScheduledThisWeek)}
+            <SessionStatusBadge
+              status={row.sessionStatus}
+              isScheduledThisWeek={row.isScheduledThisWeek}
+            />
             {lifecycleBadge(row)}
             {row.followUpNeeded ? (
               <PBadge tone="followup">Follow-up needed</PBadge>
@@ -228,18 +179,7 @@ function ReviewCard({
 
       {row.attendance ? (
         <div className="font-sans text-sm text-ink2">
-          <strong className="font-semibold text-ink">
-            {row.attendance.present}
-          </strong>{" "}
-          present ·{" "}
-          <strong className="font-semibold text-ink">
-            {row.attendance.absent}
-          </strong>{" "}
-          absent ·{" "}
-          <strong className="font-semibold text-ink">
-            {row.attendance.excused}
-          </strong>{" "}
-          excused
+          <AttendanceSummary attendance={row.attendance} />
         </div>
       ) : null}
 
@@ -268,14 +208,7 @@ export function CheckInReviewShell({
   meetingWeek: string;
   weekOptions: WeekOption[];
 }) {
-  const anyError =
-    data.errors.groups ||
-    data.errors.leaders ||
-    data.errors.profiles ||
-    data.errors.sessions ||
-    data.errors.records ||
-    data.errors.health ||
-    data.errors.settings;
+  const anyError = Object.values(data.errors).some(Boolean);
 
   const everyoneIn = data.summary.totalActive > 0 && data.summary.missing === 0;
 

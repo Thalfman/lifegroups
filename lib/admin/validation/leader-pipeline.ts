@@ -28,7 +28,8 @@ function isLeaderReadinessStage(value: unknown): value is LeaderReadinessStage {
   );
 }
 
-const APPRENTICE_DISPLAY_NAME_MAX = 120;
+export const APPRENTICE_DISPLAY_NAME_MAX = 120;
+export const APPRENTICE_NOTES_MAX = 2000;
 
 type ApprenticeFields = {
   display_name: string;
@@ -85,7 +86,7 @@ function validateApprenticeFields(
   }
 
   const notes = readOptionalString(input.notes);
-  if (notes !== undefined && notes.length > 2000) {
+  if (notes !== undefined && notes.length > APPRENTICE_NOTES_MAX) {
     errors.push("Notes are too long (max 2000 characters).");
   }
 

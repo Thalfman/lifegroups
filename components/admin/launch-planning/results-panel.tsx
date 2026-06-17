@@ -3,34 +3,12 @@ import type {
   LaunchPlanningAssumptions,
   LaunchPlanningInputs,
   LaunchPlanningOutputs,
-  LaunchPlanningRiskLevel,
 } from "@/lib/admin/launch-planning";
-
-function fmtNumber(n: number, fractionDigits = 0): string {
-  if (!Number.isFinite(n)) return "—";
-  return n.toLocaleString(undefined, {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  });
-}
+import { fmtNumber, riskTone } from "@/lib/admin/launch-planning";
 
 function fmtPct(ratio: number): string {
   const pct = ratio * 100;
   return Number.isInteger(pct) ? `${pct}%` : `${pct.toFixed(1)}%`;
-}
-
-function riskTone(level: LaunchPlanningRiskLevel): {
-  label: string;
-  accent: string;
-} {
-  switch (level) {
-    case "ok":
-      return { label: "OK", accent: P.sage };
-    case "watch":
-      return { label: "Watch", accent: P.terra };
-    case "launch_needed":
-      return { label: "Launch needed", accent: "#923220" };
-  }
 }
 
 function recommendation(

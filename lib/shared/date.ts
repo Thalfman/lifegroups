@@ -23,7 +23,7 @@ export function formatIsoDate(value: string): string {
   if (!y || !m || !d) return value;
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(
     "en-US",
-    MONTH_DAY_YEAR,
+    MONTH_DAY_YEAR
   );
 }
 
@@ -33,8 +33,23 @@ export function formatIsoDate(value: string): string {
  */
 export function formatIsoDateOr(
   value: string | null | undefined,
-  fallback = "—",
+  fallback = "—"
 ): string {
   if (value === null || value === undefined) return fallback;
   return formatIsoDate(value);
+}
+
+/**
+ * Format a full ISO timestamp as a medium date + short time, resolved in
+ * UTC so the rendered moment is stable regardless of where the page is
+ * rendered. Returns the input unchanged when it doesn't parse.
+ */
+export function formatIsoDateTimeUtc(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-US", {
+    timeZone: "UTC",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }

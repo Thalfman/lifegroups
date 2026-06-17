@@ -31,6 +31,10 @@ import {
   fieldLabelClassName as LABEL,
   fieldInputBaseClassName as INPUT,
 } from "@/components/admin/forms/field-styles";
+import {
+  APPRENTICE_DISPLAY_NAME_MAX,
+  APPRENTICE_NOTES_MAX,
+} from "@/lib/admin/validation/leader-pipeline";
 
 // Notes can run to 2000 chars; a single-line input hides all but a sliver of
 // that, so notes use a multi-line, vertically resizable variant of INPUT.
@@ -76,7 +80,7 @@ function ApprenticeEditForm({
               id={`ap-edit-name-${a.id}`}
               name="display_name"
               type="text"
-              maxLength={120}
+              maxLength={APPRENTICE_DISPLAY_NAME_MAX}
               defaultValue={a.displayName}
               className={INPUT}
             />
@@ -138,7 +142,7 @@ function ApprenticeEditForm({
           <textarea
             id={`ap-edit-notes-${a.id}`}
             name="notes"
-            maxLength={2000}
+            maxLength={APPRENTICE_NOTES_MAX}
             rows={3}
             defaultValue={a.notes ?? ""}
             className={TEXTAREA}
@@ -325,7 +329,7 @@ function AddApprenticeForm({
             id="ap-name"
             name="display_name"
             type="text"
-            maxLength={120}
+            maxLength={APPRENTICE_DISPLAY_NAME_MAX}
             placeholder="e.g. Tony L."
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
@@ -369,7 +373,7 @@ function AddApprenticeForm({
           <textarea
             id="ap-notes"
             name="notes"
-            maxLength={2000}
+            maxLength={APPRENTICE_NOTES_MAX}
             rows={3}
             className={TEXTAREA}
           />

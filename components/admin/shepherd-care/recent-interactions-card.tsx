@@ -1,11 +1,8 @@
-import Link from "next/link";
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
 import { Badge } from "@/components/ui/badge";
 import { shepherdCareInteractionTypeLabel } from "@/lib/dashboard/labels";
+import { CareRowLink } from "@/components/admin/shepherd-care/care-row-link";
 import type { CareRecentInteraction } from "@/lib/admin/shepherd-care-dashboard";
-
-const ROW_LINK =
-  "flex min-h-11 items-baseline justify-between gap-3 border-b border-lineSoft py-2.5 text-inherit no-underline transition-colors duration-150 hover:bg-surfaceAlt";
 
 export function RecentInteractionsCard({
   items,
@@ -33,19 +30,21 @@ export function RecentInteractionsCard({
       ) : (
         <div>
           {items.map((item) => (
-            <Link key={item.id} href={item.href} className={ROW_LINK}>
-              <div className="min-w-0 flex-1">
-                <div className="font-sans text-base font-semibold text-ink [overflow-wrap:anywhere]">
-                  {item.shepherdName}
-                </div>
-                <div className="mt-0.5 font-sans text-sm text-ink3">
+            <CareRowLink
+              key={item.id}
+              href={item.href}
+              title={item.shepherdName}
+              subtitle={
+                <>
                   {item.interactionAt} · logged {item.createdAt.slice(0, 10)}
-                </div>
-              </div>
-              <Badge tone="sage">
-                {shepherdCareInteractionTypeLabel(item.interactionType)}
-              </Badge>
-            </Link>
+                </>
+              }
+              trailing={
+                <Badge tone="sage">
+                  {shepherdCareInteractionTypeLabel(item.interactionType)}
+                </Badge>
+              }
+            />
           ))}
         </div>
       )}
