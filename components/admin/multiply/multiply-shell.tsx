@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { type KeyboardEvent, type ReactNode, useRef } from "react";
+import { type KeyboardEvent, type ReactNode, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   resolveMultiplyInitialTab,
@@ -48,6 +48,24 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
   const active = resolveMultiplyInitialTab(
     searchParams.get("tab") ?? undefined
   );
+
+  // Lazy-mount the panels: render a tab's panel only once it has been the
+  // active tab, then keep it mounted so switching back is instant and preserves
+  // its in-panel state (filters, expanded rows). On first load only the active
+  // tab (default "plan") is mounted, so the heavy Readiness grid and Leaders
+  // pipeline aren't server-rendered or hydrated until they're opened — a real
+  // saving on the common path, where the page already loads all three tabs'
+  // data server-side. The panel wrappers below stay in the DOM regardless so
+  // every tab's `aria-controls` target always resolves. (This is the
+  // documented "adjust state when a prop changes during render" pattern — the
+  // active tab is URL-derived, so seed it on mount and fold in each new active
+  // tab without an effect, matching CareShell.)
+  const [mounted, setMounted] = useState<Set<MultiplyTabKey>>(
+    () => new Set([active])
+  );
+  if (!mounted.has(active)) {
+    setMounted((prev) => new Set(prev).add(active));
+  }
 
   function selectTab(key: MultiplyTabKey) {
     if (key === active) return;
@@ -142,7 +160,7 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
           aria-labelledby={`multiply-tab-${tab.key}`}
           hidden={active !== tab.key}
         >
-          {tab.panel}
+          {mounted.has(tab.key) ? tab.panel : null}
         </div>
       ))}
     </div>

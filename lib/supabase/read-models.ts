@@ -604,6 +604,15 @@ export const MEMBER_COLUMNS = [
 
 const MEMBER_SELECT = MEMBER_COLUMNS.join(", ");
 
+// Supabase REST responses default-cap rows at ~1000 (see GUEST_PAGE_LIMIT).
+// `fetchAllMembers` backs the People directory, the inline assign controls,
+// and — via the group-detail People tab — the authoritative group roster, so
+// widen past the cap with an explicit range. Without it a member whose name
+// sorts past the first page would silently vanish from those lists once a
+// deployment crosses ~1000 members (a false-empty, not an error). Beyond ~10k
+// members this should move to keyset pagination.
+const MEMBER_PAGE_LIMIT = 10000;
+
 export async function fetchMembersByIds(
   client: ReadClient,
   ids: string[]
@@ -827,7 +836,8 @@ export async function fetchAllMembers(
   let query = client
     .from("members")
     .select(MEMBER_SELECT)
-    .order("full_name", { ascending: true });
+    .order("full_name", { ascending: true })
+    .range(0, MEMBER_PAGE_LIMIT - 1);
   if (options.statuses && options.statuses.length > 0)
     query = query.in("status", options.statuses);
   const { data, error } = await query.returns<MembersRow[]>();
