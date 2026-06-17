@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -63,6 +63,13 @@ export function ConfirmDialog({
   // synchronously, so the submit it triggers fires before the close settles.
   onConfirm: () => void;
 }) {
+  // In trigger mode Radix restores focus to the trigger on close. In controlled
+  // mode there is no trigger ref, so Radix would drop focus to <body>; capture
+  // the control that was focused when the dialog opened (the drawer control the
+  // dismissal came from) and restore it ourselves — the EditingSurface pattern.
+  const controlled = trigger == null;
+  const openerRef = useRef<HTMLElement | null>(null);
+
   return (
     // `open`/`onOpenChange` undefined leaves Radix uncontrolled, so the trigger
     // drives it; supplied, the host drives it (no trigger needed).
@@ -80,6 +87,25 @@ export function ConfirmDialog({
           }}
         />
         <AlertDialogContent
+          // Controlled mode only: capture the opener before Radix moves focus
+          // inward, then restore to it on close (Cancel / Escape / Discard) —
+          // unless it has since unmounted (e.g. the drawer closed on confirm),
+          // in which case fall through to that surface's own focus restore.
+          {...(controlled
+            ? {
+                onOpenAutoFocus: () => {
+                  openerRef.current =
+                    document.activeElement as HTMLElement | null;
+                },
+                onCloseAutoFocus: (event: Event) => {
+                  const opener = openerRef.current;
+                  if (opener && document.contains(opener)) {
+                    event.preventDefault();
+                    opener.focus();
+                  }
+                },
+              }
+            : {})}
           style={{
             position: "fixed",
             top: "50%",

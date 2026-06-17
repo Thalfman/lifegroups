@@ -149,11 +149,15 @@ export function GroupHealthTriage({
   // we can warn before discarding. A ref (not state) because only the close
   // handlers read it, and we don't want edits to re-render the list.
   const dirtyRef = useRef(false);
+  // A save in flight: ignore every dismissal route so a write can't resolve
+  // (closing the drawer) while the non-blocking discard prompt is open.
+  const submittingRef = useRef(false);
 
   const visible = rows.filter((row) => matchesFilter(row, filter, watchGrade));
   const openRow = rows.find((r) => r.group_id === openGroupId) ?? null;
 
   const requestClose = () => {
+    if (submittingRef.current) return;
     if (dirtyRef.current) {
       setDiscardOpen(true);
       return;
@@ -299,6 +303,9 @@ export function GroupHealthTriage({
         dirtyRef={dirtyRef}
         onRequestClose={requestClose}
         onSaved={forceClose}
+        onPendingChange={(p) => {
+          submittingRef.current = p;
+        }}
         isSuperAdmin={isSuperAdmin}
       />
       <ConfirmDialog

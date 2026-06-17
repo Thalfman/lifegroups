@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { useState } from "react";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  within,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -81,5 +87,33 @@ describe("ConfirmDialog — controlled (programmatic) mode", () => {
 
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  // #669 review: controlled mode has no trigger ref, so the dialog must restore
+  // focus to the opener itself (Cancel / Escape) or keyboard flow breaks.
+  it("restores focus to the opener after Cancel", async () => {
+    const user = userEvent.setup();
+    render(<Host onConfirm={vi.fn()} />);
+
+    const opener = screen.getByRole("button", { name: "raise" });
+    await user.click(opener);
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("restores focus to the opener after Escape", async () => {
+    const user = userEvent.setup();
+    render(<Host onConfirm={vi.fn()} />);
+
+    const opener = screen.getByRole("button", { name: "raise" });
+    await user.click(opener);
+    await screen.findByRole("alertdialog");
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(document.activeElement).toBe(opener);
   });
 });

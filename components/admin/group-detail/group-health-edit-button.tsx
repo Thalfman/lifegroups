@@ -32,8 +32,12 @@ export function GroupHealthEditButton({
   // Unsaved-edit flag, written by the open editor's form and read on close so
   // we can warn before discarding (the triage's exact protocol).
   const dirtyRef = useRef(false);
+  // A save in flight: ignore every dismissal route so a write can't resolve
+  // (closing the drawer) while the non-blocking discard prompt is open.
+  const submittingRef = useRef(false);
 
   const requestClose = () => {
+    if (submittingRef.current) return;
     if (dirtyRef.current) {
       setDiscardOpen(true);
       return;
@@ -77,6 +81,9 @@ export function GroupHealthEditButton({
         dirtyRef={dirtyRef}
         onRequestClose={requestClose}
         onSaved={forceClose}
+        onPendingChange={(p) => {
+          submittingRef.current = p;
+        }}
         isSuperAdmin={isSuperAdmin}
       />
       <ConfirmDialog
