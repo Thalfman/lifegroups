@@ -86,6 +86,20 @@ describe("migration — admin_bulk_import_people", () => {
     expect(adminSql.lower).toContain("v_role = 'leader'");
   });
 
+  it("preserves the leader's phone in the profiles insert", () => {
+    // Regression: the leader branch must carry phone like the member branch and
+    // the one-at-a-time create paths, or imported leader numbers are dropped.
+    expect(adminSql.lower).toContain(
+      "insert into public.profiles (id, full_name, email, phone, role, status)"
+    );
+  });
+
+  it("enforces the per-batch row cap at the security boundary", () => {
+    // Defense-in-depth: the 500-row cap must hold even for direct RPC callers
+    // that bypass the TS parser (PEOPLE_IMPORT_MAX_ROWS).
+    expect(adminSql.lower).toContain("jsonb_array_length(p_rows) > 500");
+  });
+
   it("writes one paired audit_events row recording the created count", () => {
     assertPairedAuditInsert(
       adminSql,

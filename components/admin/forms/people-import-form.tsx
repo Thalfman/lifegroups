@@ -28,12 +28,18 @@ import { useActionForm, FormStatus } from "./action-form";
 // exact header to fill. Used by both Settings > System and the Super Admin
 // Console; the action is admin-gated.
 export function PeopleImportForm() {
-  const { state, formAction, pending } = useActionForm<BulkImportPeopleSuccess>(
-    adminBulkImportPeople
-  );
-  const [payload, setPayload] = useState("");
+  // resetOnSuccess clears the form after a successful import: the textarea +
+  // file input are uncontrolled, so the native form reset empties both. Members
+  // aren't de-duplicated across separate imports, so clearing the last batch
+  // avoids an accidental duplicate re-submit; the success counts live on
+  // `state`, so they stay visible after the fields clear.
+  const { state, formAction, pending, formRef } =
+    useActionForm<BulkImportPeopleSuccess>(adminBulkImportPeople, {
+      resetOnSuccess: true,
+    });
   const [fileError, setFileError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileId = useId();
   const payloadId = useId();
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -44,18 +50,23 @@ export function PeopleImportForm() {
     reader.onerror = () => setFileError("That file could not be read.");
     reader.onload = () => {
       const text = typeof reader.result === "string" ? reader.result : "";
-      setPayload(text);
+      // Drop the file's contents into the (uncontrolled) textarea so the
+      // operator can eyeball/edit before importing; it's the single submitted
+      // field, so upload and paste share one code path.
+      if (textareaRef.current) textareaRef.current.value = text;
     };
     reader.readAsText(file);
   }
 
   return (
-    <form action={formAction} className="grid gap-2.5">
+    <form ref={formRef} action={formAction} className="grid gap-2.5">
       <div className="grid gap-1.5">
-        <span className={fieldLabelClassName}>Upload a CSV file</span>
+        <label htmlFor={fileId} className={fieldLabelClassName}>
+          Upload a CSV file
+        </label>
         <div className="flex flex-wrap items-center gap-2.5">
           <input
-            ref={fileInputRef}
+            id={fileId}
             type="file"
             accept=".csv,text/csv"
             onChange={onFileChange}
@@ -76,11 +87,10 @@ export function PeopleImportForm() {
           …or paste CSV
         </label>
         <textarea
+          ref={textareaRef}
           id={payloadId}
           name="payload"
           rows={8}
-          value={payload}
-          onChange={(e) => setPayload(e.target.value)}
           placeholder={
             "full_name,email,phone,role\nJane Doe,jane@example.com,555-0100,leader\nJohn Smith,,,member"
           }

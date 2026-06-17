@@ -52,6 +52,15 @@ begin
     raise exception 'invalid_input';
   end if;
 
+  -- Enforce the per-batch row cap at the security boundary too, not only in the
+  -- TS parser (PEOPLE_IMPORT_MAX_ROWS = 500 in lib/admin/people-import.ts): this
+  -- SECURITY DEFINER function is granted to authenticated admins, so a direct
+  -- RPC call that bypasses the parser must not be able to insert an unbounded
+  -- batch in one audited transaction.
+  if jsonb_array_length(p_rows) > 500 then
+    raise exception 'invalid_input';
+  end if;
+
   for v_row in select * from jsonb_array_elements(p_rows) loop
     if jsonb_typeof(v_row) <> 'object' then
       raise exception 'invalid_input';
@@ -77,8 +86,11 @@ begin
       if v_email is null then
         raise exception 'invalid_input';
       end if;
-      insert into public.profiles (id, full_name, email, role, status)
-      values (gen_random_uuid(), v_full_name, lower(v_email), 'leader', 'active')
+      -- Preserve the leader's phone like the one-at-a-time create paths
+      -- (admin_create_leader_profile / admin_add_person_to_group) and like the
+      -- member branch below; the CSV + template both carry a phone column.
+      insert into public.profiles (id, full_name, email, phone, role, status)
+      values (gen_random_uuid(), v_full_name, lower(v_email), v_phone, 'leader', 'active')
       on conflict do nothing;
     else
       -- members has no unique (email, phone) constraint by design: member dedup

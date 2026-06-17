@@ -22,7 +22,11 @@ import { adminTextRpc } from "@/lib/admin/rpc";
 // not a Super-Admin-only one (the Super Admin Console panel reuses this same
 // action). The RPC body re-enforces the admin gate; super_admin satisfies it too.
 
-const REVALIDATE_PATHS = ["/admin/settings", "/admin"];
+// The importer form is rendered in three places: Settings > System, the Home
+// setup checklist's target, and the Super Admin Console's Access workspace.
+// Revalidate all three so surrounding people/coverage data refreshes after an
+// import regardless of which surface the admin used.
+const REVALIDATE_PATHS = ["/admin/settings", "/admin", "/admin/super-admin"];
 
 export type BulkImportPeopleSuccess = {
   createdCount: number;
