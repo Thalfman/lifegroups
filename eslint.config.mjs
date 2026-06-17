@@ -29,6 +29,18 @@ const eslintConfig = [
     files: ["**/*.{jsx,tsx}"],
     rules: jsxA11y.flatConfigs.recommended.rules,
   },
+  // Ban blocking native dialogs (#667). Every `window.confirm` / `alert` /
+  // `prompt` call site has been migrated to the non-blocking confirmation
+  // modal (#664–#666); `no-alert` locks that win in so a regression fails the
+  // build. The core rule flags both the bare globals and the `window.` /
+  // `globalThis.` member forms. A genuinely unavoidable exception must opt out
+  // explicitly with an inline `// eslint-disable-next-line no-alert` plus a
+  // justification — the default is banned.
+  {
+    rules: {
+      "no-alert": "error",
+    },
+  },
 ];
 
 export default eslintConfig;
