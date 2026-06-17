@@ -13,6 +13,13 @@ import {
   ErrorBanner,
   StatusChip,
 } from "@/components/admin/super-admin/console-primitives";
+// These seven workspaces are SERVER components: they derive their views from the
+// console's profile/member/group Maps server-side and hand only flat,
+// minimal props to their client children (e.g. AuditWorkspacePanel builds the
+// audit entries server-side). They therefore contribute no client bundle, so
+// they must stay server-imported — routing them through a client ssr:false lazy
+// wrapper would clientize them and serialize the full, care-sensitive data set
+// to the browser just to open a tab.
 import { ReadinessWorkspace } from "@/components/admin/super-admin/readiness-workspace";
 import { AccessWorkspace } from "@/components/admin/super-admin/access-workspace";
 import { ConfigWorkspace } from "@/components/admin/super-admin/config-workspace";

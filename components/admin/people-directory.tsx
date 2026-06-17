@@ -517,6 +517,11 @@ function RowMoreMenu({
 
 // One directory row: identity block left, row actions right; stacks to a
 // single column on mobile.
+// NOTE: no `content-visibility` here. Each row hosts RowMoreMenu, whose dropdown
+// is absolutely positioned below the row (top-[calc(100%+6px)]); content-
+// visibility's paint containment would clip that popover and hide the
+// deactivate/delete actions. Rows without overflow popovers (Notes feed,
+// Follow-ups, calendar list) keep the lg-cv-row optimization.
 const ROW_CLASS =
   "grid grid-cols-1 items-start gap-3 border-b border-lineSoft px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto]";
 const ROW_NAME_CLASS = "font-display text-md font-medium text-ink";

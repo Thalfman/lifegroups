@@ -1,13 +1,32 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import {
   AdminMasterCalendarGrid,
   type DayClickPayload,
 } from "./admin-master-calendar-grid";
 import { AdminMasterCalendarList } from "./admin-master-calendar-list";
-import { AdminMasterCalendarDrawer } from "./admin-master-calendar-drawer";
+
+// The drawer is a modal that only appears once an occurrence is selected, so its
+// chunk is split out of the calendar's First Load JS and fetched on first open
+// (mirrors the launch-planning lazy-panels pattern). No loading placeholder: a
+// modal has no inline footprint, so a skeleton would flash nothing useful.
+const AdminMasterCalendarDrawer = dynamic(
+  () =>
+    import("./admin-master-calendar-drawer").then(
+      (m) => m.AdminMasterCalendarDrawer
+    ),
+  { ssr: false }
+);
 import { AdminCalendarLegend } from "./admin-calendar-legend";
 import { PlanningByLeaderList } from "./planning/planning-by-leader-list";
 import {
@@ -44,6 +63,40 @@ import { PlanningViewSwitcher } from "./master-calendar/planning-view-switcher";
 // presentational filter UI lives in ./master-calendar; this shell owns state
 // and layout only.
 type ViewMode = CalendarViewMode;
+
+// Static layout styles hoisted to module scope (they reference only palette
+// constants) so the shell doesn't rebuild identical objects on every render.
+const ROOT_STYLE: React.CSSProperties = { display: "grid", gap: 16 };
+const ADVANCED_DETAILS_STYLE: React.CSSProperties = {
+  border: `1px solid ${P.line}`,
+  borderRadius: 14,
+  background: P.surface,
+  padding: "10px 14px",
+};
+const ADVANCED_SUMMARY_STYLE: React.CSSProperties = {
+  cursor: "pointer",
+  fontFamily: fontSans,
+  fontSize: 11,
+  letterSpacing: 1.5,
+  textTransform: "uppercase",
+  color: P.ink3,
+  fontWeight: 600,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+};
+const ADVANCED_ACTIVE_BADGE_STYLE: React.CSSProperties = {
+  fontFamily: fontBody,
+  fontSize: 11,
+  letterSpacing: 0,
+  textTransform: "none",
+  color: P.terra,
+  background: P.terraSoft,
+  border: `1px solid ${P.terra}`,
+  borderRadius: 999,
+  padding: "1px 8px",
+};
+const ADVANCED_BODY_STYLE: React.CSSProperties = { paddingTop: 12 };
 
 export function AdminMasterCalendarShell({
   monthIso,
@@ -188,6 +241,10 @@ export function AdminMasterCalendarShell({
   // (groupId|date) since the master view has multiple occurrences per
   // date but at most one per group/date.
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // Latches true on the first selection so the dynamically-imported drawer
+  // mounts only when first needed, then stays mounted (keeping its close
+  // animation) for subsequent opens.
+  const [drawerEverOpened, setDrawerEverOpened] = useState(false);
   const [listAnchorDate, setListAnchorDate] = useState<string | null>(null);
 
   const filters = useMemo<CalendarFilters>(
@@ -249,14 +306,22 @@ export function AdminMasterCalendarShell({
   // filter summary copy and the disabled state of "Clear filters" (#371).
   const planningFiltersActive = hasActiveFilters || planningView !== "all";
 
-  const onSelect = (o: MasterOccurrence) => {
+  // Stable identity so the memoized occurrence rows (grid + list) don't all
+  // re-render whenever the shell re-renders for an unrelated reason. State
+  // setters are stable, so the empty dependency list is correct.
+  const onSelect = useCallback((o: MasterOccurrence) => {
     setSelectedKey(`${o.groupId}|${o.date}`);
-  };
+    setDrawerEverOpened(true);
+  }, []);
 
   const onMoreFromDay = (payload: DayClickPayload) => {
     setListAnchorDate(payload.date);
     setViewModeManual("list");
   };
+
+  // Stable so the list's anchor-scroll effect (which depends on it) doesn't
+  // re-run on every shell render.
+  const onAnchorConsumed = useCallback(() => setListAnchorDate(null), []);
 
   // The list normally re-clips to the visible month; the "This week" view must
   // not clip (its ISO week can spill past the month — see calendarListRange).
@@ -302,7 +367,7 @@ export function AdminMasterCalendarShell({
   const isByLeader = planningViews && deferredPlanningView === "by-leader";
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={ROOT_STYLE}>
       {planningViews ? (
         <PlanningViewSwitcher
           value={planningView}
@@ -320,49 +385,14 @@ export function AdminMasterCalendarShell({
           disclosure so they're available but no longer the first thing the
           director meets (#331). The frozen route renders the bar inline. */}
       {planningViews ? (
-        <details
-          style={{
-            border: `1px solid ${P.line}`,
-            borderRadius: 14,
-            background: P.surface,
-            padding: "10px 14px",
-          }}
-          open={hasActiveFilters}
-        >
-          <summary
-            style={{
-              cursor: "pointer",
-              fontFamily: fontSans,
-              fontSize: 11,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
+        <details style={ADVANCED_DETAILS_STYLE} open={hasActiveFilters}>
+          <summary style={ADVANCED_SUMMARY_STYLE}>
             Advanced filters
             {hasActiveFilters ? (
-              <span
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 11,
-                  letterSpacing: 0,
-                  textTransform: "none",
-                  color: P.terra,
-                  background: P.terraSoft,
-                  border: `1px solid ${P.terra}`,
-                  borderRadius: 999,
-                  padding: "1px 8px",
-                }}
-              >
-                Active
-              </span>
+              <span style={ADVANCED_ACTIVE_BADGE_STYLE}>Active</span>
             ) : null}
           </summary>
-          <div style={{ paddingTop: 12 }}>{filterBar}</div>
+          <div style={ADVANCED_BODY_STYLE}>{filterBar}</div>
         </details>
       ) : (
         filterBar
@@ -409,17 +439,19 @@ export function AdminMasterCalendarShell({
           fromIso={listFromIso}
           toIso={listToIso}
           anchorDate={listAnchorDate}
-          onAnchorConsumed={() => setListAnchorDate(null)}
+          onAnchorConsumed={onAnchorConsumed}
           onSelect={onSelect}
           denoiseGroupLinks={planningViews}
         />
       )}
 
-      <AdminMasterCalendarDrawer
-        monthIso={monthIso}
-        occurrence={selected}
-        onClose={() => setSelectedKey(null)}
-      />
+      {drawerEverOpened && (
+        <AdminMasterCalendarDrawer
+          monthIso={monthIso}
+          occurrence={selected}
+          onClose={() => setSelectedKey(null)}
+        />
+      )}
     </div>
   );
 }

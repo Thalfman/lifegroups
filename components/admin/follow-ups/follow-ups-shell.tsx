@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import { SectionHeader } from "@/components/layout/shell";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
@@ -404,6 +404,10 @@ export function AdminFollowUpsShell({
                     </div>
                   </div>
                   <ul className="m-0 list-none p-0">
+                    {/* No content-visibility on these rows: for a super admin
+                        each FollowUpRow hosts SuperAdminInlineDelete, whose
+                        confirmation dialog is absolutely positioned below the
+                        row; paint containment would clip it. */}
                     {list.map((fu) => (
                       <li key={fu.id} className="mb-3">
                         <FollowUpRow
@@ -451,7 +455,10 @@ export function AdminFollowUpsShell({
   );
 }
 
-function FollowUpRow({
+// Memoized: the queue re-renders on every filter/status-tab change, but the
+// lookup Maps and `today` are stable (memoized in the parent) and each followUp
+// object is stable, so rows that stayed in the list skip re-rendering.
+const FollowUpRow = memo(function FollowUpRow({
   followUp,
   groupsById,
   membersById,
@@ -557,7 +564,7 @@ function FollowUpRow({
       </div>
     </article>
   );
-}
+});
 
 function priorityTone(priority: FollowUpPriority) {
   if (priority === "high") return "followup" as const;

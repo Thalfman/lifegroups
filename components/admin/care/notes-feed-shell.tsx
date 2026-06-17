@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { cardClassName, cardHeadingClassName } from "@/components/lg/Card";
 import { NoteTransparencyToggle } from "@/components/admin/shepherd-care/note-transparency-toggle";
@@ -77,13 +77,20 @@ function FilterSelect({
   );
 }
 
-function FeedItemCard({ item }: { item: CareFeedItem }) {
+// Memoized: the feed re-renders on every filter change, but each item object is
+// stable across those renders, so a memoized card skips re-rendering the rows
+// that stayed in the filtered set.
+const FeedItemCard = memo(function FeedItemCard({
+  item,
+}: {
+  item: CareFeedItem;
+}) {
   const about =
     item.subjectKind === "group"
       ? `About the group ${item.subjectName}`
       : `About ${item.subjectName}`;
   return (
-    <li className="list-none border-t border-lineSoft py-3 first:border-t-0 first:pt-0">
+    <li className="lg-cv-row list-none border-t border-lineSoft py-3 first:border-t-0 first:pt-0">
       <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
         <Badge tone={KIND_TONES[item.kind]}>
           {CARE_FEED_KIND_LABELS[item.kind]}
@@ -104,7 +111,7 @@ function FeedItemCard({ item }: { item: CareFeedItem }) {
       </p>
     </li>
   );
-}
+});
 
 function SealedSummaryBlock({
   sealedSummary,

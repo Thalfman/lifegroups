@@ -16,6 +16,7 @@
 // frozen-surface gate, #256). The RPC returns the same feature_flags sub-object
 // to both admin roles, so the nav resolves identically for both.
 
+import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchAdminFeatureFlags } from "@/lib/supabase/read-models";
 import { decodeFeatureFlags } from "@/lib/admin/app-config-decode";
@@ -25,9 +26,14 @@ import { resolveHiddenNav } from "@/lib/admin/feature-flags";
 // pivot default (all three hidden): an unconfigured DB, a read error, or a
 // non-admin caller (the RPC returns an empty flag map) leaves the tabs hidden
 // rather than silently re-showing a surface the operator chose to retire.
-export async function loadHiddenNavAreas(): Promise<Set<string>> {
+//
+// Wrapped in React.cache (mirroring getCurrentSession) so the one nav-flag RPC
+// is read once per request and shared: the admin layout and the child page it
+// wraps both call this on every admin navigation, and without dedup that is two
+// identical round-trips per render.
+export const loadHiddenNavAreas = cache(async (): Promise<Set<string>> => {
   const client = await createSupabaseServerClient();
   if (!client) return resolveHiddenNav({});
   const { data } = await fetchAdminFeatureFlags(client);
   return resolveHiddenNav(decodeFeatureFlags(data));
-}
+});

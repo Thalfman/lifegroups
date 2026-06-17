@@ -159,6 +159,19 @@
     @apply rounded-xl border border-border bg-muted/45;
   }
 
+  /* Off-screen render skipping for long, scrollable lists (People directory,
+     Care Notes feed, Follow-ups queue, master-calendar list). The browser skips
+     layout/paint for rows outside the viewport, cutting the cost of rendering
+     100+ items, while `contain-intrinsic-size: auto <h>` reserves an estimated
+     height so the scrollbar stays stable (and the remembered size is reused once
+     a row has been laid out). Unlike `content-visibility: hidden`, `auto` keeps
+     rows in the accessibility tree and reachable by in-page find, so screen
+     readers and Ctrl+F are unaffected. Apply per row, not on the container. */
+  .lg-cv-row {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 120px;
+  }
+
   /* Super Admin Console collapsible sections (#261). Native <details> so the
      disclosure works without JS; a small client controller adds anchor
      expand + scroll + focus on top. Still used by the a11y harness and the

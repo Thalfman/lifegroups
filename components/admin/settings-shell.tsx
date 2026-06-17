@@ -1,6 +1,4 @@
 import { AddToHomeScreenButton } from "@/components/pwa/add-to-home-screen-button";
-import { MetricDefaultsForm } from "@/components/admin/forms/metric-defaults-form";
-import { GroupMetricOverridesForm } from "@/components/admin/forms/group-metric-overrides-form";
 import { ClearGroupMetricOverridesButton } from "@/components/admin/forms/clear-group-metric-overrides-button";
 import { ResetMetricDefaultsButton } from "@/components/admin/forms/reset-metric-defaults-button";
 import {
@@ -8,7 +6,6 @@ import {
   type SettingsTab,
 } from "@/components/admin/settings-tabs";
 import { PBadge } from "@/components/pastoral/atoms";
-import { PeopleImportForm } from "@/components/admin/forms/people-import-form";
 import { SetupReturnBanner } from "@/components/lg/admin/setup-return-banner";
 import {
   buildOverrideRows,
@@ -17,13 +14,19 @@ import {
 } from "@/lib/admin/group-metric-overrides";
 import type { MetricDefaults } from "@/lib/admin/metrics";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
-import { HealthRubricEditor } from "@/components/admin/settings/health-rubric-editor";
 import type { RubricCriterion } from "@/lib/admin/health-rubric";
-import { GroupsCatalogEditor } from "@/components/admin/settings/groups-catalog-editor";
+// The per-tab editors/forms are loaded lazily (ssr:false) so their code lands in
+// per-tab chunks fetched on first open, not in this route's First Load JS (the
+// Tabs primitive mounts only the active panel). See settings/lazy-editors.
 import {
+  HealthRubricEditor,
+  GroupsCatalogEditor,
   MultiplyTriggerEditor,
-  type ReadinessCellSeed,
-} from "@/components/admin/settings/multiply-trigger-editor";
+  MetricDefaultsForm,
+  GroupMetricOverridesForm,
+  PeopleImportForm,
+} from "@/components/admin/settings/lazy-editors";
+import type { ReadinessCellSeed } from "@/components/admin/settings/multiply-trigger-editor";
 import type { CellCoverage } from "@/lib/admin/cell-coverage";
 import type {
   PerTypeReadinessRule,

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { PBadge } from "@/components/pastoral/atoms";
 import { dateLabel, formatClock } from "@/lib/calendar/occurrences";
 import {
@@ -18,6 +18,82 @@ import {
   occurrenceStatusTone,
   statusStripeColor,
 } from "./admin-master-calendar-status";
+
+// Static style objects hoisted to module scope: they reference only the pastoral
+// palette constants, so rebuilding them per render (across potentially dozens of
+// day sections and occurrence cards) only churned the GC for identical objects.
+const LIST_WRAP_STYLE: CSSProperties = { display: "grid", gap: 14 };
+const DAY_SECTION_STYLE: CSSProperties = {
+  background: P.surface,
+  border: `1px solid ${P.line}`,
+  borderRadius: 14,
+  padding: "14px 16px",
+  display: "grid",
+  gap: 10,
+};
+const DAY_HEADING_STYLE: CSSProperties = {
+  fontFamily: fontSans,
+  fontSize: 12,
+  letterSpacing: 1.5,
+  textTransform: "uppercase",
+  color: P.ink3,
+  fontWeight: 700,
+  margin: 0,
+  paddingBottom: 6,
+  borderBottom: `1px solid ${P.line2}`,
+};
+const DAY_LIST_STYLE: CSSProperties = {
+  listStyle: "none",
+  padding: 0,
+  margin: 0,
+  display: "grid",
+  gap: 8,
+};
+const CARD_STYLE: CSSProperties = {
+  background: P.bg,
+  border: `1px solid ${P.line2}`,
+  borderRadius: 10,
+  padding: 12,
+  display: "grid",
+  gap: 8,
+};
+const CARD_BUTTON_STYLE: CSSProperties = {
+  background: "transparent",
+  border: "none",
+  padding: 0,
+  textAlign: "left",
+  cursor: "pointer",
+  display: "grid",
+  gap: 4,
+  minHeight: 44,
+};
+const CARD_TITLE_STYLE: CSSProperties = {
+  fontFamily: fontBody,
+  fontSize: 15,
+  fontWeight: 600,
+  color: P.ink,
+  lineHeight: 1.3,
+};
+const CARD_META_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+  fontFamily: fontSans,
+  fontSize: 12,
+  color: P.ink2,
+};
+const CARD_LEADERS_STYLE: CSSProperties = { color: P.ink3 };
+const CARD_LINK_STYLE: CSSProperties = {
+  fontFamily: fontSans,
+  fontSize: 11,
+  fontWeight: 600,
+  color: P.terra,
+  textDecoration: "none",
+  letterSpacing: 1.2,
+  textTransform: "uppercase",
+  alignSelf: "start",
+};
 
 export function AdminMasterCalendarList({
   occurrences,
@@ -74,49 +150,18 @@ export function AdminMasterCalendarList({
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gap: 14,
-      }}
-    >
+    <div style={LIST_WRAP_STYLE}>
       {grouped.map(([date, dayOccurrences]) => (
         <section
           key={date}
           ref={date === anchorDate ? anchorRef : undefined}
-          style={{
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 14,
-            padding: "14px 16px",
-            display: "grid",
-            gap: 10,
-          }}
+          // content-visibility skips layout/paint for day sections scrolled out
+          // of view — the month list can run to dozens of them.
+          className="lg-cv-row"
+          style={DAY_SECTION_STYLE}
         >
-          <h3
-            style={{
-              fontFamily: fontSans,
-              fontSize: 12,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 700,
-              margin: 0,
-              paddingBottom: 6,
-              borderBottom: `1px solid ${P.line2}`,
-            }}
-          >
-            {dateLabel(date)}
-          </h3>
-          <ul
-            style={{
-              listStyle: "none",
-              padding: 0,
-              margin: 0,
-              display: "grid",
-              gap: 8,
-            }}
-          >
+          <h3 style={DAY_HEADING_STYLE}>{dateLabel(date)}</h3>
+          <ul style={DAY_LIST_STYLE}>
             {dayOccurrences.map((o) => (
               <OccurrenceCard
                 key={`${o.groupId}|${o.date}`}
@@ -132,7 +177,7 @@ export function AdminMasterCalendarList({
   );
 }
 
-function OccurrenceCard({
+const OccurrenceCard = memo(function OccurrenceCard({
   occurrence,
   onSelect,
   showCalendarLink = true,
@@ -152,53 +197,15 @@ function OccurrenceCard({
   // distinct).
   const cardAriaLabel = occurrenceAccessibleName(occurrence);
   return (
-    <li
-      style={{
-        background: P.bg,
-        border: `1px solid ${P.line2}`,
-        borderRadius: 10,
-        padding: 12,
-        display: "grid",
-        gap: 8,
-      }}
-    >
+    <li style={CARD_STYLE}>
       <button
         type="button"
         onClick={() => onSelect(occurrence)}
         aria-label={cardAriaLabel}
-        style={{
-          background: "transparent",
-          border: "none",
-          padding: 0,
-          textAlign: "left",
-          cursor: "pointer",
-          display: "grid",
-          gap: 4,
-          minHeight: 44,
-        }}
+        style={CARD_BUTTON_STYLE}
       >
-        <div
-          style={{
-            fontFamily: fontBody,
-            fontSize: 15,
-            fontWeight: 600,
-            color: P.ink,
-            lineHeight: 1.3,
-          }}
-        >
-          {occurrence.groupName}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
-            fontFamily: fontSans,
-            fontSize: 12,
-            color: P.ink2,
-          }}
-        >
+        <div style={CARD_TITLE_STYLE}>{occurrence.groupName}</div>
+        <div style={CARD_META_STYLE}>
           {occurrence.status !== "scheduled" ? (
             <PBadge tone={tone}>
               {friendlyEventStatusLabel(occurrence.status)}
@@ -208,7 +215,7 @@ function OccurrenceCard({
           )}
           {clock ? <span>{clock}</span> : null}
           {occurrence.leaders.length > 0 ? (
-            <span style={{ color: P.ink3 }}>
+            <span style={CARD_LEADERS_STYLE}>
               · {occurrence.leaders.map((l) => l.name).join(", ")}
             </span>
           ) : null}
@@ -218,20 +225,11 @@ function OccurrenceCard({
         <Link
           href={`/admin/groups/${occurrence.groupId}/calendar?month=${occurrence.date.slice(0, 7)}`}
           aria-label={occurrenceCalendarLinkName(occurrence)}
-          style={{
-            fontFamily: fontSans,
-            fontSize: 11,
-            fontWeight: 600,
-            color: P.terra,
-            textDecoration: "none",
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
-            alignSelf: "start",
-          }}
+          style={CARD_LINK_STYLE}
         >
           Open group calendar →
         </Link>
       ) : null}
     </li>
   );
-}
+});

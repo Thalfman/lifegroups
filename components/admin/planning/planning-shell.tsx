@@ -24,6 +24,40 @@ const TABS: { key: PlanningTabKey; label: string }[] = [
   { key: "multiplication", label: "Multiplication" },
 ];
 
+// Static layout styles + the two tab-button variants, hoisted so the shell does
+// not rebuild identical objects (one per tab) on every render.
+const ROOT_STYLE: CSSProperties = { display: "grid", gap: 24 };
+const TABLIST_STYLE: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 4,
+  background: P.surface,
+  border: `1px solid ${P.line}`,
+  borderRadius: 999,
+  padding: 3,
+  alignSelf: "start",
+};
+const TAB_BASE_STYLE: CSSProperties = {
+  fontFamily: fontSans,
+  fontSize: 13,
+  border: "none",
+  padding: "8px 14px",
+  cursor: "pointer",
+  borderRadius: 999,
+};
+const TAB_STYLE_ACTIVE: CSSProperties = {
+  ...TAB_BASE_STYLE,
+  fontWeight: 700,
+  color: P.surface,
+  background: P.terra,
+};
+const TAB_STYLE_INACTIVE: CSSProperties = {
+  ...TAB_BASE_STYLE,
+  fontWeight: 500,
+  color: P.ink3,
+  background: "transparent",
+};
+
 export function PlanningShell({
   calendar,
   launches,
@@ -62,21 +96,8 @@ export function PlanningShell({
   };
 
   return (
-    <div style={{ display: "grid", gap: 24 }}>
-      <div
-        role="tablist"
-        aria-label="Planning sections"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 4,
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 999,
-          padding: 3,
-          alignSelf: "start",
-        }}
-      >
+    <div style={ROOT_STYLE}>
+      <div role="tablist" aria-label="Planning sections" style={TABLIST_STYLE}>
         {TABS.map((tab) => (
           <button
             key={tab.key}
@@ -86,7 +107,7 @@ export function PlanningShell({
             aria-selected={active === tab.key}
             aria-controls={`planning-panel-${tab.key}`}
             onClick={() => setActive(tab.key)}
-            style={tabItemStyle(active === tab.key)}
+            style={active === tab.key ? TAB_STYLE_ACTIVE : TAB_STYLE_INACTIVE}
           >
             {tab.label}
           </button>
@@ -106,18 +127,4 @@ export function PlanningShell({
       ))}
     </div>
   );
-}
-
-function tabItemStyle(activeTab: boolean): CSSProperties {
-  return {
-    fontFamily: fontSans,
-    fontSize: 13,
-    fontWeight: activeTab ? 700 : 500,
-    color: activeTab ? P.surface : P.ink3,
-    background: activeTab ? P.terra : "transparent",
-    border: "none",
-    padding: "8px 14px",
-    cursor: "pointer",
-    borderRadius: 999,
-  };
 }
