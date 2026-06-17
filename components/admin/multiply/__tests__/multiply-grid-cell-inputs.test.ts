@@ -4,10 +4,12 @@ import { buildGridCellInputs } from "@/components/admin/multiply/multiply-grid-d
 import { cellKey } from "@/lib/admin/cell-coordinate";
 import {
   EMPTY_CELL_ACTIVE_GROUP_SIZES,
-  EMPTY_CELL_HEALTH_GRADES,
   type CellActiveGroupSizes,
-  type CellHealthGrades,
 } from "@/lib/supabase/multiplication-config-reads";
+import {
+  EMPTY_CELL_HEALTH_GRADES,
+  type CellHealthGrades,
+} from "@/lib/admin/cell-health";
 import type { CellInterestTally } from "@/lib/admin/prospect-interest";
 import type { CategoryTypeTargetRow } from "@/lib/supabase/group-categories-reads";
 

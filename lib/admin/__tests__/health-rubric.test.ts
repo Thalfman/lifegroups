@@ -4,10 +4,12 @@ import {
   BUILT_IN_RUBRIC_BANDS,
   computeGrade,
   decodeRubricCriteria,
+  rollUpGrades,
   validateRubric,
   type Rubric,
   type RubricCriterion,
 } from "@/lib/admin/health-rubric";
+import type { GroupHealthLetter } from "@/types/enums";
 
 // Pure rubric engine (#374 / ADR 0018): weight-sum validation, weighted roll-up,
 // band boundaries (incl. F), and override precedence. No DB — every rule is
@@ -162,5 +164,31 @@ describe("decodeRubricCriteria", () => {
         { key: 1, label: "C", weight: 50 }, // bad key type
       ])
     ).toEqual([{ key: "a", label: "A", weight: 50 }]);
+  });
+});
+
+describe("rollUpGrades — average a body of A–F grades into one letter", () => {
+  it("returns null for an empty array (renders as '—')", () => {
+    expect(rollUpGrades([])).toBeNull();
+  });
+
+  it("returns the single grade when only one exists", () => {
+    expect(rollUpGrades(["B"])).toBe("B");
+  });
+
+  it("averages GPA-style points and bands to the nearest letter", () => {
+    // A(4) + C(2) = 6 / 2 = 3.0 ⇒ B.
+    expect(rollUpGrades(["A", "C"])).toBe("B");
+    // A(4) + A(4) + B(3) = 11 / 3 ≈ 3.67 ⇒ A.
+    expect(rollUpGrades(["A", "A", "B"])).toBe("A");
+    // F(0) + D(1) = 0.5 ⇒ D (half-up boundary).
+    expect(rollUpGrades(["F", "D"])).toBe("D");
+    // F(0) + F(0) + D(1) = 1/3 ≈ 0.33 ⇒ F.
+    expect(rollUpGrades(["F", "F", "D"])).toBe("F");
+  });
+
+  it("ignores non-letter entries and treats an all-invalid array as empty", () => {
+    expect(rollUpGrades(["A", "Z" as GroupHealthLetter])).toBe("A");
+    expect(rollUpGrades(["Z" as GroupHealthLetter])).toBeNull();
   });
 });

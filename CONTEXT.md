@@ -142,6 +142,19 @@ signal. A category not applied to a type has no active cell there (blank on the
 Multiply grid).
 _Avoid_: Tile, slot, segment (the internal umbrella name, not this row).
 
+**Cell Health**:
+The per-**Cell** A–F roll-up of that cell's Group-Health and Leader-Health grades
+over the **Ministry Year** — the facet feeding the **Group Health** and **Leader
+Health** Multiplication Pillars on the Multiply grid. One concept with one home
+(`lib/admin/cell-health.ts`): it **buckets** each resolved grade under its cell
+coordinate (a leader feeds every cell they actively lead; closed, ungraded, and
+uncategorised rows drop) and **rolls** each cell's grades up to a letter through
+the shared grade averaging (`rollUpGrades`, `lib/admin/health-rubric.ts`), so a
+body of grades grades identically whether rolled up per **Cell** or per type
+(the per-type board's pillars). Null until a cell has any grade (shown as "—").
+_Avoid_: Cell-Health Grade (there is no separate rubric — it rolls up the
+existing Group/Leader grades), cell score.
+
 **Cell coordinate**:
 The bare identity of a Cell — the **Audience × `category_id`** pair that names
 which cell something belongs to, distinct from the live **Cell** unit (which

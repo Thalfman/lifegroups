@@ -32,16 +32,18 @@ import {
 } from "@/lib/admin/cell-coverage";
 import {
   EMPTY_CELL_ACTIVE_GROUP_SIZES,
-  EMPTY_CELL_HEALTH_GRADES,
   EMPTY_CELL_INTEREST,
   fetchCellActiveGroupSizes,
   fetchCellHealthGrades,
   fetchCellInterestCounts,
   type CellActiveGroupSizes,
-  type CellHealthGrades,
 } from "@/lib/supabase/multiplication-config-reads";
 import { computeCellCapacityIssue } from "@/lib/admin/cell-capacity";
-import { rollUpGrades } from "@/lib/admin/multiplication-pillars";
+import {
+  EMPTY_CELL_HEALTH_GRADES,
+  resolveCellHealth,
+  type CellHealthGrades,
+} from "@/lib/admin/cell-health";
 import type { CellInterestTally } from "@/lib/admin/prospect-interest";
 import { cellKey } from "@/lib/admin/cell-coordinate";
 
@@ -130,7 +132,7 @@ export function buildGridCellInputs(args: {
     // One coordinate, one encoder — every pillar lookup for this cell reads from
     // the same key.
     const key = cellKey({ audience: audienceCategory, categoryId });
-    const healthForCell = cellHealth.get(key);
+    const { groupHealth, leaderHealth } = resolveCellHealth(cellHealth, key);
     return {
       audienceCategory,
       categoryId,
@@ -142,8 +144,8 @@ export function buildGridCellInputs(args: {
         interestCount: interest[key] ?? 0,
         capacityIssue: computeCellCapacityIssue(cellSizes.byCell.get(key) ?? [])
           .isIssue,
-        groupHealth: rollUpGrades(healthForCell?.groupGrades ?? []),
-        leaderHealth: rollUpGrades(healthForCell?.leaderGrades ?? []),
+        groupHealth,
+        leaderHealth,
       },
     };
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { tallyCellHealthGrades } from "@/lib/supabase/multiplication-config-reads";
+import { tallyCellHealthGrades } from "@/lib/admin/cell-health";
 import { cellKey } from "@/lib/admin/cell-coordinate";
 import { resolveGroupRubricGrade } from "@/lib/admin/group-rubric-grade";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
