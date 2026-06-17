@@ -89,6 +89,22 @@ export function EditingSurface({
               opener.focus();
             }
           }}
+          // A confirmation dialog raised over this drawer (e.g. the discard-
+          // changes prompt) portals outside the drawer's content, so a pointer
+          // or focus interaction with it would otherwise read as an outside
+          // dismissal and fire onRequestClose — which, on a dirty form, re-raises
+          // the very prompt the user is answering (Cancel would appear to do
+          // nothing). Treat interactions originating inside an alert dialog as
+          // inside this surface.
+          onInteractOutside={(event) => {
+            const target = event.detail.originalEvent.target;
+            if (
+              target instanceof Element &&
+              target.closest('[role="alertdialog"]')
+            ) {
+              event.preventDefault();
+            }
+          }}
           className="fixed inset-y-0 right-0 z-drawer flex h-dvh w-full flex-col bg-bg shadow-softLg data-[state=open]:animate-[lg-drawer-in_200ms_ease-out] md:w-[min(460px,94vw)] md:border-l md:border-line"
         >
           <header className="relative grid gap-1.5 border-b border-line bg-surface px-5 pb-[18px] pt-[max(18px,env(safe-area-inset-top))]">

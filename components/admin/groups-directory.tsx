@@ -69,6 +69,7 @@ import { effectiveGroupsViewMode } from "@/components/admin/groups/view-mode";
 import { isTaskListTab } from "@/lib/dashboard/group-list-tabs";
 import { GroupCard } from "@/components/admin/groups/group-card";
 import { GroupEditorDrawer } from "@/components/admin/groups/group-editor-drawer";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { GroupsTable } from "@/components/admin/groups/groups-table";
 import {
   formatWeek,
@@ -239,6 +240,10 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   // Refs, not state, so neither typing nor an in-flight save re-renders the
   // list behind the drawer.
   const [editor, setEditor] = useState<GroupEditorState | null>(null);
+  // Whether the non-blocking "discard unsaved changes?" prompt is open. State
+  // (the rendered dialog reads it), replacing the old blocking `window.confirm`
+  // so the dismissal click paints immediately.
+  const [discardOpen, setDiscardOpen] = useState(false);
   const dirtyRef = useRef(false);
   const submittingRef = useRef(false);
 
@@ -261,11 +266,18 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     // (Escape, overlay, ×, Cancel) so we don't unmount the form mid-write and
     // drop the close+refresh — it auto-closes via onSaved when the write lands.
     if (submittingRef.current) return;
-    // Generic wording: the same close path serves both the edit and create
-    // flows, and during create there is no group to name yet.
-    if (dirtyRef.current && !window.confirm("Discard your unsaved changes?")) {
+    // Dirty form: raise the non-blocking confirm dialog instead of closing, and
+    // keep the drawer open until the operator answers it.
+    if (dirtyRef.current) {
+      setDiscardOpen(true);
       return;
     }
+    dirtyRef.current = false;
+    setEditor(null);
+  }, []);
+  // The discard prompt's confirm button: drop the unsaved edits and close.
+  const confirmDiscard = useCallback(() => {
+    setDiscardOpen(false);
     dirtyRef.current = false;
     setEditor(null);
   }, []);
@@ -613,6 +625,16 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         onPendingChange={reportPending}
         onRequestClose={requestClose}
         onSaved={handleSaved}
+      />
+      {/* Generic wording: the same close path serves both the edit and create
+          flows, and during create there is no group to name yet. */}
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard changes?"
+        message="Discard your unsaved changes?"
+        confirmLabel="Discard"
+        onConfirm={confirmDiscard}
       />
     </section>
   );

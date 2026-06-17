@@ -3,6 +3,7 @@
 import { useCallback, useState, useTransition } from "react";
 import { SectionHeader } from "@/components/layout/shell";
 import { PButton } from "@/components/pastoral/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import {
   testAccountsDiagnose,
@@ -93,11 +94,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
   const [, startTransition] = useTransition();
 
   const run = useCallback(
-    (
-      action: "status" | "enable" | "disable" | "diagnose",
-      confirmText: string | null
-    ) => {
-      if (confirmText && !window.confirm(confirmText)) return;
+    (action: "status" | "enable" | "disable" | "diagnose") => {
       const tag: Pending =
         action === "status"
           ? "refresh"
@@ -129,27 +126,23 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
     []
   );
 
-  const handleEnable = useCallback(() => {
-    const remote = status?.isRemoteSupabase === true;
-    const message = remote
+  // The two impacting actions confirm through the non-blocking dialog (#666),
+  // not a synchronous `window.confirm`: the click opens the dialog and paints
+  // immediately, and the action fires from its confirm button. The enable copy
+  // shouts louder when the target is a REMOTE database.
+  const enableConfirmMessage =
+    status?.isRemoteSupabase === true
       ? "You are about to enable test login accounts on a REMOTE database. These accounts have known passwords. Proceed?"
       : "Enable test login accounts? Their passwords are known to anyone with the env file.";
-    run("enable", message);
-  }, [run, status]);
-
-  const handleDisable = useCallback(() => {
-    run(
-      "disable",
-      "Disable all known test accounts? Their logins will stop working immediately."
-    );
-  }, [run]);
+  const disableConfirmMessage =
+    "Disable all known test accounts? Their logins will stop working immediately.";
 
   const handleRefresh = useCallback(() => {
-    run("status", null);
+    run("status");
   }, [run]);
 
   const handleDiagnose = useCallback(() => {
-    run("diagnose", null);
+    run("diagnose");
   }, [run]);
 
   return (
@@ -195,8 +188,9 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
           </div>
           {/* Safe reads and admin-impacting actions sit in separately labeled
               clusters so a glance tells them apart (#458). Enable/disable keep
-              their window.confirm gates and gain the amber (impacting)
-              treatment; the reads stay quiet ghost buttons. */}
+              their confirmation gates (now the non-blocking dialog, #666) and
+              gain the amber (impacting) treatment; the reads stay quiet ghost
+              buttons. */}
           <div className="flex flex-wrap items-end gap-4">
             <div
               role="group"
@@ -234,25 +228,39 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
                 Admin-impacting · asks before running
               </span>
               <div className="flex flex-wrap gap-2">
-                <PButton
-                  tone="terra"
-                  size="sm"
-                  onClick={handleEnable}
-                  disabled={pending !== null}
-                >
-                  {pending === "enable" ? "Enabling…" : "Enable test accounts"}
-                </PButton>
-                <PButton
-                  tone="ghost"
-                  size="sm"
-                  onClick={handleDisable}
-                  disabled={pending !== null}
-                  className="border-amber text-amberText"
-                >
-                  {pending === "disable"
-                    ? "Disabling…"
-                    : "Disable test accounts"}
-                </PButton>
+                <ConfirmDialog
+                  trigger={
+                    <PButton tone="terra" size="sm" disabled={pending !== null}>
+                      {pending === "enable"
+                        ? "Enabling…"
+                        : "Enable test accounts"}
+                    </PButton>
+                  }
+                  title="Enable test accounts"
+                  message={enableConfirmMessage}
+                  confirmLabel="Enable test accounts"
+                  confirmTone="terra"
+                  onConfirm={() => run("enable")}
+                />
+                <ConfirmDialog
+                  trigger={
+                    <PButton
+                      tone="ghost"
+                      size="sm"
+                      disabled={pending !== null}
+                      className="border-amber text-amberText"
+                    >
+                      {pending === "disable"
+                        ? "Disabling…"
+                        : "Disable test accounts"}
+                    </PButton>
+                  }
+                  title="Disable test accounts"
+                  message={disableConfirmMessage}
+                  confirmLabel="Disable test accounts"
+                  confirmTone="terra"
+                  onConfirm={() => run("disable")}
+                />
               </div>
             </div>
           </div>

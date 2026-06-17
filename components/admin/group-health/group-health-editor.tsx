@@ -40,6 +40,7 @@ export function GroupHealthEditorDrawer({
   dirtyRef,
   onRequestClose,
   onSaved,
+  onPendingChange,
   isSuperAdmin,
 }: {
   row: GroupHealthOverviewRow | null;
@@ -49,6 +50,10 @@ export function GroupHealthEditorDrawer({
   dirtyRef: MutableRefObject<boolean>;
   onRequestClose: () => void;
   onSaved: () => void;
+  // Mirrors the in-flight save state to the host so its close guard can block
+  // dismissal while a write is pending (the EditingSurface submittingRef
+  // contract) — without it a save could resolve while the discard prompt is up.
+  onPendingChange?: (pending: boolean) => void;
   isSuperAdmin: boolean;
 }) {
   return (
@@ -74,6 +79,7 @@ export function GroupHealthEditorDrawer({
           groupQuestionLabel={groupQuestionLabel}
           dirtyRef={dirtyRef}
           onSaved={onSaved}
+          onPendingChange={onPendingChange}
           isSuperAdmin={isSuperAdmin}
         />
       ) : null}
@@ -90,6 +96,7 @@ function GroupHealthEditorBody({
   groupQuestionLabel,
   dirtyRef,
   onSaved,
+  onPendingChange,
   isSuperAdmin,
 }: {
   row: GroupHealthOverviewRow;
@@ -97,6 +104,7 @@ function GroupHealthEditorBody({
   groupQuestionLabel: string;
   dirtyRef: MutableRefObject<boolean>;
   onSaved: () => void;
+  onPendingChange?: (pending: boolean) => void;
   isSuperAdmin: boolean;
 }) {
   const router = useRouter();
@@ -108,6 +116,13 @@ function GroupHealthEditorBody({
     adminSetGroupHealthRatings
   );
   const recompute = useActionForm(adminRecomputeGroupHealthAssessment);
+
+  // Report either write being in flight up to the host, so its close guard
+  // ignores dismissal until the write lands (then onSaved closes the drawer).
+  const pending = ratings.pending || recompute.pending;
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
 
   // A successful save closes the drawer and refreshes the list so the new grade
   // / last-saved show immediately (the action revalidates the route too). This

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useValueChange } from "@/lib/hooks/use-value-change";
 import { adminChangeLeaderRole } from "@/app/(protected)/admin/people/actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
@@ -57,17 +58,11 @@ export function ChangeLeaderRoleForm({
   });
 
   // The destructive direction (role downgrade) carries an explicit confirm step,
-  // consistent with the deactivate buttons' window.confirm guard.
-  function confirmDowngrade(e: React.FormEvent<HTMLFormElement>) {
-    if (
-      downgrade &&
-      !window.confirm(
-        `Change ${profileName} from ${ROLE_LABELS[currentRole]} to ${ROLE_LABELS[newRole]}? This narrows what they can do.`
-      )
-    ) {
-      e.preventDefault();
-    }
-  }
+  // consistent with the deactivate buttons' confirm guard. It now opens the
+  // non-blocking dialog (#666) rather than a synchronous `window.confirm`, so
+  // the Save click paints immediately and the submit fires from the dialog's
+  // confirm button. A promotion (no guard) submits straight through.
+  const downgradeMessage = `Change ${profileName} from ${ROLE_LABELS[currentRole]} to ${ROLE_LABELS[newRole]}? This narrows what they can do.`;
 
   if (!open) {
     return (
@@ -97,7 +92,6 @@ export function ChangeLeaderRoleForm({
     <form
       ref={formRef}
       action={formAction}
-      onSubmit={confirmDowngrade}
       className="grid min-w-[230px] gap-2 rounded-sm border border-line bg-bg px-3 py-2.5"
     >
       <input type="hidden" name="profile_id" value={profileId} />
@@ -143,14 +137,29 @@ export function ChangeLeaderRoleForm({
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          variant={downgrade ? "primary" : "solid"}
-          size="sm"
-          disabled={pending}
-        >
-          {pending ? "Saving…" : "Save"}
-        </Button>
+        {downgrade ? (
+          <ConfirmDialog
+            trigger={
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={pending}
+              >
+                {pending ? "Saving…" : "Save"}
+              </Button>
+            }
+            title="Change role"
+            message={downgradeMessage}
+            confirmLabel="Change role"
+            confirmTone="terra"
+            onConfirm={() => formRef.current?.requestSubmit()}
+          />
+        ) : (
+          <Button type="submit" variant="solid" size="sm" disabled={pending}>
+            {pending ? "Saving…" : "Save"}
+          </Button>
+        )}
       </div>
       {state && !state.ok ? (
         <ul className="m-0 grid list-none gap-1 p-0">

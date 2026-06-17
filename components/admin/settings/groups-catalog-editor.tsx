@@ -224,6 +224,7 @@ export function GroupsCatalogEditor({
           </div>
         ) : null}
       </EditingSurface>
+      {drawer.discardDialog}
     </div>
   );
 }

@@ -303,6 +303,7 @@ export function GroupRosterManager({
           />
         ) : null}
       </EditingSurface>
+      {addDrawer.discardDialog}
     </div>
   );
 }
