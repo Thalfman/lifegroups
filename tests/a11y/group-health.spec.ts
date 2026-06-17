@@ -240,4 +240,79 @@ test.describe("group health triage + editing surface", () => {
     const results = await new AxeBuilder({ page }).analyze();
     expectNoBlockingAxeViolations(results);
   });
+
+  // Issues 665/669 — dismissing a drawer with unsaved rating edits no longer
+  // calls a blocking window.confirm; it raises the shared non-blocking dialog.
+  // The prompt portals above the drawer, so these cases also guard EditingSurface
+  // against treating a click on the prompt as an outside-dismiss of the drawer
+  // (which would re-raise the prompt and make Cancel appear to do nothing).
+  test("a dirty close raises the discard prompt; Cancel keeps the drawer open", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface
+      .getByRole("button", { name: "Open Anderson health editor" })
+      .click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+
+    // Make an unsaved edit, then dismiss with Escape.
+    await dialog.getByLabel(/Spiritual growth/i).fill("2");
+    await page.keyboard.press("Escape");
+
+    // The non-blocking prompt appears with the rating-specific copy; the drawer
+    // stays open behind it (Escape did not discard).
+    const prompt = page.getByRole("alertdialog");
+    await expect(prompt).toBeVisible();
+    await expect(
+      prompt.getByText("Discard unsaved changes to this group's ratings?")
+    ).toBeVisible();
+    await expect(dialog).toBeVisible();
+
+    // Cancel must dismiss only the prompt and leave the editor open to keep
+    // editing — the #669 regression: clicking Cancel left the prompt stuck.
+    await prompt.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByRole("alertdialog")).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+  });
+
+  test("confirming Discard on a dirty close closes the drawer", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    const opener = surface.getByRole("button", {
+      name: "Open Anderson health editor",
+    });
+    await opener.click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel(/Spiritual growth/i).fill("2");
+
+    // Dismiss via the explicit Close control this time — also a dirty close.
+    await dialog
+      .getByRole("button", { name: "Close Anderson health editor" })
+      .click();
+    const prompt = page.getByRole("alertdialog");
+    await expect(prompt).toBeVisible();
+
+    await prompt.getByRole("button", { name: "Discard" }).click();
+    // Both the prompt and the drawer are gone, and focus returns to the opener.
+    await expect(page.getByRole("alertdialog")).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  });
+
+  test("a clean close (no edits) goes straight through with no prompt", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface
+      .getByRole("button", { name: "Open Anderson health editor" })
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    // No edits → Escape closes immediately, no discard prompt is raised.
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("alertdialog")).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
 });
