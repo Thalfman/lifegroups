@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="System-Architecture">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1180" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Heading -->
+        <mxCell id="title" value="LifeGroups — System Architecture  (Next.js 15 App Router + Supabase)" style="text;html=1;align=left;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="80" y="8" width="900" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Read path: RLS-scoped, column-allowlisted reads through the reads seam.  Write path: validate → guard → SECURITY DEFINER RPC → revalidatePath → log, with a paired audit_events row per mutation." style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="80" y="38" width="1100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Browser tier -->
+        <mxCell id="browser" value="Browser  (Client)" style="swimlane;startSize=28;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="380" y="70" width="520" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="cshell" value="Client Shell  (React 19, &quot;use client&quot;)&#xa;stateful container — forms &amp; interactions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="browser">
+          <mxGeometry x="150" y="42" width="220" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- proxy.ts -->
+        <mxCell id="proxy" value="proxy.ts  —  updateSupabaseSession()&#xa;refreshes the auth cookie on every request" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="380" y="220" width="520" height="56" as="geometry" />
+        </mxCell>
+
+        <!-- Next.js server tier -->
+        <mxCell id="next" value="Next.js 15  —  Server (App Router · React Server Components)" style="swimlane;startSize=30;html=1;fillColor=#f8f8f8;strokeColor=#999999;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="320" width="1080" height="450" as="geometry" />
+        </mxCell>
+        <mxCell id="page" value="Server Component (page)&#xa;guard auth · load data · render shell" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="next">
+          <mxGeometry x="420" y="46" width="240" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="authlib" value="lib/auth&#xa;getCurrentSession · requireRole&#xa;requireAdmin / requireLeader" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="next">
+          <mxGeometry x="850" y="42" width="200" height="72" as="geometry" />
+        </mxCell>
+
+        <!-- Read path label -->
+        <mxCell id="readlbl" value="READ  PATH" style="text;html=1;align=center;fontStyle=1;fontColor=#82b366;fontSize=11;" vertex="1" parent="next">
+          <mxGeometry x="40" y="120" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="seam" value="reads seam  (ADR 0015)&#xa;inject in-memory adapter in tests" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="next">
+          <mxGeometry x="40" y="150" width="240" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="reads" value="*-reads.ts  /  read-models.ts&#xa;explicit column allowlists (no select *)&#xa;degrade gracefully on error" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="next">
+          <mxGeometry x="40" y="244" width="240" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="ssr" value="Supabase server client&#xa;@supabase/ssr  (cookie-aware)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="next">
+          <mxGeometry x="40" y="348" width="240" height="56" as="geometry" />
+        </mxCell>
+
+        <!-- Write path label -->
+        <mxCell id="writelbl" value="WRITE  PATH   (validate → guard → RPC → revalidatePath → log)" style="text;html=1;align=center;fontStyle=1;fontColor=#d79b00;fontSize=11;" vertex="1" parent="next">
+          <mxGeometry x="560" y="120" width="300" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="action" value="Server Action  (actions.ts)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="next">
+          <mxGeometry x="560" y="150" width="240" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="runner" value="Write Action Runner  (ADR 0001/0005)&#xa;validator · guard · RPC call · revalidate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="next">
+          <mxGeometry x="560" y="244" width="240" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="rpcw" value="typed RPC wrapper  (lib/**/rpc.ts)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="next">
+          <mxGeometry x="560" y="348" width="240" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="log" value="lib/observability&#xa;structured logging&#xa;event · outcome · actor_role" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="next">
+          <mxGeometry x="860" y="244" width="190" height="66" as="geometry" />
+        </mxCell>
+
+        <!-- Edge Functions tier -->
+        <mxCell id="edge" value="Supabase Edge Functions&#xa;( service-role key confined here )" style="swimlane;startSize=46;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="320" width="240" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="ef1" value="invite-user&#xa;(prod · super-admin invites)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="edge">
+          <mxGeometry x="20" y="60" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ef2" value="redeem-invite&#xa;(prod · public token redemption)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="edge">
+          <mxGeometry x="20" y="122" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ef3" value="manage-test-auth-users&#xa;(disabled in prod · local seeding)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;fontColor=#888888;" vertex="1" parent="edge">
+          <mxGeometry x="20" y="184" width="200" height="46" as="geometry" />
+        </mxCell>
+
+        <!-- Supabase / Postgres tier -->
+        <mxCell id="supa" value="Supabase  —  Postgres + Auth  (Row Level Security on every operational table)" style="swimlane;startSize=30;html=1;fillColor=#eef6ee;strokeColor=#82b366;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="850" width="1360" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="authsvc" value="Auth&#xa;(GoTrue · sessions · JWT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="supa">
+          <mxGeometry x="40" y="120" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rpc" value="SECURITY DEFINER RPCs&#xa;admin_* · leader_* · over_shepherd_*&#xa;super_admin_* · set_note_transparency_grant" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="supa">
+          <mxGeometry x="340" y="60" width="340" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="audit" value="audit_events&#xa;paired row per mutation (same txn) — admin-only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="supa">
+          <mxGeometry x="340" y="192" width="340" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tables" value="Operational tables  (RLS-gated)&#xa;profiles · members · group_leaders&#xa;care notes · prayer requests · …&#xa;auth_is_admin() / auth_is_leader_of() policies&#xa;writes only via RPCs — no table write policies&#xa;soft-deactivation (status / archived_at) — no hard deletes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;" vertex="1" parent="supa">
+          <mxGeometry x="780" y="80" width="380" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- ============ EDGES ============ -->
+        <!-- request flow -->
+        <mxCell id="e1" value="HTTP request" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cshell" target="proxy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="authed request" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.4;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="proxy" target="page">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- guards -->
+        <mxCell id="e3" value="requireRole" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="page" target="authlib">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="guard" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;exitX=0.9;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="action" target="authlib">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- read path -->
+        <mxCell id="e5" value="load data" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="page" target="seam">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="seam" target="reads">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="reads" target="ssr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="SELECT — RLS-scoped, named columns" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.1;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="ssr" target="tables">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8b" value="verify session" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="ssr" target="authsvc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- write path -->
+        <mxCell id="e9" value="Server Action (mutation)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.85;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cshell" target="action">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="900" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="action" target="runner">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="runner" target="rpcw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="log" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="runner" target="log">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="RPC call  (SECURITY DEFINER)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="rpcw" target="rpc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- inside supabase -->
+        <mxCell id="e14" value="paired write (same txn)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="rpc" target="audit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" value="write" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.4;entryDx=0;entryDy=0;" edge="1" parent="1" source="rpc" target="tables">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- edge functions -->
+        <mxCell id="e16" value="service-role key" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="edge" target="tables">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1320" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" value="create / verify user" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ef1" target="authsvc">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="290" y="760" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
