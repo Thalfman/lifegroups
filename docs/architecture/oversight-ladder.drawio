@@ -1,0 +1,91 @@
+<mxfile host="app.diagrams.net" agent="lifegroups-docs" version="24.7.17" type="device">
+  <diagram id="oversight-ladder" name="Oversight Ladder">
+    <mxGraphModel dx="1100" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="820" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Oversight Ladder — strict downward-visibility&#10;(each tier sees what the tier below sees, and more)" style="text;html=1;align=center;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="640" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Authorization is role-based — gated on profiles.role via auth_is_admin() / auth_is_leader_of() / coverage helpers. No hardcoded UUIDs or emails." style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#6b7280;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="640" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- Downward-visibility envelope -->
+        <mxCell id="envelope" value="" style="rounded=1;arcSize=4;fillColor=#f8fafc;strokeColor=#cbd5e1;dashed=1;verticalAlign=top;align=left;spacingTop=8;spacingLeft=10;fontColor=#94a3b8;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="110" width="440" height="540" as="geometry" />
+        </mxCell>
+        <mxCell id="envelope-label" value="visibility flows downward ▼  (higher tiers inherit everything below)" style="text;html=1;align=center;fontSize=10;fontColor=#94a3b8;fontStyle=2;rotation=-90;" vertex="1" parent="1">
+          <mxGeometry x="60" y="350" width="220" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Tier 1: Super Admin -->
+        <mxCell id="super" value="Super Admin (Tom)&#10;super_admin&#10;&#10;Sees the entire ladder below — plus the audit trail,&#10;platform config, invites &amp; danger-zone snapshots&#10;(SUPER_ADMIN_ONLY — invisible to the Ministry Admin)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7e6dd;strokeColor=#b85c38;fontColor=#7a3a22;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="160" y="130" width="360" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Tier 2: Ministry Admin -->
+        <mxCell id="ministry" value="Ministry Admin (Julian)&#10;ministry_admin&#10;&#10;Reads everything an Over-Shepherd and Leader can —&#10;auth_is_admin() = role in (super_admin, ministry_admin)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6efe6;strokeColor=#5a7d5a;fontColor=#2f4a2f;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="160" y="270" width="360" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Tier 3: Over-Shepherd -->
+        <mxCell id="overshepherd" value="Over-Shepherd&#10;over_shepherd&#10;&#10;Reads the Leaders &amp; people in their coverage —&#10;over_shepherd_covered_profile_ids() / own active assignments" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dde8f2;strokeColor=#3b6ea5;fontColor=#1e3a5f;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="160" y="400" width="360" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Tier 4: Leader -->
+        <mxCell id="leader" value="Leader / Co-Leader&#10;leader&#10;&#10;Reads only their active group assignments —&#10;auth_is_leader_of(group_id). Live by default (ADR 0024);&#10;check-ins stay behind their own gate." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5edd6;strokeColor=#b8860b;fontColor=#6b5009;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="160" y="530" width="360" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Non-auth member -->
+        <mxCell id="member" value="member — NOT an app-login role (non-auth records only)" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f0f0f0;strokeColor=#9ca3af;fontColor=#6b7280;fontSize=11;fontStyle=2;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="160" y="668" width="360" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Inheritance arrows (downward) -->
+        <mxCell id="a1" value="inherits ▾" style="endArrow=block;html=1;strokeColor=#6b7280;fontColor=#6b7280;fontSize=10;endFill=1;" edge="1" parent="1" source="super" target="ministry">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="inherits ▾" style="endArrow=block;html=1;strokeColor=#6b7280;fontColor=#6b7280;fontSize=10;endFill=1;" edge="1" parent="1" source="ministry" target="overshepherd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="inherits ▾" style="endArrow=block;html=1;strokeColor=#6b7280;fontColor=#6b7280;fontSize=10;endFill=1;" edge="1" parent="1" source="overshepherd" target="leader">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Exception 1: Ministry Admin Private Care Note -->
+        <mxCell id="ex1" value="EXCEPTION ① — Ministry Admin's Private Care Note&#10;shepherd_care_private_notes / _key_slots&#10;&#10;Readable ONLY by the Ministry Admin who created it&#10;(auth_role() = 'ministry_admin' AND created_by = self).&#10;Client-side AES-256-GCM, zero-knowledge — server never holds plaintext." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ece6f5;strokeColor=#6a4c93;fontColor=#3f2d5c;fontSize=11;align=left;verticalAlign=middle;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="620" y="240" width="420" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ex1-link" value="holds" style="endArrow=none;html=1;strokeColor=#6a4c93;fontColor=#6a4c93;fontSize=10;" edge="1" parent="1" source="ministry" target="ex1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Super Admin blocked from Private Care Note -->
+        <mxCell id="ex1-block" value="hidden even from&#10;Super Admin ✕" style="endArrow=cross;startArrow=none;html=1;strokeColor=#b91c1c;fontColor=#b91c1c;fontSize=10;dashed=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;" edge="1" parent="1" source="super" target="ex1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="900" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Exception 2: Author-private Care Notes -->
+        <mxCell id="ex2" value="EXCEPTION ② — Author-private Care Notes &amp; Prayer Requests&#10;care_notes / prayer_requests&#10;&#10;Sealed to their author by default. The ladder peeks ONLY when&#10;the per-subject transparency grant is ON — and the Super Admin&#10;is gated on the SAME grant as the Ministry Admin (no broader bypass).&#10;The toggle table note_transparency_grants is itself admin-only." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdeccd;strokeColor=#c2730a;fontColor=#7a4806;fontSize=11;align=left;verticalAlign=middle;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="620" y="430" width="420" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="ex2-link" value="ladder peeks only on active grant" style="endArrow=none;html=1;strokeColor=#c2730a;fontColor=#c2730a;fontSize=10;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="leader" target="ex2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="Predicates: auth_is_admin() · auth_role()='super_admin' · auth_is_leader_of(group_id) · over_shepherd coverage · auth_profile_id() (self / author / creator)&#10;Source of truth: docs/architecture/RLS_VISIBILITY.md · README role model · ADRs 0002 / 0003 / 0017 / 0020 / 0024" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="120" y="730" width="920" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
