@@ -1,6 +1,6 @@
 "use server";
 
-import { requireSuperAdminSession } from "@/lib/auth/session";
+import { requireAdminSession } from "@/lib/auth/session";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
   runAdminWriteAction,
@@ -13,12 +13,21 @@ import {
 } from "@/lib/admin/people-import";
 import { adminTextRpc } from "@/lib/admin/rpc";
 
-const REVALIDATE_PATH = "/admin/super-admin";
+// Bulk import people from pasted (or uploaded) CSV. Parsing is done by the pure
+// module (lib/admin/people-import.ts); this action gates on auth_is_admin() via
+// requireAdminSession, calls the admin-gated RPC with the parsed rows, and
+// surfaces both the created count and any per-row parse errors back to the UI.
+//
+// Hosted in Settings > System so it is an ordinary ministry-admin capability,
+// not a Super-Admin-only one (the Super Admin Console panel reuses this same
+// action). The RPC body re-enforces the admin gate; super_admin satisfies it too.
 
-// Phase SAC.5 (#165): bulk import people from pasted CSV. Parsing is done by the
-// pure module (lib/admin/people-import.ts); this action gates on super_admin,
-// calls the RPC with the parsed rows, and surfaces both the created count and
-// any per-row parse errors back to the UI.
+// The importer form is rendered in three places: Settings > System, the Home
+// setup checklist's target, and the Super Admin Console's Access workspace.
+// Revalidate all three so surrounding people/coverage data refreshes after an
+// import regardless of which surface the admin used.
+const REVALIDATE_PATHS = ["/admin/settings", "/admin", "/admin/super-admin"];
+
 export type BulkImportPeopleSuccess = {
   createdCount: number;
   leaderCount: number;
@@ -34,8 +43,8 @@ const BULK_IMPORT_PEOPLE_SPEC: AdminWriteActionSpec<
   ParsedImport,
   BulkImportPeopleSuccess
 > = {
-  name: "super_admin.bulk_import_people",
-  auth: requireSuperAdminSession,
+  name: "admin.bulk_import_people",
+  auth: requireAdminSession,
   keys: ["payload"],
   validate: (raw): ValidationResult<ParsedImport> => {
     const payload = typeof raw.payload === "string" ? raw.payload : "";
@@ -54,7 +63,7 @@ const BULK_IMPORT_PEOPLE_SPEC: AdminWriteActionSpec<
   },
   okFields: (value) => ({ rows_to_create: value.rowsToCreate.length }),
   rpc: (client, value) =>
-    adminTextRpc(client, "super_admin_bulk_import_people", {
+    adminTextRpc(client, "admin_bulk_import_people", {
       p_rows: value.rowsToCreate,
     }),
   result: (data, value) => {
@@ -74,11 +83,11 @@ const BULK_IMPORT_PEOPLE_SPEC: AdminWriteActionSpec<
       perRowErrors: value.perRowErrors,
     };
   },
-  revalidate: () => REVALIDATE_PATH,
+  revalidate: () => REVALIDATE_PATHS,
   noDataError: "The import did not complete. Please try again.",
 };
 
-export async function superAdminBulkImportPeople(
+export async function adminBulkImportPeople(
   prev: ActionResult<BulkImportPeopleSuccess> | undefined,
   input: unknown
 ): Promise<ActionResult<BulkImportPeopleSuccess>> {

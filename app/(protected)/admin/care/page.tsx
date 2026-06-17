@@ -13,7 +13,6 @@ import {
 import { requireAdmin } from "@/lib/auth/session";
 import { isSuperAdminRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
 import {
   currentMinistryYear,
   currentPeriodMonthIso,
@@ -89,7 +88,6 @@ export async function loadCarePageData({
     loadAdminFollowUpsData(),
     loadCareData(today),
     loadCareAccordionEnrichmentSafe(ministryYear, periodMonthIso),
-    loadHiddenNavAreas(),
   ]);
 
   // The Notes feed starts now, concurrently with the batch: its content reads
@@ -109,7 +107,7 @@ export async function loadCarePageData({
   // doesn't surface as unhandled.
   void notesFeedPromise.catch(() => EMPTY_NOTES_FEED);
 
-  const [followUpsData, care, enrichment, hiddenNavAreas] = await batch;
+  const [followUpsData, care, enrichment] = await batch;
   const notesFeed = await notesFeedPromise;
 
   return buildCareWorkspace({
@@ -121,7 +119,6 @@ export async function loadCarePageData({
     care,
     enrichment,
     notesFeed,
-    hiddenNavAreas: [...hiddenNavAreas],
   });
 }
 

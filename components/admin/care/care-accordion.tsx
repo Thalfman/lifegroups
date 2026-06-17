@@ -5,6 +5,7 @@ import { DisclosureChevron } from "@/components/admin/care/disclosure-chevron";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
+import { PEOPLE_IMPORT_HREF } from "@/lib/admin/people-import";
 import {
   countLeadersNeedingAttention,
   type CareAccordionPane,
@@ -35,13 +36,6 @@ function leaderCountLabel(count: number): string {
 
 function attentionLabel(count: number): string {
   return `${count} ${count === 1 ? "needs" : "need"} attention`;
-}
-
-function isHiddenArea(
-  hiddenNavAreas: readonly string[] | undefined,
-  href: string
-): boolean {
-  return hiddenNavAreas?.includes(href) ?? false;
 }
 
 function CarePane({
@@ -142,21 +136,14 @@ export function CareAccordion({
   panes,
   isSuperAdmin = false,
   gradeEntry,
-  hiddenNavAreas,
 }: {
   panes: CareAccordionPane[];
   isSuperAdmin?: boolean;
   // ADR 0023 — the inline grade editors' inputs; passed straight through to
   // each leader panel so the pure accordion model stays untouched.
   gradeEntry?: CareGradeEntryBundle;
-  hiddenNavAreas?: readonly string[];
 }) {
   const hasAnyLeaders = panes.some((pane) => pane.leaders.length > 0);
-  const peopleHidden = isHiddenArea(hiddenNavAreas, "/admin/people");
-  const peopleHref = isSuperAdmin
-    ? "/admin/super-admin#people-import"
-    : "/admin/people";
-  const showPeopleCta = isSuperAdmin || !peopleHidden;
   return (
     <div className="grid gap-4">
       <p className="m-0 font-sans text-sm text-ink2">
@@ -169,14 +156,12 @@ export function CareAccordion({
             <p className="m-0 font-sans text-sm text-ink2">
               No active leaders are available for care coverage yet.
             </p>
-            {showPeopleCta ? (
-              <Link
-                href={peopleHref}
-                className={buttonClassName("ghost", "sm")}
-              >
-                {isSuperAdmin ? "Import people" : "Open People"}
-              </Link>
-            ) : null}
+            <Link
+              href={PEOPLE_IMPORT_HREF}
+              className={buttonClassName("ghost", "sm")}
+            >
+              Import people
+            </Link>
           </div>
         ) : (
           panes.map((pane) => (

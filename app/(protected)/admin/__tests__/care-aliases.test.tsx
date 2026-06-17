@@ -178,7 +178,7 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
     expect(CARE_WORKSPACE).toContain("buildCareAccordion");
   });
 
-  it("passes nav visibility into Care People CTAs", () => {
+  it("routes Care 'Import people' CTAs to the always-reachable Settings importer", () => {
     const CARE_WORKSPACE = readFileSync(
       fileURLToPath(
         new URL(
@@ -198,11 +198,12 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
       "utf8"
     );
 
-    expect(CARE_PAGE).toContain("loadHiddenNavAreas");
-    expect(CARE_PAGE).toContain("hiddenNavAreas: [...hiddenNavAreas]");
-    expect(CARE_WORKSPACE).toContain("hiddenNavAreas={hiddenNavAreas}");
-    expect(CARE_WORKSPACE).toContain("peopleHidden");
-    expect(CARE_ACCORDION).toContain("showPeopleCta");
-    expect(CARE_ACCORDION).toContain("hiddenNavAreas");
+    // Bulk import now lives in Settings > System (always reachable by admins),
+    // so the Care empty-state CTAs point at the shared PEOPLE_IMPORT_HREF and are
+    // no longer gated on People-nav visibility.
+    expect(CARE_WORKSPACE).toContain("PEOPLE_IMPORT_HREF");
+    expect(CARE_ACCORDION).toContain("PEOPLE_IMPORT_HREF");
+    expect(CARE_WORKSPACE).not.toContain("peopleHidden");
+    expect(CARE_ACCORDION).not.toContain("showPeopleCta");
   });
 });
