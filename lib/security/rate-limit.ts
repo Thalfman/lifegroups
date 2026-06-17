@@ -26,11 +26,19 @@ type LimiterPair = {
 let cached: LimiterPair | null | undefined;
 let disabledWarned = false;
 
-function build(): LimiterPair | null {
+// One place that reads the Upstash credentials and builds the client; returns
+// null when the env vars are absent so callers fall open. Shared by both the
+// forgot-password and invite-redeem limiters.
+function getRedis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
   const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   if (!url || !token) return null;
-  const redis = new Redis({ url, token });
+  return new Redis({ url, token });
+}
+
+function build(): LimiterPair | null {
+  const redis = getRedis();
+  if (!redis) return null;
   return {
     ip: new Ratelimit({
       redis,
@@ -59,10 +67,8 @@ function getLimiters(): LimiterPair | null {
 let cachedRedeem: Ratelimit | null | undefined;
 
 function buildRedeemLimiter(): Ratelimit | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
-  if (!url || !token) return null;
-  const redis = new Redis({ url, token });
+  const redis = getRedis();
+  if (!redis) return null;
   return new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(10, "15 m"),
