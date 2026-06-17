@@ -1,6 +1,13 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { expectNoBlockingAxeViolations, gotoHarness, HARNESS } from "./harness";
+import {
+  expectNoBlockingAxeViolations,
+  expectNoHorizontalOverflow,
+  gotoHarness,
+  gotoSetupHome,
+  PHONE,
+  surface,
+} from "./harness";
 
 // 375px mobile regression assertions for the four priority admin flows (#651).
 //
@@ -28,8 +35,6 @@ import { expectNoBlockingAxeViolations, gotoHarness, HARNESS } from "./harness";
 //     full-screen editing sheet pads itself with `env(safe-area-inset-*)`.
 //   - Touch — the flow opens and an in-drawer field focuses via real touch taps.
 
-const PHONE = { width: 375, height: 812 };
-
 // Product-approved thresholds. A small slack absorbs sub-pixel rounding.
 const PRIMARY_TAP_MIN = 44;
 const CONTROL_TAP_MIN = 24;
@@ -54,14 +59,6 @@ type Flow = {
   // The flow's primary action(s) — the thing the user came to do.
   primaries: (region: Locator) => Locator[];
 };
-
-async function gotoSetupHome(page: Page): Promise<void> {
-  const response = await page.goto(`${HARNESS}?homeVariant=setup`, {
-    waitUntil: "networkidle",
-  });
-  expect(response?.status(), "harness route must be enabled").toBe(200);
-  await expect(page.locator(HOME)).toBeVisible();
-}
 
 // Open a surface's drawer trigger with the chosen input method, so the touch
 // path exercises a real tap rather than a synthetic click.
@@ -99,9 +96,8 @@ const FLOWS: Flow[] = [
     isDrawer: true,
     goto: gotoHarness,
     open: async (page, method) => {
-      const surface = page.locator('[data-a11y-surface="group-roster"]');
       await trigger(
-        surface.getByRole("button", {
+        surface(page, "group-roster").getByRole("button", {
           name: "Add a new leader to this group",
         }),
         method
@@ -122,9 +118,8 @@ const FLOWS: Flow[] = [
     isDrawer: true,
     goto: gotoHarness,
     open: async (page, method) => {
-      const surface = page.locator('[data-a11y-surface="people"]');
       await trigger(
-        surface.getByRole("button", { name: "Add person" }),
+        surface(page, "people").getByRole("button", { name: "Add person" }),
         method
       );
       await expect(
@@ -141,9 +136,10 @@ const FLOWS: Flow[] = [
     isDrawer: true,
     goto: gotoHarness,
     open: async (page, method) => {
-      const surface = page.locator('[data-a11y-surface="follow-ups"]');
       await trigger(
-        surface.getByRole("button", { name: "Add follow-up" }),
+        surface(page, "follow-ups").getByRole("button", {
+          name: "Add follow-up",
+        }),
         method
       );
       await expect(
@@ -241,18 +237,6 @@ async function expectFontFloor(
       `primary action font-size ${size}px < ${ACTION_FONT_MIN}px`
     ).toBeGreaterThanOrEqual(ACTION_FONT_MIN - SLACK);
   }
-}
-
-async function expectNoHorizontalOverflow(region: Locator): Promise<void> {
-  await expect(region).toBeVisible();
-  const overflow = await region.evaluate((el) => {
-    const target = el as HTMLElement;
-    return target.scrollWidth - target.clientWidth;
-  });
-  expect(
-    overflow,
-    `region overflows its content box by ${overflow}px at 375px`
-  ).toBeLessThanOrEqual(1);
 }
 
 // The primary action never overflows the 375px width, and once scrolled to it
@@ -358,7 +342,10 @@ for (const flow of FLOWS) {
     }) => {
       await flow.goto(page);
       await flow.open(page, "click");
-      await expectNoHorizontalOverflow(flow.region(page));
+      await expectNoHorizontalOverflow(
+        flow.region(page),
+        "region overflows its content box by {overflow}px at 375px"
+      );
     });
 
     test("the primary action is unclipped and unobstructed", async ({

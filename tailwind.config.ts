@@ -134,9 +134,6 @@ export default {
         card: "560px",
         lede: "640px",
       },
-      transitionDuration: {
-        "250": "250ms",
-      },
     },
   },
   plugins: [],

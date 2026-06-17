@@ -1,6 +1,14 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
+import {
+  expectNoBlockingAxeViolations,
+  expectNoHorizontalOverflow,
+  gotoHarness,
+  PHONE,
+  seededCreds,
+  signIn,
+  surface,
+} from "./harness";
 
 // Mobile-viewport cross-surface smoke (#557). Runs on the mobile-iphone and
 // mobile-android projects (iPhone-sized + Android-sized viewports) defined in
@@ -17,13 +25,7 @@ import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 //      creds are absent (the default in CI) so the suite stays green, and they
 //      never broaden auth — they sign in as ordinary seeded users.
 
-const ADMIN_EMAIL = process.env.A11Y_ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.A11Y_ADMIN_PASSWORD;
-const ADMIN_CREDS = Boolean(ADMIN_EMAIL && ADMIN_PASSWORD);
-
-const LEADER_EMAIL = process.env.A11Y_LEADER_EMAIL;
-const LEADER_PASSWORD = process.env.A11Y_LEADER_PASSWORD;
-const LEADER_CREDS = Boolean(LEADER_EMAIL && LEADER_PASSWORD);
+const { admin: ADMIN, leader: LEADER } = seededCreds();
 
 const HARNESS_CORE_SURFACES = [
   "home",
@@ -62,18 +64,6 @@ const STACKED_SURFACES = [
     tableSelector: "table",
   },
 ] as const;
-
-async function signIn(
-  page: Page,
-  email: string,
-  password: string
-): Promise<void> {
-  await page.goto("/login", { waitUntil: "networkidle" });
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
-}
 
 test.describe("mobile smoke — public + harness (#557)", () => {
   test("login renders its heading, form, and support link", async ({
@@ -120,7 +110,7 @@ test.describe("mobile smoke — public + harness (#557)", () => {
 
     for (const id of HARNESS_CORE_SURFACES) {
       await expect(
-        page.locator(`[data-a11y-surface="${id}"]`),
+        surface(page, id),
         `harness surface "${id}" should render`
       ).toBeVisible();
     }
@@ -130,7 +120,7 @@ test.describe("mobile smoke — public + harness (#557)", () => {
     // at a phone width its links sit in the DOM but outside the accessibility
     // tree — include hidden so the role query still resolves them, and assert
     // attachment (not paint, since the spine collapses behind a drawer here).
-    const sidebar = page.locator('[data-a11y-surface="sidebar-active-state"]');
+    const sidebar = surface(page, "sidebar-active-state");
     for (const label of ["Care", "Plan", "Multiply"] as const) {
       await expect(
         sidebar
@@ -162,15 +152,15 @@ test.describe("mobile smoke — responsive directories + grid (#567)", () => {
   }) => {
     await gotoHarness(page);
     for (const { id, cardSelector, tableSelector } of STACKED_SURFACES) {
-      const surface = page.locator(`[data-a11y-surface="${id}"]`);
-      await expect(surface, `surface "${id}" should render`).toBeVisible();
+      const element = surface(page, id);
+      await expect(element, `surface "${id}" should render`).toBeVisible();
       // The mobile card stack paints…
       await expect(
-        surface.locator(cardSelector).first(),
+        element.locator(cardSelector).first(),
         `surface "${id}" should show its stacked cards at phone width`
       ).toBeVisible();
       // …while the desktop table/grid stays hidden (display:none) behind md+.
-      const table = surface.locator(tableSelector).first();
+      const table = element.locator(tableSelector).first();
       if ((await table.count()) > 0) {
         await expect(
           table,
@@ -189,17 +179,11 @@ test.describe("mobile smoke — responsive directories + grid (#567)", () => {
   // width. A 1px slack absorbs sub-pixel rounding (matches responsive-mobile).
   async function expectStackedSurfacesDoNotOverflow(page: Page): Promise<void> {
     for (const { id } of STACKED_SURFACES) {
-      const surface = page.locator(`[data-a11y-surface="${id}"]`);
-      await expect(surface, `surface "${id}" should render`).toBeVisible();
-      const overflow = await surface.evaluate(
-        (el) =>
-          (el as HTMLElement).scrollWidth - (el as HTMLElement).clientWidth
-      );
-      expect(
-        overflow,
-        `surface "${id}" overflows its content box by ${overflow}px (forces ` +
+      await expectNoHorizontalOverflow(
+        surface(page, id),
+        `surface "${id}" overflows its content box by {overflow}px (forces ` +
           `horizontal scroll at phone width)`
-      ).toBeLessThanOrEqual(1);
+      );
     }
   }
 
@@ -213,7 +197,7 @@ test.describe("mobile smoke — responsive directories + grid (#567)", () => {
   test("the stacked surfaces never overflow their box at the 375px floor", async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
+    await page.setViewportSize(PHONE);
     await gotoHarness(page);
     await expectStackedSurfacesDoNotOverflow(page);
   });
@@ -222,10 +206,10 @@ test.describe("mobile smoke — responsive directories + grid (#567)", () => {
 test.describe("mobile smoke — live admin surfaces (seeded auth)", () => {
   test.beforeEach(async ({ page }) => {
     test.skip(
-      !ADMIN_CREDS,
+      !ADMIN.present,
       "Set A11Y_ADMIN_EMAIL + A11Y_ADMIN_PASSWORD (npm run seed:test-auth) and serve against live Supabase."
     );
-    await signIn(page, ADMIN_EMAIL!, ADMIN_PASSWORD!);
+    await signIn(page, ADMIN.email!, ADMIN.password!);
   });
 
   for (const path of [
@@ -248,10 +232,10 @@ test.describe("mobile smoke — live Leader surface (seeded auth)", () => {
     page,
   }) => {
     test.skip(
-      !LEADER_CREDS,
+      !LEADER.present,
       "Set A11Y_LEADER_EMAIL + A11Y_LEADER_PASSWORD (npm run seed:test-auth) and serve against live Supabase."
     );
-    await signIn(page, LEADER_EMAIL!, LEADER_PASSWORD!);
+    await signIn(page, LEADER.email!, LEADER.password!);
     await page.goto("/leader", { waitUntil: "networkidle" });
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
       "Your care"

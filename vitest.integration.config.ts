@@ -1,7 +1,5 @@
 import { defineConfig } from "vitest/config";
-import { fileURLToPath } from "node:url";
-
-const rootDir = fileURLToPath(new URL(".", import.meta.url));
+import { sharedAlias, sharedTest } from "./vitest.shared";
 
 // Dedicated runner for the RLS / action-pipeline INTEGRATION harness (issue
 // #607). This is the OPT-IN / SCHEDULED lane: it talks to a live local Supabase
@@ -16,11 +14,11 @@ const rootDir = fileURLToPath(new URL(".", import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
-      "@": rootDir,
+      ...sharedAlias,
     },
   },
   test: {
-    environment: "node",
+    ...sharedTest,
     include: ["tests/integration/**/*.test.ts"],
     exclude: ["node_modules/**", ".next/**", "dist/**"],
     // Fixtures share a single local database; running specs in one process

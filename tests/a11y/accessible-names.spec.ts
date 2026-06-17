@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
+import { expectNoBlockingAxeViolations, gotoHarness, surface } from "./harness";
 
 // Issue 257 — Admin Interaction Model req 4: repeated/interactive controls
 // must carry record or section context in their accessible names, and we
@@ -100,8 +100,8 @@ test.describe("admin accessible names carry record context", () => {
   test("groups directory repeated actions name their group", async ({
     page,
   }) => {
-    const surface = page.locator('[data-a11y-surface="groups-directory"]');
-    const moreActions = surface.getByRole("button", {
+    const directory = surface(page, "groups-directory");
+    const moreActions = directory.getByRole("button", {
       name: /^More actions for .+/,
     });
     expectAllUnique(
@@ -130,9 +130,7 @@ test.describe("admin accessible names carry record context", () => {
   }) => {
     // Two active groups both named "Young Adults" — More actions, Edit, and
     // Calendar must differ by the stable meeting-day discriminator.
-    const collisions = page.locator(
-      '[data-a11y-surface="groups-directory-collisions"]'
-    );
+    const collisions = surface(page, "groups-directory-collisions");
     expectAllUnique(
       await accessibleNames(
         collisions.getByRole("button", { name: /^More actions for .+/ })
@@ -153,7 +151,7 @@ test.describe("admin accessible names carry record context", () => {
     );
 
     // A weekly group recurs on multiple dates — its calendar links must differ.
-    const calendar = page.locator('[data-a11y-surface="master-calendar-list"]');
+    const calendar = surface(page, "master-calendar-list");
     expectAllUnique(
       await accessibleNames(
         calendar.getByRole("link", { name: /^Open .+ calendar/i })
@@ -163,10 +161,10 @@ test.describe("admin accessible names carry record context", () => {
 
     // Same-title/status follow-ups — action buttons disambiguated by due date.
     for (const id of ["follow-up-status", "care-follow-ups"]) {
-      const surface = page.locator(`[data-a11y-surface="${id}"]`);
+      const region = surface(page, id);
       expectAllUnique(
         await accessibleNames(
-          surface.getByRole("button", { name: /follow-up: /i })
+          region.getByRole("button", { name: /follow-up: /i })
         ),
         `${id} action buttons`
       );
@@ -184,7 +182,7 @@ test.describe("admin accessible names carry record context", () => {
     // Per-group month grid: each editable cell's edit button reads "Edit <date>
     // — …", and empty editable dates read "Add event on <date>". Both shapes
     // must be unique across the grid (date disambiguates the recurring group).
-    const grid = page.locator('[data-a11y-surface="calendar-month-grid"]');
+    const grid = surface(page, "calendar-month-grid");
     await expect(
       grid.getByRole("button", { name: /^Edit .+ — .+/ }).first()
     ).toBeVisible();
@@ -204,9 +202,7 @@ test.describe("admin accessible names carry record context", () => {
 
     // Master calendar month grid: the per-day occurrence pills read "View
     // <group> on <date> — …". Two groups share a date, so these must be unique.
-    const masterGrid = page.locator(
-      '[data-a11y-surface="master-calendar-grid"]'
-    );
+    const masterGrid = surface(page, "master-calendar-grid");
     await expect(
       masterGrid.getByRole("button", { name: /^View .+ on .+ — .+/ }).first()
     ).toBeVisible();
@@ -219,7 +215,7 @@ test.describe("admin accessible names carry record context", () => {
 
     // Master calendar list: each occurrence card button names its occurrence;
     // the recurring group across dates must keep them unique.
-    const list = page.locator('[data-a11y-surface="master-calendar-list"]');
+    const list = surface(page, "master-calendar-list");
     expectAllUnique(
       await accessibleNames(list.getByRole("button", { name: /^View .+ on / })),
       "master calendar list occurrence cards"
@@ -229,10 +225,10 @@ test.describe("admin accessible names carry record context", () => {
     // the leader discriminator is the only thing keeping their occurrence
     // buttons (and their "Open group calendar" links) distinct — group names are
     // not unique. Both views must hold up under that collision.
-    for (const surface of [list, masterGrid]) {
+    for (const view of [list, masterGrid]) {
       expectAllUnique(
         await accessibleNames(
-          surface.getByRole("button", { name: /^View Sunday Night on / })
+          view.getByRole("button", { name: /^View Sunday Night on / })
         ),
         "same-name same-date occurrence buttons"
       );
@@ -247,9 +243,9 @@ test.describe("admin accessible names carry record context", () => {
 
   test("follow-up status actions name their follow-up", async ({ page }) => {
     for (const id of ["follow-up-status", "care-follow-ups"]) {
-      const surface = page.locator(`[data-a11y-surface="${id}"]`);
+      const region = surface(page, id);
       await expect(
-        surface.getByRole("button", { name: /follow-up: .+/i }).first()
+        region.getByRole("button", { name: /follow-up: .+/i }).first()
       ).toBeVisible();
     }
   });
