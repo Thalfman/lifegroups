@@ -239,6 +239,35 @@ create function public.v() returns int language sql security definer set search_
     ]);
   });
 
+  it("detects attributes placed AFTER the body (security definer / search_path)", () => {
+    const { creates } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `create function public.post_attrs(p_id uuid)
+returns void
+as $$
+begin
+  insert into public.members (id) values (p_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;`
+      )
+    );
+    expect(creates[0].isSecurityDefiner).toBe(true);
+    expect(creates[0].pinsSearchPath).toBe(true);
+  });
+
+  it("flags a post-body SECURITY DEFINER that does not pin search_path", () => {
+    const flagged = unpinnedSecurityDefiners([
+      sql(
+        "m1.sql",
+        `create function public.leaky()
+returns int
+as $$ select 1 $$ language sql security definer;`
+      ),
+    ]);
+    expect(flagged.map((f) => f.signature)).toEqual(["public.leaky()"]);
+  });
+
   it("folds the body of the LAST definition for a signature", () => {
     const earlier = sql(
       "20260101000000_a.sql",

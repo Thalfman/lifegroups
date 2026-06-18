@@ -18,21 +18,31 @@ import { stripSqlStrings, writesAudit } from "./scan";
 
 export type RpcCategory = "write" | "read_helper" | "trigger";
 
-// DML against a real table. Strings are stripped before this runs, so dynamic
-// SQL built into a `'delete from …'` literal (and any string mentioning a table)
-// does not count — those functions self-audit with a literal `audit_events`
-// insert anyway, which is what the check actually asserts.
+// Static DML against a real table. Strings are stripped before this runs so a
+// table name mentioned in prose (`raise exception 'cannot update group …'`) or a
+// jsonb label can't masquerade as DML.
 const WRITE_DML_RE =
   /\b(?:insert\s+into|update|delete\s+from)\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi;
 
+// Dynamic DML built with `format()` identifier injection — `delete from
+// public.%I`, `insert into %I`, `update %I set …`. The table name lives INSIDE
+// the format string, so string-stripping erases it; this pattern runs on the
+// (string-bearing) body and keys on the `%I`/`%s` placeholder right after the
+// DML target, which is high-signal (prose doesn't write `delete from %I`).
+// Fully arbitrary dynamic SQL (`'delete from ' || quote_ident(t)`) is not
+// modelled — the repo builds dynamic DML via `format(… %I …)`.
+const DYNAMIC_DML_RE =
+  /\b(?:insert\s+into|update|delete\s+from)\s+(?:public\.)?%[is]\b/i;
+
 /**
- * True when the body performs DML on a real (non-audit, non-temp) table.
- * `audit_events` is excluded as a target on purpose: an audit insert is the
- * pairing we're checking FOR, not itself a business write — so a function whose
- * only DML is the audit row is not classified a write (none exist today, but the
- * rule is the correct, conservative one).
+ * True when the body performs DML on a real (non-audit, non-temp) table, whether
+ * static or built via `format(… %I …)`. `audit_events` is excluded as a target
+ * on purpose: an audit insert is the pairing we're checking FOR, not itself a
+ * business write — so a function whose only DML is the audit row is not
+ * classified a write (none exist today, but the rule is the correct one).
  */
 export function isWrite(body: string): boolean {
+  if (DYNAMIC_DML_RE.test(body)) return true;
   const text = stripSqlStrings(body);
   WRITE_DML_RE.lastIndex = 0;
   for (let m = WRITE_DML_RE.exec(text); m; m = WRITE_DML_RE.exec(text)) {
@@ -50,36 +60,72 @@ export function categorize(fn: EffectiveFunction): RpcCategory {
   return isWrite(fn.body) ? "write" : "read_helper";
 }
 
+export interface AuditExemption {
+  /** Why this write legitimately does not insert its own audit_events row. */
+  readonly reason: string;
+  /**
+   * When true, this is an internal helper whose audit is the responsibility of
+   * its callers. The check then enforces that EVERY definer calling it writes an
+   * audit_events row — so the guarantee is actually verified, not just asserted
+   * in prose. When false/absent, the write is terminally unaudited by design.
+   */
+  readonly delegatesToCallers?: boolean;
+}
+
 /**
  * WRITE-classified definers that legitimately do NOT write `audit_events`. Each
  * entry is a deliberate, reviewed exemption — keep the reason current. Keys use
  * the parser's normalized signature form (`schema.name(type,type)`, lowercased).
  */
-export const AUDIT_EXEMPT_WRITES: ReadonlyMap<string, string> = new Map([
+export const AUDIT_EXEMPT_WRITES: ReadonlyMap<string, AuditExemption> = new Map(
   [
-    "public.log_usage_event(text,text)",
-    "Telemetry by design (Phase USAGE.1): high-frequency, coarse usage events in " +
-      "usage_events. Auditing every call would flood the audit spine with " +
-      "non-accountability noise; usage tracking is opt-in analytics, not a " +
-      "domain mutation.",
-  ],
-  [
-    "public.check_invite_redeem_rate(text,integer,integer)",
-    "Rate-limit bookkeeping (Phase IL.2): service-role-only sliding-window " +
-      "throttle rows in invite_redeem_throttle. This is mechanism state, not a " +
-      "domain write; the invite redemption it guards is itself audited by the " +
-      "redeem RPC.",
-  ],
-  [
-    "public.super_admin_clean_slate_restore_payload(jsonb)",
-    "Internal shared restore body (PRD-SAC6 #293/#294) with NO execute grant — " +
-      "revoked from public/anon/authenticated and granted to none. It performs " +
-      "the FK-safe re-insert only; the two SECURITY DEFINER callers that own the " +
-      "super-admin gate and advisory lock " +
-      "(super_admin_clean_slate_revert / super_admin_clean_slate_import) each " +
-      "write the paired audit_events row in the same transaction.",
-  ],
-]);
+    [
+      "public.log_usage_event(text,text)",
+      {
+        reason:
+          "Telemetry by design (Phase USAGE.1): high-frequency, coarse usage " +
+          "events in usage_events. Auditing every call would flood the audit " +
+          "spine with non-accountability noise; usage tracking is opt-in " +
+          "analytics, not a domain mutation.",
+      },
+    ],
+    [
+      "public.check_invite_redeem_rate(text,integer,integer)",
+      {
+        reason:
+          "Rate-limit bookkeeping (Phase IL.2): service-role-only sliding-window " +
+          "throttle rows in invite_redeem_throttle. This is mechanism state, not " +
+          "a domain write; the invite redemption it guards is itself audited by " +
+          "the redeem RPC.",
+      },
+    ],
+    [
+      "public.super_admin_clean_slate_restore_payload(jsonb)",
+      {
+        reason:
+          "Internal shared restore body (PRD-SAC6 #293/#294) with NO execute " +
+          "grant — revoked from public/anon/authenticated and granted to none. It " +
+          "performs the FK-safe re-insert only; the two SECURITY DEFINER callers " +
+          "that own the super-admin gate and advisory lock " +
+          "(super_admin_clean_slate_revert / super_admin_clean_slate_import) each " +
+          "write the paired audit_events row in the same transaction.",
+        delegatesToCallers: true,
+      },
+    ],
+  ]
+);
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Does `body` call the function named `baseName` (schema-qualified or not)? */
+function bodyCalls(body: string, baseName: string): boolean {
+  return new RegExp(
+    `\\b(?:public\\.)?${escapeRegExp(baseName)}\\s*\\(`,
+    "i"
+  ).test(stripSqlStrings(body));
+}
 
 export interface ClassificationResult {
   /** WRITE-classified definers (not triggers, perform real-table DML). */
@@ -92,6 +138,13 @@ export interface ClassificationResult {
   readonly unaudited: readonly EffectiveFunction[];
   /** Exemption signatures that actually matched a write lacking an audit insert. */
   readonly exemptedUsed: ReadonlySet<string>;
+  /** For each `delegatesToCallers` exemption, the definer signatures that call it. */
+  readonly delegationCallers: ReadonlyMap<string, readonly string[]>;
+  /**
+   * Violations of a delegated exemption: a caller drives the exempt helper's
+   * write but inserts no audit_events of its own. `{ helper, caller }` signatures.
+   */
+  readonly delegationViolations: readonly { helper: string; caller: string }[];
 }
 
 /**
@@ -126,7 +179,40 @@ export function classifyDefiners(
     unaudited.push(fn);
   }
 
-  return { writes, reads, triggers, unaudited, exemptedUsed };
+  // For each exemption that delegates audit to its callers, enforce that every
+  // definer calling the helper actually writes an audit_events row — otherwise
+  // the exemption would silently drop the import/revert audit guarantee.
+  const bySig = new Map(definers.map((f) => [f.signature, f]));
+  const delegationCallers = new Map<string, readonly string[]>();
+  const delegationViolations: { helper: string; caller: string }[] = [];
+  for (const [sig, exemption] of AUDIT_EXEMPT_WRITES) {
+    if (!exemption.delegatesToCallers) continue;
+    const helper = bySig.get(sig);
+    if (!helper) continue; // a stale exemption — caught by the honesty test
+    const baseName = helper.name.split(".").pop() ?? helper.name;
+    const callers = definers.filter(
+      (d) => d.signature !== sig && bodyCalls(d.body, baseName)
+    );
+    delegationCallers.set(
+      sig,
+      callers.map((c) => c.signature)
+    );
+    for (const caller of callers) {
+      if (!writesAudit(caller.body)) {
+        delegationViolations.push({ helper: sig, caller: caller.signature });
+      }
+    }
+  }
+
+  return {
+    writes,
+    reads,
+    triggers,
+    unaudited,
+    exemptedUsed,
+    delegationCallers,
+    delegationViolations,
+  };
 }
 
 /** Human-readable counts + per-bucket names, for the PR summary. */

@@ -56,6 +56,20 @@ describe("isWrite", () => {
       )
     ).toBe(true);
   });
+
+  it("detects dynamic DML built with format(... %I ...)", () => {
+    expect(
+      isWrite("execute format('delete from public.%I where id = 1', v_t)")
+    ).toBe(true);
+    expect(isWrite("execute format('insert into %I (id) values (1)', t)")).toBe(
+      true
+    );
+    expect(isWrite("execute format('update %I set x = 1', t)")).toBe(true);
+  });
+
+  it("does not treat a dynamic SELECT as a write", () => {
+    expect(isWrite("execute format('select * from %I', t)")).toBe(false);
+  });
 });
 
 describe("categorize", () => {
@@ -154,6 +168,40 @@ describe("classifyDefiners", () => {
     expect(result.unaudited).toEqual([]);
     // It self-audits, so the exemption is no longer needed (staleness signal).
     expect(result.exemptedUsed.has(exemptSig)).toBe(false);
+  });
+
+  it("flags a caller of a delegating-exempt helper that writes no audit", () => {
+    // Use the real delegating exemption signature so the map drives the check.
+    const helperSig = "public.super_admin_clean_slate_restore_payload(jsonb)";
+    const helper = fn({
+      signature: helperSig,
+      name: "public.super_admin_clean_slate_restore_payload",
+      body: "insert into public.members select * from jsonb_populate_recordset(null::public.members, p);",
+    });
+    const goodCaller = fn({
+      signature: "public.super_admin_clean_slate_import(jsonb)",
+      name: "public.super_admin_clean_slate_import",
+      body:
+        "perform public.super_admin_clean_slate_restore_payload(p_payload);\n" +
+        "insert into public.audit_events (action) values ('super_admin.clean_slate_import');",
+    });
+    const badCaller = fn({
+      signature: "public.super_admin_clean_slate_revert(uuid)",
+      name: "public.super_admin_clean_slate_revert",
+      body: "perform public.super_admin_clean_slate_restore_payload(v_snapshot.payload);",
+    });
+
+    const result = classifyDefiners([helper, goodCaller, badCaller]);
+    expect(result.delegationCallers.get(helperSig)).toEqual([
+      "public.super_admin_clean_slate_import(jsonb)",
+      "public.super_admin_clean_slate_revert(uuid)",
+    ]);
+    expect(result.delegationViolations).toEqual([
+      {
+        helper: helperSig,
+        caller: "public.super_admin_clean_slate_revert(uuid)",
+      },
+    ]);
   });
 
   it("treats a conditional `if found then insert audit` as audited", () => {

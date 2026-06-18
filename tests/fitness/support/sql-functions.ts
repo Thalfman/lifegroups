@@ -155,27 +155,36 @@ export function normalizeArgTypes(params: string): string[] {
 // (which the caller passes as the index just past the argument-list `)`).
 // Supports dollar quoting `$tag$ … $tag$` (empty `$$` and named tags) and the
 // legacy `AS '…'` form (with `''` escapes). Returns the inner body text with the
-// delimiters removed, or "" when no body delimiter is found. The caller passes
-// comment-stripped text, so a `--`/`/* */` example can't masquerade as a body.
-function readFunctionBody(text: string, fromIndex: number): string {
+// delimiters removed plus `end` — the offset just past the closing delimiter, so
+// the caller can read the post-body attribute clause (PostgreSQL allows
+// `SECURITY DEFINER` / `SET search_path` / volatility either before OR after the
+// body). When no body delimiter is found, `body` is "" and `end` is `fromIndex`.
+// The caller passes comment-stripped text, so a `--`/`/* */` example can't
+// masquerade as a body.
+function readFunctionBody(
+  text: string,
+  fromIndex: number
+): { body: string; end: number } {
   const rest = text.slice(fromIndex);
   const asMatch = /\bas\b\s*/i.exec(rest);
-  if (!asMatch) return "";
+  if (!asMatch) return { body: "", end: fromIndex };
   const afterAs = fromIndex + asMatch.index + asMatch[0].length;
   const ch = text[afterAs];
   // Dollar-quoted: $tag$ … $tag$ (tag may be empty, e.g. `$$`).
   if (ch === "$") {
     const tagMatch = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(text.slice(afterAs));
-    if (!tagMatch) return "";
+    if (!tagMatch) return { body: "", end: fromIndex };
     const tag = tagMatch[0]; // includes both surrounding `$`
     const bodyStart = afterAs + tag.length;
     const close = text.indexOf(tag, bodyStart);
-    return close === -1 ? text.slice(bodyStart) : text.slice(bodyStart, close);
+    if (close === -1) return { body: text.slice(bodyStart), end: text.length };
+    return { body: text.slice(bodyStart, close), end: close + tag.length };
   }
   // Single-quoted: 'body' with the '' escape.
   if (ch === "'") {
     let out = "";
-    for (let i = afterAs + 1; i < text.length; i++) {
+    let i = afterAs + 1;
+    for (; i < text.length; i++) {
       if (text[i] === "'" && text[i + 1] === "'") {
         out += "''";
         i++;
@@ -184,9 +193,9 @@ function readFunctionBody(text: string, fromIndex: number): string {
       if (text[i] === "'") break;
       out += text[i];
     }
-    return out;
+    return { body: out, end: i + 1 };
   }
-  return "";
+  return { body: "", end: fromIndex };
 }
 
 function lineOf(rawText: string, index: number): number {
@@ -224,15 +233,23 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
     const bodyDelim = rest.search(/\bas\b\s*(?:\$|')/i);
     const header =
       bodyDelim >= 0 ? rest.slice(0, bodyDelim) : rest.slice(0, 600);
+    // The attribute clause can sit before the body (the repo's convention) OR
+    // after it (`AS $$…$$ LANGUAGE plpgsql SECURITY DEFINER`, also valid). Read
+    // both regions so the definer/search_path/volatility flags can't be evaded
+    // by attribute order. The body itself is never scanned for these.
+    const { body, end: bodyEnd } = readFunctionBody(text, end);
+    const semi = text.indexOf(";", bodyEnd);
+    const trailer = text.slice(bodyEnd, semi >= 0 ? semi : bodyEnd);
+    const attrs = `${header} ${trailer}`;
     creates.push({
       signature: `${name}(${argTypes.join(",")})`,
       name,
       argTypes,
-      isSecurityDefiner: /security\s+definer/i.test(header),
-      pinsSearchPath: /set\s+search_path/i.test(header),
-      returnsTrigger: /\breturns\s+(?:trigger|event_trigger)\b/i.test(header),
-      isReadOnlyVolatility: /\b(?:stable|immutable)\b/i.test(header),
-      body: readFunctionBody(text, end),
+      isSecurityDefiner: /security\s+definer/i.test(attrs),
+      pinsSearchPath: /set\s+search_path/i.test(attrs),
+      returnsTrigger: /\breturns\s+(?:trigger|event_trigger)\b/i.test(attrs),
+      isReadOnlyVolatility: /\b(?:stable|immutable)\b/i.test(attrs),
+      body,
       relPath: file.relPath,
       line: lineOf(file.text, m.index),
       pos: m.index,

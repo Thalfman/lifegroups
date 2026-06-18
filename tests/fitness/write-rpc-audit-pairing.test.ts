@@ -64,6 +64,36 @@ describe("fitness: every WRITE SECURITY DEFINER RPC pairs an audit_events insert
     ).toEqual([]);
   });
 
+  it("audits the callers of every delegating exemption (no dropped guarantee)", () => {
+    // A `delegatesToCallers` exemption (the no-grant clean-slate restore helper)
+    // only holds if its callers actually audit. Each such helper must have ≥1
+    // caller, and every caller must insert audit_events.
+    const noCallers: string[] = [];
+    for (const [sig, ex] of AUDIT_EXEMPT_WRITES) {
+      if (!ex.delegatesToCallers) continue;
+      const callers = classified.delegationCallers.get(sig) ?? [];
+      if (callers.length === 0) noCallers.push(sig);
+    }
+    const violations = classified.delegationViolations.map(
+      (v) =>
+        `  ${v.caller}  drives exempt ${v.helper} but writes no audit_events`
+    );
+    expect(
+      noCallers,
+      noCallers.length === 0
+        ? ""
+        : `These delegating exemptions have no caller that drives them — the ` +
+            `exemption is stale or the helper was inlined:\n  ${noCallers.join("\n  ")}`
+    ).toEqual([]);
+    expect(
+      violations,
+      violations.length === 0
+        ? ""
+        : `A caller of a delegating-exempt helper must write its own ` +
+            `audit_events row:\n${violations.join("\n")}`
+    ).toEqual([]);
+  });
+
   it("keeps AUDIT_EXEMPT_WRITES honest (no stale entries)", () => {
     const bySig = new Map(definers.map((f) => [f.signature, f]));
     const stale: string[] = [];
