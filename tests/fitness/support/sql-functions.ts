@@ -280,8 +280,10 @@ const ALTER_FN_RE = /alter\s+function\s+([a-z0-9_."]+)\s*\(/gi;
 // `FUNCTION` and `ROUTINE` are interchangeable in GRANT/REVOKE/DROP (likewise
 // `ALL FUNCTIONS` / `ALL ROUTINES IN SCHEMA`), so accept both spellings — a
 // migration that re-exposes a helper with the ROUTINE form must still be folded.
+// Prefix only — the comma-separated `name(args)` target list is parsed by hand
+// (a single GRANT/REVOKE may name several routines before the TO/FROM clause).
 const GRANT_FN_RE =
-  /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+(?:function|routine)\s+([a-z0-9_."]+)\s*\(/gi;
+  /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+(?:function|routine)\s+/gi;
 // Schema-wide grant: `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;`
 const GRANT_ALL_FN_RE =
   /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+all\s+(?:functions|routines)\s+in\s+schema\s+([a-z0-9_."]+)\s+(?:to|from)\s+([^;]+);/gi;
@@ -382,25 +384,43 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
   GRANT_FN_RE.lastIndex = 0;
   for (let m = GRANT_FN_RE.exec(text); m; m = GRANT_FN_RE.exec(text)) {
     const action = m[1].toLowerCase() as "grant" | "revoke";
-    const name = m[2].replace(/"/g, "").toLowerCase();
-    const open = text.indexOf("(", m.index);
-    const { inner, end } = readBalancedParens(text, open);
-    const argTypes = normalizeArgTypes(inner);
-    // After the arg-list close comes `… TO|FROM role[, role …];`.
-    const semi = text.indexOf(";", end);
-    const tail = text.slice(end, semi >= 0 ? semi : text.length);
+    // Read one-or-more comma-separated `name(args)` targets up to the TO/FROM
+    // clause, so every routine in a multi-target grant is folded, not just the
+    // first. (Arg-less targets — `grant … on function f to …` — are not modelled;
+    // like CREATE/ALTER, this parser keys on `name(args)` signatures.)
+    let cursor = GRANT_FN_RE.lastIndex;
+    const signatures: string[] = [];
+    for (;;) {
+      const nameMatch = /^\s*([a-z0-9_."]+)\s*\(/i.exec(text.slice(cursor));
+      if (!nameMatch) break;
+      const name = nameMatch[1].replace(/"/g, "").toLowerCase();
+      const open = cursor + nameMatch[0].length - 1; // index of the '('
+      const { inner, end } = readBalancedParens(text, open);
+      signatures.push(`${name}(${normalizeArgTypes(inner).join(",")})`);
+      cursor = end;
+      const sep = /^\s*,/.exec(text.slice(cursor));
+      if (!sep) break;
+      cursor += sep[0].length;
+    }
+    if (signatures.length === 0) continue;
+    // After the target list comes `… TO|FROM role[, role …];`.
+    const semi = text.indexOf(";", cursor);
+    const tail = text.slice(cursor, semi >= 0 ? semi : text.length);
     const roleMatch = /\b(?:to|from)\s+([\s\S]+)$/i.exec(tail);
-    grants.push({
-      signature: `${name}(${argTypes.join(",")})`,
-      allInSchema: null,
-      name,
-      action,
-      roles: roleMatch ? parseRoleList(roleMatch[1]) : [],
-      relPath: file.relPath,
-      line: lineOf(file.text, m.index),
-      pos: m.index,
-    });
-    GRANT_FN_RE.lastIndex = end;
+    const roles = roleMatch ? parseRoleList(roleMatch[1]) : [];
+    for (const signature of signatures) {
+      grants.push({
+        signature,
+        allInSchema: null,
+        name: signature.slice(0, signature.indexOf("(")),
+        action,
+        roles,
+        relPath: file.relPath,
+        line: lineOf(file.text, m.index),
+        pos: m.index,
+      });
+    }
+    GRANT_FN_RE.lastIndex = semi >= 0 ? semi + 1 : cursor;
   }
 
   // Schema-wide `… ON ALL FUNCTIONS IN SCHEMA <s> TO|FROM <roles>` grants apply

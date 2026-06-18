@@ -378,6 +378,22 @@ drop function public.g(uuid, text);`
     ]);
   });
 
+  it("folds every target of a multi-target grant (shared roles)", () => {
+    const { grants } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `grant execute on function public.safe(), public.restore(jsonb) to authenticated;`
+      )
+    );
+    expect(grants).toHaveLength(2);
+    expect(grants.map((g) => g.signature)).toEqual([
+      "public.safe()",
+      "public.restore(jsonb)",
+    ]);
+    expect(grants.every((g) => g.action === "grant")).toBe(true);
+    expect(grants.every((g) => g.roles.join() === "authenticated")).toBe(true);
+  });
+
   it("accepts the ROUTINE spelling for grants and drops", () => {
     const { grants, drops } = parseSqlFunctions(
       sql(

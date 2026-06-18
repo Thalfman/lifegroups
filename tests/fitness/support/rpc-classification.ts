@@ -27,14 +27,14 @@ const WRITE_DML_RE =
   /\b(insert\s+into|update|delete\s+from|truncate(?:\s+table)?|merge\s+into)\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi;
 
 // Dynamic DML built with `format()` identifier injection — `delete from
-// public.%I`, `insert into %I`, `update %I set …`. The table name lives INSIDE
-// the format string, so string-stripping erases it; this pattern runs on the
-// (string-bearing) body and keys on the `%I`/`%s` placeholder right after the
-// DML target, which is high-signal (prose doesn't write `delete from %I`).
-// Fully arbitrary dynamic SQL (`'delete from ' || quote_ident(t)`) is not
-// modelled — the repo builds dynamic DML via `format(… %I …)`.
+// public.%I`, `insert into %I`, `update %I set …`, `truncate %I`, `merge into
+// %I`. The table name lives INSIDE the format string, so string-stripping erases
+// it; this pattern runs on the (string-bearing) body and keys on the `%I`/`%s`
+// placeholder right after the DML verb, which is high-signal (prose doesn't write
+// `truncate %I`). Fully arbitrary dynamic SQL (`'delete from ' || quote_ident(t)`)
+// is not modelled — the repo builds dynamic DML via `format(… %I …)`.
 const DYNAMIC_DML_RE =
-  /\b(?:insert\s+into|update|delete\s+from)\s+(?:public\.)?%[is]\b/i;
+  /\b(?:insert\s+into|update|delete\s+from|truncate(?:\s+table)?|merge\s+into)\s+(?:public\.)?%[is]\b/i;
 
 /**
  * True when the body performs DML on a real (non-temp) table, whether static or
@@ -110,6 +110,10 @@ export const AUDIT_EXEMPT_WRITES: ReadonlyMap<string, AuditExemption> = new Map(
           "throttle rows in invite_redeem_throttle. This is mechanism state, not " +
           "a domain write; the invite redemption it guards is itself audited by " +
           "the redeem RPC.",
+        // The exemption holds only while no app role can call it (service-role
+        // only). If a later migration grants it to authenticated/anon, the
+        // unaudited throttle write becomes app-reachable — fail instead.
+        requiresNoAppGrant: true,
       },
     ],
     [

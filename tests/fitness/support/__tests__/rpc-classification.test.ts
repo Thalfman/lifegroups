@@ -87,6 +87,15 @@ describe("isWrite", () => {
     expect(isWrite("execute format('update %I set x = 1', t)")).toBe(true);
   });
 
+  it("detects dynamic truncate / merge built with format(... %I ...)", () => {
+    expect(isWrite("execute format('truncate table public.%I', v_table)")).toBe(
+      true
+    );
+    expect(isWrite("execute format('merge into %I using src on x', t)")).toBe(
+      true
+    );
+  });
+
   it("does not treat a dynamic SELECT as a write", () => {
     expect(isWrite("execute format('select * from %I', t)")).toBe(false);
   });
