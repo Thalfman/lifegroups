@@ -2,6 +2,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { resolveIntegrationEnv } from "./support/env";
 import { provisionFixtures, type Fixtures } from "./support/fixtures";
+import {
+  RLS_COVERAGE,
+  reconcileCoverage,
+} from "./support/rls-coverage-manifest";
 
 // (a) Per-tier RLS visibility across the oversight ladder, INCLUDING the two
 // visibility exceptions. Every assertion runs through a per-tier authenticated
@@ -18,6 +22,57 @@ import { provisionFixtures, type Fixtures } from "./support/fixtures";
 
 const probe = resolveIntegrationEnv();
 const suite = probe.kind === "ready" ? describe : describe.skip;
+
+// (b) Coverage manifest completeness. This is a PURE check (no database): it
+// reconciles the RLS coverage map against the sensitive-table set derived from
+// the data-classification manifest (#694). It runs even when the live stack is
+// absent, so a newly-classified sensitive table that lacks a coverage entry
+// fails loudly here rather than silently implying full coverage. See #693.
+describe("RLS coverage manifest completeness", () => {
+  const report = reconcileCoverage();
+
+  it("every sensitive table (from the classification manifest) has a coverage entry", () => {
+    expect(
+      report.missing,
+      report.missing.length === 0
+        ? ""
+        : `Sensitive tables with no RLS coverage entry — add an asserted or ` +
+            `deferred(reason) entry to rls-coverage-manifest.ts:\n  ${report.missing.join(
+              "\n  "
+            )}`
+    ).toEqual([]);
+  });
+
+  it("the coverage map has no stale (non-sensitive) entries", () => {
+    expect(
+      report.stale,
+      report.stale.length === 0
+        ? ""
+        : `Coverage entries for tables no longer classified sensitive:\n  ${report.stale.join(
+            "\n  "
+          )}`
+    ).toEqual([]);
+  });
+
+  it("every deferred entry documents a reason (incompleteness is visible)", () => {
+    const undocumented = Object.entries(RLS_COVERAGE)
+      .filter(
+        ([, e]) =>
+          e.status.kind === "deferred" && e.status.reason.trim().length === 0
+      )
+      .map(([t]) => t);
+    expect(undocumented).toEqual([]);
+  });
+
+  it("reports the live asserted/deferred split (visibility, not a gate)", () => {
+    // Not an assertion that everything is asserted — just a guard that the
+    // harness asserts a meaningful core and the rest is consciously deferred.
+    expect(report.asserted.length).toBeGreaterThanOrEqual(8);
+    expect(report.asserted.length + report.deferred.length).toBe(
+      Object.keys(RLS_COVERAGE).length
+    );
+  });
+});
 
 if (probe.kind === "skip") {
   // Surface the reason so a skipped run is self-explanatory, not silent.
@@ -164,6 +219,27 @@ suite("RLS per-tier visibility (local Supabase stack)", () => {
         expect((data ?? []).length).toBe(0);
       }
     });
+
+    it("the wrapped-DEK key slots follow the same creator-only seal", async () => {
+      // shepherd_care_note_key_slots is PRIVATE_NOTE_EXCEPTION too: only the
+      // Ministry Admin who enrolled them reads them; the Super Admin and every
+      // lower tier cannot.
+      const own = await fx.ministryAdmin.client
+        .from("shepherd_care_note_key_slots")
+        .select("id, created_by_profile_id")
+        .eq("created_by_profile_id", fx.ministryAdmin.profileId);
+      expect(own.error).toBeNull();
+      expect((own.data ?? []).length).toBeGreaterThan(0);
+
+      for (const tier of [fx.superAdmin, fx.overShepherd, fx.leader]) {
+        const { data, error } = await tier.client
+          .from("shepherd_care_note_key_slots")
+          .select("id")
+          .eq("created_by_profile_id", fx.ministryAdmin.profileId);
+        expect(error).toBeNull();
+        expect((data ?? []).length).toBe(0);
+      }
+    });
   });
 
   describe("exception 2 — author-private Care Notes sealed until the transparency toggle flips", () => {
@@ -251,6 +327,184 @@ suite("RLS per-tier visibility (local Supabase stack)", () => {
         .eq("id", careNoteId);
       expect(author.error).toBeNull();
       expect((author.data ?? []).length).toBe(1);
+    });
+  });
+
+  describe("exception 2b — Prayer Requests share the author-private seal", () => {
+    // prayer_requests is CARE_NOTE_EXCEPTION, gated on the SAME per-subject
+    // transparency grant as care_notes. Mirrors the care-note proof to keep the
+    // second exception table from drifting.
+    let prayerId: string;
+
+    beforeAll(async () => {
+      if (probe.kind !== "ready") return;
+      // Start from a sealed state for the Leader subject.
+      await fx.ministryAdmin.client.rpc("set_note_transparency_grant", {
+        p_subject_profile_id: fx.leader.profileId,
+        p_granted: false,
+      });
+      const write = await fx.overShepherd.client.rpc(
+        "admin_write_prayer_request",
+        {
+          p_subject_profile_id: fx.leader.profileId,
+          p_body: "Integration: author-private prayer request for the Leader.",
+        }
+      );
+      expect(write.error, write.error?.message).toBeNull();
+      prayerId = write.data as string;
+      expect(prayerId).toBeTruthy();
+    });
+
+    it("the author reads it; with the grant OFF both admins see it sealed", async () => {
+      const author = await fx.overShepherd.client
+        .from("prayer_requests")
+        .select("id")
+        .eq("id", prayerId);
+      expect(author.error).toBeNull();
+      expect((author.data ?? []).length).toBe(1);
+
+      for (const admin of [fx.ministryAdmin, fx.superAdmin]) {
+        const { data, error } = await admin.client
+          .from("prayer_requests")
+          .select("id")
+          .eq("id", prayerId);
+        expect(error).toBeNull();
+        expect((data ?? []).length).toBe(0);
+      }
+    });
+
+    it("after the grant flips ON, both admins read it on the same grant", async () => {
+      const grant = await fx.ministryAdmin.client.rpc(
+        "set_note_transparency_grant",
+        { p_subject_profile_id: fx.leader.profileId, p_granted: true }
+      );
+      expect(grant.error, grant.error?.message).toBeNull();
+
+      for (const admin of [fx.ministryAdmin, fx.superAdmin]) {
+        const { data, error } = await admin.client
+          .from("prayer_requests")
+          .select("id")
+          .eq("id", prayerId);
+        expect(error).toBeNull();
+        expect((data ?? []).length).toBe(1);
+      }
+
+      // Re-seal so the harness leaves no lingering grant.
+      await fx.ministryAdmin.client.rpc("set_note_transparency_grant", {
+        p_subject_profile_id: fx.leader.profileId,
+        p_granted: false,
+      });
+    });
+  });
+
+  describe("OVER_SHEPHERD_SCOPED — shepherd_care_profiles", () => {
+    // Admins read every care profile; the Over-Shepherd reads the profiles of
+    // the Leaders they cover; the Leader themselves does not read their own
+    // care-tracking row (it is admin/coverage-only, not self-serve).
+    it("admins and the covering Over-Shepherd read the Leader's care profile", async () => {
+      for (const tier of [fx.superAdmin, fx.ministryAdmin, fx.overShepherd]) {
+        const { data, error } = await tier.client
+          .from("shepherd_care_profiles")
+          .select("id")
+          .eq("id", fx.leaderCareProfileId);
+        expect(error).toBeNull();
+        expect((data ?? []).length).toBe(1);
+      }
+    });
+
+    it("the Leader does not read their own care-tracking profile", async () => {
+      const { data, error } = await fx.leader.client
+        .from("shepherd_care_profiles")
+        .select("id")
+        .eq("id", fx.leaderCareProfileId);
+      expect(error).toBeNull();
+      expect((data ?? []).length).toBe(0);
+    });
+  });
+
+  describe("ADMIN_READ — over_shepherds roster", () => {
+    // The roster table is admin-only: both admins read it, the Over-Shepherd
+    // and Leader tiers do not (an OS reaches their coverage through
+    // shepherd_coverage_assignments, not this table).
+    it("both admins read the roster row; lower tiers do not", async () => {
+      for (const admin of [fx.superAdmin, fx.ministryAdmin]) {
+        const { data, error } = await admin.client
+          .from("over_shepherds")
+          .select("id")
+          .eq("email", fx.overShepherd.email);
+        expect(error).toBeNull();
+        expect((data ?? []).length).toBe(1);
+      }
+      for (const tier of [fx.overShepherd, fx.leader]) {
+        const { data, error } = await tier.client
+          .from("over_shepherds")
+          .select("id")
+          .eq("email", fx.overShepherd.email);
+        expect(error).toBeNull();
+        expect((data ?? []).length).toBe(0);
+      }
+    });
+  });
+
+  describe("SUPER_ADMIN_ONLY — audit_events (Ministry Admin excluded)", () => {
+    // The audit spine sits above the Ministry Admin on the ladder. The fixture
+    // RPCs (care/prayer writes, grant flips) have already written audit rows
+    // keyed to our actors; the Super Admin reads them, the Ministry Admin sees
+    // none — the one place the ladder puts a surface ABOVE Julian.
+    it("the Super Admin reads fixture audit rows; the Ministry Admin reads none", async () => {
+      const actorIds = [fx.ministryAdmin.profileId, fx.overShepherd.profileId];
+
+      const sa = await fx.superAdmin.client
+        .from("audit_events")
+        .select("id")
+        .in("actor_profile_id", actorIds);
+      expect(sa.error).toBeNull();
+      expect((sa.data ?? []).length).toBeGreaterThan(0);
+
+      const ma = await fx.ministryAdmin.client
+        .from("audit_events")
+        .select("id")
+        .in("actor_profile_id", actorIds);
+      expect(ma.error).toBeNull();
+      expect((ma.data ?? []).length).toBe(0);
+    });
+  });
+
+  describe("no broad write policies — direct table writes are denied for every tier", () => {
+    // Every app write goes through a SECURITY DEFINER RPC; no table carries a
+    // direct INSERT policy. A tier client attempting a raw insert is therefore
+    // refused by RLS — proven here at the live boundary, per tier.
+    it("no tier can directly INSERT a care_note (must use the RPC)", async () => {
+      for (const tier of [
+        fx.superAdmin,
+        fx.ministryAdmin,
+        fx.overShepherd,
+        fx.leader,
+      ]) {
+        const { error } = await tier.client.from("care_notes").insert({
+          author_profile_id: tier.profileId,
+          subject_profile_id: fx.leader.profileId,
+          body: "Integration: direct insert must be denied by RLS.",
+        });
+        expect(
+          error,
+          `${tier.key} direct care_notes insert should be denied`
+        ).not.toBeNull();
+      }
+    });
+
+    it("no tier can directly INSERT an audit_events row", async () => {
+      for (const tier of [fx.superAdmin, fx.leader]) {
+        const { error } = await tier.client.from("audit_events").insert({
+          actor_profile_id: tier.profileId,
+          action: "integration.forged",
+          entity_type: "test",
+        });
+        expect(
+          error,
+          `${tier.key} direct audit_events insert should be denied`
+        ).not.toBeNull();
+      }
     });
   });
 });
