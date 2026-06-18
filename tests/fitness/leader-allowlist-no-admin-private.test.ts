@@ -20,14 +20,22 @@ const adminPrivateColumns: readonly string[] = [
   ),
 ].sort();
 
+// snake_case → camelCase (admin_private_note → adminPrivateNote), so a view
+// model that maps the DB column onto a camelCase prop is still caught.
+function toCamel(snake: string): string {
+  return snake.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
+}
+
 // The unambiguous `admin_*` subset — safe to scan as bare tokens across leader
 // source without false-tripping on a generic `notes`/`note` identifier. Always
-// includes the issue's named target.
+// includes the issue's named target, in both snake_case and camelCase forms.
 const adminTokenColumns = [
-  ...new Set([
-    "admin_private_note",
-    ...adminPrivateColumns.filter((c) => c.includes("admin")),
-  ]),
+  ...new Set(
+    [
+      "admin_private_note",
+      ...adminPrivateColumns.filter((c) => c.includes("admin")),
+    ].flatMap((c) => [c, toCamel(c)])
+  ),
 ].sort();
 
 // The `/leader` ROLE surfaces (the lowest oversight tier). Over-shepherd/admin

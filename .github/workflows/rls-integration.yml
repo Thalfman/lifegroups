@@ -31,8 +31,8 @@ on:
       - "supabase/functions/**"
       - "lib/auth/**"
       - "lib/**/*read*.ts" # *-reads.ts, read-model*.ts, *-read.ts read paths
-      - "lib/**/rpc*.ts" # typed SECURITY DEFINER write wrappers
-      - "app/**/actions.ts" # server actions (the only app write path)
+      - "lib/**/*rpc*.ts" # typed SECURITY DEFINER write wrappers (rpc.ts, *-rpc.ts)
+      - "app/**/*actions.ts" # server actions: actions.ts AND *-actions.ts suffixes
       - "lib/security/data-classification.ts" # sensitive-table source of truth
       - "tests/integration/**"
       - "tests/fitness/**"

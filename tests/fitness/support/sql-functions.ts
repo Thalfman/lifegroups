@@ -30,6 +30,8 @@ export interface CreateFunctionStatement {
   readonly relPath: string;
   /** 1-based line of the `create … function` keyword in the raw file. */
   readonly line: number;
+  /** Character offset of the statement in the file — used to fold in textual order. */
+  readonly pos: number;
 }
 
 /** A parsed `ALTER FUNCTION … SET search_path …` statement. */
@@ -39,6 +41,8 @@ export interface AlterFunctionStatement {
   readonly setsSearchPath: boolean;
   readonly relPath: string;
   readonly line: number;
+  /** Character offset of the statement in the file — used to fold in textual order. */
+  readonly pos: number;
 }
 
 export interface ParsedSqlFunctions {
@@ -174,6 +178,7 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
       pinsSearchPath: /set\s+search_path/i.test(header),
       relPath: file.relPath,
       line: lineOf(file.text, m.index),
+      pos: m.index,
     });
     CREATE_FN_RE.lastIndex = end;
   }
@@ -193,6 +198,7 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
       setsSearchPath: /set\s+search_path/i.test(stmt),
       relPath: file.relPath,
       line: lineOf(file.text, m.index),
+      pos: m.index,
     });
     ALTER_FN_RE.lastIndex = end;
   }
@@ -205,6 +211,10 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
  * pass migrations sorted by filename, which `readSourceFiles` already does) into
  * the final effective state per signature. A later CREATE OR REPLACE overrides
  * the header flags; a later `ALTER … SET search_path` pins an existing signature.
+ *
+ * Statements WITHIN a file are folded in textual (char-offset) order, so a file
+ * that ALTERs a function and then re-creates it without `search_path` ends
+ * unpinned — matching Postgres, where the last definition wins.
  */
 export function effectiveFunctions(
   files: readonly SourceFile[]
@@ -213,21 +223,27 @@ export function effectiveFunctions(
 
   for (const file of files) {
     const { creates, alters } = parseSqlFunctions(file);
-    for (const c of creates) {
-      state.set(c.signature, {
-        signature: c.signature,
-        name: c.name,
-        argTypes: c.argTypes,
-        isSecurityDefiner: c.isSecurityDefiner,
-        pinsSearchPath: c.pinsSearchPath,
-        definedAt: `${c.relPath}:${c.line}`,
-      });
-    }
-    for (const a of alters) {
-      if (!a.setsSearchPath) continue;
-      const existing = state.get(a.signature);
-      if (existing) {
-        state.set(a.signature, { ...existing, pinsSearchPath: true });
+    const ordered = [
+      ...creates.map((c) => ({ pos: c.pos, kind: "create" as const, c })),
+      ...alters.map((a) => ({ pos: a.pos, kind: "alter" as const, a })),
+    ].sort((x, y) => x.pos - y.pos);
+
+    for (const stmt of ordered) {
+      if (stmt.kind === "create") {
+        const c = stmt.c;
+        state.set(c.signature, {
+          signature: c.signature,
+          name: c.name,
+          argTypes: c.argTypes,
+          isSecurityDefiner: c.isSecurityDefiner,
+          pinsSearchPath: c.pinsSearchPath,
+          definedAt: `${c.relPath}:${c.line}`,
+        });
+      } else if (stmt.a.setsSearchPath) {
+        const existing = state.get(stmt.a.signature);
+        if (existing) {
+          state.set(stmt.a.signature, { ...existing, pinsSearchPath: true });
+        }
       }
     }
   }

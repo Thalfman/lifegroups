@@ -182,6 +182,22 @@ as $$ select 1 $$;`
     expect(unpinnedSecurityDefiners([create, alter])).toHaveLength(0);
   });
 
+  it("respects textual order WITHIN a file: ALTER then unpinned re-CREATE is flagged", () => {
+    // A single migration that pins via ALTER and then re-creates the function
+    // without search_path ends unpinned in Postgres — the fold must not apply
+    // the ALTER last just because alters are parsed after creates.
+    const file = sql(
+      "20260101000000_a.sql",
+      `alter function public.f() set search_path = public, pg_temp;
+create or replace function public.f()
+returns int language sql security definer
+as $$ select 1 $$;`
+    );
+    expect(unpinnedSecurityDefiners([file]).map((f) => f.signature)).toEqual([
+      "public.f()",
+    ]);
+  });
+
   it("an ALTER without SET search_path does NOT pin", () => {
     const create = sql(
       "20260101000000_a.sql",
