@@ -15,7 +15,7 @@
 import type { SourceFile } from "./source-globber";
 import { stripSqlComments } from "./scan";
 
-/** A parsed `CREATE [OR REPLACE] FUNCTION` header (body intentionally ignored). */
+/** A parsed `CREATE [OR REPLACE] FUNCTION` header (plus its body, for #700). */
 export interface CreateFunctionStatement {
   /** Normalized signature key: `schema.name(argtype, …)` lowercased. */
   readonly signature: string;
@@ -27,6 +27,16 @@ export interface CreateFunctionStatement {
   readonly isSecurityDefiner: boolean;
   /** Header contains `set search_path`. */
   readonly pinsSearchPath: boolean;
+  /** Header declares `returns trigger` or `returns event_trigger`. */
+  readonly returnsTrigger: boolean;
+  /** Header declares `stable` or `immutable` (a function that cannot do DML). */
+  readonly isReadOnlyVolatility: boolean;
+  /**
+   * The function body, comment-stripped with the `AS $tag$ … $tag$` (or `AS '…'`)
+   * delimiters removed. `""` when no body is found. Used by the write/audit
+   * classifier (#700); the search_path check (#697) never reads it.
+   */
+  readonly body: string;
   readonly relPath: string;
   /** 1-based line of the `create … function` keyword in the raw file. */
   readonly line: number;
@@ -59,6 +69,12 @@ export interface EffectiveFunction {
   readonly isSecurityDefiner: boolean;
   /** Effective: does the final state pin `search_path` (inline OR via ALTER)? */
   readonly pinsSearchPath: boolean;
+  /** Effective: does the final definition `returns trigger` / `event_trigger`? */
+  readonly returnsTrigger: boolean;
+  /** Effective: is the final definition `stable`/`immutable` (no DML)? */
+  readonly isReadOnlyVolatility: boolean;
+  /** Effective: body of the LAST `create … function` for this signature. */
+  readonly body: string;
   /** `file:line` of the last `create … function` for this signature. */
   readonly definedAt: string;
 }
@@ -135,6 +151,44 @@ export function normalizeArgTypes(params: string): string[] {
     .filter((t) => t !== "");
 }
 
+// Read the function body that follows the `AS` clause at/after `fromIndex`
+// (which the caller passes as the index just past the argument-list `)`).
+// Supports dollar quoting `$tag$ … $tag$` (empty `$$` and named tags) and the
+// legacy `AS '…'` form (with `''` escapes). Returns the inner body text with the
+// delimiters removed, or "" when no body delimiter is found. The caller passes
+// comment-stripped text, so a `--`/`/* */` example can't masquerade as a body.
+function readFunctionBody(text: string, fromIndex: number): string {
+  const rest = text.slice(fromIndex);
+  const asMatch = /\bas\b\s*/i.exec(rest);
+  if (!asMatch) return "";
+  const afterAs = fromIndex + asMatch.index + asMatch[0].length;
+  const ch = text[afterAs];
+  // Dollar-quoted: $tag$ … $tag$ (tag may be empty, e.g. `$$`).
+  if (ch === "$") {
+    const tagMatch = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(text.slice(afterAs));
+    if (!tagMatch) return "";
+    const tag = tagMatch[0]; // includes both surrounding `$`
+    const bodyStart = afterAs + tag.length;
+    const close = text.indexOf(tag, bodyStart);
+    return close === -1 ? text.slice(bodyStart) : text.slice(bodyStart, close);
+  }
+  // Single-quoted: 'body' with the '' escape.
+  if (ch === "'") {
+    let out = "";
+    for (let i = afterAs + 1; i < text.length; i++) {
+      if (text[i] === "'" && text[i + 1] === "'") {
+        out += "''";
+        i++;
+        continue;
+      }
+      if (text[i] === "'") break;
+      out += text[i];
+    }
+    return out;
+  }
+  return "";
+}
+
 function lineOf(rawText: string, index: number): number {
   let line = 1;
   for (let i = 0; i < index && i < rawText.length; i++) {
@@ -176,6 +230,9 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
       argTypes,
       isSecurityDefiner: /security\s+definer/i.test(header),
       pinsSearchPath: /set\s+search_path/i.test(header),
+      returnsTrigger: /\breturns\s+(?:trigger|event_trigger)\b/i.test(header),
+      isReadOnlyVolatility: /\b(?:stable|immutable)\b/i.test(header),
+      body: readFunctionBody(text, end),
       relPath: file.relPath,
       line: lineOf(file.text, m.index),
       pos: m.index,
@@ -237,6 +294,9 @@ export function effectiveFunctions(
           argTypes: c.argTypes,
           isSecurityDefiner: c.isSecurityDefiner,
           pinsSearchPath: c.pinsSearchPath,
+          returnsTrigger: c.returnsTrigger,
+          isReadOnlyVolatility: c.isReadOnlyVolatility,
+          body: c.body,
           definedAt: `${c.relPath}:${c.line}`,
         });
       } else if (stmt.a.setsSearchPath) {

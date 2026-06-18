@@ -151,6 +151,111 @@ returns void language sql security definer as $$ select $$;`
   });
 });
 
+describe("parseSqlFunctions body + flags (issue #700)", () => {
+  it("captures a dollar-quoted ($$) body", () => {
+    const { creates } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `create function public.f()
+returns void language plpgsql security definer set search_path = public
+as $$
+begin
+  insert into public.members (id) values (1);
+end;
+$$;`
+      )
+    );
+    expect(creates[0].body).toContain("insert into public.members");
+    expect(creates[0].body).not.toContain("begin\n$$"); // delimiters removed
+  });
+
+  it("captures a named-tag body and is not truncated by an inner $$", () => {
+    const { creates } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `create function public.f()
+returns void language plpgsql security definer set search_path = public
+as $func$
+begin
+  perform 'a literal with $$ inside it';
+  insert into public.groups (id) values (1);
+end;
+$func$;`
+      )
+    );
+    expect(creates[0].body).toContain("insert into public.groups");
+    expect(creates[0].body).toContain("$$ inside it");
+  });
+
+  it("returns an empty body for the degenerate $$$$ case", () => {
+    const { creates } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `create function public.f()
+returns void language sql security definer set search_path = public
+as $$$$;`
+      )
+    );
+    expect(creates[0].body).toBe("");
+  });
+
+  it("captures the legacy AS '…' body form with '' escapes", () => {
+    const { creates } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `create function public.f()
+returns text language sql security definer set search_path = public
+as 'select ''hi''';`
+      )
+    );
+    expect(creates[0].body).toBe("select ''hi''");
+  });
+
+  it("sets returnsTrigger for trigger and event_trigger", () => {
+    const { creates } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `create function public.t1() returns trigger language plpgsql security definer set search_path = public as $$ begin return new; end; $$;
+create function public.t2() returns event_trigger language plpgsql security definer set search_path = public as $$ begin end; $$;
+create function public.w() returns void language sql security definer set search_path = public as $$ select 1 $$;`
+      )
+    );
+    expect(creates.map((c) => c.returnsTrigger)).toEqual([true, true, false]);
+  });
+
+  it("sets isReadOnlyVolatility for stable / immutable only", () => {
+    const { creates } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `create function public.s() returns int language sql security definer stable set search_path = public as $$ select 1 $$;
+create function public.i() returns int language sql security definer immutable set search_path = public as $$ select 1 $$;
+create function public.v() returns int language sql security definer set search_path = public as $$ select 1 $$;`
+      )
+    );
+    expect(creates.map((c) => c.isReadOnlyVolatility)).toEqual([
+      true,
+      true,
+      false,
+    ]);
+  });
+
+  it("folds the body of the LAST definition for a signature", () => {
+    const earlier = sql(
+      "20260101000000_a.sql",
+      `create function public.f() returns void language plpgsql security definer set search_path = public
+as $$ begin insert into public.members values (1); end; $$;`
+    );
+    const later = sql(
+      "20260202000000_b.sql",
+      `create or replace function public.f() returns void language plpgsql security definer set search_path = public
+as $$ begin insert into public.groups values (1); end; $$;`
+    );
+    const [f] = effectiveFunctions([earlier, later]);
+    expect(f.body).toContain("insert into public.groups");
+    expect(f.body).not.toContain("insert into public.members");
+  });
+});
+
 describe("effectiveFunctions (folding migration history)", () => {
   it("a later CREATE OR REPLACE that pins overrides an earlier unpinned one", () => {
     const earlier = sql(

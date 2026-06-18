@@ -91,6 +91,73 @@ export function stripSqlComments(sql: string): string {
   return out;
 }
 
+/**
+ * Blank single-quoted SQL string literals to spaces (handling the `''` escape),
+ * so a string's contents (a jsonb KEY like `'has_admin_summary'`, a label, or a
+ * `'select …'`/`'delete from …'` built for dynamic SQL) can't masquerade as real
+ * code. Newlines are preserved so line numbers still align.
+ */
+export function stripSqlStrings(sql: string): string {
+  let out = "";
+  let inString = false;
+  for (let i = 0; i < sql.length; i++) {
+    const c = sql[i];
+    if (!inString) {
+      if (c === "'") {
+        inString = true;
+        out += " ";
+      } else {
+        out += c;
+      }
+    } else if (c === "'" && sql[i + 1] === "'") {
+      out += "  ";
+      i++;
+    } else if (c === "'") {
+      inString = false;
+      out += " ";
+    } else {
+      out += c === "\n" ? "\n" : " ";
+    }
+  }
+  return out;
+}
+
+/**
+ * Slice every `insert into public.audit_events …;` statement, balanced to the
+ * statement-terminating `;` at paren-depth 0 (so a sibling `insert into members`
+ * in the same RPC body is excluded). Comments and strings are stripped first, so
+ * a commented example or a string literal mentioning `audit_events` never counts.
+ */
+export function auditInsertBlocks(sqlText: string): string[] {
+  const text = stripSqlStrings(stripSqlComments(sqlText));
+  const lower = text.toLowerCase();
+  const blocks: string[] = [];
+  let from = 0;
+  for (;;) {
+    const start = lower.indexOf("insert into public.audit_events", from);
+    if (start === -1) break;
+    let depth = 0;
+    let end = text.length;
+    for (let i = start; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+      else if (ch === ";" && depth <= 0) {
+        end = i;
+        break;
+      }
+    }
+    blocks.push(text.slice(start, end));
+    from = start + 1;
+  }
+  return blocks;
+}
+
+/** True when `sqlText` contains at least one `audit_events` insert. */
+export function writesAudit(sqlText: string): boolean {
+  return auditInsertBlocks(sqlText).length > 0;
+}
+
 // Path fragments for files that are NOT app/runtime code: colocated tests and
 // fixtures legitimately reference forbidden tokens (e.g. asserting a migration
 // does NOT grant to `service_role`, or fixture UUID/email literals), so the
