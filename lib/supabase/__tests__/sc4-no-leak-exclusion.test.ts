@@ -14,11 +14,15 @@ const SCAN_DIRS = ["app", "lib", "components", "types"];
 const TABLES = ["shepherd_care_private_notes", "shepherd_care_note_key_slots"];
 
 // The ONLY runtime source allowed to name these tables:
-//  - the creator-scoped read models (the single PostgREST read entrypoint), and
-//  - the hand-rolled Database types.
+//  - the creator-scoped read models (the single PostgREST read entrypoint),
+//  - the hand-rolled Database types, and
+//  - the sensitive-data classification manifest (#694), which NAMES the tables
+//    to classify them as `encrypted_private` but never reads them. The
+//    `.from()` and reader-symbol checks below still hold it to no-read.
 const ALLOWLIST = new Set([
   "lib/supabase/shepherd-care-reads.ts",
   "types/database.ts",
+  "lib/security/data-classification.ts",
 ]);
 
 function walk(dir: string, acc: string[]): string[] {
