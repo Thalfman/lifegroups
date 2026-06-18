@@ -5,13 +5,16 @@ import {
   type Classification,
 } from "@/lib/security/data-classification";
 import { readSourceFiles, type SourceFile } from "./support/source-globber";
-import { auditInsertBlocks } from "./support/scan";
+import { stripSqlStrings } from "./support/scan";
 import { effectiveFunctions, parseSqlFunctions } from "./support/sql-functions";
 import {
+  auditFieldPairs,
+  auditMetadataBlocks,
   collectVariableAssignments,
   doBlockBodies,
   expandVariableReferences,
-  normalizeSqlScope,
+  isContentFreeValue,
+  preprocessKeepStrings,
 } from "./support/audit-trace";
 
 // Audit-leak guard (issue #699, generalizing the SC.4 content-free proof in
@@ -38,17 +41,26 @@ import {
 // sealed by name — and the admin-private launch-planning path that uses `notes`
 // already redacts to `has_notes` for audit, so it passes on its presence form.
 //
-// COVERAGE (issue #706, closing the prior known limitation): the scan now folds
-// `CREATE OR REPLACE` history to each function's EFFECTIVE state (via
+// COVERAGE (issues #706/#710, closing the prior known limitation): the scan
+// folds `CREATE OR REPLACE` history to each function's EFFECTIVE state (via
 // `effectiveFunctions`, mirroring the #697 search_path check) so superseded
 // revisions aren't re-scanned, and it traces values assembled into a plpgsql
-// variable before the insert (e.g. `v_after := jsonb_build_object('body',
-// v_body); insert … values (…, 'after', v_after)`) by expanding each audit
-// insert with the right-hand sides of the variables it references. Audit inserts
-// in DO-block backfills (never superseded, so not function-folded) are scanned
-// from raw migration text with their DO-block variables traced. The truly-sealed
-// bodies (care/prayer/SC.4 encrypted) are still proven content-free of audit here
-// and in sc4-boundary-proof.test.ts.
+// variable before the insert — `v_x := jsonb_build_object(...)`, typed
+// DECLARE-block initializers (`v_x jsonb := …`), and single-target JSON
+// `SELECT jsonb_build_object(...) INTO v_x` snapshots — by expanding each audit
+// insert with the right-hand sides of the variables it references. Each expanded
+// payload is then scanned TWO complementary ways:
+//   - KEY-AWARE: every `jsonb_build_object('<field>', <value>)` pair — a sealed
+//     audit FIELD with a non-presence value is a leak, however the value is named
+//     or sanitized into an alias; an admin-private-ONLY field (`admin_metric_notes`)
+//     is in-policy. This is what disambiguates the overloaded `notes` field
+//     (sealed when keyed as `'notes'`, in-policy when keyed `'admin_metric_notes'`).
+//   - TOKEN: the expanded text (strings stripped) — a sealed value carried under a
+//     NON-sealed key (`jsonb_build_object('x', v_body)`) is still caught.
+// Audit inserts in DO-block backfills (never superseded, so not function-folded)
+// are scanned from raw migration text with their DO-block variables traced. The
+// truly-sealed bodies (care/prayer/SC.4 encrypted) are still proven content-free
+// of audit here and in sc4-boundary-proof.test.ts.
 
 // Classifications whose column VALUES must never reach audit metadata by ANY
 // path — insert site OR variable indirection. `pii`, `operational_metadata`,
@@ -78,13 +90,13 @@ const sealedColumns: readonly string[] = [
 // Column NAMES that are ALSO classified admin-private somewhere. A name is
 // "overloaded" when it is sealed in one table but admin-private in another — the
 // only such name today is `notes` (`sensitive_care` on care tables, but
-// `admin_private` on launch-planning / over-shepherd settings). For an
-// overloaded name we flag only a real column copy (a bare `<col>` or
-// `<alias>.<col>` reference); we do NOT flag the `v_<col>` / `p_<col>` variable
-// form, because such a variable may legitimately hold the IN-POLICY admin-private
-// variant (e.g. `v_notes` carrying `admin_metric_notes` into Super-Admin-only
-// audit). A genuine sealed column copied straight into audit is still caught by
-// the column form.
+// `admin_private` on launch-planning / over-shepherd settings). The TOKEN matcher
+// can't tell which a `v_notes` / `p_notes` variable holds, so for an overloaded
+// name it flags only a real column copy (a bare `<col>` or `<alias>.<col>`
+// reference), not the `v_<col>` / `p_<col>` variable form. The KEY-AWARE matcher
+// covers the gap that leaves: a value keyed under the sealed field `'notes'` is
+// flagged regardless of how it is named (and `admin_metric_notes` stays in-policy
+// because that key is admin-private-only, never in `sealedColumns`).
 const adminPrivateNames: ReadonlySet<string> = new Set(
   DATA_CLASSIFICATION.flatMap((t) =>
     (t.columns ?? [])
@@ -93,7 +105,7 @@ const adminPrivateNames: ReadonlySet<string> = new Set(
   )
 );
 
-// The matcher for one sealed column. `\b`-anchored so presence/flag params
+// The TOKEN matcher for one sealed column. `\b`-anchored so presence/flag params
 // (`p_set_<col>`, `v_has_<col>`) and longer columns (`notes` vs `note`) never
 // match. Overloaded names drop the variable/param alternatives (see above).
 function sealedColumnPattern(col: string): RegExp {
@@ -102,6 +114,11 @@ function sealedColumnPattern(col: string): RegExp {
     ? new RegExp(columnRef, "g")
     : new RegExp(`\\bv_${col}\\b|\\bp_${col}\\b|${columnRef}`, "g");
 }
+
+// The KEY-AWARE matcher: an audit field whose key names a sealed column. Built
+// from the same manifest; admin-private-only fields (e.g. `admin_metric_notes`)
+// are absent, so keying a value under them stays in-policy.
+const sealedFieldKeys: ReadonlySet<string> = new Set(sealedColumns);
 
 const MIGRATIONS = readSourceFiles({
   roots: ["supabase/migrations"],
@@ -121,10 +138,10 @@ interface AuditScanUnit {
 function effectiveUnits(files: readonly SourceFile[]): AuditScanUnit[] {
   const units: AuditScanUnit[] = [];
   for (const fn of effectiveFunctions(files)) {
-    const blocks = auditInsertBlocks(fn.body, { stripDollar: true });
+    const blocks = auditMetadataBlocks(fn.body, { stripDollar: true });
     if (blocks.length === 0) continue;
     const assignments = collectVariableAssignments(
-      normalizeSqlScope(fn.body, { stripDollar: true })
+      preprocessKeepStrings(fn.body, { stripDollar: true })
     );
     for (const block of blocks) {
       units.push({
@@ -145,11 +162,11 @@ function effectiveUnits(files: readonly SourceFile[]): AuditScanUnit[] {
 function nonFunctionUnits(files: readonly SourceFile[]): AuditScanUnit[] {
   const units: AuditScanUnit[] = [];
   for (const file of files) {
-    const raw = auditInsertBlocks(file.text);
+    const raw = auditMetadataBlocks(file.text);
     if (raw.length === 0) continue;
     const { creates } = parseSqlFunctions(file);
     const functionPool = creates.flatMap((c) =>
-      auditInsertBlocks(c.body, { stripDollar: true })
+      auditMetadataBlocks(c.body, { stripDollar: true })
     );
     const nonFunction: string[] = [];
     for (const block of raw) {
@@ -160,7 +177,7 @@ function nonFunctionUnits(files: readonly SourceFile[]): AuditScanUnit[] {
     if (nonFunction.length === 0) continue;
     const assignments = collectVariableAssignments(
       doBlockBodies(file.text)
-        .map((b) => normalizeSqlScope(b, { stripDollar: true }))
+        .map((b) => preprocessKeepStrings(b, { stripDollar: true }))
         .join("\n")
     );
     for (const block of nonFunction) {
@@ -179,31 +196,45 @@ function auditScanUnits(files: readonly SourceFile[]): AuditScanUnit[] {
 
 const ALL_UNITS: readonly AuditScanUnit[] = auditScanUnits(MIGRATIONS);
 
-// Scan one expanded audit unit for sealed column VALUES. A reference is allowed
-// only as a presence predicate (`<ref> is [not] null`); used anywhere else it is
-// a leak. Mirrors the prior insert-site matcher, now applied to the expanded text.
-function sealedLeaks(unit: AuditScanUnit): string[] {
+// KEY-AWARE leaks: an audit field whose key names a sealed column, carrying a
+// value that is not a presence/cardinality reduction. Catches a sealed value
+// however it is named or sanitized into an alias, and disambiguates the
+// overloaded `notes` field (sealed under `'notes'`, in-policy under the
+// admin-private-only `'admin_metric_notes'`).
+function sealedKeyLeaks(unit: AuditScanUnit): string[] {
   const leaks: string[] = [];
+  for (const pair of auditFieldPairs(unit.text)) {
+    if (pair.key === null || !sealedFieldKeys.has(pair.key)) continue;
+    if (isContentFreeValue(pair.value)) continue;
+    const value = pair.value.replace(/\s+/g, " ").slice(0, 50);
+    leaks.push(`  ${unit.relPath}  key='${pair.key}'  →  ${value}`);
+  }
+  return leaks;
+}
+
+// TOKEN leaks: a sealed column VALUE appearing in the expanded payload (strings
+// stripped so a key/label literal can't masquerade as a column). Catches a sealed
+// value carried under a NON-sealed key. A reference is allowed as a presence
+// predicate (`<ref> is [not] null`) or as the argument of a cardinality/type
+// reduction (`jsonb_array_length(...)`).
+function sealedTokenLeaks(unit: AuditScanUnit): string[] {
+  const leaks: string[] = [];
+  const text = stripSqlStrings(unit.text);
   for (const col of sealedColumns) {
     const re = sealedColumnPattern(col);
-    for (let m = re.exec(unit.text); m; m = re.exec(unit.text)) {
-      const after = unit.text.slice(m.index + m[0].length).trimStart();
-      // Allowed: `<ref> is [not] null` presence predicate. A value reference
-      // used anywhere else (`'after', v_<col>`) is a leak.
+    for (let m = re.exec(text); m; m = re.exec(text)) {
+      const after = text.slice(m.index + m[0].length).trimStart();
       if (/^is\s+(not\s+)?null\b/i.test(after)) continue;
-      // Allowed: the reference is the argument of a cardinality/type reduction
-      // (`jsonb_array_length(p_payload -> 'guests')`, `jsonb_typeof(…)`) — the
-      // audit records a count or a type, not the sealed content. (`length` /
-      // `char_length` are deliberately NOT here: a body's character count is
-      // content-adjacent.)
-      const before = unit.text.slice(0, m.index);
+      // `length` / `char_length` are deliberately NOT allowed here: a body's
+      // character count is content-adjacent.
+      const before = text.slice(0, m.index);
       if (
         /\b(?:jsonb_array_length|array_length|cardinality|jsonb_typeof)\s*\(\s*$/i.test(
           before
         )
       )
         continue;
-      const ctx = unit.text
+      const ctx = text
         .slice(Math.max(0, m.index - 30), m.index + m[0].length + 20)
         .replace(/\s+/g, " ")
         .trim();
@@ -211,6 +242,11 @@ function sealedLeaks(unit: AuditScanUnit): string[] {
     }
   }
   return leaks;
+}
+
+// Both complementary scans, deduped.
+function sealedLeaks(unit: AuditScanUnit): string[] {
+  return [...new Set([...sealedKeyLeaks(unit), ...sealedTokenLeaks(unit)])];
 }
 
 describe("fitness: audit_events metadata carries no sensitive plaintext", () => {
@@ -318,5 +354,86 @@ describe("fitness: audit_events metadata carries no sensitive plaintext", () => 
       auditScanUnits([leakyV1]).flatMap(sealedLeaks).length
     ).toBeGreaterThan(0);
     expect(auditScanUnits([leakyV1, fixedV2]).flatMap(sealedLeaks)).toEqual([]);
+  });
+
+  // --- detection proofs for the #710 review (Codex P1 blind spots) ----------
+
+  it("DETECTS a typed DECLARE-block initializer (v_after jsonb := jsonb_build_object('body', v_body))", () => {
+    const file = sql(
+      "m_declare.sql",
+      `create or replace function public.declared() returns void
+       language plpgsql security definer set search_path = public, pg_temp as $$
+       declare v_body text; v_after jsonb := jsonb_build_object('body', v_body);
+       begin
+         insert into public.audit_events (action, metadata) values ('x', v_after);
+       end $$;`
+    );
+    expect(auditScanUnits([file]).flatMap(sealedLeaks).length).toBeGreaterThan(
+      0
+    );
+  });
+
+  it("DETECTS a JSON SELECT … INTO snapshot (select jsonb_build_object('spiritual_growth_note', …) into v_before)", () => {
+    const file = sql(
+      "m_into.sql",
+      `create or replace function public.snapshot() returns void
+       language plpgsql security definer set search_path = public, pg_temp as $$
+       declare v_before jsonb;
+       begin
+         select jsonb_build_object('spiritual_growth_note', spiritual_growth_note)
+           into v_before from public.shepherd_care_status_history limit 1;
+         insert into public.audit_events (action, metadata)
+           values ('x', jsonb_build_object('before', v_before));
+       end $$;`
+    );
+    expect(auditScanUnits([file]).flatMap(sealedLeaks).length).toBeGreaterThan(
+      0
+    );
+  });
+
+  it("DETECTS a sealed value sanitized into a differently-named alias (key-aware: 'leader_visible_note')", () => {
+    const file = sql(
+      "m_alias.sql",
+      `create or replace function public.aliased() returns void
+       language plpgsql security definer set search_path = public, pg_temp as $$
+       declare v_clean text; v_after jsonb;
+       begin
+         v_clean := btrim(coalesce(p_leader_visible_note, ''));
+         v_after := jsonb_build_object('leader_visible_note', v_clean);
+         insert into public.audit_events (action, metadata) values ('x', v_after);
+       end $$;`
+    );
+    expect(auditScanUnits([file]).flatMap(sealedLeaks).length).toBeGreaterThan(
+      0
+    );
+  });
+
+  it("DETECTS the overloaded 'notes' field carrying a care note (key 'notes', not 'admin_metric_notes')", () => {
+    const file = sql(
+      "m_overloaded.sql",
+      `create or replace function public.care_regress() returns void
+       language plpgsql security definer set search_path = public, pg_temp as $$
+       declare v_after jsonb;
+       begin
+         v_after := jsonb_build_object('notes', p_notes);
+         insert into public.audit_events (action, metadata) values ('x', v_after);
+       end $$;`
+    );
+    expect(auditScanUnits([file]).flatMap(sealedLeaks).length).toBeGreaterThan(
+      0
+    );
+  });
+
+  it("does NOT flag a constant string literal under a sealed field key (hardcoded backfill 'reason')", () => {
+    const file = sql(
+      "m_const.sql",
+      `create or replace function public.const_reason() returns void
+       language plpgsql security definer set search_path = public, pg_temp as $$
+       begin
+         insert into public.audit_events (action, metadata)
+           values ('x', jsonb_build_object('reason', 'ADR 0024 backfill'));
+       end $$;`
+    );
+    expect(auditScanUnits([file]).flatMap(sealedLeaks)).toEqual([]);
   });
 });
