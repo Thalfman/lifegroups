@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { makeServiceClient, signInTier } from "./clients";
 import type { IntegrationEnv } from "./env";
+import { grantFixtureProvisioning } from "./local-grants";
 
 // Fixture provisioning for the RLS / action-pipeline harness (issue #607).
 //
@@ -137,6 +138,11 @@ async function insertProfile(
 export async function provisionFixtures(
   env: IntegrationEnv
 ): Promise<Fixtures> {
+  // The narrow-grants posture withholds direct table writes from service_role in
+  // production; restore exactly what the fixture seed needs on the LOCAL stack
+  // (idempotent, loopback-only) so provisioning isn't denied at the first insert.
+  await grantFixtureProvisioning();
+
   const service = makeServiceClient(env);
 
   const tiers: Partial<Record<TierKey, Tier>> = {};

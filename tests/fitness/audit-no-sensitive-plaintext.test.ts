@@ -5,7 +5,7 @@ import {
   type Classification,
 } from "@/lib/security/data-classification";
 import { readSourceFiles } from "./support/source-globber";
-import { stripSqlComments } from "./support/scan";
+import { auditInsertBlocks } from "./support/scan";
 
 // Audit-leak guard (issue #699, generalizing the SC.4 content-free proof in
 // lib/admin/__tests__/sc4-boundary-proof.test.ts to the whole classification
@@ -60,62 +60,6 @@ const highRiskColumns: readonly string[] = [
     )
   ),
 ].sort();
-
-// Blank single-quoted SQL string literals to spaces (handling the `''` escape),
-// so jsonb KEY names (`'has_admin_summary'`) and hardcoded label VALUES
-// (`'ADR 0024 …'`) can't masquerade as a column reference. Newlines preserved.
-function stripSqlStrings(sql: string): string {
-  let out = "";
-  let inString = false;
-  for (let i = 0; i < sql.length; i++) {
-    const c = sql[i];
-    if (!inString) {
-      if (c === "'") {
-        inString = true;
-        out += " ";
-      } else {
-        out += c;
-      }
-    } else if (c === "'" && sql[i + 1] === "'") {
-      out += "  ";
-      i++;
-    } else if (c === "'") {
-      inString = false;
-      out += " ";
-    } else {
-      out += c === "\n" ? "\n" : " ";
-    }
-  }
-  return out;
-}
-
-// Slice every `insert into public.audit_events …;` statement, balanced to the
-// statement-terminating `;` at paren-depth 0 (so a sibling `insert into members`
-// in the same RPC body is excluded). Comments/strings are stripped first.
-function auditInsertBlocks(sqlText: string): string[] {
-  const text = stripSqlStrings(stripSqlComments(sqlText));
-  const lower = text.toLowerCase();
-  const blocks: string[] = [];
-  let from = 0;
-  for (;;) {
-    const start = lower.indexOf("insert into public.audit_events", from);
-    if (start === -1) break;
-    let depth = 0;
-    let end = text.length;
-    for (let i = start; i < text.length; i++) {
-      const ch = text[i];
-      if (ch === "(") depth++;
-      else if (ch === ")") depth--;
-      else if (ch === ";" && depth <= 0) {
-        end = i;
-        break;
-      }
-    }
-    blocks.push(text.slice(start, end));
-    from = start + 1;
-  }
-  return blocks;
-}
 
 const MIGRATIONS = readSourceFiles({
   roots: ["supabase/migrations"],

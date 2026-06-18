@@ -15,7 +15,7 @@
 import type { SourceFile } from "./source-globber";
 import { stripSqlComments } from "./scan";
 
-/** A parsed `CREATE [OR REPLACE] FUNCTION` header (body intentionally ignored). */
+/** A parsed `CREATE [OR REPLACE] FUNCTION` header (plus its body, for #700). */
 export interface CreateFunctionStatement {
   /** Normalized signature key: `schema.name(argtype, …)` lowercased. */
   readonly signature: string;
@@ -27,6 +27,16 @@ export interface CreateFunctionStatement {
   readonly isSecurityDefiner: boolean;
   /** Header contains `set search_path`. */
   readonly pinsSearchPath: boolean;
+  /** Header declares `returns trigger` or `returns event_trigger`. */
+  readonly returnsTrigger: boolean;
+  /** Header declares `stable` or `immutable` (a function that cannot do DML). */
+  readonly isReadOnlyVolatility: boolean;
+  /**
+   * The function body, comment-stripped with the `AS $tag$ … $tag$` (or `AS '…'`)
+   * delimiters removed. `""` when no body is found. Used by the write/audit
+   * classifier (#700); the search_path check (#697) never reads it.
+   */
+  readonly body: string;
   readonly relPath: string;
   /** 1-based line of the `create … function` keyword in the raw file. */
   readonly line: number;
@@ -34,11 +44,50 @@ export interface CreateFunctionStatement {
   readonly pos: number;
 }
 
-/** A parsed `ALTER FUNCTION … SET search_path …` statement. */
+/** A parsed `ALTER FUNCTION …` statement (search_path and/or security mode). */
 export interface AlterFunctionStatement {
   readonly signature: string;
   readonly name: string;
   readonly setsSearchPath: boolean;
+  /** `ALTER FUNCTION … SECURITY DEFINER` → true; `… SECURITY INVOKER` → false; else null. */
+  readonly setsSecurityDefiner: boolean | null;
+  readonly relPath: string;
+  readonly line: number;
+  /** Character offset of the statement in the file — used to fold in textual order. */
+  readonly pos: number;
+}
+
+/**
+ * A parsed `GRANT|REVOKE … EXECUTE ON FUNCTION … TO|FROM <roles>` statement (or
+ * the schema-wide `… ON ALL FUNCTIONS IN SCHEMA <s> …` form). Used (#700) to know
+ * whether a function is reachable by an app login role — Postgres grants EXECUTE
+ * to `PUBLIC` by DEFAULT, so a function is callable by the app unless that
+ * default is explicitly revoked.
+ */
+export interface GrantFunctionStatement {
+  /** Target signature for a per-function grant; `null` for a schema-wide grant. */
+  readonly signature: string | null;
+  /** Schema for `ON ALL FUNCTIONS IN SCHEMA <s>`; `null` for a per-function grant. */
+  readonly allInSchema: string | null;
+  readonly name: string;
+  readonly action: "grant" | "revoke";
+  /** Target roles, lowercased (`public`, `anon`, `authenticated`, `service_role`, …). */
+  readonly roles: readonly string[];
+  readonly relPath: string;
+  readonly line: number;
+  /** Character offset of the statement in the file — used to fold in textual order. */
+  readonly pos: number;
+}
+
+/**
+ * A parsed `DROP FUNCTION [IF EXISTS] name(args)` statement. Dropping a function
+ * also drops its grants in Postgres — a later CREATE of the same signature starts
+ * from the default PUBLIC EXECUTE — so the fold must reset both the definition and
+ * the grant state for that signature (#700 follow-up).
+ */
+export interface DropFunctionStatement {
+  readonly signature: string;
+  readonly name: string;
   readonly relPath: string;
   readonly line: number;
   /** Character offset of the statement in the file — used to fold in textual order. */
@@ -48,6 +97,8 @@ export interface AlterFunctionStatement {
 export interface ParsedSqlFunctions {
   readonly creates: readonly CreateFunctionStatement[];
   readonly alters: readonly AlterFunctionStatement[];
+  readonly grants: readonly GrantFunctionStatement[];
+  readonly drops: readonly DropFunctionStatement[];
 }
 
 /** The folded, final-state view of one function signature across all migrations. */
@@ -59,6 +110,20 @@ export interface EffectiveFunction {
   readonly isSecurityDefiner: boolean;
   /** Effective: does the final state pin `search_path` (inline OR via ALTER)? */
   readonly pinsSearchPath: boolean;
+  /** Effective: does the final definition `returns trigger` / `event_trigger`? */
+  readonly returnsTrigger: boolean;
+  /** Effective: is the final definition `stable`/`immutable` (no DML)? */
+  readonly isReadOnlyVolatility: boolean;
+  /**
+   * Effective: can an app login role (`public`/`anon`/`authenticated`) EXECUTE
+   * this function? `true` by default (Postgres grants EXECUTE to PUBLIC unless
+   * revoked); `false` only when the PUBLIC default is revoked AND no app role is
+   * granted back. Lets the audit-pairing check (#700) tell an app-reachable write
+   * RPC from an internal helper that no app role can call.
+   */
+  readonly appExecutable: boolean;
+  /** Effective: body of the LAST `create … function` for this signature. */
+  readonly body: string;
   /** `file:line` of the last `create … function` for this signature. */
   readonly definedAt: string;
 }
@@ -135,6 +200,72 @@ export function normalizeArgTypes(params: string): string[] {
     .filter((t) => t !== "");
 }
 
+// Read the function body that follows the `AS` clause at/after `fromIndex`
+// (which the caller passes as the index just past the argument-list `)`).
+// Supports dollar quoting `$tag$ … $tag$` (empty `$$` and named tags) and the
+// legacy `AS '…'` form (with `''` escapes). Returns the inner body text with the
+// delimiters removed plus `end` — the offset just past the closing delimiter, so
+// the caller can read the post-body attribute clause (PostgreSQL allows
+// `SECURITY DEFINER` / `SET search_path` / volatility either before OR after the
+// body). When no body delimiter is found, `body` is "" and `end` is `fromIndex`.
+// The caller passes comment-stripped text, so a `--`/`/* */` example can't
+// masquerade as a body.
+function readFunctionBody(
+  text: string,
+  fromIndex: number
+): { body: string; end: number } {
+  const rest = text.slice(fromIndex);
+  const asMatch = /\bas\b\s*/i.exec(rest);
+  // SQL-standard body: `… LANGUAGE SQL BEGIN ATOMIC <statements> END` — no `AS`
+  // delimiter. Capture the statement list (its DML must be seen by isWrite /
+  // writesAudit) by scanning to the END that closes the atomic block, tracking
+  // case…end depth. Prefer an AS body when it appears first.
+  const atomicMatch = /\bbegin\s+atomic\b/i.exec(rest);
+  if (atomicMatch && (!asMatch || atomicMatch.index < asMatch.index)) {
+    const bodyStart = fromIndex + atomicMatch.index + atomicMatch[0].length;
+    let depth = 1;
+    const re = /\b(case|end)\b/gi;
+    re.lastIndex = bodyStart;
+    for (let m = re.exec(text); m; m = re.exec(text)) {
+      if (m[1].toLowerCase() === "case") {
+        depth++;
+      } else if (--depth === 0) {
+        return { body: text.slice(bodyStart, m.index), end: re.lastIndex };
+      }
+    }
+    return { body: text.slice(bodyStart), end: text.length };
+  }
+  if (!asMatch) return { body: "", end: fromIndex };
+  const afterAs = fromIndex + asMatch.index + asMatch[0].length;
+  const ch = text[afterAs];
+  // Dollar-quoted: $tag$ … $tag$ (tag may be empty, e.g. `$$`).
+  if (ch === "$") {
+    const tagMatch = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(text.slice(afterAs));
+    if (!tagMatch) return { body: "", end: fromIndex };
+    const tag = tagMatch[0]; // includes both surrounding `$`
+    const bodyStart = afterAs + tag.length;
+    const close = text.indexOf(tag, bodyStart);
+    if (close === -1) return { body: text.slice(bodyStart), end: text.length };
+    return { body: text.slice(bodyStart, close), end: close + tag.length };
+  }
+  // Single-quoted: 'body' with the '' escape.
+  if (ch === "'") {
+    let out = "";
+    let i = afterAs + 1;
+    for (; i < text.length; i++) {
+      if (text[i] === "'" && text[i + 1] === "'") {
+        out += "''";
+        i++;
+        continue;
+      }
+      if (text[i] === "'") break;
+      out += text[i];
+    }
+    return { body: out, end: i + 1 };
+  }
+  return { body: "", end: fromIndex };
+}
+
 function lineOf(rawText: string, index: number): number {
   let line = 1;
   for (let i = 0; i < index && i < rawText.length; i++) {
@@ -146,6 +277,35 @@ function lineOf(rawText: string, index: number): number {
 const CREATE_FN_RE =
   /create\s+(?:or\s+replace\s+)?function\s+([a-z0-9_."]+)\s*\(/gi;
 const ALTER_FN_RE = /alter\s+function\s+([a-z0-9_."]+)\s*\(/gi;
+// `FUNCTION` and `ROUTINE` are interchangeable in GRANT/REVOKE/DROP (likewise
+// `ALL FUNCTIONS` / `ALL ROUTINES IN SCHEMA`), so accept both spellings — a
+// migration that re-exposes a helper with the ROUTINE form must still be folded.
+// Prefix only — the comma-separated `name(args)` target list is parsed by hand
+// (a single GRANT/REVOKE may name several routines before the TO/FROM clause).
+const GRANT_FN_RE =
+  /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+(?:function|routine)\s+/gi;
+// Schema-wide grant: `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;`
+const GRANT_ALL_FN_RE =
+  /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+all\s+(?:functions|routines)\s+in\s+schema\s+([a-z0-9_."]+)\s+(?:to|from)\s+([^;]+);/gi;
+const DROP_FN_RE =
+  /\bdrop\s+(?:function|routine)\s+(?:if\s+exists\s+)?([a-z0-9_."]+)\s*\(/gi;
+
+/**
+ * Normalize a GRANT/REVOKE role list to bare lowercased role names. Takes only
+ * the leading identifier of each comma-separated entry, so a `GROUP` modifier,
+ * surrounding quotes (`"authenticated"`), or a trailing clause
+ * (`authenticated WITH GRANT OPTION`, `public CASCADE`) cannot poison the role
+ * token and make a real app-role grant read as a non-app role.
+ */
+function parseRoleList(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((entry) => {
+      const m = /^\s*(?:group\s+)?"?([a-z_][a-z0-9_$]*)/i.exec(entry);
+      return m ? m[1].toLowerCase() : "";
+    })
+    .filter((r) => r !== "");
+}
 
 /**
  * Parse one migration file's text. Comments are stripped first (a CREATE example
@@ -167,15 +327,26 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
     // Header = everything from the arg-list close up to the body delimiter
     // `AS $…$` / `AS '…'`. Only this region decides definer/search_path.
     const rest = text.slice(end);
-    const bodyDelim = rest.search(/\bas\b\s*(?:\$|')/i);
+    const bodyDelim = rest.search(/\bas\b\s*(?:\$|')|\bbegin\s+atomic\b/i);
     const header =
       bodyDelim >= 0 ? rest.slice(0, bodyDelim) : rest.slice(0, 600);
+    // The attribute clause can sit before the body (the repo's convention) OR
+    // after it (`AS $$…$$ LANGUAGE plpgsql SECURITY DEFINER`, also valid). Read
+    // both regions so the definer/search_path/volatility flags can't be evaded
+    // by attribute order. The body itself is never scanned for these.
+    const { body, end: bodyEnd } = readFunctionBody(text, end);
+    const semi = text.indexOf(";", bodyEnd);
+    const trailer = text.slice(bodyEnd, semi >= 0 ? semi : bodyEnd);
+    const attrs = `${header} ${trailer}`;
     creates.push({
       signature: `${name}(${argTypes.join(",")})`,
       name,
       argTypes,
-      isSecurityDefiner: /security\s+definer/i.test(header),
-      pinsSearchPath: /set\s+search_path/i.test(header),
+      isSecurityDefiner: /security\s+definer/i.test(attrs),
+      pinsSearchPath: /set\s+search_path/i.test(attrs),
+      returnsTrigger: /\breturns\s+(?:trigger|event_trigger)\b/i.test(attrs),
+      isReadOnlyVolatility: /\b(?:stable|immutable)\b/i.test(attrs),
+      body,
       relPath: file.relPath,
       line: lineOf(file.text, m.index),
       pos: m.index,
@@ -192,10 +363,16 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
     const stmtEnd = rest.indexOf(";");
     const stmt = stmtEnd >= 0 ? rest.slice(0, stmtEnd) : rest;
     const argTypes = normalizeArgTypes(inner);
+    const setsSecurityDefiner = /\bsecurity\s+definer\b/i.test(stmt)
+      ? true
+      : /\bsecurity\s+invoker\b/i.test(stmt)
+        ? false
+        : null;
     alters.push({
       signature: `${name}(${argTypes.join(",")})`,
       name,
       setsSearchPath: /set\s+search_path/i.test(stmt),
+      setsSecurityDefiner,
       relPath: file.relPath,
       line: lineOf(file.text, m.index),
       pos: m.index,
@@ -203,7 +380,158 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
     ALTER_FN_RE.lastIndex = end;
   }
 
-  return { creates, alters };
+  const grants: GrantFunctionStatement[] = [];
+  GRANT_FN_RE.lastIndex = 0;
+  for (let m = GRANT_FN_RE.exec(text); m; m = GRANT_FN_RE.exec(text)) {
+    const action = m[1].toLowerCase() as "grant" | "revoke";
+    // Read one-or-more comma-separated `name(args)` targets up to the TO/FROM
+    // clause, so every routine in a multi-target grant is folded, not just the
+    // first. (Arg-less targets — `grant … on function f to …` — are not modelled;
+    // like CREATE/ALTER, this parser keys on `name(args)` signatures.)
+    let cursor = GRANT_FN_RE.lastIndex;
+    const signatures: string[] = [];
+    for (;;) {
+      const nameMatch = /^\s*([a-z0-9_."]+)\s*\(/i.exec(text.slice(cursor));
+      if (!nameMatch) break;
+      const name = nameMatch[1].replace(/"/g, "").toLowerCase();
+      const open = cursor + nameMatch[0].length - 1; // index of the '('
+      const { inner, end } = readBalancedParens(text, open);
+      signatures.push(`${name}(${normalizeArgTypes(inner).join(",")})`);
+      cursor = end;
+      const sep = /^\s*,/.exec(text.slice(cursor));
+      if (!sep) break;
+      cursor += sep[0].length;
+    }
+    if (signatures.length === 0) continue;
+    // After the target list comes `… TO|FROM role[, role …];`.
+    const semi = text.indexOf(";", cursor);
+    const tail = text.slice(cursor, semi >= 0 ? semi : text.length);
+    const roleMatch = /\b(?:to|from)\s+([\s\S]+)$/i.exec(tail);
+    const roles = roleMatch ? parseRoleList(roleMatch[1]) : [];
+    for (const signature of signatures) {
+      grants.push({
+        signature,
+        allInSchema: null,
+        name: signature.slice(0, signature.indexOf("(")),
+        action,
+        roles,
+        relPath: file.relPath,
+        line: lineOf(file.text, m.index),
+        pos: m.index,
+      });
+    }
+    GRANT_FN_RE.lastIndex = semi >= 0 ? semi + 1 : cursor;
+  }
+
+  // Schema-wide `… ON ALL FUNCTIONS IN SCHEMA <s> TO|FROM <roles>` grants apply
+  // to every function that exists in the schema at the point they run — modelled
+  // in the fold against the signatures created so far.
+  GRANT_ALL_FN_RE.lastIndex = 0;
+  for (let m = GRANT_ALL_FN_RE.exec(text); m; m = GRANT_ALL_FN_RE.exec(text)) {
+    const schema = m[2].replace(/"/g, "").toLowerCase();
+    grants.push({
+      signature: null,
+      allInSchema: schema,
+      name: schema,
+      action: m[1].toLowerCase() as "grant" | "revoke",
+      roles: parseRoleList(m[3]),
+      relPath: file.relPath,
+      line: lineOf(file.text, m.index),
+      pos: m.index,
+    });
+  }
+
+  const drops: DropFunctionStatement[] = [];
+  DROP_FN_RE.lastIndex = 0;
+  for (let m = DROP_FN_RE.exec(text); m; m = DROP_FN_RE.exec(text)) {
+    const name = m[1].replace(/"/g, "").toLowerCase();
+    const open = text.indexOf("(", m.index);
+    const { inner, end } = readBalancedParens(text, open);
+    const argTypes = normalizeArgTypes(inner);
+    drops.push({
+      signature: `${name}(${argTypes.join(",")})`,
+      name,
+      relPath: file.relPath,
+      line: lineOf(file.text, m.index),
+      pos: m.index,
+    });
+    DROP_FN_RE.lastIndex = end;
+  }
+
+  return { creates, alters, grants, drops };
+}
+
+// App login roles whose EXECUTE access means a function is reachable from app
+// code via the `.rpc()` path. `service_role` is excluded — it is confined to
+// Edge Functions, never an app login (CLAUDE.md security posture).
+const APP_EXECUTE_ROLES = new Set(["anon", "authenticated"]);
+
+/** Folded EXECUTE privilege for one signature: does the PUBLIC default still hold? */
+interface GrantState {
+  /** PUBLIC has EXECUTE (the Postgres default until revoked). */
+  publicHasExecute: boolean;
+  /** Roles granted EXECUTE explicitly (beyond the PUBLIC default). */
+  readonly explicit: Set<string>;
+}
+
+function applyGrantToSignature(
+  state: Map<string, GrantState>,
+  signature: string,
+  action: "grant" | "revoke",
+  roles: readonly string[]
+) {
+  let s = state.get(signature);
+  if (!s) {
+    // Postgres default: EXECUTE is granted to PUBLIC.
+    s = { publicHasExecute: true, explicit: new Set() };
+    state.set(signature, s);
+  }
+  for (const role of roles) {
+    if (action === "grant") {
+      if (role === "public") s.publicHasExecute = true;
+      else s.explicit.add(role);
+    } else {
+      if (role === "public") s.publicHasExecute = false;
+      else s.explicit.delete(role);
+    }
+  }
+}
+
+/**
+ * Apply one GRANT/REVOKE to the grant state. A per-function grant touches its
+ * signature; a schema-wide grant (`ON ALL FUNCTIONS IN SCHEMA <s>`) touches every
+ * signature in `knownSignatures` that lives in that schema (the functions that
+ * exist when the grant runs).
+ */
+function applyGrant(
+  state: Map<string, GrantState>,
+  g: GrantFunctionStatement,
+  knownSignatures: Iterable<string>
+) {
+  if (g.allInSchema) {
+    const prefix = `${g.allInSchema}.`;
+    for (const sig of knownSignatures) {
+      if (sig.startsWith(prefix)) {
+        applyGrantToSignature(state, sig, g.action, g.roles);
+      }
+    }
+    return;
+  }
+  if (g.signature) {
+    applyGrantToSignature(state, g.signature, g.action, g.roles);
+  }
+}
+
+function isAppExecutable(
+  state: Map<string, GrantState>,
+  signature: string
+): boolean {
+  const s = state.get(signature);
+  // No grant/revoke seen → the PUBLIC default stands → app-executable.
+  if (!s) return true;
+  if (s.publicHasExecute) return true;
+  for (const role of s.explicit) if (APP_EXECUTE_ROLES.has(role)) return true;
+  return false;
 }
 
 /**
@@ -220,12 +548,15 @@ export function effectiveFunctions(
   files: readonly SourceFile[]
 ): EffectiveFunction[] {
   const state = new Map<string, EffectiveFunction>();
+  const grantState = new Map<string, GrantState>();
 
   for (const file of files) {
-    const { creates, alters } = parseSqlFunctions(file);
+    const { creates, alters, grants, drops } = parseSqlFunctions(file);
     const ordered = [
       ...creates.map((c) => ({ pos: c.pos, kind: "create" as const, c })),
       ...alters.map((a) => ({ pos: a.pos, kind: "alter" as const, a })),
+      ...grants.map((g) => ({ pos: g.pos, kind: "grant" as const, g })),
+      ...drops.map((d) => ({ pos: d.pos, kind: "drop" as const, d })),
     ].sort((x, y) => x.pos - y.pos);
 
     for (const stmt of ordered) {
@@ -237,18 +568,44 @@ export function effectiveFunctions(
           argTypes: c.argTypes,
           isSecurityDefiner: c.isSecurityDefiner,
           pinsSearchPath: c.pinsSearchPath,
+          returnsTrigger: c.returnsTrigger,
+          isReadOnlyVolatility: c.isReadOnlyVolatility,
+          // Provisional — recomputed from the folded grant state below.
+          appExecutable: true,
+          body: c.body,
           definedAt: `${c.relPath}:${c.line}`,
         });
-      } else if (stmt.a.setsSearchPath) {
+      } else if (stmt.kind === "alter") {
         const existing = state.get(stmt.a.signature);
         if (existing) {
-          state.set(stmt.a.signature, { ...existing, pinsSearchPath: true });
+          state.set(stmt.a.signature, {
+            ...existing,
+            pinsSearchPath: stmt.a.setsSearchPath
+              ? true
+              : existing.pinsSearchPath,
+            // An `ALTER FUNCTION … SECURITY INVOKER/DEFINER` flips the effective
+            // security mode — so a definer downgraded to invoker is no longer
+            // treated as a definer (and the non-definer bypass check applies).
+            isSecurityDefiner:
+              stmt.a.setsSecurityDefiner ?? existing.isSecurityDefiner,
+          });
         }
+      } else if (stmt.kind === "drop") {
+        // Postgres DROP FUNCTION removes the function AND its grants. A later
+        // CREATE of the same signature therefore starts from the default PUBLIC
+        // EXECUTE — so reset both the definition and the folded grant state.
+        state.delete(stmt.d.signature);
+        grantState.delete(stmt.d.signature);
+      } else {
+        applyGrant(grantState, stmt.g, state.keys());
       }
     }
   }
 
-  return [...state.values()];
+  return [...state.values()].map((f) => ({
+    ...f,
+    appExecutable: isAppExecutable(grantState, f.signature),
+  }));
 }
 
 /**
