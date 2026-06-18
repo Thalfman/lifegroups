@@ -10,8 +10,9 @@ than duplicating them:
 - Visibility ladder + the two privacy exceptions —
   [`RLS_VISIBILITY.md`](./RLS_VISIBILITY.md). Rendered diagrams (inline SVG +
   viewer links, auto-built from the `*.drawio` sources) live in
-  [`diagrams.md`](./diagrams.md): the oversight ladder (downward-visibility)
-  and the Care · Plan · Multiply nav spine.
+  [`diagrams.md`](./diagrams.md): the oversight ladder (downward-visibility),
+  the Care · Plan · Multiply nav spine, and the system architecture
+  (read/write paths).
 - Email / invite delivery — [`EMAIL_DELIVERY.md`](./EMAIL_DELIVERY.md).
 - Deploy + Edge-Function release boundary —
   [`DEPLOYMENT.md`](./DEPLOYMENT.md) and
