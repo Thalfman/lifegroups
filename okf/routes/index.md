@@ -31,10 +31,16 @@ name-pending (ADR 0025) → `/welcome`. Nested layouts add role guards
 ## Public routes (no auth)
 
 `/` (rewrites to `/login` for anon), `/login`, `/forgot-password`,
-`/reset-password`, `/welcome`, `/unauthorized`, `/invite/[token]` (self-signup),
-`/auth/confirm` (POST-only token verify), `/support`, `/privacy`,
+`/reset-password`, `/unauthorized`, `/invite/[token]` (self-signup),
+`/auth/confirm` (token verify), `/support`, `/privacy`,
 `/account-deletion`, `/a11y-harness` (build-gated by `NEXT_PUBLIC_A11Y_HARNESS`),
 PWA: `/manifest.webmanifest`, `/icons/*`.
+
+**`/welcome` is NOT a no-auth page** — it lives outside `(protected)` but
+`app/welcome/page.tsx` creates a Supabase client, calls `auth.getUser()`, and
+redirects anonymous visitors to `/login`. It is a **signed-in fallback gate**
+for the choose-your-name step (ADR 0025), reachable only by an authenticated
+name-pending session.
 
 ## Admin nav spine (ministry_admin + super_admin)
 
@@ -108,8 +114,11 @@ child running `measureReadBundle` + `Promise.all` reads → `*-shell.tsx`
   dead code.
 - `leader_surface` gates `/leader/**` but check-ins are gated separately
   (`check_ins`) — two distinct switches.
-- `app/auth/confirm/route.ts` is **POST-only** (avoids mail-scanner GET burning
-  single-use tokens).
+- `app/auth/confirm/route.ts` does the **token verification in POST only**
+  (avoids mail-scanner GET burning single-use tokens), but it **also defines a
+  GET handler** that safely redirects to `/reset-password` **without** consuming
+  the token. Don't delete that GET — it's the safety net that bounces
+  scanner/bookmark requests instead of hitting an unhandled route.
 
 # Citations
 

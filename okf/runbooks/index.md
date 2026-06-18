@@ -43,8 +43,10 @@ needs custom SMTP (default sender is test-only/rate-limited). See
 ## Leader can't log in / lands on /unauthorized
 
 Causes: `leader_surface` flag frozen in `/admin/super-admin`; or profile
-`status≠active` (→ `auth_profile_id()` NULL → RLS denies); or no active
-`group_leaders` row. Check the flag and profile status.
+`status≠active` (→ `auth_profile_id()` NULL → RLS denies). Check the flag and
+profile status. **Not** a cause: an empty `group_leaders` set — `requireLeader()`
+still admits an active leader with the flag live; `/leader` just renders the
+empty state and `/leader/[groupId]/*` redirects back to `/leader`.
 
 ## Over-shepherd sees nothing
 
@@ -54,8 +56,12 @@ mapping and active coverage assignments.
 
 ## Rate limiting not working in prod
 
-Cause: Upstash env unset → fails open to in-memory limiter (logged
-`rate_limit_disabled`). Set `UPSTASH_REDIS_REST_URL` + `_TOKEN`.
+Causes: (a) Upstash env unset → fails open to in-memory limiter (logged
+`rate_limit_disabled`) — set `UPSTASH_REDIS_REST_URL` + `_TOKEN`; (b) **per-IP
+buckets silently skipped** because `extractClientIp()` returns null unless
+`TRUSTED_PROXY` is set (the launch runbook uses `TRUSTED_PROXY=vercel`). Setting
+Redis alone is not enough — set `TRUSTED_PROXY` too or the browser-flow IP
+throttles (invite redemption, forgot-password) never engage.
 
 ## CI fails on fitness test
 

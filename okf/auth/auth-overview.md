@@ -110,8 +110,10 @@ Leader login is gated by the `leader_surface` feature flag — **on by default**
   denies them even with a valid session.
 - Over-shepherd identity is bridged by **email** (`auth_over_shepherd_id()`
   requires exactly one active match; 0 or >1 → NULL, no guessing).
-- No hardcoded Julian/Tom UUIDs/emails anywhere — fitness test
-  `no-hardcoded-identity` enforces it.
+- No hardcoded Julian/Tom UUIDs/emails — the `no-hardcoded-identity` fitness
+  test enforces this **only for `lib/auth/**` and SQL migrations**, not every
+  runtime module. Identity literals in server actions, read helpers, or scripts
+  are **not\*\* machine-caught — keep them out by manual review.
 - The password-setup cookie pins invite/recovery sessions to the password
   screen until `resetPasswordAction` clears it.
 

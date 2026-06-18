@@ -59,8 +59,12 @@ around `Promise.all([...])` reads. Reads go through the **reads seam**:
 fetchers so tests inject in-memory adapters. Every fetcher names its columns
 (allowlists like `SESSION_PROFILE_COLUMNS`, `LEADER_FOLLOW_UP_COLUMNS` which
 omits `admin_private_note`) — there are **no** `select("*")` call sites. RLS
-scopes every row to the signed-in user. Failed reads degrade gracefully
-(`ReadResult<T>` union; derived output suppressed, never a false zero).
+scopes every row to the signed-in user. **Many** reads degrade gracefully
+(`ReadResult<T>` union; derived output suppressed, never a false zero) — but this
+is **not universal**: some critical reads deliberately **throw / surface** the
+error instead (e.g. `app/(protected)/leader/page.tsx` throws `groupsResult.error`;
+`lib/dashboard/queries.ts` throws failed member/attendance reads). Don't blanket-
+swallow read errors — match the surrounding surface's existing behavior.
 
 ## 4. Write path — the fixed pipeline
 

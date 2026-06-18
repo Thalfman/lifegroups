@@ -28,17 +28,24 @@ demo data. This is intentional (demo mode).
 
 ## Next runtime env vars (no secret values shown)
 
-| Name                                   | Scope         | Required                    | Purpose                                                                   |
-| -------------------------------------- | ------------- | --------------------------- | ------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`             | public        | for live data/sign-in       | Supabase project URL                                                      |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | public        | for live data/sign-in       | Publishable key (preferred)                                               |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`        | public        | fallback                    | Legacy anon key, accepted if publishable unset                            |
-| `NEXT_PUBLIC_SITE_URL` / `SITE_URL`    | public/server | optional                    | Public origin for invite/reset redirect links; defaults to request header |
-| `NEXT_PUBLIC_A11Y_HARNESS`             | build-time    | CI only                     | Enables `/a11y-harness` route (inlined at build)                          |
-| `UPSTASH_REDIS_REST_URL`               | server        | optional (recommended prod) | Distributed rate limiting                                                 |
-| `UPSTASH_REDIS_REST_TOKEN`             | server        | optional                    | Upstash auth token                                                        |
-| `LOG_HASH_SALT`                        | server        | optional                    | Salt for deterministic user-id hashing in logs                            |
-| `NODE_ENV`                             | server        | auto                        | Controls secure-cookie flag                                               |
+`lib/env.ts` resolves the **server-only** names `SUPABASE_URL` /
+`SUPABASE_PUBLISHABLE_KEY` **before** their `NEXT_PUBLIC_*` fallbacks. The
+`NEXT_PUBLIC_*` forms are inlined at build; the server-only forms are read at
+runtime — prefer them for a build-once / deploy-many (runtime-evaluated) setup so
+the config isn't baked into the bundle.
+
+| Name                                                   | Scope         | Required                          | Purpose                                                                                                           |
+| ------------------------------------------------------ | ------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `SUPABASE_URL` → `NEXT_PUBLIC_SUPABASE_URL`            | server→public | for live data/sign-in             | Supabase project URL (server alias preferred, runtime-read)                                                       |
+| `SUPABASE_PUBLISHABLE_KEY` → `NEXT_PUBLIC_PUBLISHABLE` | server→public | for live data/sign-in             | Publishable key (server alias preferred; `NEXT_PUBLIC_…` inlined)                                                 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                        | public        | fallback                          | Legacy anon key, accepted if publishable unset                                                                    |
+| `NEXT_PUBLIC_SITE_URL` / `SITE_URL`                    | public/server | optional                          | Public origin for invite/reset redirect links; defaults to request header                                         |
+| `NEXT_PUBLIC_A11Y_HARNESS`                             | build-time    | CI only                           | Enables `/a11y-harness` route (inlined at build)                                                                  |
+| `UPSTASH_REDIS_REST_URL`                               | server        | optional (recommended prod)       | Distributed rate limiting                                                                                         |
+| `UPSTASH_REDIS_REST_TOKEN`                             | server        | optional                          | Upstash auth token                                                                                                |
+| `TRUSTED_PROXY`                                        | server        | optional (needed for IP throttle) | Which proxy header to trust (`vercel`); without it `extractClientIp()` returns null and per-IP limits are skipped |
+| `LOG_HASH_SALT`                                        | server        | optional                          | Salt for deterministic user-id hashing in logs                                                                    |
+| `NODE_ENV`                                             | server        | auto                              | Controls secure-cookie flag                                                                                       |
 
 **No service-role key in any Next runtime env** — the app never reads one
 (fitness test `no-service-role` enforces). Service role lives only in Edge
@@ -54,11 +61,19 @@ Function secrets.
 
 Stored in `platform_config` (super-admin-only), toggled from `/admin/super-admin`:
 
+The actual `FEATURE_FLAG_DEFINITIONS` **frozen-surface** flags are only
+`leader_surface`, `check_ins`, and `guests`:
+
 - `leader_surface` — leader login (**on by default**, ADR 0024)
 - `check_ins` — leader/admin check-in surfaces (frozen, separate from leader_surface)
-- `guests`, `group_health` — frozen pre-pivot surfaces
-- Nav-visibility flags hide Groups/People/Planning tabs (Groups+People seeded on)
-  Admin reads flags per-tier (ADR 0026); leaders read via a leader-safe RPC.
+- `guests` — frozen pre-pivot guest pipeline
+
+There is **no `group_health` flag** — `/admin/group-health` (and planning,
+calendar, launch-planning, leader-pipeline) are banner-only (`requireAdmin()` +
+`FrozenSurfaceBanner`), reachable by any admin via direct URL. Other flags:
+nav-visibility (`nav_show_groups`/`nav_show_people`/`nav_show_planning` —
+Groups+People seeded on), `care_member_list`, `usage_tracking`, mute flags.
+Admin reads flags per-tier (ADR 0026); leaders read via a leader-safe RPC.
 
 ## Build/runtime config
 

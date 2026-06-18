@@ -35,8 +35,10 @@ the conventions (soft-delete, audit pairing, privacy exceptions) that must hold.
   `category_type_targets` (the **cell** = audience × category, `active`,
   `target_count`, `trigger_overrides` jsonb), `group_calendar_events`,
   `group_status_history`, `group_metric_settings`.
-- **Care:** `shepherd_care_profiles` (admin-only leader tracker, `archived_at`),
-  `shepherd_care_admin_notes`, `shepherd_care_interactions` (append-only),
+- **Care:** `shepherd_care_profiles` (leader care tracker, `archived_at` —
+  admin read **plus** coverage-scoped over-shepherd SELECT),
+  `shepherd_care_admin_notes` (admin-only), `shepherd_care_interactions`
+  (append-only; coverage-scoped over-shepherd SELECT),
   `shepherd_care_follow_ups`, `shepherd_care_private_notes` (**encrypted**,
   zero-knowledge) + `shepherd_care_note_key_slots`, `care_notes` +
   `prayer_requests` (**plaintext author-private**) + `note_transparency_grants`,
@@ -101,11 +103,15 @@ snapshot, recoverable), refuses rather than cascading.
 
 ## Audit-pairing invariant
 
-Every data-change RPC writes exactly one `audit_events` row in the same
+Every **domain-write** RPC writes exactly one `audit_events` row in the same
 transaction; if the audit insert fails, the data change rolls back. Metadata
 holds presence flags / diffs, never sensitive plaintext bodies. `actor_name` /
 `actor_email` are denormalized so the audit row survives actor deletion
-(ADR 0014).
+(ADR 0014). **Deliberate exceptions** (classified in
+`tests/fitness/support/rpc-classification.ts`): service-role throttle/telemetry
+writes such as `log_usage_event` and `check_invite_redeem_rate` mutate state
+**without** an audit pair — do not add audit rows to them, and don't assume
+every mechanism RPC is audit-paired.
 
 ## Two privacy exceptions
 
@@ -113,9 +119,16 @@ holds presence flags / diffs, never sensitive plaintext bodies. `actor_name` /
    client-side encryption, creator-scoped RLS — hidden even from Super Admin
    (ADR 0003).
 2. **Author-private Care Notes / Prayer Requests** (`care_notes`,
-   `prayer_requests`): plaintext, sealed to author; ministry_admin + super_admin
-   read only when `note_transparency_grants.granted = true` for that subject
-   (default false). Super Admin has **no** broader bypass — same grant gate.
+   `prayer_requests`): plaintext, sealed to author; admins read only when
+   `note_transparency_grants.granted = true` (default false). Super Admin has
+   **no** broader bypass — same grant gate. The grant has **two arms**, keyed by
+   note shape (`num_nonnulls(subject_profile_id, subject_group_id) = 1`):
+   - **subject-grant** — OS notes about a leader (`subject_profile_id` set):
+     admin reads when the grant is keyed on that **subject** leader.
+   - **author-grant** — leader group notes (`subject_group_id` set, ADR 0020):
+     admin reads when the grant is keyed on the **author** (`subject_profile_id
+= author_profile_id`), guarded by `subject_group_id is not null` so a stale
+     grant about another leader can't leak the group note.
 
 # Relationships
 
