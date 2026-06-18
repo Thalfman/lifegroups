@@ -58,6 +58,15 @@ export interface Fixtures {
    * success-path / visibility tests.
    */
   readonly rollbackSubjectProfileId: string;
+  /**
+   * An UNRELATED active leader (the rollback subject) the Over-Shepherd does NOT
+   * cover, plus its care profile. The negative control for OVER_SHEPHERD_SCOPED
+   * assertions: if RLS regressed from coverage-scoped to "any leader/care
+   * profile is readable", the OS would read these — so the harness asserts it
+   * cannot. (#702 review.)
+   */
+  readonly unrelatedLeaderProfileId: string;
+  readonly unrelatedCareProfileId: string;
   /** Tear down everything this run created (service-client, local stack only). */
   readonly teardown: () => Promise<void>;
 }
@@ -217,6 +226,21 @@ export async function provisionFixtures(
   const rollbackSubjectProfileId = rollbackSubjectRow.id as string;
   createdProfileIds.push(rollbackSubjectProfileId);
 
+  // A care profile for that unrelated leader — the Over-Shepherd covers the
+  // tiered Leader, NOT this one, so it is the negative control proving the OS's
+  // coverage scoping (a regression to "read any care profile" would surface it).
+  const { data: unrelatedCareRow, error: unrelatedCareErr } = await service
+    .from("shepherd_care_profiles")
+    .insert({ shepherd_profile_id: rollbackSubjectProfileId })
+    .select("id")
+    .single();
+  if (unrelatedCareErr) {
+    throw new Error(
+      `unrelated shepherd_care_profiles insert failed: ${unrelatedCareErr.message}`
+    );
+  }
+  const unrelatedCareProfileId = unrelatedCareRow.id as string;
+
   const teardown = async (): Promise<void> => {
     // Local, disposable scaffolding only. Order matters for FK restricts:
     // care/coverage rows before profiles, profiles before auth users.
@@ -247,7 +271,7 @@ export async function provisionFixtures(
     await service
       .from("shepherd_care_profiles")
       .delete()
-      .eq("id", leaderCareProfileId);
+      .in("shepherd_profile_id", createdProfileIds);
     await service
       .from("over_shepherds")
       .delete()
@@ -270,6 +294,8 @@ export async function provisionFixtures(
     leader,
     leaderCareProfileId,
     rollbackSubjectProfileId,
+    unrelatedLeaderProfileId: rollbackSubjectProfileId,
+    unrelatedCareProfileId,
     teardown,
   };
 }

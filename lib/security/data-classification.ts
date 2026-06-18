@@ -260,8 +260,15 @@ export const DATA_CLASSIFICATION: readonly TableClassification[] = [
   {
     table: "groups",
     classification: "operational_metadata",
-    columns: [{ column: "admin_notes", classification: "admin_private" }],
-    note: "Group metadata is operational; admin_notes is admin-private.",
+    columns: [
+      { column: "admin_notes", classification: "admin_private" },
+      {
+        column: "address_optional",
+        classification: "pii",
+        note: "Optional meeting address can be a member's home — treat as PII.",
+      },
+    ],
+    note: "Group metadata is operational; admin_notes/address are sensitive.",
   },
   {
     table: "group_metric_settings",
@@ -269,6 +276,24 @@ export const DATA_CLASSIFICATION: readonly TableClassification[] = [
     columns: [
       { column: "admin_metric_notes", classification: "admin_private" },
     ],
+  },
+  {
+    table: "multiplication_candidates",
+    classification: "operational_metadata",
+    columns: [{ column: "notes", classification: "admin_private" }],
+    note: "Multiplication planning is operational; notes is admin-only freeform.",
+  },
+  {
+    table: "leader_pipeline",
+    classification: "operational_metadata",
+    columns: [{ column: "notes", classification: "admin_private" }],
+    note: "Apprentice-readiness pipeline is operational; notes is admin-only freeform.",
+  },
+  {
+    table: "church_attendance_snapshots",
+    classification: "operational_metadata",
+    columns: [{ column: "note", classification: "admin_private" }],
+    note: "Attendance counts are operational; note is admin-only freeform.",
   },
 
   // --- Encrypted private data (zero-knowledge, SC.4) -----------------------

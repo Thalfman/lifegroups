@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -13,6 +16,36 @@ import {
 
 const VALID = new Set<Classification>(CLASSIFICATIONS);
 
+// Parse the hand-rolled `XxxRow` interfaces in types/database.ts into
+// table → column[] so the default-rule check can reconcile against the REAL
+// schema, not only the columns already listed in the manifest. Interface names
+// map to snake_case table names (MultiplicationCandidatesRow →
+// multiplication_candidates).
+function parseSchemaColumns(): Map<string, string[]> {
+  const src = readFileSync(resolve(process.cwd(), "types/database.ts"), "utf8");
+  const out = new Map<string, string[]>();
+  const re = /export interface (\w+)Row\s*\{([\s\S]*?)\n\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src)) !== null) {
+    const table = m[1].replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+    const cols: string[] = [];
+    for (const line of m[2].split(/\n/)) {
+      const c = line.match(/^\s{2,}(\w+)\s*[?]?:/);
+      if (c) cols.push(c[1]);
+    }
+    out.set(table, cols);
+  }
+  return out;
+}
+
+// Columns whose NAME matches the sensitive heuristic but are reviewed as
+// operational (a version number, a date) — an explicit, documented decision so
+// they don't silently fall through as "unclassified".
+const REVIEWED_OPERATIONAL = new Set<string>([
+  "groups.pause_reason", // why a group paused (e.g. "summer break") — logistics
+  "church_attendance_snapshots.snapshot_date", // a date, not freeform text
+]);
+
 describe("data-classification manifest", () => {
   it("every entry uses a valid classification and a unique table name", () => {
     const seen = new Set<string>();
@@ -27,6 +60,43 @@ describe("data-classification manifest", () => {
         ).toBe(true);
       }
     }
+  });
+
+  it("reconciles against the real schema: every sensitive-looking column has a decision", () => {
+    // Closes the "absence = operational" hole: parse types/database.ts and
+    // require EVERY sensitive-named schema column to be a conscious decision —
+    // either classified in the manifest (a column entry, or a wholly-sensitive
+    // table baseline) or in the documented REVIEWED_OPERATIONAL allowlist. A new
+    // freeform/contact/token column added to the schema without a manifest entry
+    // fails here rather than silently dropping out of sensitiveTables().
+    const schema = parseSchemaColumns();
+    const undecided: string[] = [];
+    for (const [table, columns] of schema) {
+      const entry = tableClassification(table);
+      const baselineSensitive = entry
+        ? isSensitive(entry.classification)
+        : false;
+      const classifiedColumns = new Set(
+        (entry?.columns ?? []).map((c) => c.column)
+      );
+      for (const column of columns) {
+        if (!looksSensitiveByName(column)) continue;
+        const decided =
+          baselineSensitive ||
+          classifiedColumns.has(column) ||
+          REVIEWED_OPERATIONAL.has(`${table}.${column}`);
+        if (!decided) undecided.push(`${table}.${column}`);
+      }
+    }
+    expect(
+      undecided,
+      undecided.length === 0
+        ? ""
+        : `Sensitive-looking schema columns with no manifest decision — add a ` +
+            `classification or a documented REVIEWED_OPERATIONAL entry:\n  ${undecided.join(
+              "\n  "
+            )}`
+    ).toEqual([]);
   });
 
   it("default rule: no operational_metadata column hides a sensitive-looking name", () => {

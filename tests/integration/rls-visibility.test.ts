@@ -345,6 +345,35 @@ suite("RLS per-tier visibility (local Supabase stack)", () => {
         p_granted: false,
       });
     });
+
+    it("the subject Leader never reads the prayer request, grant off or on", async () => {
+      // The Leader is neither author nor admin, so the author-private seal hides
+      // it from them regardless of the transparency grant (mirrors the care-note
+      // lower-tier denial). Toggle ON to prove the grant only opens the admin
+      // arm, never the lower tier; restore OFF afterward.
+      const sealedRead = await fx.leader.client
+        .from("prayer_requests")
+        .select("id")
+        .eq("id", prayerId);
+      expect(sealedRead.error).toBeNull();
+      expect((sealedRead.data ?? []).length).toBe(0);
+
+      await fx.ministryAdmin.client.rpc("set_note_transparency_grant", {
+        p_subject_profile_id: fx.leader.profileId,
+        p_granted: true,
+      });
+      const grantedRead = await fx.leader.client
+        .from("prayer_requests")
+        .select("id")
+        .eq("id", prayerId);
+      expect(grantedRead.error).toBeNull();
+      expect((grantedRead.data ?? []).length).toBe(0);
+
+      await fx.ministryAdmin.client.rpc("set_note_transparency_grant", {
+        p_subject_profile_id: fx.leader.profileId,
+        p_granted: false,
+      });
+    });
   });
 
   describe("OVER_SHEPHERD_SCOPED — shepherd_care_profiles", () => {
@@ -367,6 +396,27 @@ suite("RLS per-tier visibility (local Supabase stack)", () => {
         .from("shepherd_care_profiles")
         .select("id")
         .eq("id", fx.leaderCareProfileId);
+      expect(error).toBeNull();
+      expect((data ?? []).length).toBe(0);
+    });
+
+    it("the Over-Shepherd cannot read an UNRELATED leader's care profile (negative control)", async () => {
+      // The OS covers fx.leader, not the unrelated leader. If the policy
+      // regressed from coverage-scoped to "any care profile is readable", this
+      // would return a row — so a positive-only assertion would miss the leak.
+      const { data, error } = await fx.overShepherd.client
+        .from("shepherd_care_profiles")
+        .select("id")
+        .eq("id", fx.unrelatedCareProfileId);
+      expect(error).toBeNull();
+      expect((data ?? []).length).toBe(0);
+    });
+
+    it("the Over-Shepherd cannot read an UNRELATED leader's profile (negative control)", async () => {
+      const { data, error } = await fx.overShepherd.client
+        .from("profiles")
+        .select("id")
+        .eq("id", fx.unrelatedLeaderProfileId);
       expect(error).toBeNull();
       expect((data ?? []).length).toBe(0);
     });

@@ -34,9 +34,16 @@ const WRITE_METHOD = /\.(insert|update|delete|upsert)\s*\(/;
 // `.from("t").match({ id }).update({...})`) appearing BEFORE the write method.
 // We bias toward catching: an over-match fails loudly and a human reviews it,
 // whereas a missed direct write would silently bypass the audit pipeline.
+// `const|let|var NAME = ….from(…)` — NAME is a builder bound to a table, so a
+// later `NAME.insert(…)` is a direct write even though it is a separate statement.
+const FROM_ALIAS =
+  /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;{}=]*?\.from\s*\(/g;
+
 function findDirectWrites(file: SourceFile): string[] {
   const flat = stripCommentsAndStrings(file.text).replace(/\s+/g, " ");
   const hits: string[] = [];
+
+  // (a) Direct chain: `.from(...)` reaching a write before the statement ends.
   const fromRe = /\.from\s*\(/g;
   let m: RegExpExecArray | null;
   while ((m = fromRe.exec(flat)) !== null) {
@@ -47,6 +54,22 @@ function findDirectWrites(file: SourceFile): string[] {
     const segment = boundary === -1 ? rest : rest.slice(0, boundary);
     const w = segment.match(WRITE_METHOD);
     if (w) hits.push(`${file.relPath}: …${segment.trim().slice(0, 120)}…`);
+  }
+
+  // (b) Aliased builder: `const q = client.from("t"); … q.insert(...)`. The
+  //     write is invoked on the from-bound alias in a later statement, which the
+  //     same-statement window above can't see.
+  const aliases = new Set<string>();
+  let a: RegExpExecArray | null;
+  while ((a = FROM_ALIAS.exec(flat)) !== null) aliases.add(a[1]);
+  for (const alias of aliases) {
+    if (
+      new RegExp(`\\b${alias}\\s*\\.(insert|update|delete|upsert)\\s*\\(`).test(
+        flat
+      )
+    ) {
+      hits.push(`${file.relPath}: aliased write via '${alias}' = …from(…)`);
+    }
   }
   return hits;
 }

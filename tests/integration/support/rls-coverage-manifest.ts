@@ -111,6 +111,18 @@ export const RLS_COVERAGE: Readonly<Record<string, CoverageEntry>> = {
     "ADMIN_READ",
     `needs a seeded prospect row; ${STATIC_SWEEP}`
   ),
+  multiplication_candidates: deferred(
+    "ADMIN_READ",
+    `needs a seeded candidate row; ${STATIC_SWEEP}`
+  ),
+  leader_pipeline: deferred(
+    "ADMIN_READ",
+    `needs a seeded pipeline row; ${STATIC_SWEEP}`
+  ),
+  church_attendance_snapshots: deferred(
+    "ADMIN_READ",
+    `needs a seeded attendance snapshot row; ${STATIC_SWEEP}`
+  ),
 
   // --- Deferred: LEADER_SCOPED tables needing a group + leader-of fixture --
   groups: deferred(

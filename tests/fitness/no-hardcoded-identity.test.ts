@@ -46,14 +46,16 @@ describe("fitness: no hardcoded identity in authorization code", () => {
     ).toEqual([]);
   });
 
-  it("RLS policy migrations never hardcode an email or UUID literal", () => {
-    // Scan only migrations that define policies; strip SQL comments first.
-    const migrations = readSourceFiles({
+  it("migrations never hardcode an email or UUID literal", () => {
+    // Scan ALL migrations, not just policy DDL: a SECURITY DEFINER auth helper
+    // (e.g. auth_is_admin_or_staff in 20260531140000_remove_staff_viewer_role)
+    // gates every policy that calls it, so a hardcoded identity there controls
+    // authorization without any create/alter policy line. Strip SQL comments so
+    // illustrative literals in comments don't trip it.
+    const stripped = readSourceFiles({
       roots: ["supabase/migrations"],
       extensions: [".sql"],
-    }).filter((f) => /create\s+policy|alter\s+policy/i.test(f.text));
-
-    const stripped = migrations.map((f) => ({
+    }).map((f) => ({
       ...f,
       text: stripSqlComments(f.text),
     }));
