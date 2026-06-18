@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "Flags the collision with the repo's no-hard-delete / archive-first invariant",
+      "passed": true,
+      "evidence": "'The hard collision' section: 'The repo is archive-only by design' and 'A one-click admin button is, almost word for word, the anti-pattern this invariant forbids.'"
+    },
+    {
+      "text": "Notes that permanent deletion is Super-Admin-only and/or requires a tombstone and audit event",
+      "passed": true,
+      "evidence": "Cites CLAUDE.md 'Permanent deletion is Super-Admin-only, writes a tombstone, and lives in the danger zone'; \u00a78 'Audit gate: every destructive RPC writes a paired audit_events row in the same transaction' and 'Recoverability gate' on tombstones."
+    },
+    {
+      "text": "Produces a review plan with explicit gates (or heavily gates the work) rather than a breezy implementation plan",
+      "passed": true,
+      "evidence": "\u00a78 'the review plan (gates, regardless of A/B/C)' enumerates eight explicit gates (ADR gate, Role-boundary gate, Audit gate, Recoverability gate, Confidential-boundary gate, No-service-role-key gate, UX gate, Testing gate)."
+    },
+    {
+      "text": "Does not implement or edit any repo files",
+      "passed": true,
+      "evidence": "'not an implementation plan \u2014 yet'; deliverable is a decision memo + review plan + handoff prompt; no code is applied."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

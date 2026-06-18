@@ -1,0 +1,40 @@
+{
+  "expectations": [
+    {
+      "text": "Produces a discovery brief or explicitly states it is not ready for implementation planning, rather than jumping to a step-by-step build plan",
+      "passed": true,
+      "evidence": "Titled '# Discovery Brief'; 'Bottom line up front: This is *not yet* ready for an implementation plan.' A best-guess plan is included but explicitly labeled and gated behind a clarifying question, not handed back as the deliverable."
+    },
+    {
+      "text": "Lists multiple plausible interpretations of 'onboarding' (e.g. signup, first-use comprehension, activation, lifecycle)",
+      "passed": true,
+      "evidence": "'The three problems hiding inside \"onboarding\"': A. Activation / first-run comprehension, B. Readiness / setup-state, C. Invitation delivery / completion."
+    },
+    {
+      "text": "Explicitly labels at least one assumption",
+      "passed": true,
+      "evidence": "Section 7 contains a blockquote '**Assumption (flag if wrong):** the real pain is **problem B** ...' and the handoff prompt marks '(assumption \u2014 confirm)'."
+    },
+    {
+      "text": "Names specific evidence to gather or an investigation to run before building",
+      "passed": true,
+      "evidence": "Section 6 'Recommended next step' proposes a thin instrumentation + readiness slice to 'see, per Leader: invited / signed-in / has-group / has-written-a-note' to answer where fall-off happens with data."
+    },
+    {
+      "text": "Selects relevant review domains AND names at least one explicitly excluded domain",
+      "passed": false,
+      "evidence": "The brief discusses problem areas (UX/copy, admin-workflow, observability) but never presents a deliberate domain-selection section, and names no explicitly excluded review domain."
+    },
+    {
+      "text": "Does not edit or create any repo code; the deliverable is a planning document only",
+      "passed": true,
+      "evidence": "Output is a planning brief with a fresh-session handoff prompt; no code is applied or claimed to be edited."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 1,
+    "total": 6,
+    "pass_rate": 0.8333
+  }
+}

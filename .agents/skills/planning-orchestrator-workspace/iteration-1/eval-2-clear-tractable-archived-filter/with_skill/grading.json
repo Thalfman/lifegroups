@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "Produces an implementation plan that includes non-goals, acceptance criteria, and a test plan",
+      "passed": true,
+      "evidence": "The 'Implementation plan for Option B' has explicit '### Non-goals' (no schema/RPC/RLS change; Archived tab unchanged), '### Acceptance criteria' (default load identical, toggle behaviors), and '### Test plan' (Vitest predicate cases, component, a11y) \u2014 all three genuinely present."
+    },
+    {
+      "text": "References real repo files or patterns relevant to the Groups list surface",
+      "passed": true,
+      "evidence": "A 'reference files' table cites app/(protected)/admin/groups/page.tsx, components/admin/groups-directory.tsx, components/admin/groups/tab-bar.tsx, lib/dashboard/group-status.ts (matchesListTab), lib/supabase/read-models.ts (fetchAllGroups)."
+    },
+    {
+      "text": "Ends with a fresh-session / copy-paste handoff prompt for an implementation session",
+      "passed": true,
+      "evidence": "Final section '## Fresh implementation session prompt' is a fenced code block with CONTEXT / PRECONDITION / GOAL / EXECUTION ORDER / DONE WHEN, ready to paste into a fresh session."
+    },
+    {
+      "text": "Does not actually edit any repo files",
+      "passed": true,
+      "evidence": "Stays in planning mode throughout ('I'm treating this as a decision memo rather than an implementation plan on purpose'); no code is applied or claimed edited."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

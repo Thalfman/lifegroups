@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "Challenges the stated caching solution rather than immediately planning it",
+      "passed": true,
+      "evidence": "'Add a caching layer is a solution \u2014 but we haven't yet pinned down what's slow or why' and 'Why caching is the risky default here' (P0-class privacy regression risk)."
+    },
+    {
+      "text": "Questions whether or where the page is actually slow and recommends measurement before building",
+      "passed": true,
+      "evidence": "'What we don't know yet (and need to)' plus 'Phase 0 \u2014 Measure (do this before deciding anything)': pull read_bundle latency_ms lines and use the perf-harness."
+    },
+    {
+      "text": "Surfaces at least one alternative to caching",
+      "passed": true,
+      "evidence": "'Phase 1 \u2014 Cheap, safe wins': DB indexes on care_notes.created_at, query/limit tuning, deferring heaviest tab behind Suspense, client virtualization."
+    },
+    {
+      "text": "Does not produce a confident caching implementation plan as the sole deliverable",
+      "passed": true,
+      "evidence": "Deliverable is a phased diagnose-first plan; caching is 'Phase 2 ... only if Phase 0/1 prove the round-trips are the bottleneck and indexing can't close the gap', not the sole/confident output."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

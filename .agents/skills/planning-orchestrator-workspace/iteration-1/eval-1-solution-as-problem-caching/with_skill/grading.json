@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "Challenges the stated caching solution rather than immediately planning it",
+      "passed": true,
+      "evidence": "'you've named a solution (\"add a caching layer\") for a symptom (\"feels slow\") that we haven't measured yet' and 'The strongest non-caching hypotheses (why caching may be the wrong lever)'."
+    },
+    {
+      "text": "Questions whether or where the page is actually slow and recommends measurement before building",
+      "passed": true,
+      "evidence": "'Unknowns ... Where the time goes. No latency number is in hand.' and 'Suggested investigation' step 1: 'Pull the read_bundle care_page latency_ms lines ... Establish a baseline.'"
+    },
+    {
+      "text": "Surfaces at least one alternative to caching",
+      "passed": true,
+      "evidence": "Proposes a created_at index ('a one-migration fix ... cheaper, safer'), a grant index, and streaming the Notes tab independently of the Care workspace batch."
+    },
+    {
+      "text": "Does not produce a confident caching implementation plan as the sole deliverable",
+      "passed": true,
+      "evidence": "'There is no implementation handoff yet **by design**'; the deliverable is a measurement-pass discovery brief, with caching only 'if the read is provably the irreducible bottleneck'."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

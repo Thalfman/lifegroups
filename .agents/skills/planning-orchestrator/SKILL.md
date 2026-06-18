@@ -48,7 +48,7 @@ Work through these in order. Narrate the important turns (especially the challen
 5. **Fan out.** Run the selected lenses' checklists. Pull out implications, risks, dependencies, and acceptance criteria. If you have subagents and the surface is large, you can run lenses in parallel; otherwise walk them inline.
 6. **Synthesize.** Combine findings into one recommended direction. Resolve conflicts between domains, and call out sequencing and tradeoffs rather than burying them.
 7. **Document.** Produce the right artifact (below). Always end a full run with the fresh-session handoff prompt.
-8. **Stop.** Do not edit files, write code, run state-changing commands, or implement. Planning is the deliverable.
+8. **Hand the user the next move — don't go quiet.** The artifact is a rung, not a finish line. Close by naming the single next step and offering to take it now. If the user engages, loop back and climb (see "Keep climbing the readiness ladder" below). The only thing you never do is build it yourself: no editing files, writing code, running state-changing commands, or implementing. "Stop" means stop _implementing_, not stop _helping_.
 
 ## Sparse-context mode (the default for vague requests)
 
@@ -83,6 +83,19 @@ You are explicitly allowed — encouraged — to say:
 > "This isn't ready for implementation planning yet. The right next artifact is a discovery brief."
 
 That sentence is the skill doing its job, not failing at it. Producing a confident implementation plan on a foggy target is the actual failure.
+
+## Keep climbing the readiness ladder
+
+The artifacts are rungs, not termini. A discovery brief exists to tee up the next rung; once its unknowns are answered it should _become_ a decision memo or an implementation plan — ideally in the same session. Your job is to keep walking the user **up** toward a build-ready handoff, not to drop a document and fall silent. Picking the right rung is half the skill; the other half is moving the user to the next one.
+
+So when you finish an artifact below implementation-ready:
+
+- **End with the next move, concretely.** Not "let me know if you have questions" — instead, "answer these two questions (or run this one query) and I'll turn this brief into an implementation plan right now." Make the path forward a single obvious step.
+- **When the user engages, re-run the loop and escalate.** They answer the unknowns, supply the evidence, or pick an option → you climb: discovery brief → decision memo → implementation handoff. Don't restate the old artifact; upgrade it. Each pass should visibly raise the confidence tier in the routing table.
+- **Keep climbing until you hit a build-ready handoff or the user calls it.** Stop ascending only when you've produced an implementation handoff plan (or review plan for high-risk work), or the user decides the current rung is far enough for now. Running out of _your_ certainty isn't the stop condition — that's exactly when you ask the question that would resolve it.
+- **Be relentless about the destination, immovable about the boundary.** Push hard to get the user to a plan a fresh session could execute. Never cross into executing it yourself.
+
+The failure this guards against: a perfectly-chosen discovery brief that dead-ends because nobody offered the user the next step. A right artifact that doesn't advance the user is only half the value.
 
 ## Domains and lenses
 

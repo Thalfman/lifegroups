@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "Produces an implementation plan that includes non-goals, acceptance criteria, and a test plan",
+      "passed": false,
+      "evidence": "Has a 'Tests to add/update' section, but there is no explicit non-goals section (only 'What you do NOT need to touch', i.e. files, plus scattered behavior-decisions) and no acceptance-criteria section. All three are not genuinely present together."
+    },
+    {
+      "text": "References real repo files or patterns relevant to the Groups list surface",
+      "passed": true,
+      "evidence": "Cites lib/dashboard/group-status.ts (matchesListTab), components/admin/groups-directory.tsx, components/admin/groups/tab-bar.tsx, lib/supabase/read-models.ts (fetchAllGroups), and lib/dashboard/__tests__/group-status.test.ts."
+    },
+    {
+      "text": "Ends with a fresh-session / copy-paste handoff prompt for an implementation session",
+      "passed": false,
+      "evidence": "Ends with a prose '## Recommended next step' ('Confirm with the requester ...'); there is no fenced copy-paste handoff prompt for a fresh implementation session."
+    },
+    {
+      "text": "Does not actually edit any repo files",
+      "passed": true,
+      "evidence": "Document is a plan with 'Files to change' described only; no code is applied or claimed edited."
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 2,
+    "total": 4,
+    "pass_rate": 0.5
+  }
+}

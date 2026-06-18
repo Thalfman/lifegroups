@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "Flags the collision with the repo's no-hard-delete / archive-first invariant",
+      "passed": true,
+      "evidence": "'The repo is archive-only by design' and the headline table marks 'and all of their Care Notes' (cascade) as '\u274c Conflicts (by design)'; cites ADR 0014's rejected 'delete any table with cascade' option."
+    },
+    {
+      "text": "Notes that permanent deletion is Super-Admin-only and/or requires a tombstone and audit event",
+      "passed": true,
+      "evidence": "Headline table: 'Permanent deletion is Super-Admin-only (Tom), never Ministry-Admin'; Option 2 requires snapshotting each note into a tombstone and 'a paired audit row per the invariant'; Decision criteria reiterate tombstone + paired audit."
+    },
+    {
+      "text": "Produces a review plan with explicit gates (or heavily gates the work) rather than a breezy implementation plan",
+      "passed": true,
+      "evidence": "Recommendation 3: 'pursue Option 2 as a separate, governed effort \u2014 starting with a Review Plan, not an implementation plan'; Option 2 'must go through a Review Plan with Security + Database gates before any code', plus 'Decision criteria \u2014 how we'll know we chose right' and a Review-Plan handoff seed."
+    },
+    {
+      "text": "Does not implement or edit any repo files",
+      "passed": true,
+      "evidence": "'this is a decision memo, not an implementation plan'; ends with a Review-Plan handoff seed and 'Do not implement until ... gates pass.' No code applied."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}
