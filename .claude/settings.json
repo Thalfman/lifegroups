@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "effortLevel": "xhigh",
+  "alwaysThinkingEnabled": true,
+  "outputStyle": "Concise",
+  "fallbackModel": ["claude-sonnet-4-6"],
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm ci)",
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run build)",
+      "Bash(npm run test:run)",
+      "Bash(npm run test:run -- *)",
+      "Bash(npm run test:integration)",
+      "Bash(npm run test:coverage)",
+      "Bash(npm run test:a11y)",
+      "Bash(npm run verify:toolchain)",
+      "Bash(npx vitest run *)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx playwright test *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch)",
+      "Bash(git branch -a)",
+      "Bash(git branch -vv)",
+      "Bash(git branch --show-current)",
+      "Bash(git branch --list*)",
+      "Bash(git stash list)",
+      "Bash(git remote -v)"
+    ],
+    "deny": [
+      "Read(**/.env*)",
+      "Read(~/.env*)",
+      "Read(**/node_modules/**)",
+      "Read(~/.ssh/**)",
+      "Read(//**/.ssh/**)",
+      "Bash(sudo *)",
+      "Bash(rm -rf /)",
+      "Bash(git branch -d*)",
+      "Bash(git branch -D*)",
+      "Bash(git branch -m*)",
+      "Bash(git branch -M*)",
+      "Bash(git branch --delete*)",
+      "Bash(git branch --move*)",
+      "Bash(git diff *--output*)",
+      "Bash(git log *--output*)",
+      "Bash(git show *--output*)",
+      "Bash(npx vitest *--outputFile*)",
+      "Bash(npx vitest *--update*)",
+      "Bash(npx vitest *-u*)",
+      "Bash(npm run test:run -- *--outputFile*)",
+      "Bash(npm run test:run -- *--update*)",
+      "Bash(npm run test:run -- *-u*)",
+      "Bash(npx playwright test *--update-snapshots*)",
+      "Bash(npx playwright test *--update-source-method*)",
+      "Bash(npx playwright test *-u*)"
+    ]
+  }
+}
