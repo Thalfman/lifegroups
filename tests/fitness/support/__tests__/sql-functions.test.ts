@@ -319,6 +319,36 @@ revoke all on function public.helper(jsonb) from public, anon, authenticated;`
     );
     expect(grants[0].signature).toBe("public.f(numeric(10, 2),text)");
   });
+
+  it("parses a schema-wide GRANT ON ALL FUNCTIONS", () => {
+    const { grants } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `grant execute on all functions in schema public to authenticated, anon;`
+      )
+    );
+    expect(grants).toHaveLength(1);
+    expect(grants[0]).toMatchObject({
+      signature: null,
+      allInSchema: "public",
+      action: "grant",
+      roles: ["authenticated", "anon"],
+    });
+  });
+
+  it("parses DROP FUNCTION (with and without IF EXISTS)", () => {
+    const { drops } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `drop function if exists public.f(jsonb);
+drop function public.g(uuid, text);`
+      )
+    );
+    expect(drops.map((d) => d.signature)).toEqual([
+      "public.f(jsonb)",
+      "public.g(uuid,text)",
+    ]);
+  });
 });
 
 describe("effectiveFunctions appExecutable (Postgres EXECUTE-to-PUBLIC default)", () => {
@@ -395,6 +425,87 @@ set search_path = public as $$ select 1 $$;
 revoke all on function public.f() from public;
 grant execute on function public.f() to authenticated;
 revoke execute on function public.f() from authenticated;`,
+        "public.f()"
+      )
+    ).toBe(false);
+  });
+
+  it("ignores a trailing WITH GRANT OPTION when reading the role", () => {
+    // The role token must be `authenticated`, not `authenticated with grant option`.
+    expect(
+      appExec(
+        `create function public.f() returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f() from public;
+grant execute on function public.f() to authenticated with grant option;`,
+        "public.f()"
+      )
+    ).toBe(true);
+  });
+
+  it('reads a quoted role name ("authenticated")', () => {
+    expect(
+      appExec(
+        `create function public.f() returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f() from public;
+grant execute on function public.f() to "authenticated";`,
+        "public.f()"
+      )
+    ).toBe(true);
+  });
+
+  it("DROP FUNCTION resets the revoke; a recreate is app-callable again", () => {
+    // A revoked helper that is later dropped and recreated returns to the default
+    // PUBLIC EXECUTE — the stale revoke must not keep appExecutable false.
+    expect(
+      appExec(
+        `create function public.f(p jsonb) returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f(jsonb) from public;
+drop function if exists public.f(jsonb);
+create function public.f(p jsonb) returns void language sql security definer
+set search_path = public as $$ select 1 $$;`,
+        "public.f(jsonb)"
+      )
+    ).toBe(true);
+  });
+
+  it("re-applies a revoke that follows the drop/recreate", () => {
+    expect(
+      appExec(
+        `create function public.f(p jsonb) returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f(jsonb) from public;
+drop function if exists public.f(jsonb);
+create function public.f(p jsonb) returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f(jsonb) from public;`,
+        "public.f(jsonb)"
+      )
+    ).toBe(false);
+  });
+
+  it("models a schema-wide GRANT ON ALL FUNCTIONS re-exposing a revoked helper", () => {
+    expect(
+      appExec(
+        `create function public.f(p jsonb) returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f(jsonb) from public;
+revoke all on function public.f(jsonb) from authenticated;
+grant execute on all functions in schema public to authenticated;`,
+        "public.f(jsonb)"
+      )
+    ).toBe(true);
+  });
+
+  it("a schema-wide grant does not reach functions in another schema", () => {
+    expect(
+      appExec(
+        `create function public.f() returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f() from public;
+grant execute on all functions in schema other to authenticated;`,
         "public.f()"
       )
     ).toBe(false);

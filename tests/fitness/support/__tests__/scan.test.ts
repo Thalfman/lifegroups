@@ -52,4 +52,25 @@ describe("auditInsertBlocks / writesAudit", () => {
       writesAudit("raise notice 'would insert into public.audit_events';")
     ).toBe(false);
   });
+
+  it("ignores an audit_events mention inside a dollar-quoted literal", () => {
+    // A PL/pgSQL body can embed `$tag$ … $tag$`; a literal that names the audit
+    // table must not be counted as a real paired insert.
+    expect(
+      writesAudit("raise notice $msg$insert into public.audit_events (x)$msg$;")
+    ).toBe(false);
+    expect(
+      writesAudit(
+        "update public.members set x = 1;\n" +
+          "execute $sql$ insert into public.audit_events (a) values (1) $sql$;"
+      )
+    ).toBe(false);
+  });
+
+  it("still counts a real audit insert beside a dollar-quoted literal", () => {
+    const body =
+      "raise notice $msg$ wrote audit_events $msg$;\n" +
+      "insert into public.audit_events (action) values ('x');";
+    expect(writesAudit(body)).toBe(true);
+  });
 });

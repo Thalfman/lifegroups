@@ -56,13 +56,17 @@ export interface AlterFunctionStatement {
 }
 
 /**
- * A parsed `GRANT|REVOKE … EXECUTE ON FUNCTION … TO|FROM <roles>` statement. Used
- * (#700) to know whether a function is reachable by an app login role — Postgres
- * grants EXECUTE to `PUBLIC` by DEFAULT, so a function is callable by the app
- * unless that default is explicitly revoked.
+ * A parsed `GRANT|REVOKE … EXECUTE ON FUNCTION … TO|FROM <roles>` statement (or
+ * the schema-wide `… ON ALL FUNCTIONS IN SCHEMA <s> …` form). Used (#700) to know
+ * whether a function is reachable by an app login role — Postgres grants EXECUTE
+ * to `PUBLIC` by DEFAULT, so a function is callable by the app unless that
+ * default is explicitly revoked.
  */
 export interface GrantFunctionStatement {
-  readonly signature: string;
+  /** Target signature for a per-function grant; `null` for a schema-wide grant. */
+  readonly signature: string | null;
+  /** Schema for `ON ALL FUNCTIONS IN SCHEMA <s>`; `null` for a per-function grant. */
+  readonly allInSchema: string | null;
   readonly name: string;
   readonly action: "grant" | "revoke";
   /** Target roles, lowercased (`public`, `anon`, `authenticated`, `service_role`, …). */
@@ -73,10 +77,26 @@ export interface GrantFunctionStatement {
   readonly pos: number;
 }
 
+/**
+ * A parsed `DROP FUNCTION [IF EXISTS] name(args)` statement. Dropping a function
+ * also drops its grants in Postgres — a later CREATE of the same signature starts
+ * from the default PUBLIC EXECUTE — so the fold must reset both the definition and
+ * the grant state for that signature (#700 follow-up).
+ */
+export interface DropFunctionStatement {
+  readonly signature: string;
+  readonly name: string;
+  readonly relPath: string;
+  readonly line: number;
+  /** Character offset of the statement in the file — used to fold in textual order. */
+  readonly pos: number;
+}
+
 export interface ParsedSqlFunctions {
   readonly creates: readonly CreateFunctionStatement[];
   readonly alters: readonly AlterFunctionStatement[];
   readonly grants: readonly GrantFunctionStatement[];
+  readonly drops: readonly DropFunctionStatement[];
 }
 
 /** The folded, final-state view of one function signature across all migrations. */
@@ -238,6 +258,28 @@ const CREATE_FN_RE =
 const ALTER_FN_RE = /alter\s+function\s+([a-z0-9_."]+)\s*\(/gi;
 const GRANT_FN_RE =
   /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+function\s+([a-z0-9_."]+)\s*\(/gi;
+// Schema-wide grant: `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;`
+const GRANT_ALL_FN_RE =
+  /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+all\s+functions\s+in\s+schema\s+([a-z0-9_."]+)\s+(?:to|from)\s+([^;]+);/gi;
+const DROP_FN_RE =
+  /\bdrop\s+function\s+(?:if\s+exists\s+)?([a-z0-9_."]+)\s*\(/gi;
+
+/**
+ * Normalize a GRANT/REVOKE role list to bare lowercased role names. Takes only
+ * the leading identifier of each comma-separated entry, so a `GROUP` modifier,
+ * surrounding quotes (`"authenticated"`), or a trailing clause
+ * (`authenticated WITH GRANT OPTION`, `public CASCADE`) cannot poison the role
+ * token and make a real app-role grant read as a non-app role.
+ */
+function parseRoleList(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((entry) => {
+      const m = /^\s*(?:group\s+)?"?([a-z_][a-z0-9_$]*)/i.exec(entry);
+      return m ? m[1].toLowerCase() : "";
+    })
+    .filter((r) => r !== "");
+}
 
 /**
  * Parse one migration file's text. Comments are stripped first (a CREATE example
@@ -314,27 +356,16 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
     const open = text.indexOf("(", m.index);
     const { inner, end } = readBalancedParens(text, open);
     const argTypes = normalizeArgTypes(inner);
-    // After the arg-list close comes `… TO|FROM role[, role …];`. Read up to the
-    // statement `;` and split the role list on commas (dropping a `GROUP` modifier).
+    // After the arg-list close comes `… TO|FROM role[, role …];`.
     const semi = text.indexOf(";", end);
     const tail = text.slice(end, semi >= 0 ? semi : text.length);
     const roleMatch = /\b(?:to|from)\s+([\s\S]+)$/i.exec(tail);
-    const roles = roleMatch
-      ? roleMatch[1]
-          .split(",")
-          .map((r) =>
-            r
-              .trim()
-              .toLowerCase()
-              .replace(/^group\s+/, "")
-          )
-          .filter((r) => r !== "")
-      : [];
     grants.push({
       signature: `${name}(${argTypes.join(",")})`,
+      allInSchema: null,
       name,
       action,
-      roles,
+      roles: roleMatch ? parseRoleList(roleMatch[1]) : [],
       relPath: file.relPath,
       line: lineOf(file.text, m.index),
       pos: m.index,
@@ -342,7 +373,42 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
     GRANT_FN_RE.lastIndex = end;
   }
 
-  return { creates, alters, grants };
+  // Schema-wide `… ON ALL FUNCTIONS IN SCHEMA <s> TO|FROM <roles>` grants apply
+  // to every function that exists in the schema at the point they run — modelled
+  // in the fold against the signatures created so far.
+  GRANT_ALL_FN_RE.lastIndex = 0;
+  for (let m = GRANT_ALL_FN_RE.exec(text); m; m = GRANT_ALL_FN_RE.exec(text)) {
+    const schema = m[2].replace(/"/g, "").toLowerCase();
+    grants.push({
+      signature: null,
+      allInSchema: schema,
+      name: schema,
+      action: m[1].toLowerCase() as "grant" | "revoke",
+      roles: parseRoleList(m[3]),
+      relPath: file.relPath,
+      line: lineOf(file.text, m.index),
+      pos: m.index,
+    });
+  }
+
+  const drops: DropFunctionStatement[] = [];
+  DROP_FN_RE.lastIndex = 0;
+  for (let m = DROP_FN_RE.exec(text); m; m = DROP_FN_RE.exec(text)) {
+    const name = m[1].replace(/"/g, "").toLowerCase();
+    const open = text.indexOf("(", m.index);
+    const { inner, end } = readBalancedParens(text, open);
+    const argTypes = normalizeArgTypes(inner);
+    drops.push({
+      signature: `${name}(${argTypes.join(",")})`,
+      name,
+      relPath: file.relPath,
+      line: lineOf(file.text, m.index),
+      pos: m.index,
+    });
+    DROP_FN_RE.lastIndex = end;
+  }
+
+  return { creates, alters, grants, drops };
 }
 
 // App login roles whose EXECUTE access means a function is reachable from app
@@ -358,21 +424,51 @@ interface GrantState {
   readonly explicit: Set<string>;
 }
 
-function applyGrant(state: Map<string, GrantState>, g: GrantFunctionStatement) {
-  let s = state.get(g.signature);
+function applyGrantToSignature(
+  state: Map<string, GrantState>,
+  signature: string,
+  action: "grant" | "revoke",
+  roles: readonly string[]
+) {
+  let s = state.get(signature);
   if (!s) {
     // Postgres default: EXECUTE is granted to PUBLIC.
     s = { publicHasExecute: true, explicit: new Set() };
-    state.set(g.signature, s);
+    state.set(signature, s);
   }
-  for (const role of g.roles) {
-    if (g.action === "grant") {
+  for (const role of roles) {
+    if (action === "grant") {
       if (role === "public") s.publicHasExecute = true;
       else s.explicit.add(role);
     } else {
       if (role === "public") s.publicHasExecute = false;
       else s.explicit.delete(role);
     }
+  }
+}
+
+/**
+ * Apply one GRANT/REVOKE to the grant state. A per-function grant touches its
+ * signature; a schema-wide grant (`ON ALL FUNCTIONS IN SCHEMA <s>`) touches every
+ * signature in `knownSignatures` that lives in that schema (the functions that
+ * exist when the grant runs).
+ */
+function applyGrant(
+  state: Map<string, GrantState>,
+  g: GrantFunctionStatement,
+  knownSignatures: Iterable<string>
+) {
+  if (g.allInSchema) {
+    const prefix = `${g.allInSchema}.`;
+    for (const sig of knownSignatures) {
+      if (sig.startsWith(prefix)) {
+        applyGrantToSignature(state, sig, g.action, g.roles);
+      }
+    }
+    return;
+  }
+  if (g.signature) {
+    applyGrantToSignature(state, g.signature, g.action, g.roles);
   }
 }
 
@@ -405,11 +501,12 @@ export function effectiveFunctions(
   const grantState = new Map<string, GrantState>();
 
   for (const file of files) {
-    const { creates, alters, grants } = parseSqlFunctions(file);
+    const { creates, alters, grants, drops } = parseSqlFunctions(file);
     const ordered = [
       ...creates.map((c) => ({ pos: c.pos, kind: "create" as const, c })),
       ...alters.map((a) => ({ pos: a.pos, kind: "alter" as const, a })),
       ...grants.map((g) => ({ pos: g.pos, kind: "grant" as const, g })),
+      ...drops.map((d) => ({ pos: d.pos, kind: "drop" as const, d })),
     ].sort((x, y) => x.pos - y.pos);
 
     for (const stmt of ordered) {
@@ -435,8 +532,14 @@ export function effectiveFunctions(
             state.set(stmt.a.signature, { ...existing, pinsSearchPath: true });
           }
         }
+      } else if (stmt.kind === "drop") {
+        // Postgres DROP FUNCTION removes the function AND its grants. A later
+        // CREATE of the same signature therefore starts from the default PUBLIC
+        // EXECUTE — so reset both the definition and the folded grant state.
+        state.delete(stmt.d.signature);
+        grantState.delete(stmt.d.signature);
       } else {
-        applyGrant(grantState, stmt.g);
+        applyGrant(grantState, stmt.g, state.keys());
       }
     }
   }

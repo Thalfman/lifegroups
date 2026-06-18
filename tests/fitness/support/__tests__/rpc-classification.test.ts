@@ -59,6 +59,14 @@ describe("isWrite", () => {
     ).toBe(true);
   });
 
+  it("detects truncate and merge as writes", () => {
+    expect(isWrite("truncate public.members")).toBe(true);
+    expect(isWrite("truncate table public.members")).toBe(true);
+    expect(
+      isWrite("merge into public.members m using src on m.id = src.id")
+    ).toBe(true);
+  });
+
   it("detects dynamic DML built with format(... %I ...)", () => {
     expect(
       isWrite("execute format('delete from public.%I where id = 1', v_t)")

@@ -92,6 +92,39 @@ export function stripSqlComments(sql: string): string {
 }
 
 /**
+ * Blank dollar-quoted string literals (`$$ … $$`, `$tag$ … $tag$`) to spaces,
+ * preserving newlines so line numbers still align. PL/pgSQL bodies routinely embed
+ * dollar-quoted literals (e.g. `raise notice $msg$ … $msg$`, dynamic SQL built for
+ * `execute`); without blanking them a literal that mentions `insert into
+ * public.audit_events` would masquerade as a real audit insert. Run this BEFORE
+ * `stripSqlStrings`, so an apostrophe inside a dollar-quoted literal can't open a
+ * phantom single-quoted string. Positional params (`$1`) and lone `$` are left
+ * intact (they are not dollar-quote tags).
+ */
+export function stripDollarQuoted(sql: string): string {
+  let out = "";
+  let i = 0;
+  const n = sql.length;
+  while (i < n) {
+    const tagMatch =
+      sql[i] === "$"
+        ? /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(i))
+        : null;
+    if (tagMatch) {
+      const tag = tagMatch[0];
+      const close = sql.indexOf(tag, i + tag.length);
+      const end = close === -1 ? n : close + tag.length;
+      for (let j = i; j < end; j++) out += sql[j] === "\n" ? "\n" : " ";
+      i = end;
+    } else {
+      out += sql[i];
+      i++;
+    }
+  }
+  return out;
+}
+
+/**
  * Blank single-quoted SQL string literals to spaces (handling the `''` escape),
  * so a string's contents (a jsonb KEY like `'has_admin_summary'`, a label, or a
  * `'select …'`/`'delete from …'` built for dynamic SQL) can't masquerade as real
@@ -137,8 +170,20 @@ const AUDIT_INSERT_RE = /\binsert\s+into\s+public\.audit_events\b/gi;
  * in the same RPC body is excluded). Comments and strings are stripped first, so
  * a commented example or a string literal mentioning `audit_events` never counts.
  */
-export function auditInsertBlocks(sqlText: string): string[] {
-  const text = stripSqlStrings(stripSqlComments(sqlText));
+export function auditInsertBlocks(
+  sqlText: string,
+  // When true, also blank dollar-quoted literals before matching. Callers that
+  // pass an EXTRACTED function body (its outer `$$` delimiters already removed)
+  // set this so an inner `$msg$ … audit_events … $msg$` literal can't fake a
+  // pairing. Callers that scan RAW migration text leave it off — there the whole
+  // body is dollar-quoted and the real inserts live inside it.
+  options: { stripDollar?: boolean } = {}
+): string[] {
+  const commentless = stripSqlComments(sqlText);
+  const deDollared = options.stripDollar
+    ? stripDollarQuoted(commentless)
+    : commentless;
+  const text = stripSqlStrings(deDollared);
   const blocks: string[] = [];
   AUDIT_INSERT_RE.lastIndex = 0;
   for (let m = AUDIT_INSERT_RE.exec(text); m; m = AUDIT_INSERT_RE.exec(text)) {
@@ -160,9 +205,14 @@ export function auditInsertBlocks(sqlText: string): string[] {
   return blocks;
 }
 
-/** True when `sqlText` contains at least one `audit_events` insert. */
+/**
+ * True when `sqlText` (an extracted function body) contains at least one real
+ * `audit_events` insert. Dollar-quoted literals are blanked first, so a body that
+ * only NAMES the audit table inside a `$tag$ … $tag$` literal (a `raise notice`,
+ * dynamic SQL never executed in this transaction) does not count as audited.
+ */
 export function writesAudit(sqlText: string): boolean {
-  return auditInsertBlocks(sqlText).length > 0;
+  return auditInsertBlocks(sqlText, { stripDollar: true }).length > 0;
 }
 
 // Path fragments for files that are NOT app/runtime code: colocated tests and

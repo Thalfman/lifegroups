@@ -20,9 +20,10 @@ export type RpcCategory = "write" | "read_helper" | "trigger";
 
 // Static DML against a real table. Strings are stripped before this runs so a
 // table name mentioned in prose (`raise exception 'cannot update group …'`) or a
-// jsonb label can't masquerade as DML.
+// jsonb label can't masquerade as DML. Covers all the table-mutating statements
+// PL/pgSQL can issue: insert / update / delete, plus truncate and merge.
 const WRITE_DML_RE =
-  /\b(?:insert\s+into|update|delete\s+from)\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi;
+  /\b(?:insert\s+into|update|delete\s+from|truncate(?:\s+table)?|merge\s+into)\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi;
 
 // Dynamic DML built with `format()` identifier injection — `delete from
 // public.%I`, `insert into %I`, `update %I set …`. The table name lives INSIDE
