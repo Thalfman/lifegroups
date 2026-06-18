@@ -13,11 +13,30 @@
 name: RLS Integration Harness
 
 on:
-  # Scheduled weekly (Mondays 06:00 UTC) so RLS drift surfaces without gating PRs.
+  # Scheduled weekly (Mondays 06:00 UTC) so RLS drift surfaces even on weeks with
+  # no RLS-touching PRs.
   schedule:
     - cron: "0 6 * * 1"
   # Manual opt-in from the Actions tab.
   workflow_dispatch:
+  # Gate the PRs most likely to cause RLS drift (issue #698). Path-filtered so
+  # the live-stack harness runs only when a change touches RLS-relevant surfaces;
+  # docs-only PRs (other than the security/classification manifest below) skip it,
+  # keeping the default CI lane fast. Do NOT weaken the harness to fit CI time —
+  # narrow the paths instead.
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/seed/**" # repo uses the seed/ DIRECTORY, not a single seed.sql
+      - "supabase/functions/**"
+      - "lib/auth/**"
+      - "lib/**/*read*.ts" # *-reads.ts, read-model*.ts, *-read.ts read paths
+      - "lib/**/rpc*.ts" # typed SECURITY DEFINER write wrappers
+      - "app/**/actions.ts" # server actions (the only app write path)
+      - "lib/security/data-classification.ts" # sensitive-table source of truth
+      - "tests/integration/**"
+      - "tests/fitness/**"
+      - ".github/workflows/rls-integration.yml" # this workflow itself
 
 # This lane exercises a live DB; never run more than one at a time.
 concurrency:
