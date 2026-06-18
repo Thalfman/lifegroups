@@ -11,6 +11,10 @@ out
 /blob-report
 /playwright/.cache
 
+# Python bytecode (from skill-creator eval/benchmark scripts)
+__pycache__/
+*.pyc
+
 .env*
 !.env.example
 npm-debug.log*

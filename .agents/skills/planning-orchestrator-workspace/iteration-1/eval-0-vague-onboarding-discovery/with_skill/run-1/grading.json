@@ -1,0 +1,40 @@
+{
+  "expectations": [
+    {
+      "text": "Produces a discovery brief or explicitly states it is not ready for implementation planning, rather than jumping to a step-by-step build plan",
+      "passed": true,
+      "evidence": "Titled '# Discovery Brief'; opens 'Before planning *how* to improve onboarding, I dug into what onboarding actually is' and 'This is planning only.' No build steps are committed; it ends with a half-day investigation handoff."
+    },
+    {
+      "text": "Lists multiple plausible interpretations of 'onboarding' (e.g. signup, first-use comprehension, activation, lifecycle)",
+      "passed": true,
+      "evidence": "'Possible underlying goals' lists four: (1) Invite-to-active conversion, (2) First-login activation / time-to-value, (3) Readiness of the Leader's surface, (4) Comprehension / role clarity."
+    },
+    {
+      "text": "Explicitly labels at least one assumption",
+      "passed": true,
+      "evidence": "'Assumptions (label each ...)' section with labeled [A1]-[A5], e.g. '[A1] \"Onboarded\" means a Leader reaches the point of doing their core job'."
+    },
+    {
+      "text": "Names specific evidence to gather or an investigation to run before building",
+      "passed": true,
+      "evidence": "'Evidence needed' and 'Suggested investigation (cheap, read-only, ~half a day)' list concrete steps: a funnel count from audit_events, counts of unassigned active Leaders, email-delivery health checks, walking the flow as a fresh Leader."
+    },
+    {
+      "text": "Selects relevant review domains AND names at least one explicitly excluded domain",
+      "passed": true,
+      "evidence": "'Relevant domains (selected deliberately)' selects Product, Data, UX, Technical and explicitly Excludes Security, Database, DevOps, AI/Compliance, Testing each with a reason."
+    },
+    {
+      "text": "Does not edit or create any repo code; the deliverable is a planning document only",
+      "passed": true,
+      "evidence": "'I have **not** changed any files. This is planning only.' Output is a planning brief; no code is applied."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "eval_name": "solution-as-problem-caching",
+  "prompt": "The Care Notes page feels slow. Let's plan adding a caching layer to speed it up.",
+  "assertions": [
+    "Challenges the stated caching solution rather than immediately planning it",
+    "Questions whether or where the page is actually slow and recommends measurement before building",
+    "Surfaces at least one alternative to caching",
+    "Does not produce a confident caching implementation plan as the sole deliverable"
+  ]
+}
