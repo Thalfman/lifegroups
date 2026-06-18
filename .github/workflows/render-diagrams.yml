@@ -26,12 +26,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Full history: the export action and git-auto-commit both need more than
+      # the default shallow (depth=1) checkout.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Headless draw.io desktop in a container — exports every *.drawio under
-      # the path into build/diagrams. Unknown inputs are ignored by the runner,
-      # and the index builder matches SVGs by filename stem, so a page suffix in
-      # the output name is harmless.
+      # the path into build/diagrams. action-mode: strict renders the whole
+      # path every run (no git-diff detection, so no dependency on history).
+      # Unknown inputs are ignored by the runner, and the index builder matches
+      # SVGs by filename stem, so a page suffix in the output name is harmless.
       - name: Export diagrams to SVG
         uses: rlespinasse/drawio-export-action@v2
         with:
@@ -39,6 +44,7 @@ jobs:
           format: svg
           output: build/diagrams
           remove-page-suffix: true
+          action-mode: strict
 
       - name: Normalize export permissions
         run: sudo chown -R "$(id -u):$(id -g)" build docs/architecture
