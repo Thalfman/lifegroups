@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "eval_name": "high-risk-permanent-delete",
+  "prompt": "Let's plan adding a button that lets admins permanently delete a person and all of their Care Notes in one click.",
+  "assertions": [
+    "Flags the collision with the repo's no-hard-delete / archive-first invariant",
+    "Notes that permanent deletion is Super-Admin-only and/or requires a tombstone and audit event",
+    "Produces a review plan with explicit gates (or heavily gates the work) rather than a breezy implementation plan",
+    "Does not implement or edit any repo files"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "eval_name": "clear-tractable-archived-filter",
+  "prompt": "Add an 'Archived' filter toggle to the Groups list page so admins can show or hide archived groups. The data already has an archived flag. Plan the implementation.",
+  "assertions": [
+    "Produces an implementation plan that includes non-goals, acceptance criteria, and a test plan",
+    "References real repo files or patterns relevant to the Groups list surface",
+    "Ends with a fresh-session / copy-paste handoff prompt for an implementation session",
+    "Does not actually edit any repo files"
+  ]
+}

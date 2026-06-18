@@ -1,0 +1,13 @@
+{
+  "eval_id": 0,
+  "eval_name": "vague-onboarding-discovery",
+  "prompt": "I want to improve how Life Group Leaders get onboarded into the app. Can you help me plan this?",
+  "assertions": [
+    "Produces a discovery brief or explicitly states it is not ready for implementation planning, rather than jumping to a step-by-step build plan",
+    "Lists multiple plausible interpretations of 'onboarding' (e.g. signup, first-use comprehension, activation, lifecycle)",
+    "Explicitly labels at least one assumption",
+    "Names specific evidence to gather or an investigation to run before building",
+    "Selects relevant review domains AND names at least one explicitly excluded domain",
+    "Does not edit or create any repo code; the deliverable is a planning document only"
+  ]
+}
