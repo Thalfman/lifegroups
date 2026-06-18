@@ -11,9 +11,10 @@ The oversight ladder (each tier sees what the tier below sees, and more):
 
 > **Super Admin (Tom) ▸ Ministry Admin (Julian) ▸ Over-Shepherd ▸ Leader**
 
-An editable diagram of this ladder and its two exceptions lives at
-[`oversight-ladder.drawio`](./oversight-ladder.drawio) (open in
-[diagrams.net](https://app.diagrams.net/)).
+A rendered diagram of this ladder and its two exceptions — inline SVG plus an
+interactive diagrams.net viewer link — lives in
+[`diagrams.md`](./diagrams.md) (source:
+[`oversight-ladder.drawio`](./oversight-ladder.drawio)).
 
 Read access is enforced in Postgres by RLS `USING` predicates, gating on
 `profiles.role` via helper functions — never on hardcoded UUIDs/emails:

@@ -8,10 +8,10 @@ than duplicating them:
   [`README.md`](../../README.md) role model + route table.
 - SQL schema — [`DATABASE_SCHEMA.md`](./DATABASE_SCHEMA.md).
 - Visibility ladder + the two privacy exceptions —
-  [`RLS_VISIBILITY.md`](./RLS_VISIBILITY.md), with editable diagrams:
-  [`oversight-ladder.drawio`](./oversight-ladder.drawio) (downward-visibility)
-  and [`navigation-spine.drawio`](./navigation-spine.drawio) (Care · Plan ·
-  Multiply spine).
+  [`RLS_VISIBILITY.md`](./RLS_VISIBILITY.md). Rendered diagrams (inline SVG +
+  viewer links, auto-built from the `*.drawio` sources) live in
+  [`diagrams.md`](./diagrams.md): the oversight ladder (downward-visibility)
+  and the Care · Plan · Multiply nav spine.
 - Email / invite delivery — [`EMAIL_DELIVERY.md`](./EMAIL_DELIVERY.md).
 - Deploy + Edge-Function release boundary —
   [`DEPLOYMENT.md`](./DEPLOYMENT.md) and
