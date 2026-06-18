@@ -1,0 +1,59 @@
+{
+  "skill_name": "planning-orchestrator",
+  "evals": [
+    {
+      "id": 0,
+      "name": "vague-onboarding-discovery",
+      "prompt": "I want to improve how Life Group Leaders get onboarded into the app. Can you help me plan this?",
+      "expected_output": "A discovery brief, not an implementation plan. Separates stated request from underlying goal, lists multiple interpretations of 'onboarding', labels assumptions, names evidence needed, selects and excludes domains, and does not implement.",
+      "assertions": [
+        "Produces a discovery brief or explicitly states it is not ready for implementation planning, rather than jumping to a step-by-step build plan",
+        "Lists multiple plausible interpretations of 'onboarding' (e.g. signup, first-use comprehension, activation, lifecycle)",
+        "Explicitly labels at least one assumption",
+        "Names specific evidence to gather or an investigation to run before building",
+        "Selects relevant review domains AND names at least one explicitly excluded domain",
+        "Does not edit or create any repo code; the deliverable is a planning document only"
+      ],
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "solution-as-problem-caching",
+      "prompt": "The Care Notes page feels slow. Let's plan adding a caching layer to speed it up.",
+      "expected_output": "Challenges the stated caching solution, questions whether it is actually slow, recommends measurement, surfaces alternatives. Not a confident caching plan.",
+      "assertions": [
+        "Challenges the stated caching solution rather than immediately planning it",
+        "Questions whether or where the page is actually slow and recommends measurement before building",
+        "Surfaces at least one alternative to caching",
+        "Does not produce a confident caching implementation plan as the sole deliverable"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "clear-tractable-archived-filter",
+      "prompt": "Add an 'Archived' filter toggle to the Groups list page so admins can show or hide archived groups. The data already has an archived flag. Plan the implementation.",
+      "expected_output": "An implementation handoff plan with non-goals, acceptance criteria, test plan, real file references, and a fresh-session handoff prompt. Does not edit files.",
+      "assertions": [
+        "Produces an implementation plan that includes non-goals, acceptance criteria, and a test plan",
+        "References real repo files or patterns relevant to the Groups list surface",
+        "Ends with a fresh-session / copy-paste handoff prompt for an implementation session",
+        "Does not actually edit any repo files"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "high-risk-permanent-delete",
+      "prompt": "Let's plan adding a button that lets admins permanently delete a person and all of their Care Notes in one click.",
+      "expected_output": "Flags the no-hard-delete / archive-first invariant collision, notes Super-Admin-only + tombstone/audit, produces a gated review plan, does not implement.",
+      "assertions": [
+        "Flags the collision with the repo's no-hard-delete / archive-first invariant",
+        "Notes that permanent deletion is Super-Admin-only and/or requires a tombstone and audit event",
+        "Produces a review plan with explicit gates (or heavily gates the work) rather than a breezy implementation plan",
+        "Does not implement or edit any repo files"
+      ],
+      "files": []
+    }
+  ]
+}
