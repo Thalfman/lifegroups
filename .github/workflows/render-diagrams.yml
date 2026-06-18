@@ -8,7 +8,9 @@ name: Render diagrams
 on:
   push:
     paths:
-      - "docs/architecture/**.drawio"
+      # Both forms: '**/*' matches nested diagrams, '*' the top-level ones.
+      - "docs/architecture/**/*.drawio"
+      - "docs/architecture/*.drawio"
       - ".github/scripts/build-diagram-index.py"
       - ".github/workflows/render-diagrams.yml"
   workflow_dispatch:
@@ -49,18 +51,19 @@ jobs:
       - name: Render diagrams to SVG
         run: |
           set -euo pipefail
-          mkdir -p build/diagrams
           export HOME=/tmp
-          shopt -s nullglob
-          for f in docs/architecture/*.drawio; do
-            name=$(basename "${f%.drawio}")
-            echo "Rendering $f -> build/diagrams/$name.svg"
+          shopt -s nullglob globstar
+          # Recurse into subfolders and mirror the source tree into the export
+          # dir so the index builder can match each source to its SVG(s).
+          # -a renders every page (multi-page files get page-suffixed SVGs).
+          for f in docs/architecture/**/*.drawio; do
+            rel="${f#docs/architecture/}"
+            out="build/diagrams/${rel%.drawio}.svg"
+            mkdir -p "$(dirname "$out")"
+            echo "Rendering $f -> $out"
             xvfb-run -a --server-args="-screen 0 1280x1024x24" \
-              drawio -x -f svg -o "build/diagrams/$name.svg" "$f" --no-sandbox --disable-gpu
+              drawio -x -f svg -a -o "$out" "$f" --no-sandbox --disable-gpu
           done
-
-      - name: Normalize export permissions
-        run: sudo chown -R "$(id -u):$(id -g)" build docs/architecture
 
       - name: Build diagram index (SVG embeds + viewer links)
         run: python3 .github/scripts/build-diagram-index.py build/diagrams
@@ -69,4 +72,6 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "docs: render architecture diagrams (svg + viewer links) [skip ci]"
-          file_pattern: "docs/architecture/*.svg docs/architecture/diagrams.md"
+          # Directory pathspec so nested SVGs (docs/architecture/**/*.svg) and the
+          # regenerated index are all staged.
+          file_pattern: "docs/architecture"
