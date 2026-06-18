@@ -26,25 +26,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # Full history: the export action and git-auto-commit both need more than
-      # the default shallow (depth=1) checkout.
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # Headless draw.io desktop in a container — exports every *.drawio under
-      # the path into build/diagrams. action-mode: strict renders the whole
-      # path every run (no git-diff detection, so no dependency on history).
-      # Unknown inputs are ignored by the runner, and the index builder matches
-      # SVGs by filename stem, so a page suffix in the output name is harmless.
-      - name: Export diagrams to SVG
-        uses: rlespinasse/drawio-export-action@v2
-        with:
-          path: docs/architecture
-          format: svg
-          output: build/diagrams
-          remove-page-suffix: true
-          action-mode: strict
+      # Install draw.io desktop (latest release .deb; apt resolves its deps) and
+      # xvfb for headless rendering. Self-contained so we render every *.drawio
+      # every run, with no dependency on a third-party action's diff/mode logic.
+      - name: Install draw.io desktop + xvfb
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          url=$(curl -fsSL https://api.github.com/repos/jgraph/drawio-desktop/releases/latest \
+            | grep -o 'https://[^"]*amd64[^"]*\.deb' | head -1)
+          echo "draw.io deb: $url"
+          curl -fsSL "$url" -o /tmp/drawio.deb
+          sudo apt-get install -y /tmp/drawio.deb
+
+      - name: Render diagrams to SVG
+        run: |
+          set -euo pipefail
+          mkdir -p build/diagrams
+          export HOME=/tmp
+          shopt -s nullglob
+          for f in docs/architecture/*.drawio; do
+            name=$(basename "${f%.drawio}")
+            echo "Rendering $f -> build/diagrams/$name.svg"
+            xvfb-run -a --server-args="-screen 0 1280x1024x24" \
+              drawio -x -f svg -o "build/diagrams/$name.svg" "$f" --no-sandbox --disable-gpu
+          done
 
       - name: Normalize export permissions
         run: sudo chown -R "$(id -u):$(id -g)" build docs/architecture
