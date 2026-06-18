@@ -1,0 +1,101 @@
+# Doc inventory
+# root: /home/user/lifegroups
+# generated: 2026-06-18 04:05:47
+# files: 88
+
+FILE                                                       LAST COMMIT  AGE               LINES
+----                                                       -----------  ---               -----
+AGENTS.md                                                  2026-06-18   2 hours ago          46
+CLAUDE.md                                                  2026-06-18   2 hours ago         238
+CONTEXT.md                                                 2026-06-17   7 hours ago         357
+DESIGN.md                                                  2026-06-14   4 days ago          233
+PRODUCT.md                                                 2026-06-14   4 days ago           96
+README.md                                                  2026-06-14   3 days ago          252
+docs/MOBILE_STORE_ROADMAP.md                               2026-06-15   3 days ago          346
+docs/PRD.md                                                2026-06-14   4 days ago          241
+docs/PRODUCT_DEFINITION.md                                 2026-06-14   4 days ago          492
+docs/README.md                                             2026-06-18   2 hours ago          80
+docs/REPO_SWEEP_PLAN.md                                    2026-06-14   3 days ago          637
+docs/adr/0001-admin-write-action-runner.md                 2026-06-14   4 days ago          160
+docs/adr/0002-oversight-ladder-and-leader-gating.md        2026-06-14   4 days ago           60
+docs/adr/0003-private-care-note-encryption.md              2026-06-14   4 days ago          104
+docs/adr/0004-systems-conversation-architecture.md         2026-06-14   4 days ago          124
+docs/adr/0005-centralized-write-validation.md              2026-06-14   4 days ago           43
+docs/adr/0006-multiplication-planner-supersedes-google-doc.md 2026-06-14   4 days ago          102
+docs/adr/0007-group-health-ships-with-placeholder-labels.md 2026-06-14   4 days ago           63
+docs/adr/0008-leader-rename-labels-and-glossary-only.md    2026-06-14   4 days ago           28
+docs/adr/0009-runtime-flags-may-reenable-frozen-surfaces.md 2026-06-14   4 days ago           70
+docs/adr/0010-surface-budget.md                            2026-06-14   4 days ago           90
+docs/adr/0011-group-row-assembly-stays-per-surface.md      2026-06-14   4 days ago           49
+docs/adr/0012-cluster-validators-behind-a-barrel.md        2026-06-14   4 days ago           92
+docs/adr/0013-six-area-navigation-spine.md                 2026-06-14   4 days ago           97
+docs/adr/0014-super-admin-permanent-deletion.md            2026-06-14   4 days ago          163
+docs/adr/0015-reads-seam-for-surface-orchestration.md      2026-06-14   4 days ago           70
+docs/adr/0016-pivot-to-care-plan-multiply.md               2026-06-14   4 days ago           74
+docs/adr/0017-reopen-leader-os-logins-and-care-notes.md    2026-06-14   4 days ago           74
+docs/adr/0018-configurable-af-health-rubrics.md            2026-06-14   4 days ago           44
+docs/adr/0019-multiplication-by-type-and-pillars.md        2026-06-14   4 days ago           56
+docs/adr/0020-leader-care-note-is-group-scoped.md          2026-06-14   4 days ago           66
+docs/adr/0021-three-tier-multiplication-trigger.md         2026-06-14   4 days ago           34
+docs/adr/0022-admin-jsonb-write-reguard-and-audit-locks.md 2026-06-14   4 days ago          137
+docs/adr/0022-multiply-unifies-plan-readiness-leaders.md   2026-06-14   4 days ago           74
+docs/adr/0023-all-notes-feed-and-admin-authorship.md       2026-06-14   4 days ago          102
+docs/adr/0024-default-on-leader-surface-and-groups-people-nav.md 2026-06-14   4 days ago           57
+docs/adr/0025-invitee-chooses-own-name.md                  2026-06-14   4 days ago           69
+docs/adr/0026-flag-reads-stay-per-tier.md                  2026-06-14   4 days ago           49
+docs/adr/0027-home-is-a-self-dismissing-setup-workspace.md 2026-06-16   2 days ago           41
+docs/agents/domain.md                                      2026-06-14   4 days ago           51
+docs/agents/issue-tracker.md                               2026-06-14   4 days ago           22
+docs/agents/triage-labels.md                               2026-06-14   4 days ago           15
+docs/architecture/ARCHITECTURE.md                          2026-06-18   4 hours ago         173
+docs/architecture/DATABASE_SCHEMA.md                       2026-06-14   4 days ago          216
+docs/architecture/DATA_CLASSIFICATION.md                   2026-06-18   2 hours ago          67
+docs/architecture/DEPLOYMENT.md                            2026-06-14   4 days ago           74
+docs/architecture/EMAIL_DELIVERY.md                        2026-06-14   4 days ago          122
+docs/architecture/FREE_TIER_NOTES.md                       2026-06-14   4 days ago           41
+docs/architecture/RLS_VISIBILITY.md                        2026-06-18   4 hours ago         184
+docs/architecture/diagrams.md                              2026-06-18   4 hours ago          30
+docs/design-direction.md                                   2026-06-14   4 days ago          251
+docs/julian-inputs/FEEDBACK_MAP.md                         2026-06-14   4 days ago          129
+docs/julian-inputs/LG_MULTIPLICATION_PLAN_2026.md          2026-06-14   4 days ago          124
+docs/julian-inputs/MIN_CARE_LIST_TEMPLATE.md               2026-06-14   4 days ago           49
+docs/julian-inputs/README.md                               2026-06-14   4 days ago           36
+docs/julian-inputs/SYSTEMS_CONVERSATION.md                 2026-06-14   4 days ago          142
+docs/plans/ADMIN_INTERACTION_MODEL_PRD.md                  2026-06-14   4 days ago          247
+docs/plans/CAPACITY_AND_MULTIPLICATION_PRD.md              2026-06-14   4 days ago          423
+docs/plans/CONCEPT_RECONCILIATION.md                       2026-06-14   4 days ago          128
+docs/plans/FRESH_SLATE_AND_ADMIN_COCKPIT_PRD.md            2026-06-14   4 days ago          342
+docs/plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md                2026-06-14   4 days ago          235
+docs/plans/HOME_CARE_SETTINGS_FINISH_LINE_PLAN.md          2026-06-14   4 days ago          462
+docs/plans/REPO_CONSOLIDATION_SIMPLIFICATION.md            2026-06-16   27 hours ago        379
+docs/plans/SETTINGS_GROUPS_AND_TRIGGERS_PRD.md             2026-06-14   4 days ago          160
+docs/plans/SHEPHERD_CARE_TRACKER_PLAN.md                   2026-06-14   4 days ago          429
+docs/retros/admin-im-04-group-health.md                    2026-06-14   4 days ago           54
+docs/retros/admin-im-05-group-health.md                    2026-06-14   4 days ago           86
+docs/reviews/2026-06-16-architecture-deepening-review.md   2026-06-16   29 hours ago        291
+docs/reviews/2026-06-16-coding-standards-review.md         2026-06-16   31 hours ago        120
+docs/reviews/phase-1-lib-admin-shared-supabase-review.md   2026-06-17   13 hours ago        165
+docs/reviews/phase-2-lib-core-review.md                    2026-06-17   12 hours ago        109
+docs/reviews/phase-3-components-admin-review.md            2026-06-17   12 hours ago        167
+docs/reviews/phase-4-components-shared-review.md           2026-06-17   11 hours ago        150
+docs/reviews/phase-5-app-routes-review.md                  2026-06-17   10 hours ago        141
+docs/reviews/phase-6-types-tests-config-review.md          2026-06-17   9 hours ago         100
+docs/runbooks/BACKUP_AND_RESTORE.md                        2026-06-18   2 hours ago          95
+docs/runbooks/INCIDENT_RESPONSE.md                         2026-06-18   2 hours ago          90
+docs/runbooks/LAUNCH_RUNBOOK.md                            2026-06-14   4 days ago          161
+docs/runbooks/OBSERVABILITY.md                             2026-06-18   2 hours ago          78
+docs/runbooks/RELEASE.md                                   2026-06-14   3 days ago          111
+docs/runbooks/SEEDED_AUTH_ROUTE_SMOKE.md                   2026-06-15   3 days ago           54
+docs/runbooks/care-notes-visibility-setup.md               2026-06-14   4 days ago          123
+docs/runbooks/rls-integration-harness.md                   2026-06-15   3 days ago           71
+docs/store/data-inventory.md                               2026-06-14   4 days ago          108
+docs/store/reviewer-demo-seed.md                           2026-06-14   4 days ago           59
+docs/ui-audit.md                                           2026-06-14   4 days ago          205
+docs/ui-followups.md                                       2026-06-14   4 days ago           94
+supabase/dev/README.md                                     2026-06-14   4 days ago          224
+
+# Dead relative links (target file does not exist)
+# (skips http(s)://, mailto:, and pure #anchor links)
+  none found
+
+# dead-link count: 0
