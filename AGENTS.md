@@ -19,6 +19,16 @@ Treat these LifeGroups issues as high priority:
 - `select("*")` against privacy-sensitive tables.
 - Supabase migrations granting broader access than intended.
 
+Several of these invariants are now **machine-checked** by the fitness suite
+(`tests/fitness/**`), which runs in the gating CI lane (`npm run test:run`):
+no service-role key in `app/**`/`lib/**`, no `select("*")` in runtime code, no
+direct `.from(...).insert|update|delete|upsert` table writes, no hardcoded
+email/UUID in `lib/auth/**` or RLS migrations, and every `app/**/actions.ts`
+routes through the run-action adapter (or a documented exemption). A regression
+fails the build — but the scans are static and conservative, so keep reviewing
+the rest of the list (audit pairing, broad RLS, hard deletes, role boundaries)
+by hand.
+
 The Codex review loop is advisory only. It must not auto-merge PRs, enable auto-merge, delete branches, trigger Gemini automation, or auto-trigger Claude.
 
 ## Agent skills
