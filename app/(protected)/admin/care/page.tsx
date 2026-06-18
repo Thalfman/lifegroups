@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { PageSkeleton } from "@/components/lg/PageSkeleton";
 import { loadAdminFollowUpsData } from "@/components/admin/follow-ups/follow-ups-data";
 import { CareShell, type CareTabKey } from "@/components/admin/care/care-shell";
 import {
@@ -11,6 +13,7 @@ import {
   type DirectoryFilter,
 } from "@/lib/admin/shepherd-care-view";
 import { requireAdmin } from "@/lib/auth/session";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { isSuperAdminRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -147,8 +150,10 @@ export async function CarePageView({
   const params = (await searchParams) ?? {};
   const resolvedTab = resolveCareInitialTabFromParams(params, initialTab);
   const rosterFilter = resolveDirectoryFilter(params.filter);
-  const { tabs, errorBanner } = await loadCarePageData({ rosterFilter });
 
+  // Render the header synchronously and stream the care directory behind a
+  // <Suspense> boundary so a fresh open flushes chrome immediately instead of
+  // waiting on the full care read fan-out (see /admin home for the rationale).
   return (
     <>
       <PageHeader
@@ -157,13 +162,35 @@ export async function CarePageView({
         italic="are doing"
         lede="Your leaders' care in one place, grouped by over-shepherd."
       />
-      <PageBody>
-        {/* Page-level so a failed care read is visible from every tab; otherwise
-            tabs with normal empty states would falsely signal "no care work". */}
-        {errorBanner ? <div className="mb-5">{errorBanner}</div> : null}
-        <CareShell tabs={tabs} initialTab={resolvedTab} />
-      </PageBody>
+      <Suspense fallback={<PageSkeleton bodyOnly />}>
+        <CareData rosterFilter={rosterFilter} resolvedTab={resolvedTab} />
+      </Suspense>
     </>
+  );
+}
+
+async function CareData({
+  rosterFilter,
+  resolvedTab,
+}: {
+  rosterFilter: DirectoryFilter;
+  resolvedTab: CareTabKey;
+}) {
+  // Timed so the production `read_bundle` logs attribute this surface's read
+  // latency; `describe` carries only counts (privacy contract).
+  const { tabs, errorBanner } = await measureReadBundle(
+    "care_page",
+    () => loadCarePageData({ rosterFilter }),
+    (w) => ({ tabs: w.tabs.length, has_error_banner: w.errorBanner != null })
+  );
+
+  return (
+    <PageBody>
+      {/* Page-level so a failed care read is visible from every tab; otherwise
+          tabs with normal empty states would falsely signal "no care work". */}
+      {errorBanner ? <div className="mb-5">{errorBanner}</div> : null}
+      <CareShell tabs={tabs} initialTab={resolvedTab} />
+    </PageBody>
   );
 }
 
