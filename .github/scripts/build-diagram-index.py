@@ -23,6 +23,7 @@ from __future__ import annotations
 import base64
 import glob
 import os
+import re
 import shutil
 import sys
 import urllib.parse
@@ -63,21 +64,31 @@ def viewer_url(xml: str) -> str:
 
 
 def find_svgs(export_dir: str, rel_stem: str) -> list[str]:
-    """Exported SVG(s) for a source, one per page. Prefer an exact match on the
-    mirrored relative path (avoids collisions between same-named diagrams in
-    different folders); fall back to a recursive basename match."""
-    # Page 1 is the unsuffixed "<stem>.svg"; rank it first, then page suffixes.
-    def page_order(path: str, stem: str) -> tuple[int, str]:
-        return (0, "") if os.path.basename(path) == f"{stem}.svg" else (1, path)
+    """Exported SVG(s) for a source, one per page, page 1 first.
 
-    exact = glob.glob(os.path.join(export_dir, f"{glob.escape(rel_stem)}*.svg"))
-    if exact:
-        return sorted(exact, key=lambda p: page_order(p, os.path.basename(rel_stem)))
+    Prefer an exact match on the mirrored relative path (avoids collisions
+    between same-named diagrams in different folders); fall back to a recursive
+    basename match. Only "<base>.svg" (page 1) and "<base>-<N>.svg" (further
+    pages, N numeric) count — this keeps a sibling whose name merely shares a
+    prefix (e.g. "system-architecture-v2.svg") from being mistaken for a page
+    of "system-architecture", and sorts multi-page output numerically."""
     base = os.path.basename(rel_stem)
-    matches = glob.glob(
-        os.path.join(export_dir, "**", f"{glob.escape(base)}*.svg"), recursive=True
-    )
-    return sorted(matches, key=lambda p: page_order(p, base))
+    page_re = re.compile(rf"^{re.escape(base)}(?:-(\d+))?\.svg$")
+
+    candidates = glob.glob(os.path.join(export_dir, f"{glob.escape(rel_stem)}*.svg"))
+    if not candidates:
+        candidates = glob.glob(
+            os.path.join(export_dir, "**", f"{glob.escape(base)}*.svg"), recursive=True
+        )
+
+    def page_num(path: str) -> int | None:
+        m = page_re.match(os.path.basename(path))
+        if not m:
+            return None
+        return int(m.group(1)) if m.group(1) else 0
+
+    pages = [(page_num(p), p) for p in candidates]
+    return [p for n, p in sorted((n, p) for n, p in pages if n is not None)]
 
 
 def title_from_stem(stem: str) -> str:

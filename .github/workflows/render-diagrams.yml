@@ -8,7 +8,9 @@ name: Render diagrams
 on:
   push:
     paths:
-      - "docs/architecture/**.drawio"
+      # Both forms: '**/*' matches nested diagrams, '*' the top-level ones.
+      - "docs/architecture/**/*.drawio"
+      - "docs/architecture/*.drawio"
       - ".github/scripts/build-diagram-index.py"
       - ".github/workflows/render-diagrams.yml"
   workflow_dispatch:
