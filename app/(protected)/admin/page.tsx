@@ -1,6 +1,9 @@
+import { Suspense } from "react";
 import { PageHeader } from "@/components/lg/PageHeader";
+import { PageSkeleton } from "@/components/lg/PageSkeleton";
 import { DashboardClient } from "@/components/lg/admin/dashboard/DashboardClient";
 import { requireAdmin } from "@/lib/auth/session";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminDashboardData } from "@/lib/dashboard/queries";
 import {
@@ -30,18 +33,52 @@ type SearchParams = {
   from?: string | string[];
 };
 
+// Thin shell: guard, resolve the URL params, and render the page header
+// synchronously, then stream the data-heavy dashboard behind a <Suspense>
+// boundary. On a fresh open this flushes the header + body skeleton in the first
+// response chunk instead of withholding all HTML until the ~21-read dashboard
+// resolves — the perceived-load win (the in-app navigation path was already fast
+// via the route loading.tsx + sidebar prefetch). requireAdmin() runs here so an
+// unauthorized user redirects before any shell/header is emitted.
 export default async function AdminPage({
   searchParams,
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
-  const session = await requireAdmin();
+  await requireAdmin();
 
   const params = (await searchParams) ?? {};
   const grain = resolveOverviewGrain(params.period);
   // ADR 0027: a setup deep-link's "← Back to setup" affordance returns here with
   // ?from=setup, so Home re-focuses the next incomplete step.
   const fromSetup = firstParam(params.from) === "setup";
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Ministry Admin"
+        title="Home"
+        lede="What needs your attention first — then the week ahead, the ministry snapshot, and recent activity."
+      />
+      <Suspense fallback={<PageSkeleton bodyOnly />}>
+        <AdminHomeData grain={grain} fromSetup={fromSetup} />
+      </Suspense>
+    </>
+  );
+}
+
+// Data child: the dashboard read fan-out + view-model derivation, isolated so it
+// can suspend independently of the header above. requireAdmin() is re-asserted
+// for type-narrowing (session.profile) at zero round-trip cost — getCurrentSession
+// is React.cache-wrapped, so it shares the parent's getUser()/profile read.
+async function AdminHomeData({
+  grain,
+  fromSetup,
+}: {
+  grain: ReturnType<typeof resolveOverviewGrain>;
+  fromSetup: boolean;
+}) {
+  const session = await requireAdmin();
 
   const client = await createSupabaseServerClient();
   // The guest pipeline is frozen by default (ADR 0002 / 0009). Resolve the flag
@@ -62,6 +99,10 @@ export default async function AdminPage({
   // grid (Multiply). Each degrades PER CARD below — a failed read renders that
   // card unavailable, never a false zero — and the no-client preview renders
   // the typed demo seeds instead.
+  // Each bundle is timed separately so the production `read_bundle` logs show
+  // which read dominates this hot page's TTFB (mirrors /admin/multiply). The
+  // `describe` payloads carry only counts/discriminants — never row contents —
+  // per the read-timing privacy contract.
   const [
     dashboard,
     guestsLive,
@@ -70,12 +111,41 @@ export default async function AdminPage({
     prospectCounts,
     multiplyGridData,
   ] = await Promise.all([
-    getAdminDashboardData(client, { grain }),
-    isFrozenSurfaceLive("guests"),
-    getMutedAttentionKeys(),
-    loadHiddenNavAreas(),
-    client ? fetchProspectStateCounts(client) : null,
-    client ? loadMultiplyGridData() : null,
+    measureReadBundle(
+      "admin_home_dashboard",
+      () => getAdminDashboardData(client, { grain }),
+      (d) => ({
+        result_kind: d.source,
+        degraded: d.source === "fallback" && d.error != null,
+      })
+    ),
+    measureReadBundle("admin_home_guests_flag", () =>
+      isFrozenSurfaceLive("guests")
+    ),
+    measureReadBundle(
+      "admin_home_muted_keys",
+      () => getMutedAttentionKeys(),
+      (keys) => ({ muted: keys.length })
+    ),
+    measureReadBundle(
+      "admin_home_hidden_nav",
+      () => loadHiddenNavAreas(),
+      (set) => ({ hidden: set.size })
+    ),
+    client
+      ? measureReadBundle(
+          "admin_home_prospect_counts",
+          () => fetchProspectStateCounts(client),
+          (r) => ({ result_kind: r.error ? "error" : "ok" })
+        )
+      : null,
+    client
+      ? measureReadBundle(
+          "admin_home_multiply_grid",
+          () => loadMultiplyGridData(),
+          (r) => ({ result_kind: r.error ? "error" : "ok" })
+        )
+      : null,
   ]);
   const { data } = dashboard;
 
@@ -115,25 +185,18 @@ export default async function AdminPage({
   const degraded = dashboard.source === "fallback" && dashboard.error != null;
 
   return (
-    <>
-      <PageHeader
-        eyebrow="Ministry Admin"
-        title="Home"
-        lede="What needs your attention first — then the week ahead, the ministry snapshot, and recent activity."
-      />
-      <DashboardClient
-        data={data}
-        interestFunnel={interestFunnel}
-        multiplyReadiness={multiplyReadiness}
-        guestsLive={guestsLive}
-        degraded={degraded}
-        scopeId={session.profile.id}
-        mutedKeys={mutedKeys}
-        canResetActivity={session.profile.role === "super_admin"}
-        hiddenNavAreas={[...hiddenNavAreas]}
-        isSuperAdmin={session.profile.role === "super_admin"}
-        fromSetup={fromSetup}
-      />
-    </>
+    <DashboardClient
+      data={data}
+      interestFunnel={interestFunnel}
+      multiplyReadiness={multiplyReadiness}
+      guestsLive={guestsLive}
+      degraded={degraded}
+      scopeId={session.profile.id}
+      mutedKeys={mutedKeys}
+      canResetActivity={session.profile.role === "super_admin"}
+      hiddenNavAreas={[...hiddenNavAreas]}
+      isSuperAdmin={session.profile.role === "super_admin"}
+      fromSetup={fromSetup}
+    />
   );
 }
