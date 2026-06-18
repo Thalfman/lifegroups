@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { readSourceFiles } from "./support/source-globber";
+import { readSourceFiles, stripComments } from "./support/source-globber";
 import {
   formatMatches,
   scanLines,
+  stripFiles,
   stripSqlComments,
   TEST_FILE_EXCLUDES,
 } from "./support/scan";
@@ -14,9 +15,12 @@ import {
 //   1. `lib/auth/**` runtime code (session/role helpers).
 //   2. RLS policy migrations under `supabase/migrations/**`.
 //
-// Comments are stripped from SQL (migrations explain case-insensitive email
-// handling with illustrative literals like 'Alice@x.com'), and colocated tests
-// are excluded (they use fixture UUID/email constants by design).
+// Comments are stripped from BOTH (TS via stripComments, SQL via
+// stripSqlComments) so an illustrative literal in a comment — `// e.g.
+// julian@church.org` or migrations explaining case-insensitive email handling
+// with 'Alice@x.com' — never trips it. String contents are KEPT, since a
+// hardcoded email/UUID in a string IS the violation. Colocated tests are
+// excluded (they use fixture UUID/email constants by design).
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
 const UUID =
@@ -24,11 +28,14 @@ const UUID =
 
 describe("fitness: no hardcoded identity in authorization code", () => {
   it("lib/auth/** never hardcodes an email or UUID literal", () => {
-    const files = readSourceFiles({
-      roots: ["lib/auth"],
-      extensions: [".ts", ".tsx"],
-      exclude: [...TEST_FILE_EXCLUDES],
-    });
+    const files = stripFiles(
+      readSourceFiles({
+        roots: ["lib/auth"],
+        extensions: [".ts", ".tsx"],
+        exclude: [...TEST_FILE_EXCLUDES],
+      }),
+      stripComments
+    );
     const hits = [...scanLines(files, EMAIL), ...scanLines(files, UUID)];
     expect(
       hits,

@@ -184,6 +184,18 @@ export const DATA_CLASSIFICATION: readonly TableClassification[] = [
     columns: [{ column: "notes", classification: "sensitive_care" }],
   },
   {
+    table: "member_care_profiles",
+    classification: "sensitive_care",
+    columns: [{ column: "admin_summary", classification: "admin_private" }],
+    note: "Member-half of Care (flag-gated); admin-only summary, admin-read.",
+  },
+  {
+    table: "member_care_interactions",
+    classification: "sensitive_care",
+    columns: [{ column: "notes", classification: "sensitive_care" }],
+    note: "Member care interaction history; admin-read.",
+  },
+  {
     table: "shepherd_care_follow_ups",
     classification: "sensitive_care",
     columns: [{ column: "notes", classification: "sensitive_care" }],

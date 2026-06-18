@@ -83,14 +83,22 @@ export function listSourceFiles(options: GlobOptions): string[] {
   const exclude = options.exclude ?? [];
   const found: string[] = [];
 
-  for (const dir of options.roots) {
-    const absDir = resolve(root, dir);
+  for (const entry of options.roots) {
+    const abs = resolve(root, entry);
+    let stat;
     try {
-      if (!statSync(absDir).isDirectory()) continue;
+      stat = statSync(abs);
     } catch {
-      continue;
+      continue; // A listed root may not exist in every checkout.
     }
-    walk(absDir, found);
+    if (stat.isDirectory()) {
+      walk(abs, found);
+    } else if (stat.isFile()) {
+      // A file root (e.g. `proxy.ts`, the request-level middleware) is a real
+      // scan target — enqueue it directly so the extension filter can keep it,
+      // rather than silently dropping it for not being a directory.
+      found.push(abs);
+    }
   }
 
   return found
@@ -109,19 +117,86 @@ export function readSourceFiles(options: GlobOptions): SourceFile[] {
   });
 }
 
+// Words after which a `/` starts a regex literal, not a division — so the scan
+// doesn't misread `return /['"]/` as a string. Combined with the punctuation
+// set below this covers the real shapes in this repo (`if (/["(),]/.test(...))`,
+// `.replace(/'/g, "''")`).
+const REGEX_PREFIX_KEYWORDS = new Set([
+  "return",
+  "typeof",
+  "instanceof",
+  "in",
+  "of",
+  "case",
+  "do",
+  "else",
+  "yield",
+  "await",
+  "void",
+  "delete",
+  "new",
+]);
+
+// A `/` begins a regex literal when the previous significant code is empty,
+// an operator/opening punctuation, or one of the keywords above — never after a
+// value (identifier, number, `)`, `]`, string/regex close).
+function regexAllowed(lastSig: string, trailingWord: string): boolean {
+  if (lastSig === "") return true;
+  if ("=(,[{;:!&|?+-*/%^~<>".includes(lastSig)) return true;
+  return REGEX_PREFIX_KEYWORDS.has(trailingWord);
+}
+
 /**
- * Strip line (`//`) and block (`/* *\/`) comments and string/template literals
- * to a single space, so a structural scan matches real code, not a path printed
- * in a comment or a sample string. Deliberately simple (not a full tokenizer):
- * it errs toward blanking, which can only ever REMOVE a match — a checker that
- * wants to be conservative should scan the raw text instead.
+ * Strip line (`//`) and block (`/* *\/`) comments — and, when `blankStrings` is
+ * true, string/template/regex literals — to spaces, so a structural scan matches
+ * real code rather than a path printed in a comment or a sample string. Newlines
+ * are preserved so line numbers stay aligned.
+ *
+ * Regex literals are recognised (with char-class `[...]` awareness) so a quote
+ * inside one — e.g. `/['"]/` — does NOT flip the scanner into string mode and
+ * blank the rest of the file. Not a full tokenizer, but it errs toward blanking,
+ * which only ever REMOVES a match.
+ *
+ * `blankStrings: false` keeps string contents (used by scans that must still see
+ * a literal — a `select("*")`, an email/UUID, an import path — while ignoring
+ * comments); `true` blanks them too (used by the direct-write scan, where a
+ * table name or a `.insert` mention inside a string must not match).
  */
-export function stripCommentsAndStrings(source: string): string {
+export function stripCode(
+  source: string,
+  options: { blankStrings: boolean }
+): string {
+  const { blankStrings } = options;
   let out = "";
   let i = 0;
   const n = source.length;
-  type Mode = "code" | "line" | "block" | "single" | "double" | "template";
+  type Mode =
+    | "code"
+    | "line"
+    | "block"
+    | "single"
+    | "double"
+    | "template"
+    | "regex";
   let mode: Mode = "code";
+  let inCharClass = false; // inside a regex `[...]`
+  let lastSig = ""; // last significant code char emitted
+  let trailingWord = ""; // identifier currently being emitted (for keyword check)
+
+  const pushCode = (ch: string) => {
+    out += ch;
+    if (/\s/.test(ch)) {
+      if (ch === "\n") trailingWord = "";
+    } else {
+      lastSig = ch;
+      trailingWord = /[A-Za-z0-9_$]/.test(ch) ? trailingWord + ch : "";
+    }
+  };
+
+  // Emit a blanked char for a stripped literal: keep newlines, else a space.
+  const blank = (ch: string) => {
+    out += ch === "\n" ? "\n" : " ";
+  };
 
   while (i < n) {
     const c = source[i];
@@ -134,20 +209,18 @@ export function stripCommentsAndStrings(source: string): string {
       } else if (c === "/" && next === "*") {
         mode = "block";
         i += 2;
-      } else if (c === "'") {
-        mode = "single";
-        out += " ";
+      } else if (c === "/" && regexAllowed(lastSig, trailingWord)) {
+        mode = "regex";
+        inCharClass = false;
+        blank(c);
         i += 1;
-      } else if (c === '"') {
-        mode = "double";
-        out += " ";
-        i += 1;
-      } else if (c === "`") {
-        mode = "template";
-        out += " ";
+      } else if (c === "'" || c === '"' || c === "`") {
+        mode = c === "'" ? "single" : c === '"' ? "double" : "template";
+        if (blankStrings) blank(c);
+        else pushCode(c);
         i += 1;
       } else {
-        out += c;
+        pushCode(c);
         i += 1;
       }
       continue;
@@ -173,22 +246,56 @@ export function stripCommentsAndStrings(source: string): string {
       continue;
     }
 
+    if (mode === "regex") {
+      // Regex literals are always blanked (they are never a scan target).
+      if (c === "\\") {
+        i += 2; // escape — skip the escaped char
+        continue;
+      }
+      if (c === "[") inCharClass = true;
+      else if (c === "]") inCharClass = false;
+      else if (c === "/" && !inCharClass) {
+        mode = "code";
+        lastSig = "/"; // a regex value closed; the next `/` is division
+        trailingWord = "";
+      } else if (c === "\n") {
+        out += "\n";
+      }
+      i += 1;
+      continue;
+    }
+
     // Inside a string/template literal: skip escapes, end on the closer.
     if (c === "\\") {
+      if (!blankStrings) out += source.slice(i, i + 2);
       i += 2;
       continue;
     }
-    if (
+    const closer =
       (mode === "single" && c === "'") ||
       (mode === "double" && c === '"') ||
-      (mode === "template" && c === "`")
-    ) {
+      (mode === "template" && c === "`");
+    if (closer) {
       mode = "code";
-    } else if (c === "\n") {
-      out += "\n";
+      if (blankStrings) blank(c);
+      else pushCode(c);
+    } else if (blankStrings) {
+      blank(c);
+    } else {
+      pushCode(c);
     }
     i += 1;
   }
 
   return out;
+}
+
+/** Strip comments only — keep string/regex contents. */
+export function stripComments(source: string): string {
+  return stripCode(source, { blankStrings: false });
+}
+
+/** Strip comments AND string/template/regex literals (to spaces). */
+export function stripCommentsAndStrings(source: string): string {
+  return stripCode(source, { blankStrings: true });
 }

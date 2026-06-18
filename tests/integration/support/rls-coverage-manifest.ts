@@ -15,6 +15,18 @@
 // (`lib/admin/__tests__/admin-rls-visibility-sweep.test.ts`, the source of truth
 // in `docs/architecture/RLS_VISIBILITY.md`). Deferral only means this LIVE,
 // per-tier-client harness has not yet provisioned a row fixture for it.
+//
+// ROW vs COLUMN scope: this manifest tracks ROW visibility — which tiers may
+// read a table's rows. Postgres RLS is row-level, so some LEADER_SCOPED tables
+// (e.g. `groups`, `follow_ups`, `attendance_sessions`, `group_health_updates`)
+// expose a row to a leader while still carrying an admin-private COLUMN
+// (`admin_notes`, `admin_private_note`, `admin_note`). Those columns are NOT
+// hidden by RLS; they are kept off leader surfaces by the read-layer named-column
+// allowlists (the `select(...)` callers, enforced by the no-`select("*")` fitness
+// check + reviewed reads). The per-column classification lives in the
+// data-classification manifest (#694). So a green ROW-visibility assertion here
+// is necessary but NOT sufficient for those mixed-sensitivity tables — the column
+// invariant is a separate, read-layer guarantee.
 
 import { sensitiveTables } from "@/lib/security/data-classification";
 
@@ -70,6 +82,14 @@ export const RLS_COVERAGE: Readonly<Record<string, CoverageEntry>> = {
   shepherd_care_interactions: deferred(
     "OVER_SHEPHERD_SCOPED",
     `needs a seeded interaction row; ${STATIC_SWEEP}`
+  ),
+  member_care_profiles: deferred(
+    "ADMIN_READ",
+    `needs a seeded member care profile row; ${STATIC_SWEEP}`
+  ),
+  member_care_interactions: deferred(
+    "ADMIN_READ",
+    `needs a seeded member care interaction row; ${STATIC_SWEEP}`
   ),
   shepherd_care_follow_ups: deferred(
     "ADMIN_READ",
@@ -155,8 +175,9 @@ export const RLS_COVERAGE: Readonly<Record<string, CoverageEntry>> = {
       `inside SECURITY DEFINER RPCs. ${STATIC_SWEEP}`
   ),
   account_deletion_requests: deferred(
-    "ADMIN_READ",
-    `policy_tbd in the classification manifest; needs a seeded request row. ` +
+    "SUPER_ADMIN_ONLY",
+    `Super-Admin-only SELECT (account_deletion_requests_super_admin_read); ` +
+      `policy_tbd in the classification manifest; needs a seeded request row. ` +
       STATIC_SWEEP
   ),
 };

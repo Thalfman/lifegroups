@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { readSourceFiles } from "./support/source-globber";
-import { TEST_FILE_EXCLUDES } from "./support/scan";
+import { readSourceFiles, stripComments } from "./support/source-globber";
+import { stripFiles, TEST_FILE_EXCLUDES } from "./support/scan";
 
 // P0 invariant: every app-driven write follows the fixed pipeline (validate →
 // guard → RPC → revalidate → log) via the shared Write Action Runner (ADR
@@ -15,14 +15,22 @@ import { TEST_FILE_EXCLUDES } from "./support/scan";
 // with its reason, so a NEW action module that bypasses the runner without a
 // conscious exemption fails this check.
 
-const ACTION_FILES = readSourceFiles({
-  roots: ["app"],
-  extensions: [".ts"],
-  exclude: [...TEST_FILE_EXCLUDES],
-}).filter((f) => /(^|\/)(actions|[a-z-]+-actions)\.ts$/.test(f.relPath));
+// Scan comment-stripped source so a leftover `// TODO: use runAdminWriteAction`
+// comment can't satisfy the check. String contents are kept so the import-path
+// literal survives.
+const ACTION_FILES = stripFiles(
+  readSourceFiles({
+    roots: ["app"],
+    extensions: [".ts"],
+    exclude: [...TEST_FILE_EXCLUDES],
+  }).filter((f) => /(^|\/)(actions|[a-z-]+-actions)\.ts$/.test(f.relPath)),
+  stripComments
+);
 
+// Require a REAL import from an approved run-action module — not merely the
+// presence of a runner symbol, which a local same-named symbol could spoof.
 const ADAPTER_IMPORT =
-  /from\s+["']@\/lib\/(admin|leader|shared)\/run-action["']|run(?:Admin|Leader|Write|SuperAdmin|OverShepherd)WriteAction/;
+  /from\s+["']@\/lib\/(admin|leader|shared)\/run-action["']/;
 
 // Action modules exempt from the runner, each with a documented reason. Keep
 // this list short and justified; adding to it is a reviewable decision.

@@ -19,7 +19,7 @@ import { TEST_FILE_EXCLUDES } from "./support/scan";
 // (which provisions rows through the service client) is out of scope.
 
 const RUNTIME = readSourceFiles({
-  roots: ["app", "lib", "proxy.ts"],
+  roots: ["app", "lib", "components", "proxy.ts"],
   extensions: [".ts", ".tsx"],
   exclude: [...TEST_FILE_EXCLUDES],
 });
@@ -27,9 +27,13 @@ const RUNTIME = readSourceFiles({
 const WRITE_METHOD = /\.(insert|update|delete|upsert)\s*\(/;
 
 // Find `.from(...)` call chains that reach a write method before the statement
-// ends. Works on comment/string-stripped, newline-flattened text so a chain
-// spread across lines is still seen as one statement. A statement boundary is a
-// `;` or `{`; we also cap the look-ahead window to keep matching local.
+// ends. Works on comment/string/regex-stripped, newline-flattened text so a
+// chain spread across lines is still seen as one statement. The window ends at
+// the next `;` (a statement boundary) — NOT at the first `{`, which can be an
+// object-literal argument of an intermediate chained call (e.g.
+// `.from("t").match({ id }).update({...})`) appearing BEFORE the write method.
+// We bias toward catching: an over-match fails loudly and a human reviews it,
+// whereas a missed direct write would silently bypass the audit pipeline.
 function findDirectWrites(file: SourceFile): string[] {
   const flat = stripCommentsAndStrings(file.text).replace(/\s+/g, " ");
   const hits: string[] = [];
@@ -39,7 +43,7 @@ function findDirectWrites(file: SourceFile): string[] {
     const start = m.index;
     // Window from this `.from(` to the next statement boundary (or 400 chars).
     const rest = flat.slice(start, start + 400);
-    const boundary = rest.search(/[;{]/);
+    const boundary = rest.indexOf(";");
     const segment = boundary === -1 ? rest : rest.slice(0, boundary);
     const w = segment.match(WRITE_METHOD);
     if (w) hits.push(`${file.relPath}: …${segment.trim().slice(0, 120)}…`);
@@ -48,7 +52,7 @@ function findDirectWrites(file: SourceFile): string[] {
 }
 
 describe("fitness: no direct Supabase table writes in runtime code", () => {
-  it("app/** and lib/** never .from(...).insert|update|delete|upsert", () => {
+  it("the runtime tree never does .from(...).insert|update|delete|upsert", () => {
     const hits = RUNTIME.flatMap(findDirectWrites);
     expect(
       hits,

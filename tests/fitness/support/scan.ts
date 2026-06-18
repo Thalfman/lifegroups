@@ -5,6 +5,14 @@
 
 import type { SourceFile } from "./source-globber";
 
+/** Apply a text transform (e.g. comment stripping) to each file's contents. */
+export function stripFiles(
+  files: readonly SourceFile[],
+  transform: (text: string) => string
+): SourceFile[] {
+  return files.map((f) => ({ ...f, text: transform(f.text) }));
+}
+
 /** One regex hit inside a file, with a 1-based line number for the report. */
 export interface LineMatch {
   readonly relPath: string;

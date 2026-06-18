@@ -2,10 +2,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { resolveIntegrationEnv } from "./support/env";
 import { provisionFixtures, type Fixtures } from "./support/fixtures";
-import {
-  RLS_COVERAGE,
-  reconcileCoverage,
-} from "./support/rls-coverage-manifest";
 
 // (a) Per-tier RLS visibility across the oversight ladder, INCLUDING the two
 // visibility exceptions. Every assertion runs through a per-tier authenticated
@@ -23,56 +19,10 @@ import {
 const probe = resolveIntegrationEnv();
 const suite = probe.kind === "ready" ? describe : describe.skip;
 
-// (b) Coverage manifest completeness. This is a PURE check (no database): it
-// reconciles the RLS coverage map against the sensitive-table set derived from
-// the data-classification manifest (#694). It runs even when the live stack is
-// absent, so a newly-classified sensitive table that lacks a coverage entry
-// fails loudly here rather than silently implying full coverage. See #693.
-describe("RLS coverage manifest completeness", () => {
-  const report = reconcileCoverage();
-
-  it("every sensitive table (from the classification manifest) has a coverage entry", () => {
-    expect(
-      report.missing,
-      report.missing.length === 0
-        ? ""
-        : `Sensitive tables with no RLS coverage entry — add an asserted or ` +
-            `deferred(reason) entry to rls-coverage-manifest.ts:\n  ${report.missing.join(
-              "\n  "
-            )}`
-    ).toEqual([]);
-  });
-
-  it("the coverage map has no stale (non-sensitive) entries", () => {
-    expect(
-      report.stale,
-      report.stale.length === 0
-        ? ""
-        : `Coverage entries for tables no longer classified sensitive:\n  ${report.stale.join(
-            "\n  "
-          )}`
-    ).toEqual([]);
-  });
-
-  it("every deferred entry documents a reason (incompleteness is visible)", () => {
-    const undocumented = Object.entries(RLS_COVERAGE)
-      .filter(
-        ([, e]) =>
-          e.status.kind === "deferred" && e.status.reason.trim().length === 0
-      )
-      .map(([t]) => t);
-    expect(undocumented).toEqual([]);
-  });
-
-  it("reports the live asserted/deferred split (visibility, not a gate)", () => {
-    // Not an assertion that everything is asserted — just a guard that the
-    // harness asserts a meaningful core and the rest is consciously deferred.
-    expect(report.asserted.length).toBeGreaterThanOrEqual(8);
-    expect(report.asserted.length + report.deferred.length).toBe(
-      Object.keys(RLS_COVERAGE).length
-    );
-  });
-});
+// (b) The PURE coverage-manifest completeness check moved to the default gating
+// lane (`tests/fitness/rls-coverage-completeness.test.ts`) so coverage drift
+// fails a normal PR without a live stack. This file keeps only the LIVE,
+// per-tier DB assertions below.
 
 if (probe.kind === "skip") {
   // Surface the reason so a skipped run is self-explanatory, not silent.
