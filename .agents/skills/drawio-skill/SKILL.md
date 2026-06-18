@@ -148,6 +148,7 @@ When a preset loads successfully, mention it in the first line of the reply: _"U
 5. **Self-check** — use the agent's built-in vision capability to read the exported PNG, catch obvious issues, auto-fix before showing user (requires a vision-enabled model such as Claude Sonnet/Opus). If reading the PNG returns a 400 / "Could not process image" error, you almost certainly exported with `-e` by mistake — re-export without `-e` and retry once. If it still fails, skip self-check and continue to step 6.
 6. **Review loop** — show image to user, collect feedback, apply targeted XML edits, re-export, repeat until approved
 7. **Final export** — re-export the approved version to all requested formats. Use `-e` here (PNG/SVG/PDF) so the deliverable stays editable in draw.io; save as `<name>.drawio.png` to signal embedded XML. **For PNG with `-e`, run `python3 <this-skill-dir>/scripts/repair_png.py <name>.drawio.png` immediately after** — draw.io's CLI truncates the IEND chunk in `-e` PNG output (8 bytes missing), producing a corrupt file that vision APIs and strict PNG decoders reject (issue #8). Report file paths.
+8. **Persist to the repo (always, when inside a git repo)** — never leave the diagram, the viewer URL, or the rendered image as chat-only artifacts. Materialize them so they survive the session and are viewable from anywhere (including mobile). See **"Persisting diagrams to a repo"** below for the required outputs. Do this on every run without being asked.
 
 **If `drawio --version` crashes or prints nothing (common in restricted macOS sandbox isolation like codex.app):**
 
@@ -212,6 +213,17 @@ Once the user approves:
 - Report file paths for both the `.drawio` source file and exported image(s)
 - **Auto-launch:** offer to open the `.drawio` file in draw.io desktop for fine-tuning — `open diagram.drawio` (macOS), `xdg-open` (Linux), `start` (Windows)
 - Confirm files are saved and ready to use
+
+### Step 8: Persisting diagrams to a repo
+
+**A viewer URL printed only into chat is not a deliverable** — the user can't find it later, can't open it on mobile, and the next agent regenerates a different one. Whenever you generate a diagram **inside a git repository**, persist the viewable artifacts to the repo on every run, without being asked:
+
+1. **Commit the `.drawio` source.** It is the editable source of truth. Pick a sensible in-repo home (e.g. `docs/architecture/`, `docs/diagrams/`).
+2. **Write/refresh a committed index doc** (e.g. `docs/<area>/diagrams.md`) that, for each diagram, **embeds the rendered SVG** (`![title](name.svg)` — renders inline on GitHub including the mobile site/app) **and links the diagrams.net viewer URL** (`python3 <this-skill-dir>/scripts/encode_drawio_url.py <file>.drawio`). The SVG is the no-tap mobile view; the viewer URL is the interactive zoom. Mark the file as generated.
+3. **Render the SVG.** If the draw.io CLI is available, export `-f svg`. If it isn't (sandbox/remote), don't hand-render — instead make the rendering **automatic and durable** via CI (next point), and leave the inline embed marked "pending the next CI run" with the viewer link usable immediately.
+4. **Add a render workflow so it never goes stale.** A diagrams.net viewer URL is a frozen snapshot of the XML — it rots silently when the `.drawio` changes. A committed SVG rots the same way. Add a CI job that, on any change to a `*.drawio` (or the index script), re-renders the SVG and regenerates the index doc, then commits both back. A reference implementation lives in this repo at `.github/workflows/render-diagrams.yml` + `.github/scripts/build-diagram-index.py` (headless draw.io desktop + `xvfb` → SVG, Python index builder, `git-auto-commit-action`); adapt the paths and reuse it rather than reinventing.
+
+The net effect: opening the index doc on GitHub (desktop **or** phone) always shows the current diagram inline, with a one-tap interactive link — and no human ever has to ask an agent to re-emit a URL.
 
 ## Style Presets
 

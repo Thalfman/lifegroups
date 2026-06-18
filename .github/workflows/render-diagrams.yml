@@ -1,0 +1,77 @@
+name: Render diagrams
+
+# Renders the editable docs/architecture/*.drawio sources to SVG and rebuilds
+# docs/architecture/diagrams.md (inline SVG embeds + diagrams.net viewer links)
+# on every change, then commits both back. Keeps the mobile-viewable artifacts
+# in the repo and never stale — no one has to regenerate a viewer URL by hand.
+
+on:
+  push:
+    paths:
+      # Both forms: '**/*' matches nested diagrams, '*' the top-level ones.
+      - "docs/architecture/**/*.drawio"
+      - "docs/architecture/*.drawio"
+      - ".github/scripts/build-diagram-index.py"
+      - ".github/workflows/render-diagrams.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render-diagrams-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    name: render drawio → svg + viewer links
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install draw.io desktop (latest release .deb; apt resolves its deps) and
+      # xvfb for headless rendering. Self-contained so we render every *.drawio
+      # every run, with no dependency on a third-party action's diff/mode logic.
+      - name: Install draw.io desktop + xvfb
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          # Resolve the latest version from the releases/latest redirect, not the
+          # GitHub API (unauthenticated API from runners is rate-limited -> 403).
+          tag=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+            https://github.com/jgraph/drawio-desktop/releases/latest | sed 's#.*/tag/##')
+          ver=${tag#v}
+          url="https://github.com/jgraph/drawio-desktop/releases/download/${tag}/drawio-amd64-${ver}.deb"
+          echo "draw.io deb: $url"
+          curl -fsSL -o /tmp/drawio.deb "$url"
+          sudo apt-get install -y /tmp/drawio.deb
+
+      - name: Render diagrams to SVG
+        run: |
+          set -euo pipefail
+          export HOME=/tmp
+          shopt -s nullglob globstar
+          # Recurse into subfolders and mirror the source tree into the export
+          # dir so the index builder can match each source to its SVG(s).
+          # -a renders every page (multi-page files get page-suffixed SVGs).
+          for f in docs/architecture/**/*.drawio; do
+            rel="${f#docs/architecture/}"
+            out="build/diagrams/${rel%.drawio}.svg"
+            mkdir -p "$(dirname "$out")"
+            echo "Rendering $f -> $out"
+            xvfb-run -a --server-args="-screen 0 1280x1024x24" \
+              drawio -x -f svg -a -o "$out" "$f" --no-sandbox --disable-gpu
+          done
+
+      - name: Build diagram index (SVG embeds + viewer links)
+        run: python3 .github/scripts/build-diagram-index.py build/diagrams
+
+      - name: Commit rendered SVGs + index
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: render architecture diagrams (svg + viewer links) [skip ci]"
+          # Directory pathspec so nested SVGs (docs/architecture/**/*.svg) and the
+          # regenerated index are all staged.
+          file_pattern: "docs/architecture"
