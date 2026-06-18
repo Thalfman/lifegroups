@@ -45,6 +45,16 @@ describe("isWrite", () => {
     ).toBe(false);
   });
 
+  it("treats destructive DML on audit_events as a write (only the insert is exempt)", () => {
+    expect(
+      isWrite("delete from public.audit_events where created_at < x")
+    ).toBe(true);
+    expect(isWrite("update public.audit_events set metadata = '{}'")).toBe(
+      true
+    );
+    expect(isWrite("truncate public.audit_events")).toBe(true);
+  });
+
   it("ignores DML hidden inside a single-quoted string (dynamic SQL)", () => {
     expect(isWrite("execute 'delete from public.members where id = 1'")).toBe(
       false
@@ -256,6 +266,35 @@ describe("classifyDefiners", () => {
     expect(result.unaudited.map((w) => w.signature)).toEqual([
       "public.admin_bad_wrapper()",
     ]);
+  });
+
+  it("follows a write delegated to a non-definer (invoker) helper via allFunctions", () => {
+    const wrapper = fn({
+      signature: "public.admin_wrapper()",
+      name: "public.admin_wrapper",
+      isSecurityDefiner: true,
+      body: "perform public.invoker_helper();", // no direct DML, no audit
+    });
+    const invokerHelper = fn({
+      signature: "public.invoker_helper()",
+      name: "public.invoker_helper",
+      isSecurityDefiner: false,
+      appExecutable: false, // app EXECUTE revoked → nonDefinerAppWrites can't see it
+      body: "delete from public.members where id = 1",
+    });
+    // Without allFunctions the helper is invisible → wrapper stays read_helper.
+    const blind = classifyDefiners([wrapper]);
+    expect(blind.writes.map((w) => w.signature)).not.toContain(
+      "public.admin_wrapper()"
+    );
+    // With allFunctions the closure follows the delegated write → wrapper audits.
+    const seen = classifyDefiners([wrapper], [wrapper, invokerHelper]);
+    expect(seen.writes.map((w) => w.signature)).toContain(
+      "public.admin_wrapper()"
+    );
+    expect(seen.unaudited.map((w) => w.signature)).toContain(
+      "public.admin_wrapper()"
+    );
   });
 
   it("flags a requiresNoAppGrant helper that becomes app-executable", () => {

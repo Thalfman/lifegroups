@@ -29,7 +29,7 @@ const MIGRATIONS = readSourceFiles({
 
 const ALL_FUNCTIONS = effectiveFunctions(MIGRATIONS);
 const definers = ALL_FUNCTIONS.filter((f) => f.isSecurityDefiner);
-const classified = classifyDefiners(definers);
+const classified = classifyDefiners(definers, ALL_FUNCTIONS);
 
 describe("fitness: every WRITE SECURITY DEFINER RPC pairs an audit_events insert", () => {
   it("finds migrations and a substantial definer set (sanity floor)", () => {

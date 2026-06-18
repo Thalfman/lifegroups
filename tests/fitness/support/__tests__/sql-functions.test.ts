@@ -187,6 +187,34 @@ $func$;`
     expect(creates[0].body).toContain("$$ inside it");
   });
 
+  it("captures a SQL-standard BEGIN ATOMIC body (no AS delimiter)", () => {
+    const { creates } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `create function public.f() returns void language sql security definer set search_path = public
+begin atomic
+  insert into public.members (id) values (1);
+end;`
+      )
+    );
+    expect(creates[0].body).toContain("insert into public.members");
+    expect(creates[0].isSecurityDefiner).toBe(true);
+  });
+
+  it("BEGIN ATOMIC body is not truncated by an inner CASE…END", () => {
+    const { creates } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `create function public.f() returns int language sql
+begin atomic
+  select case when true then 1 else 0 end;
+  insert into public.groups (id) values (1);
+end;`
+      )
+    );
+    expect(creates[0].body).toContain("insert into public.groups");
+  });
+
   it("returns an empty body for the degenerate $$$$ case", () => {
     const { creates } = parseSqlFunctions(
       sql(
@@ -349,6 +377,28 @@ drop function public.g(uuid, text);`
       "public.g(uuid,text)",
     ]);
   });
+
+  it("accepts the ROUTINE spelling for grants and drops", () => {
+    const { grants, drops } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `grant execute on routine public.f(jsonb) to authenticated;
+grant execute on all routines in schema public to authenticated;
+drop routine if exists public.f(jsonb);`
+      )
+    );
+    expect(grants[0]).toMatchObject({
+      signature: "public.f(jsonb)",
+      action: "grant",
+      roles: ["authenticated"],
+    });
+    expect(grants[1]).toMatchObject({
+      allInSchema: "public",
+      action: "grant",
+      roles: ["authenticated"],
+    });
+    expect(drops.map((d) => d.signature)).toEqual(["public.f(jsonb)"]);
+  });
 });
 
 describe("effectiveFunctions appExecutable (Postgres EXECUTE-to-PUBLIC default)", () => {
@@ -509,6 +559,49 @@ grant execute on all functions in schema other to authenticated;`,
         "public.f()"
       )
     ).toBe(false);
+  });
+
+  it("a schema-wide GRANT ON ALL ROUTINES re-exposes a revoked helper", () => {
+    expect(
+      appExec(
+        `create function public.f(p jsonb) returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f(jsonb) from public;
+revoke all on function public.f(jsonb) from authenticated;
+grant execute on all routines in schema public to authenticated;`,
+        "public.f(jsonb)"
+      )
+    ).toBe(true);
+  });
+});
+
+describe("effectiveFunctions security-mode ALTER (issue #700)", () => {
+  it("ALTER FUNCTION … SECURITY INVOKER downgrades an effective definer", () => {
+    const create = sql(
+      "20260101000000_a.sql",
+      `create function public.f() returns void language sql security definer
+set search_path = public as $$ insert into public.members values (1); $$;`
+    );
+    const alter = sql(
+      "20260202000000_b.sql",
+      `alter function public.f() security invoker;`
+    );
+    const [f] = effectiveFunctions([create, alter]);
+    expect(f.isSecurityDefiner).toBe(false);
+  });
+
+  it("ALTER FUNCTION … SECURITY DEFINER upgrades an invoker function", () => {
+    const create = sql(
+      "20260101000000_a.sql",
+      `create function public.f() returns void language sql
+set search_path = public as $$ select 1 $$;`
+    );
+    const alter = sql(
+      "20260202000000_b.sql",
+      `alter function public.f() security definer;`
+    );
+    const [f] = effectiveFunctions([create, alter]);
+    expect(f.isSecurityDefiner).toBe(true);
   });
 });
 

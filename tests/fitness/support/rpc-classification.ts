@@ -18,12 +18,13 @@ import { stripSqlStrings, writesAudit } from "./scan";
 
 export type RpcCategory = "write" | "read_helper" | "trigger";
 
-// Static DML against a real table. Strings are stripped before this runs so a
-// table name mentioned in prose (`raise exception 'cannot update group …'`) or a
-// jsonb label can't masquerade as DML. Covers all the table-mutating statements
-// PL/pgSQL can issue: insert / update / delete, plus truncate and merge.
+// Static DML against a real table. Group 1 is the verb, group 2 the table.
+// Strings are stripped before this runs so a table name mentioned in prose
+// (`raise exception 'cannot update group …'`) or a jsonb label can't masquerade
+// as DML. Covers all the table-mutating statements PL/pgSQL can issue: insert /
+// update / delete, plus truncate and merge.
 const WRITE_DML_RE =
-  /\b(?:insert\s+into|update|delete\s+from|truncate(?:\s+table)?|merge\s+into)\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi;
+  /\b(insert\s+into|update|delete\s+from|truncate(?:\s+table)?|merge\s+into)\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi;
 
 // Dynamic DML built with `format()` identifier injection — `delete from
 // public.%I`, `insert into %I`, `update %I set …`. The table name lives INSIDE
@@ -36,19 +37,22 @@ const DYNAMIC_DML_RE =
   /\b(?:insert\s+into|update|delete\s+from)\s+(?:public\.)?%[is]\b/i;
 
 /**
- * True when the body performs DML on a real (non-audit, non-temp) table, whether
- * static or built via `format(… %I …)`. `audit_events` is excluded as a target
- * on purpose: an audit insert is the pairing we're checking FOR, not itself a
- * business write — so a function whose only DML is the audit row is not
- * classified a write (none exist today, but the rule is the correct one).
+ * True when the body performs DML on a real (non-temp) table, whether static or
+ * built via `format(… %I …)`. Only the audit INSERT is excluded — it is the
+ * pairing we're checking FOR, not a business write, so a function whose only DML
+ * is `insert into audit_events` is not a write. DESTRUCTIVE DML against
+ * `audit_events` (delete / update / truncate / merge — an audit-log purge) IS a
+ * write that must itself be audited, so it is NOT exempted.
  */
 export function isWrite(body: string): boolean {
   if (DYNAMIC_DML_RE.test(body)) return true;
   const text = stripSqlStrings(body);
   WRITE_DML_RE.lastIndex = 0;
   for (let m = WRITE_DML_RE.exec(text); m; m = WRITE_DML_RE.exec(text)) {
-    const table = m[1].toLowerCase();
-    if (table === "audit_events") continue;
+    const verb = m[1].toLowerCase();
+    const table = m[2].toLowerCase();
+    // Exempt ONLY the paired audit insert, not a purge/rewrite of audit_events.
+    if (table === "audit_events" && verb.startsWith("insert")) continue;
     if (table.startsWith("pg_temp")) continue;
     return true;
   }
@@ -172,10 +176,15 @@ export interface ClassificationResult {
 
 /**
  * Partition the SECURITY DEFINER functions and surface audit-pairing violations.
- * Callers pass `effectiveFunctions(...).filter((f) => f.isSecurityDefiner)`.
+ * Callers pass `effectiveFunctions(...).filter((f) => f.isSecurityDefiner)` as
+ * `definers`, and the FULL `effectiveFunctions(...)` set as `allFunctions` so the
+ * write closure can follow mutations delegated to non-definer (SECURITY INVOKER)
+ * helpers too. `allFunctions` defaults to `definers` for callers that only have
+ * the definer subset.
  */
 export function classifyDefiners(
-  definers: readonly EffectiveFunction[]
+  definers: readonly EffectiveFunction[],
+  allFunctions: readonly EffectiveFunction[] = definers
 ): ClassificationResult {
   const writes: EffectiveFunction[] = [];
   const reads: EffectiveFunction[] = [];
@@ -188,12 +197,18 @@ export function classifyDefiners(
   const baseNameOf = (f: EffectiveFunction) =>
     f.name.split(".").pop() ?? f.name;
 
-  // Write closure: a non-trigger definer that CALLS a write RPC is itself a write
-  // (a mutating wrapper). Without this, a wrapper whose only mutation is via calls
-  // to other write RPCs — e.g. `super_admin_reset_all`, which composes
-  // `super_admin_launch_prep` / `_reset_care_attention` / `_reset_health_attention`
-  // and has no direct DML — would be READ_HELPER and could silently drop its own
-  // audit_events row. Iterated to a fixpoint so wrappers-of-wrappers are caught.
+  // Write closure: a non-trigger definer that CALLS a write function is itself a
+  // write (a mutating wrapper). The callee set is the base names of EVERY function
+  // that performs direct DML — definer OR not — so a definer that mutates only by
+  // calling an internal SECURITY INVOKER helper (app EXECUTE revoked, invisible to
+  // `nonDefinerAppWrites`) is still caught, as is `super_admin_reset_all`, which
+  // composes other write RPCs and has no direct DML of its own. Iterated to a
+  // fixpoint, propagating discovered wrappers, so wrappers-of-wrappers are caught.
+  const writeCalleeBaseNames = new Set(
+    allFunctions
+      .filter((f) => !f.returnsTrigger && isWrite(f.body))
+      .map((f) => baseNameOf(f))
+  );
   const writeSigs = new Set(
     [...direct].filter(([, c]) => c === "write").map(([sig]) => sig)
   );
@@ -203,12 +218,12 @@ export function classifyDefiners(
     for (const fn of definers) {
       if (direct.get(fn.signature) === "trigger") continue;
       if (writeSigs.has(fn.signature)) continue;
-      for (const calleeSig of writeSigs) {
-        const callee = definers.find((d) => d.signature === calleeSig);
-        if (!callee || callee.signature === fn.signature) continue;
-        if (bodyCalls(fn.body, baseNameOf(callee))) {
+      for (const base of writeCalleeBaseNames) {
+        if (baseNameOf(fn) === base) continue; // ignore self-name match
+        if (bodyCalls(fn.body, base)) {
           writeSigs.add(fn.signature);
           wrapperWrites.push(fn.signature);
+          writeCalleeBaseNames.add(baseNameOf(fn)); // propagate to deeper wrappers
           changed = true;
           break;
         }

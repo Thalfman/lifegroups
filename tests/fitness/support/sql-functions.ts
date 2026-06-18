@@ -44,11 +44,13 @@ export interface CreateFunctionStatement {
   readonly pos: number;
 }
 
-/** A parsed `ALTER FUNCTION … SET search_path …` statement. */
+/** A parsed `ALTER FUNCTION …` statement (search_path and/or security mode). */
 export interface AlterFunctionStatement {
   readonly signature: string;
   readonly name: string;
   readonly setsSearchPath: boolean;
+  /** `ALTER FUNCTION … SECURITY DEFINER` → true; `… SECURITY INVOKER` → false; else null. */
+  readonly setsSecurityDefiner: boolean | null;
   readonly relPath: string;
   readonly line: number;
   /** Character offset of the statement in the file — used to fold in textual order. */
@@ -214,6 +216,25 @@ function readFunctionBody(
 ): { body: string; end: number } {
   const rest = text.slice(fromIndex);
   const asMatch = /\bas\b\s*/i.exec(rest);
+  // SQL-standard body: `… LANGUAGE SQL BEGIN ATOMIC <statements> END` — no `AS`
+  // delimiter. Capture the statement list (its DML must be seen by isWrite /
+  // writesAudit) by scanning to the END that closes the atomic block, tracking
+  // case…end depth. Prefer an AS body when it appears first.
+  const atomicMatch = /\bbegin\s+atomic\b/i.exec(rest);
+  if (atomicMatch && (!asMatch || atomicMatch.index < asMatch.index)) {
+    const bodyStart = fromIndex + atomicMatch.index + atomicMatch[0].length;
+    let depth = 1;
+    const re = /\b(case|end)\b/gi;
+    re.lastIndex = bodyStart;
+    for (let m = re.exec(text); m; m = re.exec(text)) {
+      if (m[1].toLowerCase() === "case") {
+        depth++;
+      } else if (--depth === 0) {
+        return { body: text.slice(bodyStart, m.index), end: re.lastIndex };
+      }
+    }
+    return { body: text.slice(bodyStart), end: text.length };
+  }
   if (!asMatch) return { body: "", end: fromIndex };
   const afterAs = fromIndex + asMatch.index + asMatch[0].length;
   const ch = text[afterAs];
@@ -256,13 +277,16 @@ function lineOf(rawText: string, index: number): number {
 const CREATE_FN_RE =
   /create\s+(?:or\s+replace\s+)?function\s+([a-z0-9_."]+)\s*\(/gi;
 const ALTER_FN_RE = /alter\s+function\s+([a-z0-9_."]+)\s*\(/gi;
+// `FUNCTION` and `ROUTINE` are interchangeable in GRANT/REVOKE/DROP (likewise
+// `ALL FUNCTIONS` / `ALL ROUTINES IN SCHEMA`), so accept both spellings — a
+// migration that re-exposes a helper with the ROUTINE form must still be folded.
 const GRANT_FN_RE =
-  /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+function\s+([a-z0-9_."]+)\s*\(/gi;
+  /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+(?:function|routine)\s+([a-z0-9_."]+)\s*\(/gi;
 // Schema-wide grant: `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;`
 const GRANT_ALL_FN_RE =
-  /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+all\s+functions\s+in\s+schema\s+([a-z0-9_."]+)\s+(?:to|from)\s+([^;]+);/gi;
+  /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+all\s+(?:functions|routines)\s+in\s+schema\s+([a-z0-9_."]+)\s+(?:to|from)\s+([^;]+);/gi;
 const DROP_FN_RE =
-  /\bdrop\s+function\s+(?:if\s+exists\s+)?([a-z0-9_."]+)\s*\(/gi;
+  /\bdrop\s+(?:function|routine)\s+(?:if\s+exists\s+)?([a-z0-9_."]+)\s*\(/gi;
 
 /**
  * Normalize a GRANT/REVOKE role list to bare lowercased role names. Takes only
@@ -301,7 +325,7 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
     // Header = everything from the arg-list close up to the body delimiter
     // `AS $…$` / `AS '…'`. Only this region decides definer/search_path.
     const rest = text.slice(end);
-    const bodyDelim = rest.search(/\bas\b\s*(?:\$|')/i);
+    const bodyDelim = rest.search(/\bas\b\s*(?:\$|')|\bbegin\s+atomic\b/i);
     const header =
       bodyDelim >= 0 ? rest.slice(0, bodyDelim) : rest.slice(0, 600);
     // The attribute clause can sit before the body (the repo's convention) OR
@@ -337,10 +361,16 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
     const stmtEnd = rest.indexOf(";");
     const stmt = stmtEnd >= 0 ? rest.slice(0, stmtEnd) : rest;
     const argTypes = normalizeArgTypes(inner);
+    const setsSecurityDefiner = /\bsecurity\s+definer\b/i.test(stmt)
+      ? true
+      : /\bsecurity\s+invoker\b/i.test(stmt)
+        ? false
+        : null;
     alters.push({
       signature: `${name}(${argTypes.join(",")})`,
       name,
       setsSearchPath: /set\s+search_path/i.test(stmt),
+      setsSecurityDefiner,
       relPath: file.relPath,
       line: lineOf(file.text, m.index),
       pos: m.index,
@@ -526,11 +556,19 @@ export function effectiveFunctions(
           definedAt: `${c.relPath}:${c.line}`,
         });
       } else if (stmt.kind === "alter") {
-        if (stmt.a.setsSearchPath) {
-          const existing = state.get(stmt.a.signature);
-          if (existing) {
-            state.set(stmt.a.signature, { ...existing, pinsSearchPath: true });
-          }
+        const existing = state.get(stmt.a.signature);
+        if (existing) {
+          state.set(stmt.a.signature, {
+            ...existing,
+            pinsSearchPath: stmt.a.setsSearchPath
+              ? true
+              : existing.pinsSearchPath,
+            // An `ALTER FUNCTION … SECURITY INVOKER/DEFINER` flips the effective
+            // security mode — so a definer downgraded to invoker is no longer
+            // treated as a definer (and the non-definer bypass check applies).
+            isSecurityDefiner:
+              stmt.a.setsSecurityDefiner ?? existing.isSecurityDefiner,
+          });
         }
       } else if (stmt.kind === "drop") {
         // Postgres DROP FUNCTION removes the function AND its grants. A later
