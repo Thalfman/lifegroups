@@ -48,7 +48,10 @@ the conventions (soft-delete, audit pairing, privacy exceptions) that must hold.
   (per-type), retired `multiplication_config`.
 - **Health:** `group_health_assessments` (monthly), `group_rubric_grades`,
   `leader_rubric_grades`, `health_rubrics` (configurable group/leader criteria).
-- **Audit/compliance:** `audit_events` (admin-only, immutable), `audit_events_archive`,
+- **Audit/compliance:** `audit_events` (**super-admin-only read**, immutable —
+  phase5a2 dropped `audit_events_admin_read` and replaced it with
+  `audit_events_super_admin_read`, removing Ministry Admin visibility),
+  `audit_events_archive`,
   `tombstones` (permanent-deletion snapshots), `clean_slate_snapshots`,
   `history_reset_snapshots`, `account_deletion_requests`.
 - **Attendance:** `attendance_sessions`, `attendance_records`.
@@ -76,9 +79,15 @@ Helpers in `public` (SECURITY DEFINER, STABLE, authenticated-only):
 (checks `active=true` group_leaders row), `auth_over_shepherd_id()`,
 `auth_over_shepherd_covers(profile_id)`. Visibility is a downward ladder:
 admins read everything; leaders read only rows scoped to their active groups;
-over-shepherds read only covered leaders' data; `audit_events` and
-shepherd-care tables are admin-only (no leader path). **Write policies are
-deliberately absent at table level** — all writes go through RPCs.
+over-shepherds read only covered leaders' data. `audit_events` read is
+**super-admin-only** (not ministry_admin). Shepherd-care tables have **no leader
+path**, but they are **not** uniformly admin-only: over-shepherds have
+coverage-scoped SELECT on `shepherd_care_profiles` and
+`shepherd_care_interactions` (phase_os3); only the private / admin-summary care
+tables (`shepherd_care_private_notes`, `shepherd_care_admin_notes`) are
+admin-only. A future RLS sweep must preserve the over-shepherd coverage SELECTs.
+**Write policies are deliberately absent at table level** — all writes go
+through RPCs.
 
 ## Soft-delete / archive conventions
 

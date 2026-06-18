@@ -49,7 +49,9 @@ The Care · Plan · Multiply pivot (ADR 0016):
 - `/admin/multiply` (+`/criteria`, `/settings`) — 3 tabs: Plan, Readiness
   (cell grid), Leaders (apprentice pipeline)
 - `/admin/groups` (+`/[groupId]`, `/[groupId]/calendar`) — group management
-- `/admin/people` (+`/[kind]/[personId]`) — directory (kind ∈ leader/member/guest)
+- `/admin/people` (+`/[kind]/[personId]`) — directory. The `[kind]` segment
+  accepts only `profile` and `member` (anything else → `notFound()`); the People
+  list still buckets people as leaders/members.
 - `/admin/settings` — metric defaults, rubrics, multiplication setup, imports
 - `/admin/super-admin` — **super_admin only** console
 
@@ -57,10 +59,17 @@ Groups & People tabs are seeded on per ADR 0024 (console can re-hide).
 
 ## Admin off-nav / frozen (resolve by direct URL, role-guarded, banner-annotated)
 
-`/admin/guests`, `/admin/check-ins(/[groupId])`, `/admin/leader-pipeline`,
-`/admin/group-health`, `/admin/planning`, `/admin/launch-planning`,
-`/admin/calendar`. Gated behind Super-Admin nav-visibility / frozen flags
-(`guests`, `check_ins`, …) — hidden, not deleted (ADR 0009/0016).
+These are hidden from nav but still resolve, all `requireAdmin()`-guarded
+(ADR 0009/0016). **Two distinct access levels — don't conflate:**
+
+- **Flag-blocked** (`frozenSurfaceGate` — access actually gated by a feature
+  flag): `/admin/guests` (`guests`), `/admin/check-ins(/[groupId])` (`check_ins`).
+- **Banner-only** (just `requireAdmin()` + a `FrozenSurfaceBanner`, **no** flag
+  gate — any admin can still open them): `/admin/planning`, `/admin/calendar`,
+  `/admin/launch-planning`, `/admin/leader-pipeline`, `/admin/group-health`.
+
+Hidden, not deleted. Do not overestimate the access controls on the banner-only
+group — they are reachable by any admin via direct URL.
 
 ## Over-Shepherd (over_shepherd role)
 

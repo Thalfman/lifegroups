@@ -21,9 +21,11 @@ otherwise have to rediscover. Start here.
 - **Writes** follow one pipeline — validate → guard → `SECURITY DEFINER` RPC →
   revalidatePath → log — and every mutation writes a paired `audit_events` row
   in the same transaction.
-- Hard security invariants (no service-role key in Next, no direct table writes,
-  no hard deletes, role-based authz) are **machine-checked** by the fitness
-  suite in CI.
+- Several hard security invariants (no service-role key in Next, no direct table
+  writes, no `select("*")`, no hardcoded identity, run-action routing) are
+  **machine-checked** by the fitness suite in CI. Others — **no hard deletes**,
+  no broad RLS, and audit-pairing details — are policy invariants that rely on
+  **manual review**, not a static scan.
 - Pre-pivot surfaces (guests, planning, calendar, check-ins) are **hidden behind
   flags, not deleted** — they still resolve by direct URL.
 

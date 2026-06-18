@@ -11,7 +11,9 @@ timestamp: 2026-06-18T00:00:00Z
 
 There is **no REST/GraphQL API layer**. App I/O is Server Actions calling
 narrow Postgres `SECURITY DEFINER` RPCs, plus a handful of `route.ts` handlers
-and two public Edge Functions. Know this map before adding an endpoint.
+and two Edge Functions — one authenticated super-admin function (`invite-user`,
+`verify_jwt=true`) and one public invite-redemption function (`redeem-invite`,
+`verify_jwt=false`). Know this map before adding an endpoint.
 
 # Source of truth
 
@@ -31,7 +33,9 @@ typed via literal-keyed arg maps: `adminRpc(client, "admin_create_group", {...})
 Three RPC channels in `lib/shared/rpc.ts`: `callUuidRpc` (returns uuid),
 `callJsonRpc` (returns json), `callTextRpc` (returns text/counts).
 
-RPC families (all paired with one `audit_events` row in-tx):
+RPC families. **Domain-write** families each pair one `audit_events` row in the
+same transaction; **service-role throttle/telemetry** RPCs deliberately do not
+audit-pair (see the exception note below):
 
 - `admin_*` — ministry-admin-callable writes (groups, people, prospects,
   care, calendar, follow-ups, categories/cells, readiness rules, member care)
@@ -40,9 +44,14 @@ RPC families (all paired with one `audit_events` row in-tx):
 - `over_shepherd_*` — over-shepherd writes (e.g. `over_shepherd_log_broad_note`)
 - `super_admin_*` — platform ops (invites, permanent deletion + tombstones,
   clean-slate/history/audit/attention resets, feature flags, platform config)
-- purpose-named: `set_note_transparency_grant`, `redeem_invitation`,
-  `super_admin_complete_invite`, `check_invite_redeem_rate`, `log_usage_event`,
-  `rpc_set_own_full_name`, `rpc_mark_orientation_seen`
+- purpose-named domain writes: `set_note_transparency_grant`,
+  `redeem_invitation`, `super_admin_complete_invite`
+- self-service writes: `set_own_full_name`, `mark_first_run_orientation_seen`
+  (these are the actual SQL function names; the TS wrappers in `lib/account/rpc.ts`
+  are named e.g. `rpcSetOwnFullName`)
+- **not audit-paired** (throttle/telemetry): `check_invite_redeem_rate` (mutates
+  the rate-limit ledger), `log_usage_event` (appends usage telemetry). Do not add
+  audit rows to these, and do not assume every named RPC here has an audit pair.
 
 ## Genuine route.ts handlers
 

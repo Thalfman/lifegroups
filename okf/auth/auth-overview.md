@@ -32,9 +32,24 @@ Supabase Auth (GoTrue) with `@supabase/ssr` cookie sessions. `proxy.ts` →
 ## The oversight ladder
 
 **Super Admin (Tom) ▸ Ministry Admin (Julian) ▸ Over-Shepherd ▸ Leader/Co-Leader.**
-Each tier sees what the tier below sees, plus more. App-login role lives on
-`profiles.role`. `member` is **not** an app-login role. `staff_viewer` is
-deprecated (routed to `/unauthorized`).
+Each tier sees what the tier below sees, plus more — **with two deliberate
+privacy exceptions that escape the ladder** (do not give the ladder or Super
+Admin blanket read access to sealed pastoral notes when changing auth/RLS):
+
+1. **Private Care Notes** (`shepherd_care_private_notes`) — creator-scoped /
+   client-side encrypted; hidden even from Super Admin (ADR 0003).
+2. **Care Notes / Prayer Requests** (`care_notes`, `prayer_requests`) — sealed
+   to their author; ministry_admin + super_admin read **only** when that
+   subject's `note_transparency_grants.granted = true` (default false). Super
+   Admin has no broader bypass. See migrations `…20260529008000_phase_sc4…` and
+   `…20260608090000_phase_pivot9_care_notes…`.
+
+App-login role lives on `profiles.role`. `member` is **not** an app-login role.
+`staff_viewer` is a **retired, inert enum remnant** — not an assignable live
+tier and not a real routing path: migration `20260531140000_remove_staff_viewer_role`
+reassigned existing rows to inactive `leader` (no-access per ADR 0002) and made
+the staff predicates return no access; `types/enums.ts` excludes it. Don't
+reintroduce a `staff_viewer` route/guard.
 
 ## Session resolution
 
