@@ -82,8 +82,8 @@
         </mxCell>
 
         <!-- Legend -->
-        <mxCell id="legend" value="Predicates: auth_is_admin() · auth_role()='super_admin' · auth_is_leader_of(group_id) · over_shepherd coverage · auth_profile_id() (self / author / creator)&#10;Source of truth: docs/architecture/RLS_VISIBILITY.md · README role model · ADRs 0002 / 0003 / 0017 / 0020 / 0024" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#6b7280;" vertex="1" parent="1">
-          <mxGeometry x="120" y="730" width="920" height="50" as="geometry" />
+        <mxCell id="legend" value="Predicates: auth_is_admin() · auth_role()='super_admin' · auth_is_leader_of(group_id) · over_shepherd coverage · auth_profile_id() (self / author / creator)&#10;Self-service exception: a pending invitee sets their OWN profile name via account.set_own_full_name — only while full_name_pending (ADR 0025).&#10;Source of truth: docs/architecture/RLS_VISIBILITY.md · README role model · ADRs 0002 / 0003 / 0017 / 0020 / 0024 / 0025" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="120" y="726" width="920" height="64" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

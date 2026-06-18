@@ -45,8 +45,8 @@
         <mxCell id="seam" value="reads seam  (ADR 0015)&#xa;inject in-memory adapter in tests" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="next">
           <mxGeometry x="40" y="150" width="240" height="56" as="geometry" />
         </mxCell>
-        <mxCell id="reads" value="*-reads.ts  /  read-models.ts&#xa;explicit column allowlists (no select *)&#xa;degrade gracefully on error" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="next">
-          <mxGeometry x="40" y="244" width="240" height="66" as="geometry" />
+        <mxCell id="reads" value="*-reads.ts  /  read-models.ts&#xa;explicit column allowlists (no select *)&#xa;degrade gracefully on error&#xa;feature-flag reads stay per-tier (ADR 0026)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="next">
+          <mxGeometry x="40" y="244" width="240" height="80" as="geometry" />
         </mxCell>
         <mxCell id="ssr" value="Supabase server client&#xa;@supabase/ssr  (cookie-aware)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="next">
           <mxGeometry x="40" y="348" width="240" height="56" as="geometry" />
@@ -73,8 +73,8 @@
         <mxCell id="edge" value="Supabase Edge Functions&#xa;( service-role key confined here )" style="swimlane;startSize=46;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
           <mxGeometry x="1200" y="320" width="240" height="240" as="geometry" />
         </mxCell>
-        <mxCell id="ef1" value="invite-user&#xa;(prod · super-admin invites)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="edge">
-          <mxGeometry x="20" y="60" width="200" height="50" as="geometry" />
+        <mxCell id="ef1" value="invite-user&#xa;(prod · super-admin invites;&#xa;no full_name — invitee names self, ADR 0025)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="edge">
+          <mxGeometry x="20" y="56" width="200" height="58" as="geometry" />
         </mxCell>
         <mxCell id="ef2" value="redeem-invite&#xa;(prod · public token redemption)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" vertex="1" parent="edge">
           <mxGeometry x="20" y="122" width="200" height="50" as="geometry" />
@@ -90,8 +90,8 @@
         <mxCell id="authsvc" value="Auth&#xa;(GoTrue · sessions · JWT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="supa">
           <mxGeometry x="40" y="120" width="200" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="rpc" value="SECURITY DEFINER RPCs&#xa;admin_* · leader_* · over_shepherd_*&#xa;super_admin_* · set_note_transparency_grant" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="supa">
-          <mxGeometry x="340" y="60" width="340" height="90" as="geometry" />
+        <mxCell id="rpc" value="SECURITY DEFINER RPCs&#xa;admin_* · leader_* · over_shepherd_* · super_admin_*&#xa;account.* self-service (set_own_full_name, ADR 0025) · set_note_transparency_grant&#xa;jsonb-write: DB re-guards top-level shape + authz; TS owns nested shape (ADR 0022)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="supa">
+          <mxGeometry x="340" y="56" width="340" height="118" as="geometry" />
         </mxCell>
         <mxCell id="audit" value="audit_events&#xa;paired row per mutation (same txn) — admin-only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="supa">
           <mxGeometry x="340" y="192" width="340" height="60" as="geometry" />

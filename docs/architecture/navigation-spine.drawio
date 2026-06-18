@@ -6,13 +6,13 @@
         <mxCell id="1" parent="0" />
 
         <!-- Title -->
-        <mxCell id="title" value="Admin Navigation Spine — Care · Plan · Multiply&#10;(2026-06 pivot, ADR 0016, amended by ADRs 0022 / 0023 / 0024)" style="text;html=1;align=center;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
+        <mxCell id="title" value="Admin Navigation Spine — Care · Plan · Multiply&#10;(2026-06 pivot, ADR 0016, amended by ADRs 0022 / 0023 / 0024 / 0027)" style="text;html=1;align=center;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
           <mxGeometry x="40" y="16" width="1260" height="46" as="geometry" />
         </mxCell>
 
         <!-- /admin landing -->
-        <mxCell id="adminlanding" value="/admin&#10;landing — ministry_admin + super_admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f2937;strokeColor=#111827;fontColor=#ffffff;fontSize=13;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="560" y="70" width="220" height="56" as="geometry" />
+        <mxCell id="adminlanding" value="/admin&#10;ministry_admin + super_admin&#10;self-dismissing setup workspace → dashboard&#10;(ADR 0027; deep-links carry ?from=setup)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1f2937;strokeColor=#111827;fontColor=#ffffff;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="520" y="68" width="300" height="68" as="geometry" />
         </mxCell>
 
         <!-- Visible spine band -->
@@ -129,7 +129,7 @@
         </mxCell>
 
         <!-- Legend -->
-        <mxCell id="legend" value="Visible spine = solid fill · Care alias = dashed blue (200, not redirect) · Frozen = dashed gray.&#10;References: ADRs 0016 / 0022 / 0023 / 0024 · docs/architecture/ARCHITECTURE.md (Routes) · README route table." style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#64748b;" vertex="1" parent="1">
+        <mxCell id="legend" value="Visible spine = solid fill · Care alias = dashed blue (200, not redirect) · Frozen = dashed gray.&#10;References: ADRs 0016 / 0022 / 0023 / 0024 / 0027 · docs/architecture/ARCHITECTURE.md (Routes) · README route table." style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#64748b;" vertex="1" parent="1">
           <mxGeometry x="790" y="745" width="510" height="50" as="geometry" />
         </mxCell>
       </root>
