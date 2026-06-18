@@ -19,15 +19,19 @@ otherwise have to rediscover. Start here.
 - **Reads** run through RLS + a reads seam with explicit column allowlists (no
   `select("*")`); they degrade gracefully and render typed demo data when no DB.
 - **Writes** follow one pipeline — validate → guard → `SECURITY DEFINER` RPC →
-  revalidatePath → log — and every mutation writes a paired `audit_events` row
-  in the same transaction.
+  revalidatePath → log — and every **domain-write** mutation writes a paired
+  `audit_events` row in the same transaction (service-role throttle/telemetry
+  RPCs like `log_usage_event` / `check_invite_redeem_rate` are deliberate
+  exceptions).
 - Several hard security invariants (no service-role key in Next, no direct table
   writes, no `select("*")`, no hardcoded identity, run-action routing) are
   **machine-checked** by the fitness suite in CI. Others — **no hard deletes**,
   no broad RLS, and audit-pairing details — are policy invariants that rely on
   **manual review**, not a static scan.
-- Pre-pivot surfaces (guests, planning, calendar, check-ins) are **hidden behind
-  flags, not deleted** — they still resolve by direct URL.
+- Pre-pivot surfaces are **hidden, not deleted** — and only some are truly
+  flag-blocked: `guests` and `check-ins` gate on a feature flag, while planning,
+  calendar, launch-planning, leader-pipeline, and group-health are **banner-only**
+  (any admin can still open them by direct URL).
 
 ## Major sections
 

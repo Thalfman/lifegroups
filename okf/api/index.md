@@ -55,12 +55,12 @@ audit-pair (see the exception note below):
 
 ## Genuine route.ts handlers
 
-| Path                                                 | Method | Auth                      | Purpose                                                                                     | Response      |
-| ---------------------------------------------------- | ------ | ------------------------- | ------------------------------------------------------------------------------------------- | ------------- |
-| `/auth/confirm`                                      | POST   | recovery token            | Verify reset/invite email token (`verifyOtp`/`exchangeCodeForSession`), set pw-setup cookie | 303 redirect  |
-| `/admin/settings/people-import-template`             | GET    | `requireAdminSession`     | CSV import template                                                                         | CSV download  |
-| `/admin/super-admin/clean-slate/export/[snapshotId]` | GET    | explicit super-admin gate | Export snapshot                                                                             | JSON download |
-| `/icons/*`, `/manifest.webmanifest`                  | GET    | none                      | PWA assets                                                                                  | image / json  |
+| Path                                                 | Method     | Auth                      | Purpose                                                                                                                                                                                                                                    | Response      |
+| ---------------------------------------------------- | ---------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| `/auth/confirm`                                      | POST + GET | recovery token (POST)     | **POST** verifies the reset/invite token (`verifyOtp`/`exchangeCodeForSession`), sets pw-setup cookie. **GET** is a non-consuming safety net: redirects scanner/bookmark hits to `/reset-password` without spending the token — keep both. | 303 redirect  |
+| `/admin/settings/people-import-template`             | GET        | `requireAdminSession`     | CSV import template                                                                                                                                                                                                                        | CSV download  |
+| `/admin/super-admin/clean-slate/export/[snapshotId]` | GET        | explicit super-admin gate | Export snapshot                                                                                                                                                                                                                            | JSON download |
+| `/icons/*`, `/manifest.webmanifest`                  | GET        | none                      | PWA assets                                                                                                                                                                                                                                 | image / json  |
 
 ## Edge Functions (service-role; the only place service role lives)
 

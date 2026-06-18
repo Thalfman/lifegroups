@@ -34,18 +34,18 @@ demo data. This is intentional (demo mode).
 runtime — prefer them for a build-once / deploy-many (runtime-evaluated) setup so
 the config isn't baked into the bundle.
 
-| Name                                                   | Scope         | Required                          | Purpose                                                                                                           |
-| ------------------------------------------------------ | ------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `SUPABASE_URL` → `NEXT_PUBLIC_SUPABASE_URL`            | server→public | for live data/sign-in             | Supabase project URL (server alias preferred, runtime-read)                                                       |
-| `SUPABASE_PUBLISHABLE_KEY` → `NEXT_PUBLIC_PUBLISHABLE` | server→public | for live data/sign-in             | Publishable key (server alias preferred; `NEXT_PUBLIC_…` inlined)                                                 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                        | public        | fallback                          | Legacy anon key, accepted if publishable unset                                                                    |
-| `NEXT_PUBLIC_SITE_URL` / `SITE_URL`                    | public/server | optional                          | Public origin for invite/reset redirect links; defaults to request header                                         |
-| `NEXT_PUBLIC_A11Y_HARNESS`                             | build-time    | CI only                           | Enables `/a11y-harness` route (inlined at build)                                                                  |
-| `UPSTASH_REDIS_REST_URL`                               | server        | optional (recommended prod)       | Distributed rate limiting                                                                                         |
-| `UPSTASH_REDIS_REST_TOKEN`                             | server        | optional                          | Upstash auth token                                                                                                |
-| `TRUSTED_PROXY`                                        | server        | optional (needed for IP throttle) | Which proxy header to trust (`vercel`); without it `extractClientIp()` returns null and per-IP limits are skipped |
-| `LOG_HASH_SALT`                                        | server        | optional                          | Salt for deterministic user-id hashing in logs                                                                    |
-| `NODE_ENV`                                             | server        | auto                              | Controls secure-cookie flag                                                                                       |
+| Name                                                                | Scope         | Required                          | Purpose                                                                                                           |
+| ------------------------------------------------------------------- | ------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `SUPABASE_URL` → `NEXT_PUBLIC_SUPABASE_URL`                         | server→public | for live data/sign-in             | Supabase project URL (server alias preferred, runtime-read)                                                       |
+| `SUPABASE_PUBLISHABLE_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | server→public | for live data/sign-in             | Publishable key (server alias preferred; the full `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is the inlined fallback) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                                     | public        | fallback                          | Legacy anon key, accepted if publishable unset                                                                    |
+| `NEXT_PUBLIC_SITE_URL` / `SITE_URL`                                 | public/server | optional                          | Public origin for invite/reset redirect links; defaults to request header                                         |
+| `NEXT_PUBLIC_A11Y_HARNESS`                                          | build-time    | CI only                           | Enables `/a11y-harness` route (inlined at build)                                                                  |
+| `UPSTASH_REDIS_REST_URL`                                            | server        | optional (recommended prod)       | Distributed rate limiting                                                                                         |
+| `UPSTASH_REDIS_REST_TOKEN`                                          | server        | optional                          | Upstash auth token                                                                                                |
+| `TRUSTED_PROXY`                                                     | server        | optional (needed for IP throttle) | Which proxy header to trust (`vercel`); without it `extractClientIp()` returns null and per-IP limits are skipped |
+| `LOG_HASH_SALT`                                                     | server        | optional                          | Salt for deterministic user-id hashing in logs                                                                    |
+| `NODE_ENV`                                                          | server        | auto                              | Controls secure-cookie flag                                                                                       |
 
 **No service-role key in any Next runtime env** — the app never reads one
 (fitness test `no-service-role` enforces). Service role lives only in Edge
