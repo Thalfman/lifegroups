@@ -20,33 +20,22 @@
 // Later Care/Planning canonicalization slices reuse this map as the single
 // source of truth for which area a frozen surface belongs to.
 
+import { deriveAliasMap } from "./route-registry";
+
 // Frozen alias path → the canonical area href that owns it. These alias paths
 // stay directly resolvable (200) per ADR 0008/0009 — this is nav active-state
 // only, no routing changes. Keys are exact, leading-slash, no trailing slash.
 //
-// Care/Plan/Multiply pivot (ADR 0016): the owning area for each alias must be a
-// still-VISIBLE area, never one of the now-hidden tabs (Groups, People,
-// Planning) — an alias owned by a hidden tab would highlight nothing. So:
+// This map is now DERIVED from the route registry (`route-registry.ts`, issue
+// #695): the alias-root entries there are the single source of truth for which
+// frozen/alias surface highlights which canonical area. The Care/Plan/Multiply
+// pivot ownership (ADR 0016) lives in those entries:
 //   * group-health, check-ins, leader-pipeline, shepherd-care, follow-ups → Care
 //     (Care absorbs Group-Health grading and the leader/coverage surfaces).
 //   * launch-planning, calendar → Multiply (the per-type multiplication boards).
 //   * guests → Plan (the Interest Funnel that replaces the Guests pipeline).
-export const NAV_ALIAS_TO_CANONICAL: Readonly<Record<string, string>> = {
-  "/admin/shepherd-care": "/admin/care",
-  "/admin/follow-ups": "/admin/care",
-  "/admin/leader-pipeline": "/admin/care",
-  // Group-Health grading and attendance/check-in history both live under Care
-  // now (Care absorbs Group-Health per ADR 0016), so their frozen aliases mark
-  // Care active rather than the hidden Groups tab.
-  "/admin/group-health": "/admin/care",
-  "/admin/check-ins": "/admin/care",
-  // Launch planning + the admin calendar become Multiply's contents.
-  "/admin/launch-planning": "/admin/multiply",
-  "/admin/calendar": "/admin/multiply",
-  // The Guests pipeline is superseded by the Plan Interest Funnel; its frozen
-  // direct-URL alias marks Plan active.
-  "/admin/guests": "/admin/plan",
-};
+export const NAV_ALIAS_TO_CANONICAL: Readonly<Record<string, string>> =
+  Object.freeze(deriveAliasMap());
 
 // Map an arbitrary path to the path used for active-state matching. A frozen
 // alias resolves to its owning canonical area; any other path resolves to

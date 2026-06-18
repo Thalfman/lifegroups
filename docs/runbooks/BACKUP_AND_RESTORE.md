@@ -59,3 +59,37 @@ Work down this ladder; stop at the first rung that fits:
 After any restore: sign in, spot-check Care · Plan · Multiply, and confirm
 the most recent `audit_events` rows look right — the audit spine is the
 fastest truth-check for "what state did we come back to?".
+
+## Restore drill
+
+A backup you have never restored is a hope, not a recovery plan. Run this drill
+periodically (and after any change to the schema or backup configuration) to
+prove the latest backup is actually recoverable. Work the steps in order and
+record the results.
+
+1. **Restore the latest backup into an isolated environment.** Use a throwaway
+   project / local stack — never restore over production, and never point the
+   drill at live credentials.
+2. **Apply migrations.** Bring the restored schema up to `main`
+   (`supabase migration list` / apply), confirming schema parity.
+3. **Run the verification suites.** Typecheck, build, the unit suite, the
+   **fitness suite** (`tests/fitness/**` — the source-scan invariants), and the
+   **RLS integration lane** (`npm run test:integration` against the restored
+   stack) if available.
+4. **Verify the data spines load.** Auth sign-in, then `profiles`, `groups`,
+   care data, prayer data, `audit_events`, and the invite flows
+   (`invite-user` / `redeem-invite`).
+5. **Confirm sensitive-data access rules still hold.** The two visibility
+   exceptions survive the restore: the Ministry Admin's encrypted Private Care
+   Note stays hidden from the Super Admin, and author-private Care Notes /
+   Prayer Requests stay sealed until their transparency grant (see
+   `../architecture/RLS_VISIBILITY.md`).
+6. **Record the metrics.** Restore start/finish time, **RTO** (time to recover),
+   **RPO** (data-loss window vs. the incident time), any data gaps, any failures
+   hit, and the drill **owner**.
+7. **Use no production credentials** in the restored test environment unless the
+   documented process explicitly requires it and that access is approved.
+
+A drill that surfaces a gap (a failing suite, a broken flow, an RPO larger than
+expected) is a successful drill — file the gap as an issue rather than papering
+over it.
