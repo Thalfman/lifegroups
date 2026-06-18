@@ -1,0 +1,53 @@
+name: Render diagrams
+
+# Renders the editable docs/architecture/*.drawio sources to SVG and rebuilds
+# docs/architecture/diagrams.md (inline SVG embeds + diagrams.net viewer links)
+# on every change, then commits both back. Keeps the mobile-viewable artifacts
+# in the repo and never stale — no one has to regenerate a viewer URL by hand.
+
+on:
+  push:
+    paths:
+      - "docs/architecture/**.drawio"
+      - ".github/scripts/build-diagram-index.py"
+      - ".github/workflows/render-diagrams.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render-diagrams-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    name: render drawio → svg + viewer links
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Headless draw.io desktop in a container — exports every *.drawio under
+      # the path into build/diagrams. Unknown inputs are ignored by the runner,
+      # and the index builder matches SVGs by filename stem, so a page suffix in
+      # the output name is harmless.
+      - name: Export diagrams to SVG
+        uses: rlespinasse/drawio-export-action@v2
+        with:
+          path: docs/architecture
+          format: svg
+          output: build/diagrams
+          remove-page-suffix: true
+
+      - name: Normalize export permissions
+        run: sudo chown -R "$(id -u):$(id -g)" build docs/architecture
+
+      - name: Build diagram index (SVG embeds + viewer links)
+        run: python3 .github/scripts/build-diagram-index.py build/diagrams
+
+      - name: Commit rendered SVGs + index
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: render architecture diagrams (svg + viewer links) [skip ci]"
+          file_pattern: "docs/architecture/*.svg docs/architecture/diagrams.md"
