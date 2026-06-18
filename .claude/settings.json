@@ -7,6 +7,7 @@
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "startup",
         "hooks": [
           {
             "type": "command",
@@ -32,7 +33,6 @@
       "Bash(npx vitest run *)",
       "Bash(npx tsc --noEmit)",
       "Bash(npx playwright test *)",
-      "Bash(npx prettier --check *)",
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
@@ -47,8 +47,10 @@
     ],
     "deny": [
       "Read(**/.env*)",
+      "Read(~/.env*)",
       "Read(**/node_modules/**)",
-      "Read(**/.ssh/**)",
+      "Read(~/.ssh/**)",
+      "Read(//**/.ssh/**)",
       "Bash(sudo *)",
       "Bash(rm -rf /)",
       "Bash(git branch -d*)",
@@ -62,7 +64,13 @@
       "Bash(git show *--output*)",
       "Bash(npx vitest *--outputFile*)",
       "Bash(npx vitest *--update*)",
-      "Bash(npx vitest *-u*)"
+      "Bash(npx vitest *-u*)",
+      "Bash(npm run test:run -- *--outputFile*)",
+      "Bash(npm run test:run -- *--update*)",
+      "Bash(npm run test:run -- *-u*)",
+      "Bash(npx playwright test *--update-snapshots*)",
+      "Bash(npx playwright test *--update-source-method*)",
+      "Bash(npx playwright test *-u*)"
     ]
   }
 }
