@@ -21,6 +21,21 @@ import { stripSqlComments } from "./support/scan";
 // They are classified `pii`, which is excluded from the HIGH_RISK set below; the
 // catastrophic-leak categories (care/prayer/admin-private/encrypted/secret/
 // snapshot) and any unresolved `policy_tbd` field are what this check seals.
+//
+// SCOPE / KNOWN LIMITATION (tracked as a follow-up): this scan inspects the
+// `insert into public.audit_events …` statement only. A value assembled into a
+// plpgsql variable first (e.g. `v_after := jsonb_build_object('admin_metric_notes',
+// v_notes); insert … values (…, 'after', v_after)`) is NOT traced, so the
+// catastrophic categories are sealed at the insert site but an admin-private note
+// reaching audit via a variable is not flagged here. That gap is acceptable today
+// because the only such values are ADMIN-PRIVATE freeform notes
+// (`admin_metric_notes`, launch-planning `notes`, church-attendance `note`) landing
+// in the SUPER-ADMIN-ONLY `audit_events` table — and `admin_private` means
+// "hidden from Leaders", not from the Super Admin, who sits atop the oversight
+// ladder and may read admin-private content. The truly-sealed bodies
+// (care/prayer/SC.4 encrypted) never reach audit (proven below + in
+// sc4-boundary-proof.test.ts). Extending this to effective-state variable tracing
+// + a policy confirmation is the follow-up.
 
 // Classifications whose COLUMN VALUES must never be copied into audit metadata.
 // `pii`, `operational_metadata`, and `audit` are intentionally absent (PII
