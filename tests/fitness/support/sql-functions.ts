@@ -55,9 +55,28 @@ export interface AlterFunctionStatement {
   readonly pos: number;
 }
 
+/**
+ * A parsed `GRANT|REVOKE … EXECUTE ON FUNCTION … TO|FROM <roles>` statement. Used
+ * (#700) to know whether a function is reachable by an app login role — Postgres
+ * grants EXECUTE to `PUBLIC` by DEFAULT, so a function is callable by the app
+ * unless that default is explicitly revoked.
+ */
+export interface GrantFunctionStatement {
+  readonly signature: string;
+  readonly name: string;
+  readonly action: "grant" | "revoke";
+  /** Target roles, lowercased (`public`, `anon`, `authenticated`, `service_role`, …). */
+  readonly roles: readonly string[];
+  readonly relPath: string;
+  readonly line: number;
+  /** Character offset of the statement in the file — used to fold in textual order. */
+  readonly pos: number;
+}
+
 export interface ParsedSqlFunctions {
   readonly creates: readonly CreateFunctionStatement[];
   readonly alters: readonly AlterFunctionStatement[];
+  readonly grants: readonly GrantFunctionStatement[];
 }
 
 /** The folded, final-state view of one function signature across all migrations. */
@@ -73,6 +92,14 @@ export interface EffectiveFunction {
   readonly returnsTrigger: boolean;
   /** Effective: is the final definition `stable`/`immutable` (no DML)? */
   readonly isReadOnlyVolatility: boolean;
+  /**
+   * Effective: can an app login role (`public`/`anon`/`authenticated`) EXECUTE
+   * this function? `true` by default (Postgres grants EXECUTE to PUBLIC unless
+   * revoked); `false` only when the PUBLIC default is revoked AND no app role is
+   * granted back. Lets the audit-pairing check (#700) tell an app-reachable write
+   * RPC from an internal helper that no app role can call.
+   */
+  readonly appExecutable: boolean;
   /** Effective: body of the LAST `create … function` for this signature. */
   readonly body: string;
   /** `file:line` of the last `create … function` for this signature. */
@@ -209,6 +236,8 @@ function lineOf(rawText: string, index: number): number {
 const CREATE_FN_RE =
   /create\s+(?:or\s+replace\s+)?function\s+([a-z0-9_."]+)\s*\(/gi;
 const ALTER_FN_RE = /alter\s+function\s+([a-z0-9_."]+)\s*\(/gi;
+const GRANT_FN_RE =
+  /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+function\s+([a-z0-9_."]+)\s*\(/gi;
 
 /**
  * Parse one migration file's text. Comments are stripped first (a CREATE example
@@ -277,7 +306,86 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
     ALTER_FN_RE.lastIndex = end;
   }
 
-  return { creates, alters };
+  const grants: GrantFunctionStatement[] = [];
+  GRANT_FN_RE.lastIndex = 0;
+  for (let m = GRANT_FN_RE.exec(text); m; m = GRANT_FN_RE.exec(text)) {
+    const action = m[1].toLowerCase() as "grant" | "revoke";
+    const name = m[2].replace(/"/g, "").toLowerCase();
+    const open = text.indexOf("(", m.index);
+    const { inner, end } = readBalancedParens(text, open);
+    const argTypes = normalizeArgTypes(inner);
+    // After the arg-list close comes `… TO|FROM role[, role …];`. Read up to the
+    // statement `;` and split the role list on commas (dropping a `GROUP` modifier).
+    const semi = text.indexOf(";", end);
+    const tail = text.slice(end, semi >= 0 ? semi : text.length);
+    const roleMatch = /\b(?:to|from)\s+([\s\S]+)$/i.exec(tail);
+    const roles = roleMatch
+      ? roleMatch[1]
+          .split(",")
+          .map((r) =>
+            r
+              .trim()
+              .toLowerCase()
+              .replace(/^group\s+/, "")
+          )
+          .filter((r) => r !== "")
+      : [];
+    grants.push({
+      signature: `${name}(${argTypes.join(",")})`,
+      name,
+      action,
+      roles,
+      relPath: file.relPath,
+      line: lineOf(file.text, m.index),
+      pos: m.index,
+    });
+    GRANT_FN_RE.lastIndex = end;
+  }
+
+  return { creates, alters, grants };
+}
+
+// App login roles whose EXECUTE access means a function is reachable from app
+// code via the `.rpc()` path. `service_role` is excluded — it is confined to
+// Edge Functions, never an app login (CLAUDE.md security posture).
+const APP_EXECUTE_ROLES = new Set(["anon", "authenticated"]);
+
+/** Folded EXECUTE privilege for one signature: does the PUBLIC default still hold? */
+interface GrantState {
+  /** PUBLIC has EXECUTE (the Postgres default until revoked). */
+  publicHasExecute: boolean;
+  /** Roles granted EXECUTE explicitly (beyond the PUBLIC default). */
+  readonly explicit: Set<string>;
+}
+
+function applyGrant(state: Map<string, GrantState>, g: GrantFunctionStatement) {
+  let s = state.get(g.signature);
+  if (!s) {
+    // Postgres default: EXECUTE is granted to PUBLIC.
+    s = { publicHasExecute: true, explicit: new Set() };
+    state.set(g.signature, s);
+  }
+  for (const role of g.roles) {
+    if (g.action === "grant") {
+      if (role === "public") s.publicHasExecute = true;
+      else s.explicit.add(role);
+    } else {
+      if (role === "public") s.publicHasExecute = false;
+      else s.explicit.delete(role);
+    }
+  }
+}
+
+function isAppExecutable(
+  state: Map<string, GrantState>,
+  signature: string
+): boolean {
+  const s = state.get(signature);
+  // No grant/revoke seen → the PUBLIC default stands → app-executable.
+  if (!s) return true;
+  if (s.publicHasExecute) return true;
+  for (const role of s.explicit) if (APP_EXECUTE_ROLES.has(role)) return true;
+  return false;
 }
 
 /**
@@ -294,12 +402,14 @@ export function effectiveFunctions(
   files: readonly SourceFile[]
 ): EffectiveFunction[] {
   const state = new Map<string, EffectiveFunction>();
+  const grantState = new Map<string, GrantState>();
 
   for (const file of files) {
-    const { creates, alters } = parseSqlFunctions(file);
+    const { creates, alters, grants } = parseSqlFunctions(file);
     const ordered = [
       ...creates.map((c) => ({ pos: c.pos, kind: "create" as const, c })),
       ...alters.map((a) => ({ pos: a.pos, kind: "alter" as const, a })),
+      ...grants.map((g) => ({ pos: g.pos, kind: "grant" as const, g })),
     ].sort((x, y) => x.pos - y.pos);
 
     for (const stmt of ordered) {
@@ -313,19 +423,28 @@ export function effectiveFunctions(
           pinsSearchPath: c.pinsSearchPath,
           returnsTrigger: c.returnsTrigger,
           isReadOnlyVolatility: c.isReadOnlyVolatility,
+          // Provisional — recomputed from the folded grant state below.
+          appExecutable: true,
           body: c.body,
           definedAt: `${c.relPath}:${c.line}`,
         });
-      } else if (stmt.a.setsSearchPath) {
-        const existing = state.get(stmt.a.signature);
-        if (existing) {
-          state.set(stmt.a.signature, { ...existing, pinsSearchPath: true });
+      } else if (stmt.kind === "alter") {
+        if (stmt.a.setsSearchPath) {
+          const existing = state.get(stmt.a.signature);
+          if (existing) {
+            state.set(stmt.a.signature, { ...existing, pinsSearchPath: true });
+          }
         }
+      } else {
+        applyGrant(grantState, stmt.g);
       }
     }
   }
 
-  return [...state.values()];
+  return [...state.values()].map((f) => ({
+    ...f,
+    appExecutable: isAppExecutable(grantState, f.signature),
+  }));
 }
 
 /**

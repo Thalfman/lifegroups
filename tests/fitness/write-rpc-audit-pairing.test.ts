@@ -5,6 +5,7 @@ import { effectiveFunctions } from "./support/sql-functions";
 import {
   AUDIT_EXEMPT_WRITES,
   classifyDefiners,
+  nonDefinerAppWrites,
 } from "./support/rpc-classification";
 
 // Write-RPC audit-pairing catalog check (issue #700) — the STATIC half of the
@@ -26,9 +27,8 @@ const MIGRATIONS = readSourceFiles({
   extensions: [".sql"],
 });
 
-const definers = effectiveFunctions(MIGRATIONS).filter(
-  (f) => f.isSecurityDefiner
-);
+const ALL_FUNCTIONS = effectiveFunctions(MIGRATIONS);
+const definers = ALL_FUNCTIONS.filter((f) => f.isSecurityDefiner);
 const classified = classifyDefiners(definers);
 
 describe("fitness: every WRITE SECURITY DEFINER RPC pairs an audit_events insert", () => {
@@ -91,6 +91,54 @@ describe("fitness: every WRITE SECURITY DEFINER RPC pairs an audit_events insert
         ? ""
         : `A caller of a delegating-exempt helper must write its own ` +
             `audit_events row:\n${violations.join("\n")}`
+    ).toEqual([]);
+  });
+
+  it("holds mutating wrappers (write-by-call) to the same audit rule", () => {
+    // A definer that mutates only by calling other write RPCs (e.g.
+    // super_admin_reset_all) is pulled in by the write closure — it cannot hide
+    // in READ_HELPER. Such a wrapper exists today, and each one self-audits (so it
+    // never lands in `unaudited`); removing its envelope audit would now fail the
+    // "every WRITE RPC inserts into audit_events" check above.
+    expect(classified.wrapperWrites.length).toBeGreaterThan(0);
+    for (const sig of classified.wrapperWrites) {
+      expect(classified.writes.map((w) => w.signature)).toContain(sig);
+      expect(classified.unaudited.map((w) => w.signature)).not.toContain(sig);
+    }
+  });
+
+  it("no app-callable write RPC bypasses the SECURITY DEFINER layer", () => {
+    // The invariant guards more than definers: a SECURITY INVOKER (or default)
+    // function that does DML and is granted to an app role can be called via
+    // `.rpc()` and skips the audited definer layer entirely. There are none today.
+    const bypass = nonDefinerAppWrites(ALL_FUNCTIONS).map(
+      (f) => `  ${f.signature}  (defined ${f.definedAt})`
+    );
+    expect(
+      bypass,
+      bypass.length === 0
+        ? ""
+        : `These functions perform DML and are EXECUTE-able by an app login role ` +
+            `(public/anon/authenticated) but are NOT SECURITY DEFINER — an app ` +
+            `write that bypasses the narrow audited RPC layer. Make them ` +
+            `SECURITY DEFINER with a paired audit_events insert, or revoke the ` +
+            `app grant:\n${bypass.join("\n")}`
+    ).toEqual([]);
+  });
+
+  it("keeps no-grant exemptions actually uncallable by app roles", () => {
+    // A `requiresNoAppGrant` exemption (the clean-slate restore helper) is only
+    // safe while no app role can EXECUTE it. If a later migration grants it to
+    // authenticated/anon/public, its unaudited write becomes app-reachable.
+    const exposed = classified.appExposedExemptHelpers;
+    expect(
+      exposed,
+      exposed.length === 0
+        ? ""
+        : `These AUDIT_EXEMPT_WRITES helpers are marked requiresNoAppGrant but ` +
+            `are now EXECUTE-able by an app login role — the exemption premise is ` +
+            `broken. Revoke the grant, or drop the exemption and audit the ` +
+            `write:\n  ${exposed.join("\n  ")}`
     ).toEqual([]);
   });
 

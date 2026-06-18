@@ -285,6 +285,122 @@ as $$ begin insert into public.groups values (1); end; $$;`
   });
 });
 
+describe("parseSqlFunctions GRANT/REVOKE (issue #700)", () => {
+  it("parses grant/revoke execute on function with role lists", () => {
+    const { grants } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `grant execute on function public.admin_do(p_id uuid) to authenticated;
+revoke all on function public.helper(jsonb) from public, anon, authenticated;`
+      )
+    );
+    expect(grants).toHaveLength(2);
+    expect(grants[0]).toMatchObject({
+      signature: "public.admin_do(uuid)",
+      action: "grant",
+      roles: ["authenticated"],
+    });
+    expect(grants[1]).toMatchObject({
+      signature: "public.helper(jsonb)",
+      action: "revoke",
+      roles: ["public", "anon", "authenticated"],
+    });
+  });
+
+  it("handles a multi-line signature with nested type args", () => {
+    const { grants } = parseSqlFunctions(
+      sql(
+        "m1.sql",
+        `grant execute on function public.f(
+  p_amount numeric(10, 2),
+  p_label text
+) to authenticated;`
+      )
+    );
+    expect(grants[0].signature).toBe("public.f(numeric(10, 2),text)");
+  });
+});
+
+describe("effectiveFunctions appExecutable (Postgres EXECUTE-to-PUBLIC default)", () => {
+  function appExec(text: string, signature: string): boolean {
+    const fns = effectiveFunctions([sql("20260101000000_m.sql", text)]);
+    const f = fns.find((x) => x.signature === signature);
+    if (!f) throw new Error(`no function ${signature}`);
+    return f.appExecutable;
+  }
+
+  it("is true by default when no grant/revoke is present", () => {
+    expect(
+      appExec(
+        `create function public.f() returns int language sql security definer
+set search_path = public as $$ select 1 $$;`,
+        "public.f()"
+      )
+    ).toBe(true);
+  });
+
+  it("stays true after an explicit grant to authenticated", () => {
+    expect(
+      appExec(
+        `create function public.f() returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+grant execute on function public.f() to authenticated;`,
+        "public.f()"
+      )
+    ).toBe(true);
+  });
+
+  it("is false once the PUBLIC default is revoked and no app role is granted", () => {
+    expect(
+      appExec(
+        `create function public.f(p jsonb) returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f(jsonb) from public;
+revoke all on function public.f(jsonb) from anon;
+revoke all on function public.f(jsonb) from authenticated;`,
+        "public.f(jsonb)"
+      )
+    ).toBe(false);
+  });
+
+  it("is true when granted to authenticated even after the PUBLIC revoke", () => {
+    expect(
+      appExec(
+        `create function public.f() returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f() from public;
+grant execute on function public.f() to authenticated;`,
+        "public.f()"
+      )
+    ).toBe(true);
+  });
+
+  it("is false when granted only to service_role (not an app login)", () => {
+    expect(
+      appExec(
+        `create function public.f() returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f() from public;
+grant execute on function public.f() to service_role;`,
+        "public.f()"
+      )
+    ).toBe(false);
+  });
+
+  it("respects grant/revoke order (a later revoke wins)", () => {
+    expect(
+      appExec(
+        `create function public.f() returns void language sql security definer
+set search_path = public as $$ select 1 $$;
+revoke all on function public.f() from public;
+grant execute on function public.f() to authenticated;
+revoke execute on function public.f() from authenticated;`,
+        "public.f()"
+      )
+    ).toBe(false);
+  });
+});
+
 describe("effectiveFunctions (folding migration history)", () => {
   it("a later CREATE OR REPLACE that pins overrides an earlier unpinned one", () => {
     const earlier = sql(

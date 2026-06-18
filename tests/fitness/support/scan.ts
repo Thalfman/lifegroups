@@ -122,20 +122,27 @@ export function stripSqlStrings(sql: string): string {
   return out;
 }
 
+// `insert into public.audit_events` with a trailing word boundary, so the target
+// must be EXACTLY `audit_events` — not a same-prefix table like
+// `audit_events_archive` (the permanent-deletion archive copy). The `\b` after
+// `audit_events` fails before the `_` of `audit_events_archive`, so an archive
+// insert never masquerades as the paired accountability row. Whitespace between
+// tokens is flexible (`insert  into\n  public.audit_events`).
+const AUDIT_INSERT_RE = /\binsert\s+into\s+public\.audit_events\b/gi;
+
 /**
  * Slice every `insert into public.audit_events …;` statement, balanced to the
  * statement-terminating `;` at paren-depth 0 (so a sibling `insert into members`
+ * — or an `insert into public.audit_events_archive`, which is a DIFFERENT table —
  * in the same RPC body is excluded). Comments and strings are stripped first, so
  * a commented example or a string literal mentioning `audit_events` never counts.
  */
 export function auditInsertBlocks(sqlText: string): string[] {
   const text = stripSqlStrings(stripSqlComments(sqlText));
-  const lower = text.toLowerCase();
   const blocks: string[] = [];
-  let from = 0;
-  for (;;) {
-    const start = lower.indexOf("insert into public.audit_events", from);
-    if (start === -1) break;
+  AUDIT_INSERT_RE.lastIndex = 0;
+  for (let m = AUDIT_INSERT_RE.exec(text); m; m = AUDIT_INSERT_RE.exec(text)) {
+    const start = m.index;
     let depth = 0;
     let end = text.length;
     for (let i = start; i < text.length; i++) {
@@ -148,7 +155,7 @@ export function auditInsertBlocks(sqlText: string): string[] {
       }
     }
     blocks.push(text.slice(start, end));
-    from = start + 1;
+    AUDIT_INSERT_RE.lastIndex = start + 1;
   }
   return blocks;
 }

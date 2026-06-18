@@ -70,6 +70,14 @@ export interface AuditExemption {
    * in prose. When false/absent, the write is terminally unaudited by design.
    */
   readonly delegatesToCallers?: boolean;
+  /**
+   * When true, the exemption is only valid while NO app login role can EXECUTE
+   * this function (the reason cites a revoked grant). The check then asserts the
+   * helper is not `appExecutable` — so a later migration that grants it to
+   * `authenticated`/`anon`/`public` (exposing an unaudited write to app code)
+   * fails the build instead of silently relying on the prose premise.
+   */
+  readonly requiresNoAppGrant?: boolean;
 }
 
 /**
@@ -110,6 +118,7 @@ export const AUDIT_EXEMPT_WRITES: ReadonlyMap<string, AuditExemption> = new Map(
           "(super_admin_clean_slate_revert / super_admin_clean_slate_import) each " +
           "write the paired audit_events row in the same transaction.",
         delegatesToCallers: true,
+        requiresNoAppGrant: true,
       },
     ],
   ]
@@ -145,6 +154,19 @@ export interface ClassificationResult {
    * write but inserts no audit_events of its own. `{ helper, caller }` signatures.
    */
   readonly delegationViolations: readonly { helper: string; caller: string }[];
+  /**
+   * Signatures of WRITE wrappers pulled in by the call closure — definers with no
+   * direct DML that mutate only by calling other write RPCs (e.g.
+   * `super_admin_reset_all`). They are held to the same self-audit rule as direct
+   * writes; surfaced for the PR summary.
+   */
+  readonly wrapperWrites: readonly string[];
+  /**
+   * `requiresNoAppGrant` exemptions whose helper is, in the effective grant state,
+   * EXECUTE-able by an app login role — the "no grant" premise has been broken, so
+   * the exemption no longer holds. Empty means every such premise is intact.
+   */
+  readonly appExposedExemptHelpers: readonly string[];
 }
 
 /**
@@ -160,13 +182,45 @@ export function classifyDefiners(
   const unaudited: EffectiveFunction[] = [];
   const exemptedUsed = new Set<string>();
 
+  // Direct category from each body's own DML.
+  const direct = new Map(definers.map((f) => [f.signature, categorize(f)]));
+  const baseNameOf = (f: EffectiveFunction) =>
+    f.name.split(".").pop() ?? f.name;
+
+  // Write closure: a non-trigger definer that CALLS a write RPC is itself a write
+  // (a mutating wrapper). Without this, a wrapper whose only mutation is via calls
+  // to other write RPCs — e.g. `super_admin_reset_all`, which composes
+  // `super_admin_launch_prep` / `_reset_care_attention` / `_reset_health_attention`
+  // and has no direct DML — would be READ_HELPER and could silently drop its own
+  // audit_events row. Iterated to a fixpoint so wrappers-of-wrappers are caught.
+  const writeSigs = new Set(
+    [...direct].filter(([, c]) => c === "write").map(([sig]) => sig)
+  );
+  const wrapperWrites: string[] = [];
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const fn of definers) {
+      if (direct.get(fn.signature) === "trigger") continue;
+      if (writeSigs.has(fn.signature)) continue;
+      for (const calleeSig of writeSigs) {
+        const callee = definers.find((d) => d.signature === calleeSig);
+        if (!callee || callee.signature === fn.signature) continue;
+        if (bodyCalls(fn.body, baseNameOf(callee))) {
+          writeSigs.add(fn.signature);
+          wrapperWrites.push(fn.signature);
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+
   for (const fn of definers) {
-    const category = categorize(fn);
-    if (category === "trigger") {
+    if (direct.get(fn.signature) === "trigger") {
       triggers.push(fn);
       continue;
     }
-    if (category === "read_helper") {
+    if (!writeSigs.has(fn.signature)) {
       reads.push(fn);
       continue;
     }
@@ -185,9 +239,16 @@ export function classifyDefiners(
   const bySig = new Map(definers.map((f) => [f.signature, f]));
   const delegationCallers = new Map<string, readonly string[]>();
   const delegationViolations: { helper: string; caller: string }[] = [];
+  const appExposedExemptHelpers: string[] = [];
   for (const [sig, exemption] of AUDIT_EXEMPT_WRITES) {
-    if (!exemption.delegatesToCallers) continue;
     const helper = bySig.get(sig);
+    // A `requiresNoAppGrant` exemption is only valid while no app role can call
+    // the helper. If a later migration re-exposes it, the unaudited write is now
+    // reachable from app code — fail rather than trust the prose premise.
+    if (exemption.requiresNoAppGrant && helper && helper.appExecutable) {
+      appExposedExemptHelpers.push(sig);
+    }
+    if (!exemption.delegatesToCallers) continue;
     if (!helper) continue; // a stale exemption — caught by the honesty test
     const baseName = helper.name.split(".").pop() ?? helper.name;
     const callers = definers.filter(
@@ -212,7 +273,30 @@ export function classifyDefiners(
     exemptedUsed,
     delegationCallers,
     delegationViolations,
+    wrapperWrites,
+    appExposedExemptHelpers,
   };
+}
+
+/**
+ * Non-definer functions that perform DML and are reachable by an app login role —
+ * a bypass of the "all app writes go through a narrow audited SECURITY DEFINER
+ * RPC" invariant. A `SECURITY INVOKER` (or default) function that mutates a table
+ * and is granted to `authenticated`/`anon`/`public` can be called via `.rpc()`
+ * and runs under the caller's own privileges, skipping the audited definer layer.
+ * Triggers are excluded — they are not directly callable. Pass ALL effective
+ * functions (definers and non-definers), not the definer-filtered subset.
+ */
+export function nonDefinerAppWrites(
+  all: readonly EffectiveFunction[]
+): EffectiveFunction[] {
+  return all.filter(
+    (f) =>
+      !f.isSecurityDefiner &&
+      !f.returnsTrigger &&
+      f.appExecutable &&
+      isWrite(f.body)
+  );
 }
 
 /** Human-readable counts + per-bucket names, for the PR summary. */

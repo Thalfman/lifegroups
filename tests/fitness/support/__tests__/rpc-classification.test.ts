@@ -6,6 +6,7 @@ import {
   categorize,
   classifyDefiners,
   isWrite,
+  nonDefinerAppWrites,
 } from "../rpc-classification";
 
 // Build an EffectiveFunction with sensible defaults for the fields a test
@@ -20,6 +21,7 @@ function fn(
     pinsSearchPath: true,
     returnsTrigger: false,
     isReadOnlyVolatility: false,
+    appExecutable: false,
     body: "",
     definedAt: "m.sql:1",
     ...over,
@@ -204,6 +206,66 @@ describe("classifyDefiners", () => {
     ]);
   });
 
+  it("classifies a mutating wrapper (DML only via calls) as a write (closure)", () => {
+    // `wrapper` does no direct DML — it only calls `admin_write`, which is a
+    // direct write. The closure must pull `wrapper` into the write set and hold
+    // it to the self-audit rule.
+    const directWrite = fn({
+      signature: "public.admin_write()",
+      name: "public.admin_write",
+      body:
+        "insert into public.members (id) values (1);\n" +
+        "insert into public.audit_events (action) values ('admin.write');",
+    });
+    const wrapperAudited = fn({
+      signature: "public.admin_wrapper()",
+      name: "public.admin_wrapper",
+      body:
+        "perform public.admin_write();\n" +
+        "insert into public.audit_events (action) values ('admin.wrapper');",
+    });
+    const wrapperUnaudited = fn({
+      signature: "public.admin_bad_wrapper()",
+      name: "public.admin_bad_wrapper",
+      body: "perform public.admin_write();",
+    });
+
+    const result = classifyDefiners([
+      directWrite,
+      wrapperAudited,
+      wrapperUnaudited,
+    ]);
+    expect(result.writes.map((w) => w.signature).sort()).toEqual([
+      "public.admin_bad_wrapper()",
+      "public.admin_wrapper()",
+      "public.admin_write()",
+    ]);
+    expect([...result.wrapperWrites].sort()).toEqual([
+      "public.admin_bad_wrapper()",
+      "public.admin_wrapper()",
+    ]);
+    // The wrapper that drops its audit row is a violation; the audited one is not.
+    expect(result.unaudited.map((w) => w.signature)).toEqual([
+      "public.admin_bad_wrapper()",
+    ]);
+  });
+
+  it("flags a requiresNoAppGrant helper that becomes app-executable", () => {
+    const helperSig = "public.super_admin_clean_slate_restore_payload(jsonb)";
+    const exposed = fn({
+      signature: helperSig,
+      name: "public.super_admin_clean_slate_restore_payload",
+      appExecutable: true, // grant premise broken
+      body: "insert into public.members select * from jsonb_populate_recordset(null::public.members, p);",
+    });
+    expect(classifyDefiners([exposed]).appExposedExemptHelpers).toEqual([
+      helperSig,
+    ]);
+
+    const lockedDown = fn({ ...exposed, appExecutable: false });
+    expect(classifyDefiners([lockedDown]).appExposedExemptHelpers).toEqual([]);
+  });
+
   it("treats a conditional `if found then insert audit` as audited", () => {
     const conditional = fn({
       signature: "public.mark_seen()",
@@ -218,5 +280,50 @@ describe("classifyDefiners", () => {
     expect(result.writes.map((f) => f.signature)).toEqual([
       "public.mark_seen()",
     ]);
+  });
+});
+
+describe("nonDefinerAppWrites", () => {
+  it("flags an app-callable non-definer that performs DML", () => {
+    const bypass = fn({
+      signature: "public.sneaky_write()",
+      isSecurityDefiner: false,
+      appExecutable: true,
+      body: "delete from public.members where id = 1",
+    });
+    expect(nonDefinerAppWrites([bypass]).map((f) => f.signature)).toEqual([
+      "public.sneaky_write()",
+    ]);
+  });
+
+  it("ignores a SECURITY DEFINER write, a read, a trigger, and an uncallable helper", () => {
+    const definerWrite = fn({
+      signature: "public.admin_write()",
+      isSecurityDefiner: true,
+      appExecutable: true,
+      body: "insert into public.members (id) values (1)",
+    });
+    const read = fn({
+      signature: "public.helper()",
+      isSecurityDefiner: false,
+      appExecutable: true,
+      body: "select 1",
+    });
+    const trigger = fn({
+      signature: "public.t()",
+      isSecurityDefiner: false,
+      returnsTrigger: true,
+      appExecutable: true,
+      body: "update public.members set x = 1; return new;",
+    });
+    const uncallable = fn({
+      signature: "public.internal_write()",
+      isSecurityDefiner: false,
+      appExecutable: false, // revoked from public
+      body: "insert into public.members (id) values (1)",
+    });
+    expect(
+      nonDefinerAppWrites([definerWrite, read, trigger, uncallable])
+    ).toEqual([]);
   });
 });
