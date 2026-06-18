@@ -26,6 +26,13 @@
       "Bash(git branch*)",
       "Bash(git stash list)",
       "Bash(git remote -v)"
+    ],
+    "deny": [
+      "Read(**/.env*)",
+      "Read(**/node_modules/**)",
+      "Read(**/.ssh/**)",
+      "Bash(sudo *)",
+      "Bash(rm -rf /)"
     ]
   }
 }
