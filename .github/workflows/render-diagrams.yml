@@ -36,10 +36,14 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y xvfb
-          url=$(curl -fsSL https://api.github.com/repos/jgraph/drawio-desktop/releases/latest \
-            | grep -o 'https://[^"]*amd64[^"]*\.deb' | head -1)
+          # Resolve the latest version from the releases/latest redirect, not the
+          # GitHub API (unauthenticated API from runners is rate-limited -> 403).
+          tag=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+            https://github.com/jgraph/drawio-desktop/releases/latest | sed 's#.*/tag/##')
+          ver=${tag#v}
+          url="https://github.com/jgraph/drawio-desktop/releases/download/${tag}/drawio-amd64-${ver}.deb"
           echo "draw.io deb: $url"
-          curl -fsSL "$url" -o /tmp/drawio.deb
+          curl -fsSL -o /tmp/drawio.deb "$url"
           sudo apt-get install -y /tmp/drawio.deb
 
       - name: Render diagrams to SVG
