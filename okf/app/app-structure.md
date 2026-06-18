@@ -23,9 +23,11 @@ responsibility, so changes land in the right layer and mirror existing patterns.
 
 - **`app/`** — Next.js App Router. `app/(protected)/` holds role-gated routes:
   `admin/` (Care · Plan · Multiply · Settings · super-admin), `over-shepherd/`,
-  `leader/`. Public routes (login, forgot/reset-password, welcome, invite,
-  unauthorized, support, privacy) sit at the top level. `proxy.ts` is at repo
-  root, not in `app/`.
+  `leader/`. Public routes (login, forgot/reset-password, invite, unauthorized,
+  support, privacy) sit at the top level. `welcome` also sits at the top level
+  but is **not** public — it's a signed-in choose-your-name fallback gate
+  (`auth.getUser()`, redirects anon → `/login`). `proxy.ts` is at repo root, not
+  in `app/`.
 - **`components/`** — `lg/` (app shell, page headers, shared primitives),
   `admin/` (feature UI: care, plan, multiply, …), `ui/` (low-level primitives),
   `auth/` (auth-flow UI).

@@ -98,8 +98,10 @@ Admin reads flags per-tier (ADR 0026); leaders read via a leader-safe RPC.
 - Email templates (`supabase/templates/invite.html`, `recovery.html`) hard-code
   the public origin (not `{{ .SiteURL }}`) — must be re-pasted in the Supabase
   dashboard after an origin change (see EMAIL_DELIVERY.md).
-- Rate limiting **fails open**: missing Upstash env → permissive in-memory
-  limiter (fine locally, weak against distributed abuse in prod).
+- Rate limiting **fails open**: missing Upstash env → `configured: false` and
+  the browser flows allow every request (no in-memory fallback). Per-IP buckets
+  also need `TRUSTED_PROXY` set, or `extractClientIp()` is null and the IP check
+  is skipped.
 - `NEXT_PUBLIC_*` are inlined at **build** time — changing them needs a rebuild.
 - Never commit `.env.local`; copy from `.env.example`.
 

@@ -30,6 +30,11 @@ the conventions (soft-delete, audit pairing, privacy exceptions) that must hold.
   `status`, `full_name_pending` ADR 0025), `invitations`, `members` (non-auth
   participants), `group_leaders` (profile↔group, `active` flag),
   `group_memberships` (member↔group, `role_in_group`, `ended_at`).
+- **Over-shepherd coverage:** `over_shepherds` (non-auth roster; `active`,
+  `archived_at`), `shepherd_coverage_assignments` (over_shepherd↔leader join,
+  `active`/`ended_at`) — the join that `auth_over_shepherd_id()` /
+  `auth_over_shepherd_covers()` scope `/over-shepherd` reads and care-note
+  authorship by. Admin-managed; over-shepherds read their own active rows.
 - **Groups/cells:** `groups` (`lifecycle_status`, `health_status`,
   `audience_category`, `category_id`, `closed_at`), `group_categories` (catalog),
   `category_type_targets` (the **cell** = audience × category, `active`,
@@ -50,9 +55,11 @@ the conventions (soft-delete, audit pairing, privacy exceptions) that must hold.
   (per-type), retired `multiplication_config`.
 - **Health:** `group_health_assessments` (monthly), `group_rubric_grades`,
   `leader_rubric_grades`, `health_rubrics` (configurable group/leader criteria).
-- **Audit/compliance:** `audit_events` (**super-admin-only read**, immutable —
-  phase5a2 dropped `audit_events_admin_read` and replaced it with
-  `audit_events_super_admin_read`, removing Ministry Admin visibility),
+- **Audit/compliance:** `audit_events` (**super-admin-only read** —
+  phase5a2 dropped `audit_events_admin_read` for `audit_events_super_admin_read`,
+  removing Ministry Admin visibility; immutable to **ordinary** writes, but the
+  super-admin `super_admin_reset_audit_logs()` archives rows into
+  `audit_events_archive`, purges live rows, then inserts a reset marker),
   `audit_events_archive`,
   `tombstones` (permanent-deletion snapshots), `clean_slate_snapshots`,
   `history_reset_snapshots`, `account_deletion_requests`.
@@ -63,8 +70,9 @@ the conventions (soft-delete, audit pairing, privacy exceptions) that must hold.
 
 ## Key enums
 
-`user_role` (super_admin, ministry_admin, leader, co_leader, staff_viewer
-[deprecated]; **no member**), `profile_status` (active/inactive/invited),
+`user_role` (super_admin, ministry_admin, **over_shepherd**, leader, co_leader;
+plus `staff_viewer` which is **retired/inert**, not assignable; **no member**),
+`profile_status` (active/inactive/invited),
 `role_in_group` (member/leader/co_leader), `group_lifecycle_status`
 (active/planned_pause/seasonal_break/launching_soon/needs_leader/at_risk/closed),
 `group_audience_category` (men/women/mixed), `prospect_state`
@@ -79,8 +87,12 @@ Helpers in `public` (SECURITY DEFINER, STABLE, authenticated-only):
 `auth_profile_id()` (NULL when status≠active → denies deactivated users),
 `auth_role()`, `auth_is_admin()` (super+ministry), `auth_is_leader_of(group_id)`
 (checks `active=true` group_leaders row), `auth_over_shepherd_id()`,
-`auth_over_shepherd_covers(profile_id)`. Visibility is a downward ladder:
-admins read everything; leaders read only rows scoped to their active groups;
+`auth_over_shepherd_covers(profile_id)`. Visibility is a downward ladder. As a
+**default operational pattern** admins (super + ministry) read most tables — but
+**not everything**: `audit_events` + platform telemetry are super-admin-only,
+SC.4 private notes are creator-scoped (even from Super Admin), and Care
+Notes/Prayer Requests are grant-gated. Leaders read only rows scoped to their
+active groups;
 over-shepherds read only covered leaders' data. `audit_events` read is
 **super-admin-only** (not ministry_admin). Shepherd-care tables have **no leader
 path**, but they are **not** uniformly admin-only: over-shepherds have

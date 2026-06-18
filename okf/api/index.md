@@ -37,8 +37,12 @@ RPC families. **Domain-write** families each pair one `audit_events` row in the
 same transaction; **service-role throttle/telemetry** RPCs deliberately do not
 audit-pair (see the exception note below):
 
-- `admin_*` — ministry-admin-callable writes (groups, people, prospects,
-  care, calendar, follow-ups, categories/cells, readiness rules, member care)
+- `admin_*` — mostly ministry-admin-callable writes (groups, people, prospects,
+  care, calendar, follow-ups, categories/cells, readiness rules, member care).
+  **Exception:** the care-note/prayer RPCs `admin_write_care_note` /
+  `admin_write_prayer_request` use `requireOverShepherdOrAdminSession` and
+  re-gate as `auth_is_admin() OR auth_over_shepherd_covers(...)` — over-shepherds
+  author through them too. Don't tighten these back to admin-only.
 - `leader_*` — leader/co-leader writes (group check-in, group care notes +
   prayer requests, group calendar, follow-up status)
 - `over_shepherd_*` — over-shepherd writes (e.g. `over_shepherd_log_broad_note`)

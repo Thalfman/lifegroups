@@ -39,10 +39,14 @@ Admin blanket read access to sealed pastoral notes when changing auth/RLS):
 1. **Private Care Notes** (`shepherd_care_private_notes`) — creator-scoped /
    client-side encrypted; hidden even from Super Admin (ADR 0003).
 2. **Care Notes / Prayer Requests** (`care_notes`, `prayer_requests`) — sealed
-   to their author; ministry_admin + super_admin read **only** when that
-   subject's `note_transparency_grants.granted = true` (default false). Super
-   Admin has no broader bypass. See migrations `…20260529008000_phase_sc4…` and
-   `…20260608090000_phase_pivot9_care_notes…`.
+   to their author; admins read **only** via a transparency grant (default
+   false; Super Admin has no broader bypass). The grant has **two arms** keyed by
+   note shape: OS notes about a leader use the **subject**-keyed grant
+   (`subject_profile_id`); leader **group notes** (`subject_group_id` set,
+   ADR 0020) use the **author**-keyed grant (`subject_profile_id =
+author_profile_id`). Wiring a group note to the subject arm keeps it sealed
+   despite the author's toggle. See `…20260608100000_phase_pivot11_leader_group_notes…`
+   and [data model](/okf/data/index.md).
 
 App-login role lives on `profiles.role`. `member` is **not** an app-login role.
 `staff_viewer` is a **retired, inert enum remnant** — not an assignable live

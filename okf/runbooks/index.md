@@ -56,12 +56,14 @@ mapping and active coverage assignments.
 
 ## Rate limiting not working in prod
 
-Causes: (a) Upstash env unset → fails open to in-memory limiter (logged
-`rate_limit_disabled`) — set `UPSTASH_REDIS_REST_URL` + `_TOKEN`; (b) **per-IP
-buckets silently skipped** because `extractClientIp()` returns null unless
-`TRUSTED_PROXY` is set (the launch runbook uses `TRUSTED_PROXY=vercel`). Setting
-Redis alone is not enough — set `TRUSTED_PROXY` too or the browser-flow IP
-throttles (invite redemption, forgot-password) never engage.
+Causes: (a) Upstash env unset → `rate-limit.ts` returns `configured: false` and
+the browser-flow checks **allow every request** (no process-local in-memory
+bucket — Redis is simply absent for forgot-password / invite throttles; the Edge
+`redeem-invite` DB throttle is separate). Set `UPSTASH_REDIS_REST_URL` +
+`_TOKEN`. (b) **per-IP buckets silently skipped** because `extractClientIp()`
+returns null unless `TRUSTED_PROXY` is set (the launch runbook uses
+`TRUSTED_PROXY=vercel`). Setting Redis alone is not enough — set `TRUSTED_PROXY`
+too or the IP throttles never engage.
 
 ## CI fails on fitness test
 

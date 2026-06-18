@@ -39,9 +39,12 @@ Sliding-window limiters:
 - invite-redeem: per-IP ~10/15min (from `invite/[token]/actions.ts`); the Edge
   function adds a DB-backed per-IP throttle (`check_invite_redeem_rate`)
 
-**Fails open:** missing env / backend error → request allowed (logged
-`rate_limit_disabled` / `rate_limit_backend_error`). Local dev uses a
-non-distributed in-memory limiter.
+**Fails open:** missing env (`configured: false`) or backend error → request
+**allowed** (logged `rate_limit_disabled` / `rate_limit_backend_error`). There is
+**no** process-local in-memory fallback for the browser flows — without Upstash,
+forgot-password / invite-redeem are simply unthrottled (the Edge `redeem-invite`
+DB throttle is separate). Per-IP buckets also need `TRUSTED_PROXY` set, else
+`extractClientIp()` is null and the IP check is skipped.
 
 ## Vercel (hosting + telemetry)
 
