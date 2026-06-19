@@ -729,6 +729,7 @@ const MULTIPLY_GRID = (() => {
           byCell: new Map([[menKey, [5, 6]]]),
           keys: new Map(),
         },
+        cellMaturity: { byCell: new Map() },
         cellHealth: new Map([
           [menKey, { groupGrades: ["B"], leaderGrades: ["B"] }],
         ]),
@@ -810,6 +811,9 @@ const SETTINGS_DATA: SettingsShellData = {
       capacity: { required: true },
       groupHealth: { required: false, min: "C" },
       leaderHealth: { required: false, min: "C" },
+      memberCount: { required: false, min: 12 },
+      groupTenure: { required: false, min: 3 },
+      coShepherdTenure: { required: false, min: 1 },
     },
     // #473: demo rule decodes cleanly — no stored-trigger-unreadable notice.
     ruleFellBack: false,

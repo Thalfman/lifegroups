@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveGroupCategory,
@@ -103,6 +104,11 @@ export function GroupsCatalogEditor({
   const totalTarget = cells.reduce((sum, cell) => sum + cell.target, 0);
   const totalHave = cells.reduce((sum, cell) => sum + cell.have, 0);
 
+  // The Plan form's "+ Add a group type" shortcut deep-links here with `?add=1`
+  // so the admin lands on the open create flow rather than hunting for the "+".
+  const params = useSearchParams();
+  const autoOpenAdd = params.get("add") === "1";
+
   // Catalog label by id, so the "+ Add existing group" picker can show each
   // candidate's current cell (audience · category) — the admin is picking from
   // ANY active group, so naming where it sits now keeps a cross-audience /
@@ -173,7 +179,7 @@ export function GroupsCatalogEditor({
         totalTarget={totalTarget}
       />
 
-      <AddGroupTypeForm categories={categories} />
+      <AddGroupTypeForm categories={categories} defaultOpen={autoOpenAdd} />
 
       <div className="grid gap-3">
         {boards.map((board) => (
@@ -348,10 +354,13 @@ function DeleteCategoryForm({
 // save so the admin can add another.
 function AddGroupTypeForm({
   categories,
+  defaultOpen = false,
 }: {
   categories: { id: string; label: string }[];
+  // Open on mount when the admin arrived from the Plan form's shortcut (?add=1).
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [audience, setAudience] = useState<GroupAudienceCategory>("men");
   const [label, setLabel] = useState("");
   const [error, setError] = useState<string | null>(null);

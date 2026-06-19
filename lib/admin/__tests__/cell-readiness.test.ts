@@ -21,8 +21,11 @@ import {
 // letters), the required/not-required logic, per-cell override precedence, and the
 // trust-boundary decoders.
 
-// A rule that requires every pillar, so a single failing pillar shows up.
+// A rule that requires every pillar, so a single failing pillar shows up. The
+// three multiplication pillars inherit BUILT_IN (off) — these tests cover the
+// original four; the new pillars have their own describe block.
 const ALL_REQUIRED: ReadinessRule = {
+  ...BUILT_IN_READINESS_RULE,
   interest: { required: true, min: 3 },
   capacity: { required: true },
   groupHealth: { required: true, min: "C" },
@@ -35,6 +38,9 @@ function inputs(over: Partial<CellReadinessInputs> = {}): CellReadinessInputs {
     capacityIssue: false,
     groupHealth: null,
     leaderHealth: null,
+    memberCount: 0,
+    groupTenureYears: null,
+    coShepherdTenureYears: null,
     ...over,
   };
 }
@@ -56,6 +62,7 @@ describe("evaluateCellReadiness — interest reads as a NUMBER", () => {
 
   it("compares the raw count, not an A–F band (4 ≥ 3 clears; a huge count clears)", () => {
     const rule: ReadinessRule = {
+      ...BUILT_IN_READINESS_RULE,
       interest: { required: true, min: 3 },
       capacity: { required: false },
       groupHealth: { required: false, min: "C" },
@@ -83,6 +90,7 @@ describe("evaluateCellReadiness — interest reads as a NUMBER", () => {
 
 describe("evaluateCellReadiness — capacity reads as a BOOLEAN issue", () => {
   const interestOnly: ReadinessRule = {
+    ...BUILT_IN_READINESS_RULE,
     interest: { required: true, min: 1 },
     capacity: { required: true },
     groupHealth: { required: false, min: "C" },
@@ -124,6 +132,7 @@ describe("evaluateCellReadiness — capacity reads as a BOOLEAN issue", () => {
 
 describe("evaluateCellReadiness — health reads as A–F LETTERS", () => {
   const groupOnly: ReadinessRule = {
+    ...BUILT_IN_READINESS_RULE,
     interest: { required: false, min: 0 },
     capacity: { required: false },
     groupHealth: { required: true, min: "B" },
@@ -169,6 +178,84 @@ describe("evaluateCellReadiness — health reads as A–F LETTERS", () => {
   });
 });
 
+describe("evaluateCellReadiness — multiplication pillars (#483)", () => {
+  // A rule that requires the three multiplication pillars at their canonical
+  // thresholds (12 members / 3 years / 1 year), everything else off.
+  const multiplyOnly: ReadinessRule = {
+    ...BUILT_IN_READINESS_RULE,
+    interest: { required: false, min: 0 },
+    capacity: { required: false },
+    memberCount: { required: true, min: 12 },
+    groupTenure: { required: true, min: 3 },
+    coShepherdTenure: { required: true, min: 1 },
+  };
+
+  it("is off by default — the built-in rule never blocks on the three new pillars", () => {
+    const signal = evaluateCellReadiness(
+      BUILT_IN_READINESS_RULE,
+      inputs({ memberCount: 0, groupTenureYears: 0, coShepherdTenureYears: 0 })
+    );
+    expect(signal.blockers).not.toContain("memberCount");
+    expect(signal.blockers).not.toContain("groupTenure");
+    expect(signal.blockers).not.toContain("coShepherdTenure");
+  });
+
+  it("member count clears at or above the minimum and blocks below it", () => {
+    expect(
+      evaluateCellReadiness(
+        multiplyOnly,
+        inputs({
+          memberCount: 12,
+          groupTenureYears: 3,
+          coShepherdTenureYears: 1,
+        })
+      ).ready
+    ).toBe(true);
+    const short = evaluateCellReadiness(
+      multiplyOnly,
+      inputs({ memberCount: 11, groupTenureYears: 3, coShepherdTenureYears: 1 })
+    );
+    expect(short.ready).toBe(false);
+    expect(short.blockers).toContain("memberCount");
+  });
+
+  it("the two tenures clear at the minimum whole years and block below", () => {
+    const young = evaluateCellReadiness(
+      multiplyOnly,
+      inputs({ memberCount: 12, groupTenureYears: 2, coShepherdTenureYears: 0 })
+    );
+    expect(young.ready).toBe(false);
+    expect(young.blockers).toEqual(["groupTenure", "coShepherdTenure"]);
+  });
+
+  it("blocks a REQUIRED but ungrounded (null) tenure — no group supplies one", () => {
+    const signal = evaluateCellReadiness(
+      multiplyOnly,
+      inputs({
+        memberCount: 20,
+        groupTenureYears: null,
+        coShepherdTenureYears: null,
+      })
+    );
+    expect(signal.ready).toBe(false);
+    expect(signal.blockers).toContain("groupTenure");
+    expect(signal.blockers).toContain("coShepherdTenure");
+  });
+
+  it("ignores the pillars when present but not required (a null tenure does not block)", () => {
+    const signal = evaluateCellReadiness(
+      BUILT_IN_READINESS_RULE,
+      inputs({ memberCount: 0, groupTenureYears: null })
+    );
+    const ignored = signal.outcomes
+      .filter((o) => o.status === "ignored")
+      .map((o) => o.pillar);
+    expect(ignored).toEqual(
+      expect.arrayContaining(["memberCount", "groupTenure", "coShepherdTenure"])
+    );
+  });
+});
+
 describe("evaluateCellReadiness — required/not-required roll-up", () => {
   it("is ready iff every required pillar clears", () => {
     const signal = evaluateCellReadiness(
@@ -200,6 +287,7 @@ describe("evaluateCellReadiness — required/not-required roll-up", () => {
 
   it("ignores not-required pillars entirely (a failing not-required pillar does not block)", () => {
     const rule: ReadinessRule = {
+      ...BUILT_IN_READINESS_RULE,
       interest: { required: true, min: 2 },
       capacity: { required: false },
       groupHealth: { required: false, min: "A" },
@@ -217,8 +305,10 @@ describe("evaluateCellReadiness — required/not-required roll-up", () => {
     );
     expect(signal.ready).toBe(true);
     expect(signal.blockers).toEqual([]);
+    // capacity, groupHealth, leaderHealth + the three multiplication pillars
+    // (members / group tenure / Co-Leader tenure, off by default) are all ignored.
     expect(signal.outcomes.filter((o) => o.status === "ignored")).toHaveLength(
-      3
+      6
     );
   });
 
@@ -231,12 +321,16 @@ describe("evaluateCellReadiness — required/not-required roll-up", () => {
       "capacity",
       "groupHealth",
       "leaderHealth",
+      "memberCount",
+      "groupTenure",
+      "coShepherdTenure",
     ]);
   });
 });
 
 describe("resolveCellRule — per-cell override precedence", () => {
   const global: ReadinessRule = {
+    ...BUILT_IN_READINESS_RULE,
     interest: { required: true, min: 3 },
     capacity: { required: true },
     groupHealth: { required: false, min: "C" },
@@ -294,6 +388,7 @@ describe("resolveReadinessRule — three-tier cascade (#410 / ADR 0021)", () => 
   // A global rule with a distinct value in every pillar, so a pillar that falls
   // through to global is recognisable from one set at a higher tier.
   const global: ReadinessRule = {
+    ...BUILT_IN_READINESS_RULE,
     interest: { required: true, min: 3 },
     capacity: { required: true },
     groupHealth: { required: false, min: "C" },
@@ -346,6 +441,10 @@ describe("resolveReadinessRule — three-tier cascade (#410 / ADR 0021)", () => 
       capacity: { required: true }, // global (untouched at every tier)
       groupHealth: { required: true, min: "B" }, // per-type
       leaderHealth: { required: true, min: "A" }, // cell
+      // The three multiplication pillars are untouched at every tier → global.
+      memberCount: { required: false, min: 12 },
+      groupTenure: { required: false, min: 3 },
+      coShepherdTenure: { required: false, min: 1 },
     });
   });
 
@@ -393,6 +492,7 @@ describe("resolveReadinessRule — three-tier cascade (#410 / ADR 0021)", () => 
 // this resolution, so the cascade is tested HERE, once, not per surface.
 describe("resolveReadinessRuleWithSources — source attribution (#487)", () => {
   const global: ReadinessRule = {
+    ...BUILT_IN_READINESS_RULE,
     interest: { required: true, min: 3 },
     capacity: { required: true },
     groupHealth: { required: false, min: "C" },
@@ -405,6 +505,9 @@ describe("resolveReadinessRuleWithSources — source attribution (#487)", () => 
       capacity: { rule: global.capacity, source: "global" },
       groupHealth: { rule: global.groupHealth, source: "global" },
       leaderHealth: { rule: global.leaderHealth, source: "global" },
+      memberCount: { rule: global.memberCount, source: "global" },
+      groupTenure: { rule: global.groupTenure, source: "global" },
+      coShepherdTenure: { rule: global.coShepherdTenure, source: "global" },
     });
   });
 
@@ -457,6 +560,9 @@ describe("resolveReadinessRuleWithSources — source attribution (#487)", () => 
       capacity: { rule: { required: true }, source: "global" },
       groupHealth: { rule: { required: true, min: "B" }, source: "type" },
       leaderHealth: { rule: { required: true, min: "A" }, source: "cell" },
+      memberCount: { rule: global.memberCount, source: "global" },
+      groupTenure: { rule: global.groupTenure, source: "global" },
+      coShepherdTenure: { rule: global.coShepherdTenure, source: "global" },
     });
   });
 
@@ -474,6 +580,9 @@ describe("resolveReadinessRuleWithSources — source attribution (#487)", () => 
       capacity: withSources.capacity.rule,
       groupHealth: withSources.groupHealth.rule,
       leaderHealth: withSources.leaderHealth.rule,
+      memberCount: withSources.memberCount.rule,
+      groupTenure: withSources.groupTenure.rule,
+      coShepherdTenure: withSources.coShepherdTenure.rule,
     });
   });
 });
@@ -518,6 +627,11 @@ describe("decodeReadinessRule — trust boundary", () => {
       capacity: { required: false },
       groupHealth: { required: true, min: "B" },
       leaderHealth: { required: false, min: "D" },
+      // The three multiplication pillars are absent from the payload, so they take
+      // the built-in fragment wholesale (off by default).
+      memberCount: { required: false, min: 12 },
+      groupTenure: { required: false, min: 3 },
+      coShepherdTenure: { required: false, min: 1 },
     });
   });
 
@@ -565,10 +679,41 @@ describe("decodeReadinessRuleWithReport — corrupt vs missing vs healthy (#473)
       capacity: { required: false },
       groupHealth: { required: true, min: "B" },
       leaderHealth: { required: false, min: "D" },
+      memberCount: { required: false, min: 12 },
+      groupTenure: { required: false, min: 3 },
+      coShepherdTenure: { required: false, min: 1 },
     };
     const decoded = decodeReadinessRuleWithReport(stored);
     expect(decoded.fellBack).toBe(false);
     expect(decoded.rule).toEqual(stored);
+  });
+
+  it("does NOT flag a rule that simply OMITS the new multiplication pillars (legacy default-off)", () => {
+    // A rule stored before the new pillars existed lacks their keys; that absence
+    // is the legitimate "off by default", not a corruption signal.
+    const decoded = decodeReadinessRuleWithReport({
+      interest: { required: true, min: 5 },
+      capacity: { required: false },
+      groupHealth: { required: true, min: "B" },
+      leaderHealth: { required: false, min: "D" },
+    });
+    expect(decoded.fellBack).toBe(false);
+    expect(decoded.rule.memberCount).toEqual(
+      BUILT_IN_READINESS_RULE.memberCount
+    );
+  });
+
+  it("DOES flag a present-but-malformed new pillar fragment (after an admin opted it in)", () => {
+    // memberCount is PRESENT but its `required` is a non-boolean — exactly the
+    // unreadable-trigger case the original four pillars flag, so it must flag too.
+    const decoded = decodeReadinessRuleWithReport({
+      interest: { required: true, min: 5 },
+      capacity: { required: false },
+      groupHealth: { required: true, min: "B" },
+      leaderHealth: { required: false, min: "D" },
+      memberCount: { required: "yes", min: 12 },
+    });
+    expect(decoded.fellBack).toBe(true);
   });
 
   it("reports NO fallback for a healthy rule that happens to equal the built-in", () => {

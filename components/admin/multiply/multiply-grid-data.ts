@@ -31,7 +31,9 @@ import {
 import {
   EMPTY_CELL_ACTIVE_GROUP_SIZES,
   EMPTY_CELL_INTEREST,
+  EMPTY_CELL_MATURITY,
   fetchCellActiveGroupSizes,
+  fetchCellGroupMaturity,
   fetchCellHealthGrades,
   fetchCellInterestCounts,
 } from "@/lib/supabase/multiplication-config-reads";
@@ -80,6 +82,7 @@ export type MultiplyGridReads = {
   fetchAudienceReadinessRules: OmitClient<typeof fetchAudienceReadinessRules>;
   fetchCellInterestCounts: OmitClient<typeof fetchCellInterestCounts>;
   fetchCellActiveGroupSizes: OmitClient<typeof fetchCellActiveGroupSizes>;
+  fetchCellGroupMaturity: OmitClient<typeof fetchCellGroupMaturity>;
   fetchCellHealthGrades: OmitClient<typeof fetchCellHealthGrades>;
 };
 
@@ -96,6 +99,7 @@ export function supabaseMultiplyGridReads(
     fetchAudienceReadinessRules,
     fetchCellInterestCounts,
     fetchCellActiveGroupSizes,
+    fetchCellGroupMaturity,
     fetchCellHealthGrades,
   });
 }
@@ -120,6 +124,10 @@ export async function buildMultiplyGridData(
     .toISOString()
     .slice(0, 10);
 
+  // Today's UTC date — the anniversary the two tenure pillars count whole years
+  // against (#483).
+  const todayIso = now.toISOString().slice(0, 10);
+
   // Declaration order is the error precedence (readBatch's firstError).
   const batch = await readBatch({
     categories: () => reads.fetchGroupCategories(),
@@ -129,6 +137,7 @@ export async function buildMultiplyGridData(
     perTypeReadiness: () => reads.fetchAudienceReadinessRules(ministryYear),
     interest: () => reads.fetchCellInterestCounts(),
     cellSizes: () => reads.fetchCellActiveGroupSizes(),
+    cellMaturity: () => reads.fetchCellGroupMaturity(todayIso),
     cellHealth: () => reads.fetchCellHealthGrades(ministryYear, periodMonthIso),
   });
 
@@ -138,6 +147,7 @@ export async function buildMultiplyGridData(
   const interest = batch.results.interest.data ?? EMPTY_CELL_INTEREST;
   const cellSizes =
     batch.results.cellSizes.data ?? EMPTY_CELL_ACTIVE_GROUP_SIZES;
+  const cellMaturity = batch.results.cellMaturity.data ?? EMPTY_CELL_MATURITY;
   const cellHealth = batch.results.cellHealth.data ?? EMPTY_CELL_HEALTH_GRADES;
   // #473: decode the stored global trigger WITH a report. A missing stored rule
   // decodes to the built-in default silently; a present-but-unreadable payload
@@ -201,7 +211,7 @@ export async function buildMultiplyGridData(
   // live is dropped there.
   const cells = resolveCells(
     targetCells,
-    { interest, cellSizes, cellHealth, haveByKey },
+    { interest, cellSizes, cellMaturity, cellHealth, haveByKey },
     { globalRule, perTypeRules }
   );
 

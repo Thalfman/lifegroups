@@ -7,6 +7,7 @@ import {
 } from "@/components/admin/settings-tabs";
 import { PBadge } from "@/components/pastoral/atoms";
 import { SetupReturnBanner } from "@/components/lg/admin/setup-return-banner";
+import { GroupsReturnBanner } from "@/components/admin/settings/groups-return-banner";
 import {
   buildOverrideRows,
   overrideSummaryChips,
@@ -355,6 +356,9 @@ function CarePanel({ model }: { model: SettingsCareModel }) {
 function GroupsPanel({ model }: { model: SettingsGroupsModel }) {
   return (
     <div className="grid gap-9">
+      {/* Self-gating: only shows when arriving from the Plan form's "+ Add a
+          group type" shortcut (?from=plan), offering the path back to the funnel. */}
+      <GroupsReturnBanner />
       <section className="grid gap-4">
         <SettingsSectionHeader
           eyebrow="Group types"

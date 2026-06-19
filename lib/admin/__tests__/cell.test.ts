@@ -16,6 +16,7 @@ import {
 } from "@/lib/admin/cell-health";
 import {
   EMPTY_CELL_ACTIVE_GROUP_SIZES,
+  EMPTY_CELL_MATURITY,
   type CellActiveGroupSizes,
 } from "@/lib/supabase/multiplication-config-reads";
 import type { CellInterestTally } from "@/lib/admin/prospect-interest";
@@ -50,6 +51,7 @@ function facets(over: Partial<CellFacetReads> = {}): CellFacetReads {
   return {
     interest: {} as CellInterestTally,
     cellSizes: EMPTY_CELL_ACTIVE_GROUP_SIZES,
+    cellMaturity: EMPTY_CELL_MATURITY,
     cellHealth: EMPTY_CELL_HEALTH_GRADES,
     haveByKey: new Map(),
     ...over,
