@@ -293,45 +293,64 @@ export const EMPTY_CELL_ACTIVE_GROUP_SIZES: CellActiveGroupSizes = {
 };
 
 // ---------------------------------------------------------------------------
-// Per-CELL group maturity (#483) — inputs to the three new readiness pillars.
+// Per-CELL multiplication-candidate maturity (#483) — inputs to the three new
+// readiness pillars.
 // ---------------------------------------------------------------------------
 //
 // The member-count / group-tenure / Co-Leader-tenure pillars (lib/admin/cell-
 // readiness.ts) are Julian's per-GROUP multiplication criteria folded into the
-// per-CELL rule. A cell is "ready to multiply" when its STRONGEST group is, so
-// each pillar reads the BEST group in the cell: the max group tenure (years since
-// groups.launched_on) and the max Co-Leader tenure (years since the earliest
-// ACTIVE co_leader's group_leaders.assigned_at). Member count is the max active
-// roster size, already read per cell by fetchCellActiveGroupSizes — so this read
-// supplies only the two TENURE maxima, computed in whole years against today.
+// per-CELL rule. To keep the Multiply GRID consistent with the Plan tab's
+// readiness chips, this reads them exactly as the planner does
+// (buildPlannerSegments / evaluateReadiness): CANDIDATE-first. Each ACTIVE
+// (non-archived) multiplication candidate is credited to its OWN cell
+// (candidate.audience_category × category_id, type-first), falling back to its
+// attached group's cell — NOT the group's cell unconditionally. A "type-only"
+// candidate (no group yet) still contributes its Julian-fed manual member count.
 //
-// Same considered-cells discipline as the sizes read: the ACTIVE
-// category_type_targets cells seed the map, and only active, categorised groups in
-// an active cell contribute. A cell with no qualifying group keeps null (an
-// ungrounded tenure → blocks a required pillar, mirroring an ungraded health
-// letter). Column-allowlisted + paged, like its sibling.
+// Per candidate, in its cell, against today:
+//   * member count = manual_member_count when set, else the attached group's
+//     active roster count, else 0 (ADR 0022: the manual count is the source of
+//     truth for the "12+ members" criterion);
+//   * group tenure = whole years since the attached group's launched_on (null
+//     when type-only or no launch date);
+//   * Co-Leader tenure = whole years since the earliest ACTIVE co_leader of the
+//     attached group (null when type-only / none).
+// A cell takes the MAX of each across its candidates — "ready to multiply" when
+// its strongest candidate is. A cell with no candidate keeps 0 / null (an
+// ungrounded required pillar blocks, mirroring an ungraded health letter).
+//
+// Same considered-cells discipline as the sizes read: only ACTIVE
+// category_type_targets cells are seeded/credited. Column-allowlisted + paged.
 
 export type CellMaturityCell = {
-  // The cell's BEST (max) EFFECTIVE member count across its active groups — the
-  // Julian-fed manual_member_count when set, else the in-app active roster count
-  // (ADR 0022: the manual count is the source of truth for the "12+ members"
-  // criterion). 0 when the cell has no active groups.
+  // The cell's BEST (max) EFFECTIVE member count across its candidates — the
+  // Julian-fed manual_member_count when set, else the candidate group's active
+  // roster count (ADR 0022). 0 when the cell has no candidate.
   memberCount: number;
-  // The cell's max group tenure and Co-Leader tenure in whole years, or null when
-  // no active group in the cell supplies one.
+  // The cell's max group tenure and Co-Leader tenure in whole years across its
+  // candidates, or null when no candidate supplies one (type-only / no group).
   groupTenureYears: number | null;
   coShepherdTenureYears: number | null;
 };
 
 export type CellMaturity = {
-  // Stable cell key → the cell's readiness maturity (max across its groups).
+  // Stable cell key → the cell's readiness maturity (max across its candidates).
   byCell: Map<string, CellMaturityCell>;
 };
 
 export const EMPTY_CELL_MATURITY: CellMaturity = { byCell: new Map() };
 
-// One active-group row for the maturity read: the cell-keying columns plus the
-// launch date the group-tenure pillar reads.
+// One active multiplication candidate: its own cell (type-first), its optional
+// multiplying group, and the Julian-fed headcount.
+type CellCandidateRow = {
+  group_id: string | null;
+  audience_category: GroupAudienceCategory | null;
+  category_id: string | null;
+  manual_member_count: number | null;
+};
+
+// One active group the candidates resolve against: id, its cell-keying columns
+// (the candidate's cell falls back to these), and the launch date.
 type CellMaturityGroupRow = {
   id: string;
   audience_category: GroupAudienceCategory | null;
@@ -354,12 +373,6 @@ type CellCoLeaderRow = {
   profile: { role: string | null; status: string | null } | null;
 };
 
-// One active multiplication candidate's Julian-fed headcount for its group.
-type CellManualCountRow = {
-  group_id: string;
-  manual_member_count: number | null;
-};
-
 const CELL_MATURITY_GROUP_COLUMNS = columns<CellMaturityGroupRow>()(
   "id",
   "audience_category",
@@ -371,26 +384,37 @@ const CELL_MATURITY_GROUP_COLUMNS = columns<CellMaturityGroupRow>()(
 // allowlist doesn't apply) — still explicit columns, never select("*").
 const CELL_CO_LEADER_SELECT =
   "group_id, assigned_at, profile:profiles(role, status)";
-const CELL_MANUAL_COUNT_COLUMNS = columns<CellManualCountRow>()(
+const CELL_CANDIDATE_COLUMNS = columns<CellCandidateRow>()(
   "group_id",
+  "audience_category",
+  "category_id",
   "manual_member_count"
 );
 
-// Pure aggregator (exported for testing): bucket each ACTIVE group's maturity
-// maxima under its cell, with every active cell pre-seeded. A group's member
-// count is the Julian-fed manual_member_count when set, else its active roster
-// count (ADR 0022); its Co-Leader tenure reads the EARLIEST active co_leader
-// assignment (the longest-serving co-leader gives the strongest signal). Member
-// count maxes from 0; both tenures max from null (a cell with no qualifying group
-// stays null). All against `todayIso`.
+// Pure aggregator (exported for testing): bucket each ACTIVE multiplication
+// candidate's maturity under its OWN cell (type-first, falling back to its group's
+// cell), with every active cell pre-seeded. Per candidate: member count = manual
+// headcount, else its group's active roster, else 0 (ADR 0022); group + Co-Leader
+// tenure read its attached group (null when type-only). A cell takes the MAX of
+// each across its candidates; a cell with no candidate keeps 0 / null. This
+// mirrors the planner (buildPlannerSegments / evaluateReadiness) so the grid and
+// Plan tab agree. All against `todayIso`.
 export function tallyCellMaturity(
+  candidates: readonly CellCandidateRow[],
   groups: readonly CellMaturityGroupRow[],
   coLeaders: readonly CellCoLeaderRow[],
   memberships: readonly CellMembershipRow[],
-  manualCounts: readonly CellManualCountRow[],
   activeCells: readonly CellKey[],
   todayIso: string
 ): CellMaturity {
+  // Active groups by id — the candidate's attached group resolves its launch
+  // date, its cell fallback, and its roster from here. A non-active (or unknown)
+  // group_id resolves to undefined, so the candidate is treated as type-only.
+  const groupById = new Map<string, CellMaturityGroupRow>();
+  for (const g of groups) {
+    if (g.lifecycle_status === "active") groupById.set(g.id, g);
+  }
+
   // Earliest active co_leader assignment per group → the max Co-Leader tenure. A
   // stale row whose profile is no longer a leader/co_leader (os7) or has been
   // deactivated is skipped, so an ex- or deactivated co-leader can't keep a cell
@@ -407,15 +431,8 @@ export function tallyCellMaturity(
     }
   }
 
-  // Active roster count per group (the capacity-board count idiom) and the
-  // Julian-fed manual count that overrides it for the "12+ members" criterion.
+  // Active roster count per group (the capacity-board count idiom).
   const rosterCountByGroup = countActiveMembersByGroup(memberships);
-  const manualCountByGroup = new Map<string, number>();
-  for (const row of manualCounts) {
-    if (row.group_id && typeof row.manual_member_count === "number") {
-      manualCountByGroup.set(row.group_id, row.manual_member_count);
-    }
-  }
 
   const byCell = new Map<string, CellMaturityCell>();
   for (const cell of activeCells) {
@@ -442,45 +459,69 @@ export function tallyCellMaturity(
     return current === null ? next : Math.max(current, next);
   };
 
-  for (const g of groups) {
-    if (g.lifecycle_status !== "active") continue;
-    const audience = g.audience_category;
-    if (!isAudienceCategory(audience)) continue;
-    if (g.category_id == null) continue;
-    const key = cellKey({ audience, categoryId: g.category_id });
-    const acc = byCell.get(key);
-    if (!acc) continue;
-    // Effective count: the manual headcount wins; else the roster count (0 when
-    // the group has no active members).
+  for (const c of candidates) {
+    const group =
+      c.group_id != null ? (groupById.get(c.group_id) ?? null) : null;
+    // Type-first cell: the candidate's own (audience × category), falling back to
+    // its attached group's (legacy rows whose type columns weren't backfilled).
+    const audience = isAudienceCategory(c.audience_category)
+      ? c.audience_category
+      : (group?.audience_category ?? null);
+    const categoryId = c.category_id ?? group?.category_id ?? null;
+    if (!isAudienceCategory(audience) || categoryId == null) continue;
+    const acc = byCell.get(cellKey({ audience, categoryId }));
+    if (!acc) continue; // not an ACTIVE target cell
+
+    // Member count: the manual headcount wins (even 0 — Julian's correction);
+    // else the attached group's roster; else 0 for a type-only candidate.
+    const roster = group ? (rosterCountByGroup.get(group.id) ?? 0) : 0;
     const effectiveCount =
-      manualCountByGroup.get(g.id) ?? rosterCountByGroup.get(g.id) ?? 0;
+      typeof c.manual_member_count === "number"
+        ? c.manual_member_count
+        : roster;
     acc.memberCount = Math.max(acc.memberCount, effectiveCount);
+
+    // Tenures read the attached group; a type-only candidate supplies neither.
     acc.groupTenureYears = maxOrKeep(
       acc.groupTenureYears,
-      wholeYearsBetween(g.launched_on, todayIso)
+      group ? wholeYearsBetween(group.launched_on, todayIso) : null
     );
     acc.coShepherdTenureYears = maxOrKeep(
       acc.coShepherdTenureYears,
-      wholeYearsBetween(earliestCoLeaderByGroup.get(g.id) ?? null, todayIso)
+      group
+        ? wholeYearsBetween(
+            earliestCoLeaderByGroup.get(group.id) ?? null,
+            todayIso
+          )
+        : null
     );
   }
 
   return { byCell };
 }
 
-// Read the per-cell member-count + tenure maxima: active groups (with launch
-// date), active co_leader leadership rows (with assignment date), active
-// memberships + the Julian-fed manual counts (for the effective member count),
-// and the active cells to seed the considered set, then aggregate purely against
-// today. All reads page through to completion so a large ministry isn't
-// truncated. A read failure surfaces so the grid notes it rather than evaluating
-// these pillars on a partial set.
+// Read the per-cell candidate maturity: active (non-archived) multiplication
+// candidates (their type-first cell + group + manual count), active groups (with
+// launch date), active co_leader leadership rows (with assignment date + profile
+// role/status), active memberships (for roster fallback), and the active cells to
+// seed the considered set, then aggregate purely against today. All reads page
+// through to completion so a large ministry isn't truncated. A read failure
+// surfaces so the grid notes it rather than evaluating these pillars on a partial
+// set.
 export async function fetchCellGroupMaturity(
   client: ReadClient,
   todayIso: string
 ): Promise<ReadResult<CellMaturity>> {
-  const [groupsRes, coLeadersRes, membershipsRes, manualCountsRes, cellsRes] =
+  const [candidatesRes, groupsRes, coLeadersRes, membershipsRes, cellsRes] =
     await Promise.all([
+      fetchAllPages<CellCandidateRow>((from, to) =>
+        client
+          .from("multiplication_candidates")
+          .select(CELL_CANDIDATE_COLUMNS.select)
+          .is("archived_at", null)
+          .range(from, to)
+          .returns<CellCandidateRow[]>()
+      ),
       fetchAllPages<CellMaturityGroupRow>((from, to) =>
         client
           .from("groups")
@@ -506,15 +547,6 @@ export async function fetchCellGroupMaturity(
           .range(from, to)
           .returns<CellMembershipRow[]>()
       ),
-      fetchAllPages<CellManualCountRow>((from, to) =>
-        client
-          .from("multiplication_candidates")
-          .select(CELL_MANUAL_COUNT_COLUMNS.select)
-          .is("archived_at", null)
-          .not("manual_member_count", "is", null)
-          .range(from, to)
-          .returns<CellManualCountRow[]>()
-      ),
       fetchAllPages<ActiveCellRow>((from, to) =>
         client
           .from("category_type_targets")
@@ -525,6 +557,14 @@ export async function fetchCellGroupMaturity(
       ),
     ]);
 
+  if (candidatesRes.error)
+    return {
+      data: null,
+      error: wrapError(
+        "fetchCellGroupMaturity/candidates",
+        candidatesRes.error
+      ),
+    };
   if (groupsRes.error)
     return {
       data: null,
@@ -543,14 +583,6 @@ export async function fetchCellGroupMaturity(
         membershipsRes.error
       ),
     };
-  if (manualCountsRes.error)
-    return {
-      data: null,
-      error: wrapError(
-        "fetchCellGroupMaturity/manualCounts",
-        manualCountsRes.error
-      ),
-    };
   if (cellsRes.error)
     return {
       data: null,
@@ -567,10 +599,10 @@ export async function fetchCellGroupMaturity(
 
   return {
     data: tallyCellMaturity(
+      candidatesRes.data ?? [],
       groupsRes.data ?? [],
       coLeadersRes.data ?? [],
       membershipsRes.data ?? [],
-      manualCountsRes.data ?? [],
       activeCells,
       todayIso
     ),
