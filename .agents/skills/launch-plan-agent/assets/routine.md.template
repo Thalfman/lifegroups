@@ -1,0 +1,56 @@
+# Routine — {{AGENT_NAME}}
+
+Run **{{AGENT_NAME}}** on a schedule from Anthropic-managed cloud infra. Draws
+down your subscription usage — **no API key**. (Research preview.)
+
+## Config
+
+| Field | Value |
+| --- | --- |
+| Name | {{AGENT_NAME}} |
+| Prompt | Use the {{AGENT_NAME}} agent to {{TASK}}. Use relative dates ("today"). |
+| Model | {{sonnet \| opus \| haiku}} |
+| Repository | {{owner/repo}} |
+| Cadence | {{hourly \| daily HH:MM \| weekdays HH:MM \| weekly \| one-off}} |
+| Connectors | {{only what's needed, e.g. Slack, GitHub}} |
+| Network | {{Trusted (default) \| Custom + allowed domains \| Full}} |
+
+> Min interval is 1 hour. Recurring runs count against your **daily routine run
+> cap**; one-off runs don't (they use normal subscription usage). Routines run
+> autonomously with **no permission prompts** — scope repo, connectors, and
+> network to exactly what's needed.
+
+## Create it
+
+### From the CLI (scheduled triggers)
+
+```
+/schedule {{cadence}}, use the {{AGENT_NAME}} agent to {{TASK}}
+```
+
+Examples:
+```
+/schedule daily at 9am, use the {{AGENT_NAME}} agent to {{TASK}}
+/schedule in 2 weeks, use the {{AGENT_NAME}} agent to {{TASK}}   # one-off
+```
+
+`/schedule` requires a **claude.ai subscription login**. It's hidden if
+`ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN`/`apiKeyHelper` is set, if
+telemetry-off env vars are set, or if you're inside a Claude Code **web**
+session — in those cases create it at https://claude.ai/code/routines instead.
+
+### From the web (any trigger)
+
+https://claude.ai/code/routines → **New routine** → set prompt, repo,
+environment, and trigger. Add **API** (per-routine `/fire` endpoint + bearer
+token) or **GitHub** (`pull_request.*` / `release.*`) triggers here — the CLI
+makes scheduled triggers only.
+
+## Verify
+
+```
+/schedule list          # confirm next-run time
+/schedule run           # fire once now to smoke-test
+```
+A green run status means the session started cleanly, **not** that the task
+succeeded — open the run transcript to confirm.

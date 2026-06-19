@@ -1,0 +1,37 @@
+# GitHub Actions workflow for {{AGENT_NAME}} — PLAN-BILLED.
+#
+# To stay on your subscription (not API per-token billing) in CI, authenticate
+# with a Claude Code OAuth token rather than an API key:
+#   1. Locally run `claude setup-token` to mint a long-lived subscription token.
+#   2. Save it as the repo secret CLAUDE_CODE_OAUTH_TOKEN.
+# Do NOT set ANTHROPIC_API_KEY — that routes to per-token API billing.
+#
+# NOTE: a native Routine with a GitHub trigger is usually the simpler
+# plan-billed path; reach for this workflow only if you already run everything
+# through Actions. Verify token/flag names against current docs before relying on
+# this in production.
+#
+# Save as: .github/workflows/{{AGENT_NAME}}.yml
+
+name: {{AGENT_NAME}}
+
+on:
+  schedule:
+    - cron: "0 9 * * 1-5" # weekdays 09:00 UTC — adjust as needed
+  workflow_dispatch: {} # allow manual runs
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run {{AGENT_NAME}}
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: >-
+            Use the {{AGENT_NAME}} agent to {{TASK}}.
+            Use relative dates (e.g. "today", "since yesterday").
+          claude_args: >-
+            --allowedTools "{{ALLOWLIST e.g. Read,Grep,Glob,Bash}}"

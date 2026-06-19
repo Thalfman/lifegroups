@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# cron wrapper for {{AGENT_NAME}} — PLAN-BILLED.
+#
+# Runs on your Claude subscription only if this machine has an interactive
+# `claude` OAuth login and ANTHROPIC_API_KEY is NOT set. Do not add --bare.
+#
+# Install (run every weekday at 09:00):
+#   crontab -e
+#   0 9 * * 1-5  /path/to/cron.sh >> /path/to/{{AGENT_NAME}}.log 2>&1
+#
+# Prefer a native Routine for unattended plan-billed work; use this only when the
+# job must run in your own environment.
+
+set -euo pipefail
+
+REPO_DIR="{{ABSOLUTE_REPO_DIR}}"
+
+# Guard: refuse to run under API-key auth so we never silently bill per-token.
+if [ -n "${ANTHROPIC_API_KEY:-}" ] || [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+  echo "ANTHROPIC_API_KEY/AUTH_TOKEN is set — that bills per token. Unset it for plan-billed runs." >&2
+  exit 1
+fi
+
+cd "$REPO_DIR"
+
+claude -p "Use the {{AGENT_NAME}} agent to {{TASK}}. Use relative dates (e.g. 'today', 'since yesterday')." \
+  --allowedTools "{{ALLOWLIST e.g. Read,Grep,Glob,Bash}}" \
+  --output-format json \
+  | jq -r '.result'

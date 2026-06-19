@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{AGENT_NAME}} — plan-billed agent</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif;
+        max-width: 46rem; margin: 3rem auto; padding: 0 1.25rem;
+      }
+      h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+      .tag {
+        display: inline-block; font-size: 0.75rem; padding: 0.15rem 0.5rem;
+        border-radius: 999px; background: #e8f0fe; color: #1a56db;
+      }
+      table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+      th, td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid #ddd; vertical-align: top; }
+      th { width: 11rem; color: #555; font-weight: 600; }
+      code { background: rgba(127,127,127,0.14); padding: 0.1rem 0.35rem; border-radius: 4px; }
+      .muted { color: #777; font-size: 0.9rem; }
+    </style>
+  </head>
+  <body>
+    <h1>{{AGENT_NAME}} <span class="tag">runs on your plan · no API key</span></h1>
+    <p>{{ONE_LINE_PURPOSE}}</p>
+
+    <table>
+      <tr><th>What it does</th><td>{{PURPOSE}}</td></tr>
+      <tr><th>Success looks like</th><td>{{SUCCESS_CRITERIA}}</td></tr>
+      <tr><th>Agent file</th><td><code>.claude/agents/{{AGENT_NAME}}.md</code></td></tr>
+      <tr><th>Tools</th><td><code>{{ALLOWLIST}}</code></td></tr>
+      <tr><th>Model</th><td>{{MODEL}}</td></tr>
+      <tr><th>Trigger</th><td>{{on-demand | Routine cadence | cron | GitHub event}}</td></tr>
+      <tr><th>Run it</th><td>See <code>LAUNCH.md</code></td></tr>
+    </table>
+
+    <h2>Roadmap</h2>
+    <ul>
+      <li><strong>v1:</strong> {{NEXT_STEP}}</li>
+      <li><strong>v2:</strong> {{LATER_STEP}}</li>
+    </ul>
+
+    <p class="muted">
+      Plan-billed sibling of anthropics/launch-your-agent. Subagent + headless
+      <code>claude -p</code> + optional Routine/cron — all on your Claude
+      subscription.
+    </p>
+  </body>
+</html>

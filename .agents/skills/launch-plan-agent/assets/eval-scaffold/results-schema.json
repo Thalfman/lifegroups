@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "plan-agent eval results",
+  "type": "object",
+  "required": ["agent", "version", "cases"],
+  "properties": {
+    "agent": { "type": "string" },
+    "version": { "type": "integer" },
+    "model": { "type": "string" },
+    "changed": {
+      "type": "string",
+      "description": "The single thing changed vs the previous version"
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "verdict"],
+        "properties": {
+          "name": { "type": "string" },
+          "verdict": { "enum": ["pass", "fail"] },
+          "output": { "type": "string" },
+          "notes": { "type": "string" },
+          "session_id": { "type": "string" },
+          "total_cost_usd": { "type": "number" }
+        }
+      }
+    }
+  }
+}

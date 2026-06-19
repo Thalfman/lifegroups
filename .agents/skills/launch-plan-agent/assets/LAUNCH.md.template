@@ -1,0 +1,47 @@
+# LAUNCH — {{AGENT_NAME}}
+
+How to run **{{AGENT_NAME}}** on your Claude plan (no API key, no per-token
+billing).
+
+## Prerequisites (plan-billed)
+
+- You're logged into Claude Code with your subscription: run `claude` once and
+  sign in (OAuth).
+- **`ANTHROPIC_API_KEY` is NOT set** in this shell (`echo $ANTHROPIC_API_KEY`
+  should be empty). If set, unset it — it forces API billing.
+- The agent file exists at `.claude/agents/{{AGENT_NAME}}.md`. Run `/agents` to
+  confirm it's loaded (restart the session if you just created the file on disk).
+
+## Run it interactively
+
+In a `claude` session:
+
+```
+Use the {{AGENT_NAME}} agent to {{TASK}}.
+```
+
+## Run it headless (scripted)
+
+Plain `claude -p` against your logged-in session — **no `--bare`**:
+
+```bash
+claude -p "Use the {{AGENT_NAME}} agent to {{TASK}}" \
+  --allowedTools "{{ALLOWLIST e.g. Read,Grep,Glob,Bash}}" \
+  --output-format json | jq -r '.result'
+```
+
+The JSON also carries `.session_id` (for `--resume`) and `.total_cost_usd`.
+
+## Resume / follow up
+
+```bash
+session_id=$(claude -p "{{first task}}" --output-format json | jq -r '.session_id')
+claude -p "{{follow-up}}" --resume "$session_id"
+```
+
+## Notes
+
+- Use **relative dates** in prompts ("today", "since yesterday"), never literal
+  dates, so scheduled runs stay correct.
+- To schedule this without you, see `routine.md` (native, recommended) or
+  `cron.sh` / the GitHub Actions workflow.
