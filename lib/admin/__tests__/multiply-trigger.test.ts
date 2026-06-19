@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  PerTypeReadinessRule,
-  ReadinessRule,
+import {
+  BUILT_IN_READINESS_RULE,
+  type PerTypeReadinessRule,
+  type ReadinessRule,
 } from "@/lib/admin/cell-readiness";
 import {
   ALL_OVERRIDDEN,
@@ -28,6 +29,7 @@ import {
 // required capacity, a required Group-Health letter, and a NOT-required Leader
 // Health (so the "not required" inheritance copy is covered too).
 const GLOBAL: ReadinessRule = {
+  ...BUILT_IN_READINESS_RULE,
   interest: { required: true, min: 3 },
   capacity: { required: true },
   groupHealth: { required: true, min: "B" },
@@ -188,6 +190,12 @@ describe("buildPartial — each level's save payload", () => {
     groupMin: "A",
     leaderRequired: false,
     leaderMin: "D",
+    memberRequired: false,
+    memberMin: "12",
+    tenureRequired: false,
+    tenureMin: "3",
+    coShepherdRequired: false,
+    coShepherdMin: "1",
   };
 
   it("posts only the overridden pillars (the rest inherit)", () => {
@@ -196,6 +204,9 @@ describe("buildPartial — each level's save payload", () => {
       capacity: false,
       groupHealth: false,
       leaderHealth: false,
+      memberCount: false,
+      groupTenure: false,
+      coShepherdTenure: false,
     };
     expect(buildPartial(toggles, fields)).toEqual({
       interest: { required: true, min: 7 },
@@ -210,6 +221,9 @@ describe("buildPartial — each level's save payload", () => {
           capacity: false,
           groupHealth: false,
           leaderHealth: false,
+          memberCount: false,
+          groupTenure: false,
+          coShepherdTenure: false,
         },
         fields
       )
@@ -227,6 +241,9 @@ describe("buildPartial — each level's save payload", () => {
       capacity: { required: false },
       groupHealth: { required: true, min: "A" },
       leaderHealth: { required: false, min: "D" },
+      memberCount: { required: false, min: 12 },
+      groupTenure: { required: false, min: 3 },
+      coShepherdTenure: { required: false, min: 1 },
     });
   });
 });
@@ -249,6 +266,9 @@ describe("seedFieldsForLevel — what the editor shows when a level opens", () =
       capacity: true,
       groupHealth: true,
       leaderHealth: true,
+      memberCount: true,
+      groupTenure: true,
+      coShepherdTenure: true,
     });
     expect(seed.fields).toEqual(fieldsFromRule(GLOBAL));
   });
@@ -264,6 +284,9 @@ describe("seedFieldsForLevel — what the editor shows when a level opens", () =
       capacity: false,
       groupHealth: false,
       leaderHealth: true,
+      memberCount: false,
+      groupTenure: false,
+      coShepherdTenure: false,
     });
     // Overridden pillars carry the stored value…
     expect(seed.fields.interestMin).toBe("5");
@@ -287,6 +310,9 @@ describe("seedFieldsForLevel — what the editor shows when a level opens", () =
       capacity: true,
       groupHealth: false,
       leaderHealth: false,
+      memberCount: false,
+      groupTenure: false,
+      coShepherdTenure: false,
     });
     expect(seed.fields.capacityRequired).toBe(false);
     // …Interest starts from the inherited Men's per-type value (5), not global (3).
@@ -303,12 +329,18 @@ describe("togglesFromPartial", () => {
       capacity: false,
       groupHealth: false,
       leaderHealth: false,
+      memberCount: false,
+      groupTenure: false,
+      coShepherdTenure: false,
     });
     expect(togglesFromPartial({})).toEqual({
       interest: false,
       capacity: false,
       groupHealth: false,
       leaderHealth: false,
+      memberCount: false,
+      groupTenure: false,
+      coShepherdTenure: false,
     });
   });
 });

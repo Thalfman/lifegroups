@@ -240,17 +240,16 @@ function ReadinessRuleSummary({
   level: TriggerLevel;
   toggles: PillarToggles;
 }) {
-  const overrideCount =
-    (toggles.interest ? 1 : 0) +
-    (toggles.capacity ? 1 : 0) +
-    (toggles.groupHealth ? 1 : 0) +
-    (toggles.leaderHealth ? 1 : 0);
+  // Count every pillar (including the three multiplication pillars), derived from
+  // the toggle set so adding a pillar never drifts this summary out of sync.
+  const pillarTotal = Object.keys(toggles).length;
+  const overrideCount = Object.values(toggles).filter(Boolean).length;
   const detail =
     level.kind === "global"
-      ? "The global default defines all four pillars for the ministry year."
+      ? `The global default defines all ${pillarTotal} pillars for the ministry year.`
       : overrideCount === 0
-        ? "All four pillars inherit from the level above."
-        : `${overrideCount} of 4 pillars override the level above.`;
+        ? "All pillars inherit from the level above."
+        : `${overrideCount} of ${pillarTotal} pillars override the level above.`;
 
   return (
     <section className="grid gap-2 rounded-md border border-line bg-bg px-4 py-3.5">
@@ -311,8 +310,10 @@ function buildReadinessLevelOptions(
 function hasRuleOverrides(
   rule: PerTypeReadinessRule | CellReadinessOverride | undefined
 ): boolean {
-  return Boolean(
-    rule?.interest ?? rule?.capacity ?? rule?.groupHealth ?? rule?.leaderHealth
+  // A partial overrides the level above for any pillar PRESENT in it — including
+  // the three multiplication pillars — so check every fragment, not a fixed four.
+  return (
+    rule != null && Object.values(rule).some((fragment) => fragment != null)
   );
 }
 
@@ -504,6 +505,11 @@ const PILLAR_META: { key: ReadinessPillarKey; label: string }[] = [
   { key: "capacity", label: "Capacity" },
   { key: "groupHealth", label: "Group Health" },
   { key: "leaderHealth", label: "Shepherd Health" },
+  // #483: Julian's three multiplication criteria, off by default (BUILT_IN). The
+  // group's strongest member count / age / Co-Shepherd tenure across the cell.
+  { key: "memberCount", label: "Members" },
+  { key: "groupTenure", label: "Years as a group" },
+  { key: "coShepherdTenure", label: "Co-Shepherd tenure" },
 ];
 
 // The four pillar rows. With a `setToggle` (per-type / per-cell levels) each pillar
@@ -593,6 +599,12 @@ function parentSourceForPillar(pillar: ReadinessPillarKey, parent: ParentRule) {
       return parent.groupHealth.source;
     case "leaderHealth":
       return parent.leaderHealth.source;
+    case "memberCount":
+      return parent.memberCount.source;
+    case "groupTenure":
+      return parent.groupTenure.source;
+    case "coShepherdTenure":
+      return parent.coShepherdTenure.source;
   }
 }
 
@@ -686,7 +698,83 @@ function PillarInputs({
           />
         </>
       );
+    case "memberCount":
+      return (
+        <>
+          <Required
+            checked={fields.memberRequired}
+            onChange={(v) => update({ memberRequired: v })}
+            id={reqId}
+          />
+          <span className={THRESHOLD_NOTE}>≥</span>
+          <CountInput
+            ariaLabel="Minimum members"
+            value={fields.memberMin}
+            onChange={(v) => update({ memberMin: v })}
+          />
+          <span className={THRESHOLD_NOTE}>members</span>
+        </>
+      );
+    case "groupTenure":
+      return (
+        <>
+          <Required
+            checked={fields.tenureRequired}
+            onChange={(v) => update({ tenureRequired: v })}
+            id={reqId}
+          />
+          <span className={THRESHOLD_NOTE}>≥</span>
+          <CountInput
+            ariaLabel="Minimum years as a group"
+            value={fields.tenureMin}
+            onChange={(v) => update({ tenureMin: v })}
+          />
+          <span className={THRESHOLD_NOTE}>years</span>
+        </>
+      );
+    case "coShepherdTenure":
+      return (
+        <>
+          <Required
+            checked={fields.coShepherdRequired}
+            onChange={(v) => update({ coShepherdRequired: v })}
+            id={reqId}
+          />
+          <span className={THRESHOLD_NOTE}>≥</span>
+          <CountInput
+            ariaLabel="Minimum Co-Leader years"
+            value={fields.coShepherdMin}
+            onChange={(v) => update({ coShepherdMin: v })}
+          />
+          <span className={THRESHOLD_NOTE}>years</span>
+        </>
+      );
   }
+}
+
+// A small numeric threshold input shared by the three count/years pillars
+// (members, group tenure, Co-Leader tenure) — mirrors the interest min field.
+function CountInput({
+  ariaLabel,
+  value,
+  onChange,
+}: {
+  ariaLabel: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <input
+      aria-label={ariaLabel}
+      type="number"
+      min={0}
+      step={1}
+      inputMode="numeric"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn(fieldInputClassName, "w-[72px] text-center")}
+    />
+  );
 }
 
 function Required({

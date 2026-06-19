@@ -37,7 +37,10 @@ import {
 import type { CellInterestTally } from "@/lib/admin/prospect-interest";
 import type { GroupAudienceCategory } from "@/types/enums";
 import type { CategoryTypeTargetRow } from "@/lib/supabase/group-categories-reads";
-import type { CellActiveGroupSizes } from "@/lib/supabase/multiplication-config-reads";
+import type {
+  CellActiveGroupSizes,
+  CellMaturity,
+} from "@/lib/supabase/multiplication-config-reads";
 
 // A resolved live Cell: its coordinate, whether the category is applied to that
 // type (active), its `have X of Y` coverage, the natural-unit readiness inputs
@@ -60,6 +63,9 @@ export type CellFacetReads = {
   interest: CellInterestTally;
   cellSizes: CellActiveGroupSizes;
   cellHealth: CellHealthGrades;
+  // #483: per-cell max group tenure + Co-Leader tenure (years), feeding the two
+  // tenure pillars. Member count reads the max of `cellSizes` (no extra read).
+  cellMaturity: CellMaturity;
   haveByKey: ReadonlyMap<string, number>;
 };
 
@@ -89,12 +95,19 @@ export function resolveCell(
   // One coordinate, one encoder — every facet lookup for this cell reads the same
   // key.
   const key = cellKey(cell.coordinate);
+  const sizes = facets.cellSizes.byCell.get(key) ?? [];
+  const maturity = facets.cellMaturity.byCell.get(key);
   const inputs: CellReadinessInputs = {
     interestCount: facets.interest[key] ?? 0,
-    capacityIssue: computeCellCapacityIssue(
-      facets.cellSizes.byCell.get(key) ?? []
-    ).isIssue,
+    capacityIssue: computeCellCapacityIssue(sizes).isIssue,
     ...resolveCellHealth(facets.cellHealth, key),
+    // The three multiplication pillars come pre-aggregated (max across the cell's
+    // groups) from the maturity facet: the effective member count (Julian-fed
+    // manual count, else roster — ADR 0022) and the two tenures in whole years
+    // (null when ungrounded). Defaults stand for a cell with no maturity entry.
+    memberCount: maturity?.memberCount ?? 0,
+    groupTenureYears: maturity?.groupTenureYears ?? null,
+    coShepherdTenureYears: maturity?.coShepherdTenureYears ?? null,
   };
   const coverage = {
     have: facets.haveByKey.get(key) ?? 0,
