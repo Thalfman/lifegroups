@@ -1,7 +1,12 @@
 import type { CareNotesRow, PrayerRequestsRow } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
 import { CARE_NOTE_COLUMNS, PRAYER_REQUEST_COLUMNS } from "./care-note-reads";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  unwrapEmbed,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 // ADR 0023 — reads behind the admin "All Notes" feed. Sibling to
 // care-note-reads.ts (per-subject reads); this module holds the CROSS-subject
@@ -161,13 +166,9 @@ export async function fetchBroadNoteInteractionsForAdmin(
     };
   const out: BroadNoteFeedRow[] = [];
   for (const r of (data ?? []) as unknown as BroadNoteJoinRow[]) {
-    const cp = Array.isArray(r.care_profile)
-      ? (r.care_profile[0] ?? null)
-      : r.care_profile;
+    const cp = unwrapEmbed(r.care_profile);
     if (cp === null) continue;
-    const shepherd = Array.isArray(cp.shepherd)
-      ? (cp.shepherd[0] ?? null)
-      : cp.shepherd;
+    const shepherd = unwrapEmbed(cp.shepherd);
     if (shepherd === null) continue;
     const body = (r.notes ?? "").trim();
     if (body.length === 0) continue;

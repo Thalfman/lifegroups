@@ -32,6 +32,7 @@ import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
 import {
   currentUtcDateIso,
   differenceInDaysIso,
+  fetchByIds,
   wrapError,
   type ReadClient,
   type ReadResult,
@@ -448,7 +449,7 @@ export async function fetchOpenFollowUps(
 ): Promise<ReadResult<LeaderFollowUpRow[]>> {
   let query = client
     .from("follow_ups")
-    .select(LEADER_FOLLOW_UP_COLUMNS)
+    .select(LEADER_FOLLOW_UP_COLUMNS.select)
     .in("status", ["open", "in_progress"])
     .order("priority", { ascending: false })
     .order("due_date", { ascending: true, nullsFirst: false });
@@ -1241,36 +1242,28 @@ export async function fetchMultiplicationCandidatesForAdmin(
   // Resolve labels for both the groups' categories AND each candidate's own
   // category (type-only candidates have no group but still segment by their
   // cell), so one batched read covers every label the planner needs.
+  // fetchByIds dedups the combined category ids and short-circuits the empty
+  // set; the refinement keeps the live-categories-only filter.
   const categoryIds = [
-    ...new Set(
-      [
-        ...groupRows.map((g) => g.category_id),
-        ...candidates.map((c) => c.category_id),
-      ].filter((id): id is string => id != null)
-    ),
-  ];
+    ...groupRows.map((g) => g.category_id),
+    ...candidates.map((c) => c.category_id),
+  ].filter((id): id is string => id != null);
+  const categoriesRes = await fetchByIds<{ id: string; label: string }>(
+    client,
+    "group_categories",
+    categoryIds,
+    "id, label",
+    {
+      label: "fetchMultiplicationCandidatesForAdmin/categories",
+      refine: (q) => q.is("archived_at", null),
+    }
+  );
+  if (categoriesRes.error) {
+    return { data: null, error: categoriesRes.error };
+  }
   const categoryLabelById = new Map<string, string>();
-  if (categoryIds.length > 0) {
-    const categoriesRes = await client
-      .from("group_categories")
-      .select("id, label")
-      .in("id", categoryIds)
-      .is("archived_at", null);
-    if (categoriesRes.error) {
-      return {
-        data: null,
-        error: wrapError(
-          "fetchMultiplicationCandidatesForAdmin/categories",
-          categoriesRes.error
-        ),
-      };
-    }
-    for (const c of (categoriesRes.data ?? []) as {
-      id: string;
-      label: string;
-    }[]) {
-      categoryLabelById.set(c.id, c.label);
-    }
+  for (const c of categoriesRes.data ?? []) {
+    categoryLabelById.set(c.id, c.label);
   }
 
   const groupById = indexCandidateGroups(groupRows, categoryLabelById);
@@ -1344,19 +1337,18 @@ export async function fetchLeaderPipelineForAdmin(
   const apprentices = (pipelineRes.data ?? []) as LeaderPipelineRow[];
   if (apprentices.length === 0) return { data: [], error: null };
 
-  const groupIds = [...new Set(apprentices.map((a) => a.group_id))];
-  const groupsRes = await client
-    .from("groups")
-    .select("id, name")
-    .in("id", groupIds);
+  const groupsRes = await fetchByIds<{ id: string; name: string }>(
+    client,
+    "groups",
+    apprentices.map((a) => a.group_id),
+    "id, name",
+    { label: "fetchLeaderPipelineForAdmin/groups" }
+  );
   if (groupsRes.error) {
-    return {
-      data: null,
-      error: wrapError("fetchLeaderPipelineForAdmin/groups", groupsRes.error),
-    };
+    return { data: null, error: groupsRes.error };
   }
   const nameById = new Map<string, string>();
-  for (const g of (groupsRes.data ?? []) as { id: string; name: string }[]) {
+  for (const g of groupsRes.data ?? []) {
     nameById.set(g.id, g.name);
   }
 
@@ -1472,39 +1464,31 @@ export async function fetchCapacityBoardExtras(
     id: string;
     category_id: string | null;
   }[];
-  const boardCategoryIds = [
-    ...new Set(
-      groupRows
-        .map((g) => g.category_id)
-        .filter((id): id is string => id != null)
-    ),
-  ];
-  if (boardCategoryIds.length > 0) {
-    const categoriesRes = await client
-      .from("group_categories")
-      .select("id, label")
-      .in("id", boardCategoryIds)
-      .is("archived_at", null);
-    if (categoriesRes.error) {
-      return {
-        ...empty,
-        error: wrapError(
-          "fetchCapacityBoardExtras/categories",
-          categoriesRes.error
-        ).message,
-      };
+  const boardCategoryIds = groupRows
+    .map((g) => g.category_id)
+    .filter((id): id is string => id != null);
+  // fetchByIds dedups the board's category ids and short-circuits the empty
+  // set; the refinement keeps the live-categories-only filter.
+  const categoriesRes = await fetchByIds<{ id: string; label: string }>(
+    client,
+    "group_categories",
+    boardCategoryIds,
+    "id, label",
+    {
+      label: "fetchCapacityBoardExtras/categories",
+      refine: (q) => q.is("archived_at", null),
     }
-    const labelById = new Map<string, string>();
-    for (const c of (categoriesRes.data ?? []) as {
-      id: string;
-      label: string;
-    }[]) {
-      labelById.set(c.id, c.label);
-    }
-    for (const g of groupRows) {
-      if (g.category_id && labelById.has(g.category_id)) {
-        categoryLabelByGroup[g.id] = labelById.get(g.category_id)!;
-      }
+  );
+  if (categoriesRes.error) {
+    return { ...empty, error: categoriesRes.error.message };
+  }
+  const labelById = new Map<string, string>();
+  for (const c of categoriesRes.data ?? []) {
+    labelById.set(c.id, c.label);
+  }
+  for (const g of groupRows) {
+    if (g.category_id && labelById.has(g.category_id)) {
+      categoryLabelByGroup[g.id] = labelById.get(g.category_id)!;
     }
   }
 
