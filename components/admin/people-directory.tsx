@@ -67,24 +67,24 @@ export const PROFILE_SECTIONS: {
     role: "ministry_admin",
     title: "Ministry Admins",
     description:
-      "Ministry admins run the ministry day to day and oversee every group and leader.",
+      "Ministry admins run the ministry day to day and oversee every group and shepherd.",
   },
   {
     role: "over_shepherd",
     title: "Over-Shepherds",
     description:
-      "Over-shepherds coach a set of leaders, between the leaders and the ministry admin in the oversight ladder.",
+      "Over-shepherds coach a set of shepherds, between the shepherds and the ministry admin in the oversight ladder.",
   },
   {
     role: "leader",
-    title: "Leaders",
-    description: "Leaders shepherd a Life Group and the members in it.",
+    title: "Shepherds",
+    description: "Shepherds care for a Life Group and the members in it.",
   },
   {
     role: "co_leader",
-    title: "Co-Leaders",
+    title: "Co-Shepherds",
     description:
-      "Co-leaders share the shepherding of a Life Group alongside its leader.",
+      "Co-shepherds share the care of a Life Group alongside its shepherd.",
   },
 ];
 
@@ -99,12 +99,12 @@ function emptyProfileMessage(args: {
   if (args.error) return `Couldn't load profiles: ${args.error}`;
   if (args.filtered) {
     return args.scope === "leaders"
-      ? "No leaders or co-leaders match the current filters."
-      : "No leaders or oversight roles match the current filters.";
+      ? "No shepherds or co-shepherds match the current filters."
+      : "No shepherds or oversight roles match the current filters.";
   }
   return args.scope === "leaders"
-    ? "No leaders or co-leaders yet. Add a person, mark them as a leader, then assign them to a group."
-    : "No leaders or oversight roles yet. Add people, mark leaders, then assign group leaders.";
+    ? "No shepherds or co-shepherds yet. Add a person, mark them as a shepherd, then assign them to a group."
+    : "No shepherds or oversight roles yet. Add people, mark shepherds, then assign group shepherds.";
 }
 
 // Empty-state copy for the members section. Returns null when there are members
@@ -118,7 +118,7 @@ function emptyMemberMessage(args: {
   if (args.hasMembers) return null;
   return args.filtered
     ? "No members match the current filters."
-    : "No members yet. Add people first, then assign leaders and groups so care coverage can turn on.";
+    : "No members yet. Add people first, then assign shepherds and groups so care coverage can turn on.";
 }
 
 export function PeopleDirectory(props: PeopleDirectoryProps) {
@@ -255,13 +255,13 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
           <DirectorySection
             headerTitle={
               scope === "leaders"
-                ? "Leaders and co-leaders"
-                : "Leaders and oversight"
+                ? "Shepherds and co-shepherds"
+                : "Shepherds and oversight"
             }
             headerDescription={
               scope === "leaders"
-                ? "Current leaders and co-leaders who shepherd their groups."
-                : "Ministry admins, over-shepherds, leaders, and co-leaders who shepherd and oversee groups."
+                ? "Current shepherds and co-shepherds who care for their groups."
+                : "Ministry admins, over-shepherds, shepherds, and co-shepherds who care for and oversee groups."
             }
             countLabel={`${visibleProfiles.length} shown`}
             stale={listIsStale}
@@ -307,7 +307,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
       {showMembers ? (
         <DirectorySection
           headerTitle="Members"
-          headerDescription="Members take part in groups but don’t sign in. Leaders record their attendance; admins assign them to groups."
+          headerDescription="Members take part in groups but don’t sign in. Shepherds record their attendance; admins assign them to groups."
           countLabel={`${visibleMembers.length} shown`}
           stale={listIsStale}
           empty={emptyMemberMessage({
@@ -367,7 +367,7 @@ function FilterBar({
         className={fieldSelectClassName}
       >
         <option value="directory">Everyone</option>
-        <option value="leaders">Leaders</option>
+        <option value="leaders">Shepherds</option>
         <option value="members">Members</option>
       </select>
       <select

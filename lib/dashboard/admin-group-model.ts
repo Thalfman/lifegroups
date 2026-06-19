@@ -193,7 +193,7 @@ const ATTENTION_LABELS: Record<AttentionReason, string> = {
   health_needs_follow_up: "Needs follow-up",
   health_watch: "Watch",
   capacity_unknown: "Capacity unknown",
-  no_leader: "No active leader",
+  no_leader: "No active shepherd",
   no_members: "No active members",
   missing_meeting_day_time: "Missing meeting day or time",
 };
@@ -309,7 +309,7 @@ function buildAttentionDetail(
     case "capacity_unknown":
       return "No capacity configured (override, group, or default)";
     case "no_leader":
-      return "No active leader assigned";
+      return "No active shepherd assigned";
     case "no_members":
       return "No active members on the roster";
     case "missing_meeting_day_time":

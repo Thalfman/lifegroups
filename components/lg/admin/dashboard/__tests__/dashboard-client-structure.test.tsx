@@ -128,12 +128,12 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
     // the markup (so indexOf can't latch onto an unrelated earlier match). Each
     // must live between the <details> open and close tags.
     const deeperCardMarkers = [
-      "Leader care", // LeaderCareOverviewCard (eyebrow)
+      "Shepherd care", // LeaderCareOverviewCard (eyebrow)
       "Launch planning", // LaunchPlanningOverviewCard (eyebrow)
       "Health pulse", // HealthDistributionCard (title)
       "Interest Funnel", // InterestFunnelOverviewCard (title)
       "Multiplication readiness", // MultiplyOverviewCard (title)
-      "Leader pipeline", // LeaderPipelineOverviewCard (title)
+      "Shepherd pipeline", // LeaderPipelineOverviewCard (title)
     ];
 
     for (const marker of deeperCardMarkers) {
@@ -154,7 +154,7 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
 
     const needsAttention = indexOf(html, 'aria-label="Top next actions"');
 
-    for (const marker of ["Leader care", "Launch planning", "Health pulse"]) {
+    for (const marker of ["Shepherd care", "Launch planning", "Health pulse"]) {
       expect(
         indexOf(html, marker),
         `expected ${JSON.stringify(marker)} to render below the urgent-work queue`
@@ -171,10 +171,10 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
     });
 
     expect(html).not.toContain("Launch planning"); // LaunchPlanningOverviewCard
-    expect(html).not.toContain("Leader pipeline"); // LeaderPipelineOverviewCard
+    expect(html).not.toContain("Shepherd pipeline"); // LeaderPipelineOverviewCard
 
     // Care/Plan/Multiply-owned snapshot cards stay.
-    expect(html).toContain("Leader care"); // LeaderCareOverviewCard
+    expect(html).toContain("Shepherd care"); // LeaderCareOverviewCard
     expect(html).toContain("Health pulse"); // HealthDistributionCard
     expect(html).toContain("Interest Funnel"); // InterestFunnelOverviewCard
     expect(html).toContain("Multiplication readiness"); // MultiplyOverviewCard
@@ -472,8 +472,8 @@ describe("Home empty-state tone pass (#480)", () => {
 describe("DashboardClient vital signs band (#476)", () => {
   const PIVOT_TITLES = [
     "Active groups",
-    "Active leaders",
-    "Leaders needing care",
+    "Active shepherds",
+    "Shepherds needing care",
     "Prospects in funnel",
     "Cells ready to multiply",
     "Follow-ups due this week",

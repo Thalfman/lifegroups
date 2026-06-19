@@ -272,16 +272,16 @@ export function buildSuperAdminChecklist(
     },
     {
       key: "leaders",
-      label: "Leaders exist",
+      label: "Shepherds exist",
       description: !hasClient
         ? "Unknown — the database isn’t configured in this environment."
         : errors.profiles
           ? `Couldn’t load profiles: ${errors.profiles}`
           : leaderProfiles.length > 0
-            ? `${leaderProfiles.length} leader / co-leader profile${
+            ? `${leaderProfiles.length} shepherd / co-shepherd profile${
                 leaderProfiles.length === 1 ? "" : "s"
               } on file.`
-            : "No leader or co-leader profiles yet. Add one via Manage People.",
+            : "No shepherd or co-shepherd profiles yet. Add one via Manage People.",
       tone:
         !hasClient || errors.profiles
           ? "warn"
@@ -308,16 +308,16 @@ export function buildSuperAdminChecklist(
     },
     {
       key: "leader_assignment",
-      label: "At least one leader has an active group assignment",
+      label: "At least one shepherd has an active group assignment",
       description: !hasClient
         ? "Unknown — the database isn’t configured in this environment."
         : errors.leaders
           ? `Couldn’t load group_leaders: ${errors.leaders}`
           : leadersWithAssignment.size > 0
-            ? `${leadersWithAssignment.size} leader profile${
+            ? `${leadersWithAssignment.size} shepherd profile${
                 leadersWithAssignment.size === 1 ? "" : "s"
               } currently assigned to a group.`
-            : "No active group_leaders assignments yet. Assign a leader to a group via Manage People.",
+            : "No active group_leaders assignments yet. Assign a shepherd to a group via Manage People.",
       tone:
         !hasClient || errors.leaders
           ? "warn"

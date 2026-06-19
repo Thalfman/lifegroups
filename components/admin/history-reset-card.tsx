@@ -50,7 +50,7 @@ export function HistoryResetCard({
   return (
     <DangerCard
       title="Reset by category — clear one kind of history"
-      intro="Clear a single category of accumulated history at a time — useful before launch to remove invalid test data without wiping everything. Each reset captures a recoverable snapshot of just that category before deleting, and is audited. People, groups, leaders, memberships, settings, and other categories are untouched. To clear every category at once, use Clean Slate instead."
+      intro="Clear a single category of accumulated history at a time — useful before launch to remove invalid test data without wiping everything. Each reset captures a recoverable snapshot of just that category before deleting, and is audited. People, groups, shepherds, memberships, settings, and other categories are untouched. To clear every category at once, use Clean Slate instead."
     >
       {state === null ? (
         <p className="m-0 font-sans text-sm text-ink2">

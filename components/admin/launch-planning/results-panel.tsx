@@ -22,7 +22,7 @@ function recommendation(
   }
   const leaders = outputs.estimated_new_leaders_needed;
   const groupWord = recommended_new_groups === 1 ? "group" : "groups";
-  const leaderWord = leaders === 1 ? "leader" : "leaders";
+  const leaderWord = leaders === 1 ? "shepherd" : "shepherds";
   const gapWord = `${fmtNumber(Math.max(0, capacity_gap))} seat${
     Math.max(0, capacity_gap) === 1 ? "" : "s"
   }`;

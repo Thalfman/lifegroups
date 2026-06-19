@@ -24,7 +24,7 @@ const ROSTER = readFileSync(
 
 describe("group detail tab actions", () => {
   it("teaches the inline assign control on the empty roster states", () => {
-    expect(ROSTER).toContain("No leader assigned yet");
+    expect(ROSTER).toContain("No shepherd assigned yet");
     expect(ROSTER).toContain("No active members on the roster");
     expect(ROSTER).toContain("assign one below");
   });

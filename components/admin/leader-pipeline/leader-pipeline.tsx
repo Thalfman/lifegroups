@@ -405,7 +405,7 @@ export function LeaderPipeline({
   return (
     <section className="grid gap-5 rounded-lg border border-line bg-surface p-card">
       <header>
-        <span className="font-sans text-xs text-ink3">Leader pipeline</span>
+        <span className="font-sans text-xs text-ink3">Shepherd pipeline</span>
         <h2 className="m-0 mt-1 font-display text-lg font-medium text-ink">
           Apprentices by stage
         </h2>

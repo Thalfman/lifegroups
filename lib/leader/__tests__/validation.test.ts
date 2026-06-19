@@ -148,7 +148,7 @@ describe("validateLeaderCheckinPayload", () => {
       ...basePayload(),
       leader_note: "x".repeat(1001),
     });
-    expect(errors.join(" ")).toContain("leader note is too long");
+    expect(errors.join(" ")).toContain("shepherd note is too long");
   });
 
   it("parses follow_up_needed from form-style strings", () => {

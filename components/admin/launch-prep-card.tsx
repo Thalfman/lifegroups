@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 // The Home "Needs attention" warning each launch-optics mute flag silences,
 // phrased as the operator sees it on Home (not the flag's "Mute: …" label).
 const LAUNCH_WARNING_LABELS: Record<string, string> = {
-  mute_care_attention: "Leaders needing care attention",
+  mute_care_attention: "Shepherds needing care attention",
   mute_health_checks: "Overdue or missing health checks",
   mute_follow_ups: "Open follow-ups",
 };

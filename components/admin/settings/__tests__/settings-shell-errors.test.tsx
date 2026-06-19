@@ -185,7 +185,7 @@ describe("SettingsShell Care tab — rubric read errors (#469)", () => {
   it("names the leader rubric's own failing read and keeps the group editor", () => {
     const html = render(withErrors({ leaderRubric: "boom" }), "care");
 
-    expect(html).toContain(`The Leader Health Rubric ${COULD_NOT_LOAD}`);
+    expect(html).toContain(`The Shepherd Health Rubric ${COULD_NOT_LOAD}`);
     expect(html).not.toContain(`The Group Health Rubric ${COULD_NOT_LOAD}`);
     expect(html).not.toContain(NOT_CONFIGURED);
     expect(count(html, RUBRIC_EDITOR)).toBe(1);

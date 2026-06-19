@@ -32,8 +32,8 @@ const HOME = '[data-a11y-surface="home"]';
 
 const PIVOT_VITAL_SIGNS = [
   "Active groups",
-  "Active leaders",
-  "Leaders needing care",
+  "Active shepherds",
+  "Shepherds needing care",
   "Prospects in funnel",
   "Cells ready to multiply",
   "Follow-ups due this week",
@@ -121,7 +121,7 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
     // outcome-naming action link — never a bare "Open".
     await expect(home.getByText("Care triage")).toBeVisible();
     await expect(
-      home.getByRole("link", { name: /Contact leaders/ })
+      home.getByRole("link", { name: /Contact shepherds/ })
     ).toBeVisible();
     await expect(home.getByText("Health pulse")).toBeVisible();
     await expect(
@@ -142,7 +142,7 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
     // planning, no leader pipeline, no legacy guests funnel — and no link into
     // a hidden surface.
     await expect(home.getByText("Launch planning")).toHaveCount(0);
-    await expect(home.getByText("Leader pipeline")).toHaveCount(0);
+    await expect(home.getByText("Shepherd pipeline")).toHaveCount(0);
     await expect(home.getByText("Pipeline funnel")).toHaveCount(0);
     for (const href of [
       "/admin/planning",
@@ -188,7 +188,7 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
       "/admin/settings?tab=system&from=setup#people-import"
     );
     await expect(
-      checklist.getByRole("link", { name: /Assign leaders/ })
+      checklist.getByRole("link", { name: /Assign shepherds/ })
     ).toHaveAttribute("href", "/admin/groups?tab=needs_setup&from=setup");
     await expect(
       checklist.getByRole("link", { name: /Assess health/ })

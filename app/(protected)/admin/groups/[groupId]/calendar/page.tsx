@@ -109,7 +109,7 @@ export default async function AdminGroupCalendarPage({
         italic={showArchived ? "— archived" : "— calendar"}
         lede={
           group.lifecycle_status === "closed"
-            ? "This group is closed. Admins can still correct calendar occurrences here; leaders cannot edit while it is closed."
+            ? "This group is closed. Admins can still correct calendar occurrences here; shepherds cannot edit while it is closed."
             : "Click any date to set the gathering type or mark it OFF / Cancelled. Time is inherited from the group's schedule."
         }
         maxWidth={920}

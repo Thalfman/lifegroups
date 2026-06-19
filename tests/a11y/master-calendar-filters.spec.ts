@@ -202,7 +202,7 @@ test.describe("planning opinionated views (#331)", () => {
       "This week",
       "Needs coverage",
       "Cancelled / OFF",
-      "By leader",
+      "By shepherd",
     ]) {
       await expect(switcher.getByRole("button", { name: view })).toBeVisible();
     }
@@ -309,7 +309,7 @@ test.describe("planning opinionated views (#331)", () => {
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "By leader" }).click();
+    await surface.getByRole("button", { name: "By shepherd" }).click();
     // Anderson recurs on two May dates; the flat list would render two identical
     // "Open group calendar" links. The de-noised By-leader view collapses that
     // to exactly one per group under each leader.
@@ -322,7 +322,7 @@ test.describe("planning opinionated views (#331)", () => {
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "By leader" }).click();
+    await surface.getByRole("button", { name: "By shepherd" }).click();
     const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
     expectNoBlockingAxeViolations(results);
   });

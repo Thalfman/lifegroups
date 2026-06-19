@@ -196,7 +196,7 @@ function DrawerBody({
           value={clock ?? "Not set on the group schedule"}
         />
         <Field
-          label="Leader / co-leader"
+          label="Shepherd / co-shepherd"
           value={
             occurrence.leaders.length > 0
               ? occurrence.leaders.map((l) => l.name).join(", ")

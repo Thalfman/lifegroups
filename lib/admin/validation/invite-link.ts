@@ -46,7 +46,7 @@ export function validateCreateInviteLinkPayload(
   const role = typeof input.role === "string" ? input.role : "";
   if (!INVITE_LINK_ROLES.has(role as CreateInviteLinkPayload["role"])) {
     errors.push(
-      "Role must be Ministry Admin, Over-Shepherd, Leader, or Co-Leader."
+      "Role must be Ministry Admin, Over-Shepherd, Shepherd, or Co-Shepherd."
     );
   }
 
@@ -59,7 +59,7 @@ export function validateCreateInviteLinkPayload(
     errors.push("Group selection is invalid.");
   }
   if (groupRaw !== undefined && role !== "leader" && role !== "co_leader") {
-    errors.push("Only leaders and co-leaders can be assigned to a group.");
+    errors.push("Only shepherds and co-shepherds can be assigned to a group.");
   }
 
   // Expiry: either a known preset or a custom future ISO datetime, both

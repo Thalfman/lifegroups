@@ -19,7 +19,7 @@ import { readFormPayload } from "@/lib/shared/form-data";
 type ActionInput<T> = T | FormData;
 
 const CALENDAR_NOT_ASSIGNED =
-  "Only the assigned leader or co-leader can manage that group's calendar.";
+  "Only the assigned shepherd or co-shepherd can manage that group's calendar.";
 
 function leaderCalendarPaths(groupId: string): string[] {
   return [

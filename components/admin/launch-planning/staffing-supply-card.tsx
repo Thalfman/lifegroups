@@ -32,9 +32,9 @@ export function StaffingSupplyCard({
   const gapBorder = gap > 0 ? P.terra : P.sage;
   const gapText =
     gap > 0
-      ? `short ${shortfall} leader${shortfall === 1 ? "" : "s"}`
+      ? `short ${shortfall} shepherd${shortfall === 1 ? "" : "s"}`
       : gap < 0
-        ? `surplus of ${-gap} leader${-gap === 1 ? "" : "s"}`
+        ? `surplus of ${-gap} shepherd${-gap === 1 ? "" : "s"}`
         : "fully staffed";
 
   return (
@@ -85,7 +85,7 @@ export function StaffingSupplyCard({
           }}
         >
           No launches planned yet. Set a planned launch count and target season
-          on a scenario to see the leader gap.
+          on a scenario to see the shepherd gap.
         </p>
       ) : (
         <>

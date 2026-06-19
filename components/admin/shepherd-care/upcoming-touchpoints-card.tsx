@@ -13,7 +13,7 @@ export function UpcomingTouchpointsCard({
       {items.length === 0 ? (
         <EmptyState
           title="No touchpoints due"
-          description="Nothing on the calendar for the next 7 days. Schedule a next touchpoint from any leader detail page."
+          description="Nothing on the calendar for the next 7 days. Schedule a next touchpoint from any shepherd detail page."
         />
       ) : (
         <div>

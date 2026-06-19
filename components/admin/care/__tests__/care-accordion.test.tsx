@@ -66,7 +66,7 @@ describe("CareAccordion", () => {
     );
 
     expect(html).toContain("1 needs attention");
-    expect(html).toContain("2 leaders");
+    expect(html).toContain("2 shepherds");
   });
 
   it("stays quiet when no Leader in a pane needs attention", () => {

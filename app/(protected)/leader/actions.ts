@@ -17,7 +17,7 @@ import { readFrozenSurfaceFlagForLeader } from "@/lib/auth/leader-surface-flag";
 const REVALIDATE_LEADER = "/leader";
 
 const CHECKIN_NOT_ASSIGNED =
-  "Only an assigned leader or co-leader can submit this check-in.";
+  "Only an assigned shepherd or co-shepherd can submit this check-in.";
 
 const CHECKINS_FROZEN = "Weekly check-ins aren't available right now.";
 

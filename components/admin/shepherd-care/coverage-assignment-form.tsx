@@ -67,7 +67,7 @@ export function CoverageAssignmentForm({
           <p className={FORM_NOTE}>
             {currentOverShepherdId
               ? "Choose a different over-shepherd to reassign — the prior assignment will end automatically."
-              : "Assign an over-shepherd to cover this leader. When the over-shepherd signs in, this leader appears among the ones they cover."}
+              : "Assign an over-shepherd to cover this shepherd. When the over-shepherd signs in, this shepherd appears among the ones they cover."}
           </p>
           <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
             <div>

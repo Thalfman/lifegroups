@@ -114,7 +114,7 @@ insert into public.multiplication_candidates (
   notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 15 members at time of plan. Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc bracket: Women''s "30''s – 40''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, 15
+  'Doc: 15 members at time of plan. Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc bracket: Women''s "30''s – 40''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven shepherds are listed; the count and the listed shepherds do not reconcile in the source.', null, null, 15
 from public.groups g
 where g.name = 'Stephanie Hichox'
   and not exists (
@@ -132,7 +132,7 @@ insert into public.multiplication_candidates (
   notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 15 members at time of plan. Doc bracket: Women''s "50''s – 60''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', 'Cindy Kessaris', null, 15
+  'Doc: 15 members at time of plan. Doc bracket: Women''s "50''s – 60''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven shepherds are listed; the count and the listed shepherds do not reconcile in the source.', 'Cindy Kessaris', null, 15
 from public.groups g
 where g.name = 'Diana Johnson'
   and not exists (
@@ -150,7 +150,7 @@ insert into public.multiplication_candidates (
   notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 12 members at time of plan. Doc bracket: Women''s "50''s – 60''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, 12
+  'Doc: 12 members at time of plan. Doc bracket: Women''s "50''s – 60''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven shepherds are listed; the count and the listed shepherds do not reconcile in the source.', null, null, 12
 from public.groups g
 where g.name = 'Christine Mathias'
   and not exists (
@@ -168,7 +168,7 @@ insert into public.multiplication_candidates (
   notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 4 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, 4
+  'Doc: 4 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven shepherds are listed; the count and the listed shepherds do not reconcile in the source.', null, null, 4
 from public.groups g
 where g.name = 'Gail Blair'
   and not exists (
@@ -186,7 +186,7 @@ insert into public.multiplication_candidates (
   notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 13 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, 13
+  'Doc: 13 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven shepherds are listed; the count and the listed shepherds do not reconcile in the source.', null, null, 13
 from public.groups g
 where g.name = 'Donna Lawrence'
   and not exists (
@@ -204,7 +204,7 @@ insert into public.multiplication_candidates (
   notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 9 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, 9
+  'Doc: 9 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven shepherds are listed; the count and the listed shepherds do not reconcile in the source.', null, null, 9
 from public.groups g
 where g.name = 'Judi Tripp'
   and not exists (
@@ -222,7 +222,7 @@ insert into public.multiplication_candidates (
   notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc marked this entry `(?)` — unconfirmed; verify with Julian. Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, null
+  'Doc marked this entry `(?)` — unconfirmed; verify with Julian. Section reconciliation: the Doc''s women''s header says "6 groups" but seven shepherds are listed; the count and the listed shepherds do not reconcile in the source.', null, null, null
 from public.groups g
 where g.name = 'Sandra Lea'
   and not exists (
@@ -258,7 +258,7 @@ insert into public.multiplication_candidates (
   notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc note: on the same source line as the Krispins. Section reconciliation: the Doc''s mixed header says "18 groups"; the listed leaders do not cleanly reconcile to that count (e.g. the Beasley line shares a source line with the Krispins).', null, null, null
+  'Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc note: on the same source line as the Krispins. Section reconciliation: the Doc''s mixed header says "18 groups"; the listed shepherds do not cleanly reconcile to that count (e.g. the Beasley line shares a source line with the Krispins).', null, null, null
 from public.groups g
 where g.name = 'Mike and Mary Jo Beasley'
   and not exists (

@@ -178,7 +178,7 @@ export function validateLeaderCheckinPayload(
 
   if (leaderNote !== null && leaderNote.length > LEADER_NOTE_MAX) {
     errors.push(
-      `The leader note is too long (max ${LEADER_NOTE_MAX} characters).`
+      `The shepherd note is too long (max ${LEADER_NOTE_MAX} characters).`
     );
   }
 

@@ -117,7 +117,7 @@ export function validateCreateFollowUpPayload(
   if (dueDate !== undefined && !isIsoDate(dueDate))
     errors.push("Due date must be YYYY-MM-DD.");
   if (leaderNote !== undefined && leaderNote.length > 1000)
-    errors.push("Leader-visible note is too long (max 1000 characters).");
+    errors.push("Shepherd-visible note is too long (max 1000 characters).");
   if (adminNote !== undefined && adminNote.length > 1000)
     errors.push("Admin-private note is too long (max 1000 characters).");
 
@@ -166,7 +166,7 @@ export function validateAdminUpdateFollowUpStatusPayload(
   const adminNote = readOptionalString(input.admin_private_note);
 
   if (setLeader && leaderNote !== undefined && leaderNote.length > 1000)
-    errors.push("Leader-visible note is too long (max 1000 characters).");
+    errors.push("Shepherd-visible note is too long (max 1000 characters).");
   if (setAdmin && adminNote !== undefined && adminNote.length > 1000)
     errors.push("Admin-private note is too long (max 1000 characters).");
 
@@ -198,7 +198,7 @@ export function validateLeaderUpdateFollowUpStatusPayload(
     return { ok: false, errors: ["payload must be an object"] };
   if (!isUuid(input.follow_up_id)) errors.push("follow_up_id must be a uuid");
   if (!isLeaderFollowUpStatus(input.status))
-    errors.push("Leaders can only mark follow-ups in progress or done.");
+    errors.push("Shepherds can only mark follow-ups in progress or done.");
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,

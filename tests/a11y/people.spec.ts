@@ -43,7 +43,7 @@ test.describe("admin People tabs", () => {
 
     // The add-person forms live in the drawer, not the page.
     expect(
-      await surface.getByRole("button", { name: "Add leader" }).count()
+      await surface.getByRole("button", { name: "Add shepherd" }).count()
     ).toBe(0);
     expect(
       await surface.getByRole("button", { name: "Add member" }).count()
@@ -122,11 +122,11 @@ test.describe("admin People tabs", () => {
 
     // The directory reports no matches.
     await expect(
-      surface.getByText(/No leaders or oversight roles match/)
+      surface.getByText(/No shepherds or oversight roles match/)
     ).toBeVisible();
     // The add forms are still not on the page.
     expect(
-      await surface.getByRole("button", { name: "Add leader" }).count()
+      await surface.getByRole("button", { name: "Add shepherd" }).count()
     ).toBe(0);
   });
 
@@ -138,8 +138,8 @@ test.describe("admin People tabs", () => {
     for (const name of [
       "Ministry Admins",
       "Over-Shepherds",
-      "Leaders",
-      "Co-Leaders",
+      "Shepherds",
+      "Co-Shepherds",
       "Members",
     ]) {
       await expect(
@@ -148,7 +148,7 @@ test.describe("admin People tabs", () => {
     }
   });
 
-  test("the scope filter narrows to Leaders, then Members", async ({
+  test("the scope filter narrows to Shepherds, then Members", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
@@ -156,10 +156,10 @@ test.describe("admin People tabs", () => {
 
     await scope.selectOption("leaders");
     await expect(
-      surface.getByRole("heading", { name: "Leaders", exact: true })
+      surface.getByRole("heading", { name: "Shepherds", exact: true })
     ).toBeVisible();
     await expect(
-      surface.getByRole("heading", { name: "Co-Leaders", exact: true })
+      surface.getByRole("heading", { name: "Co-Shepherds", exact: true })
     ).toBeVisible();
     // The oversight and Members sections are not mounted in the leaders scope.
     expect(
@@ -177,7 +177,7 @@ test.describe("admin People tabs", () => {
     ).toBeVisible();
     expect(
       await surface
-        .getByRole("heading", { name: "Leaders", exact: true })
+        .getByRole("heading", { name: "Shepherds", exact: true })
         .count()
     ).toBe(0);
   });
@@ -187,7 +187,7 @@ test.describe("admin People tabs", () => {
     await surface.getByRole("tab", { name: /^Apprentices/ }).click();
 
     await expect(
-      surface.getByRole("heading", { name: "Leader pipeline" })
+      surface.getByRole("heading", { name: "Shepherd pipeline" })
     ).toBeVisible();
     await expect(
       surface.getByRole("tab", { name: /^Apprentices/ })
@@ -211,7 +211,7 @@ test.describe("admin People tabs", () => {
 
     // Leader is the default kind; the kind toggle switches to the member form.
     await expect(
-      dialog.getByRole("button", { name: "Add leader" })
+      dialog.getByRole("button", { name: "Add shepherd" })
     ).toBeVisible();
     await dialog.getByRole("radio", { name: "Member" }).click();
     await expect(

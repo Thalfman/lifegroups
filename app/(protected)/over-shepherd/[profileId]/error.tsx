@@ -10,7 +10,7 @@ export default function OverShepherdDetailError(props: {
     <DetailRouteError
       {...props}
       backHref="/over-shepherd"
-      backLabel="Back to your leaders"
+      backLabel="Back to your shepherds"
     />
   );
 }

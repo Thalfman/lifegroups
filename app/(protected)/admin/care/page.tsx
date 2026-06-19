@@ -158,9 +158,9 @@ export async function CarePageView({
     <>
       <PageHeader
         eyebrow="Care"
-        title="How your leaders"
+        title="How your shepherds"
         italic="are doing"
-        lede="Your leaders' care in one place, grouped by over-shepherd."
+        lede="Your shepherds' care in one place, grouped by over-shepherd."
       />
       <Suspense fallback={<PageSkeleton bodyOnly />}>
         <CareData rosterFilter={rosterFilter} resolvedTab={resolvedTab} />

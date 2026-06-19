@@ -264,7 +264,7 @@ export const DEMO_FOLLOW_UPS: LeaderFollowUpRow[] = [
   followUp({
     id: "demo-fu-1",
     type: "care",
-    title: "Check in with South Campus Women leaders",
+    title: "Check in with South Campus Women shepherds",
     related_group_id: "fb-cap-full-1",
     priority: "high",
   }),

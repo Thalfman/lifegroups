@@ -504,12 +504,12 @@ const PILLAR_META: { key: ReadinessPillarKey; label: string }[] = [
   { key: "interest", label: "Interest Funnel people count" },
   { key: "capacity", label: "Capacity" },
   { key: "groupHealth", label: "Group Health" },
-  { key: "leaderHealth", label: "Leader Health" },
+  { key: "leaderHealth", label: "Shepherd Health" },
   // #483: Julian's three multiplication criteria, off by default (BUILT_IN). The
-  // group's strongest member count / age / Co-Leader tenure across the cell.
+  // group's strongest member count / age / Co-Shepherd tenure across the cell.
   { key: "memberCount", label: "Members" },
   { key: "groupTenure", label: "Years as a group" },
-  { key: "coShepherdTenure", label: "Co-Leader tenure" },
+  { key: "coShepherdTenure", label: "Co-Shepherd tenure" },
 ];
 
 // The four pillar rows. With a `setToggle` (per-type / per-cell levels) each pillar
@@ -692,7 +692,7 @@ function PillarInputs({
           />
           <span className={THRESHOLD_NOTE}>≥</span>
           <LetterSelect
-            ariaLabel="Leader health minimum letter"
+            ariaLabel="Shepherd health minimum letter"
             value={fields.leaderMin}
             onChange={(v) => update({ leaderMin: v })}
           />
@@ -742,7 +742,7 @@ function PillarInputs({
           />
           <span className={THRESHOLD_NOTE}>≥</span>
           <CountInput
-            ariaLabel="Minimum Co-Leader years"
+            ariaLabel="Minimum Co-Shepherd years"
             value={fields.coShepherdMin}
             onChange={(v) => update({ coShepherdMin: v })}
           />

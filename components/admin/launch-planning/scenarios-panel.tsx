@@ -412,7 +412,7 @@ function ScenarioComparisonTable({
       pick: (_a, o) => fmtNumber(o.recommended_new_groups),
     },
     {
-      label: "Estimated new leaders",
+      label: "Estimated new shepherds",
       pick: (_a, o) => fmtNumber(o.estimated_new_leaders_needed),
     },
   ];

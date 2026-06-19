@@ -111,7 +111,7 @@ export function ResetAllCard({
                 label={`Reset ${ATTENTION_RESET_SURFACE_META[surface.surface].label}`}
                 value={`${surface.impactCount} ${
                   surface.surface === "care"
-                    ? `leader care profile${surface.impactCount === 1 ? "" : "s"}`
+                    ? `shepherd care profile${surface.impactCount === 1 ? "" : "s"}`
                     : `active group${surface.impactCount === 1 ? "" : "s"}`
                 }`}
               />

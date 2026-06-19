@@ -84,7 +84,7 @@ export default async function AdminOverShepherdEditPage({
       <PageHeader
         eyebrow="Shepherd care"
         title={detail.overShepherd.full_name}
-        lede="Admin-only over-shepherd record. These details never appear on leader or member surfaces."
+        lede="Admin-only over-shepherd record. These details never appear on shepherd or member surfaces."
       />
       <PageBody>
         <div className="grid gap-5">
@@ -105,7 +105,7 @@ export default async function AdminOverShepherdEditPage({
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3.5">
               <p className="m-0 max-w-[420px] font-sans text-sm leading-normal text-ink2">
                 {detail.overShepherd.active
-                  ? "Archiving removes them from the active list and ends their current coverage, moving those leaders to Unassigned. History is kept; restore any time (coverage is not restored)."
+                  ? "Archiving removes them from the active list and ends their current coverage, moving those shepherds to Unassigned. History is kept; restore any time (coverage is not restored)."
                   : "This over-shepherd is archived. Restore to make them selectable for coverage again."}
               </p>
               <OverShepherdArchiveButton

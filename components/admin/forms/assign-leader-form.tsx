@@ -45,7 +45,7 @@ export function AssignLeaderForm({
             htmlFor={`assign-leader-${groupId}`}
             className={fieldLabelClassName}
           >
-            Leader
+            Shepherd
           </label>
           <select
             id={`assign-leader-${groupId}`}
@@ -56,7 +56,7 @@ export function AssignLeaderForm({
             defaultValue=""
           >
             <option value="" disabled>
-              {noOptions ? "No active leaders yet" : "Pick a leader…"}
+              {noOptions ? "No active shepherds yet" : "Pick a shepherd…"}
             </option>
             {leaderOptions.map((opt) => (
               <option key={opt.id} value={opt.id}>
@@ -80,8 +80,8 @@ export function AssignLeaderForm({
             className={fieldSelectClassName}
             defaultValue="leader"
           >
-            <option value="leader">Leader</option>
-            <option value="co_leader">Co-leader</option>
+            <option value="leader">Shepherd</option>
+            <option value="co_leader">Co-shepherd</option>
           </select>
         </div>
         <div>
@@ -91,16 +91,16 @@ export function AssignLeaderForm({
             size="sm"
             disabled={pending || noOptions}
           >
-            {pending ? "Assigning…" : "Assign leader"}
+            {pending ? "Assigning…" : "Assign shepherd"}
           </PButton>
         </div>
       </div>
       {noOptions ? (
         <p className="m-0 font-sans text-xs text-ink3">
-          Add a leader profile above before assigning one to this group.
+          Add a shepherd profile above before assigning one to this group.
         </p>
       ) : null}
-      <FormStatus state={state} successText="Leader assigned." />
+      <FormStatus state={state} successText="Shepherd assigned." />
     </form>
   );
 }

@@ -104,10 +104,10 @@ describe("confirmation copy — byte-identical to the pre-#489 modules", () => {
 
   it("Archive profile", () => {
     expect(deactivateProfileConfirmMessage("Jane Leader")).toBe(
-      "Archive Jane Leader? Their leader assignments will also be closed."
+      "Archive Jane Leader? Their shepherd assignments will also be closed."
     );
     expect(deactivateProfileConfirmMessage()).toBe(
-      "Archive this profile? Their leader assignments will also be closed."
+      "Archive this profile? Their shepherd assignments will also be closed."
     );
   });
 
@@ -225,12 +225,12 @@ describe("confirmation copy — byte-identical to the pre-#494 modules", () => {
     expect(overShepherdArchiveConfirmMessage("Pat Shepherd", 1)).toBe(
       "Archive Pat Shepherd? They stay in history but drop off the active " +
         "list. Restore any time (coverage is not restored). This ends " +
-        "coverage for 1 leader; they move to Unassigned for reassignment."
+        "coverage for 1 shepherd; they move to Unassigned for reassignment."
     );
     expect(overShepherdArchiveConfirmMessage("Pat Shepherd", 3)).toBe(
       "Archive Pat Shepherd? They stay in history but drop off the active " +
         "list. Restore any time (coverage is not restored). This ends " +
-        "coverage for 3 leaders; they move to Unassigned for reassignment."
+        "coverage for 3 shepherds; they move to Unassigned for reassignment."
     );
   });
 

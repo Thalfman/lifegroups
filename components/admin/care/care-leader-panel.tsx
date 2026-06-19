@@ -111,7 +111,7 @@ function GradesAndNotes({
       </summary>
       <div className="grid gap-4 px-3 pb-3.5 pt-1.5">
         <section className="grid gap-2">
-          <h4 className={cn(SLOT_LABEL, "m-0")}>Leader-Health Grade</h4>
+          <h4 className={cn(SLOT_LABEL, "m-0")}>Shepherd-Health Grade</h4>
           {gradeEntry.leaderGradesAvailable ? (
             <LeaderHealthGradeEditor
               profileId={leader.profileId}
@@ -241,7 +241,7 @@ export function CareLeaderPanel({
           </Slot>
         </div>
 
-        <Slot label="Leader Care Status">
+        <Slot label="Shepherd Care Status">
           {leader.careStatus ? (
             <ShepherdCareStatusBadge status={leader.careStatus} />
           ) : (
@@ -274,7 +274,7 @@ export function CareLeaderPanel({
             )}
           </Slot>
 
-          <Slot label="Leader-Health Grade">
+          <Slot label="Shepherd-Health Grade">
             {leader.leaderHealthGrade ? (
               <LetterBadge letter={leader.leaderHealthGrade} />
             ) : (

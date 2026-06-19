@@ -168,7 +168,7 @@ export function validateInviteUserPayload(
   else if (!isEmail(email)) errors.push("Email must be a valid address.");
   if (!INVITE_USER_ROLES.has(role as InviteUserPayload["role"])) {
     errors.push(
-      "Role must be Ministry Admin, Over-Shepherd, Leader, or Co-Leader."
+      "Role must be Ministry Admin, Over-Shepherd, Shepherd, or Co-Shepherd."
     );
   }
   if (phone !== undefined && !isPhone(phone))

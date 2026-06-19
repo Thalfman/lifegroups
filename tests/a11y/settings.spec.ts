@@ -545,7 +545,7 @@ test.describe("settings read-error vs not-set-up split (issue 469)", () => {
       `The Group Health Rubric ${COULD_NOT_LOAD}`
     );
     await expect(panel).toContainText(
-      `The Leader Health Rubric ${COULD_NOT_LOAD}`
+      `The Shepherd Health Rubric ${COULD_NOT_LOAD}`
     );
     // Never the "not configured" copy, and no editor over a failed read.
     await expect(panel).not.toContainText(NOT_CONFIGURED);

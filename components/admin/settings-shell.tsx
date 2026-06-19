@@ -325,18 +325,18 @@ function CarePanel({ model }: { model: SettingsCareModel }) {
           concept, distinct from Leader Care Status and the Health Pulse. */}
       <section className="grid gap-4">
         <SettingsSectionHeader
-          eyebrow="Leader Health Rubric"
-          title="How a leader is graded"
-          description="Distinct from a leader's Care Status."
+          eyebrow="Shepherd Health Rubric"
+          title="How a shepherd is graded"
+          description="Distinct from a shepherd's Care Status."
         />
         {model.errors.leaderRubric ? (
-          <CouldNotLoad subject="The Leader Health Rubric" />
+          <CouldNotLoad subject="The Shepherd Health Rubric" />
         ) : (
           <Card>
             <HealthRubricEditor
               criteria={model.leaderRubricCriteria}
               kind="leader"
-              subjectLabel="leader"
+              subjectLabel="shepherd"
             />
           </Card>
         )}
@@ -404,7 +404,7 @@ function MultiplyPanel({ model }: { model: SettingsMultiplyModel }) {
         <SettingsSectionHeader
           eyebrow="Readiness rule"
           title="Ready in Multiply"
-          description="Configure the readiness rule across the cascade: the ministry-wide default, an Audience rule, or a single group type. Each pillar inherits the level above unless you override it; set only what differs. Interest is the Interest Funnel people count; Watch thresholds stay in Thresholds; Capacity is a derived per-group-type issue; Group and Leader Health are A-F letters."
+          description="Configure the readiness rule across the cascade: the ministry-wide default, an Audience rule, or a single group type. Each pillar inherits the level above unless you override it; set only what differs. Interest is the Interest Funnel people count; Watch thresholds stay in Thresholds; Capacity is a derived per-group-type issue; Group and Shepherd Health are A-F letters."
         />
         {/* #469: each failing read names itself — a failed trigger read and a
             failed group-types read (which feeds the per-cell rows) soften this

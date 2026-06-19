@@ -36,7 +36,7 @@ test.describe("group roster manager", () => {
     const surface = page.locator(SURFACE);
 
     const leaderSelect = surface.getByRole("combobox", {
-      name: "Leader",
+      name: "Shepherd",
       exact: true,
     });
     await expect(leaderSelect).toBeVisible();
@@ -48,7 +48,7 @@ test.describe("group roster manager", () => {
     ).toBeVisible();
 
     await expect(
-      surface.getByRole("button", { name: `Assign a leader to ${GROUP}` })
+      surface.getByRole("button", { name: `Assign a shepherd to ${GROUP}` })
     ).toBeVisible();
     await expect(
       surface.getByRole("button", { name: `Assign a member to ${GROUP}` })

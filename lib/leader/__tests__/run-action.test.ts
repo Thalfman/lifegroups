@@ -190,7 +190,7 @@ describe("runLeaderWriteAction", () => {
     expect(result).toEqual({
       ok: false,
       errors: [
-        "Only the assigned leader or co-leader can submit this group's check-in.",
+        "Only the assigned shepherd or co-shepherd can submit this group's check-in.",
       ],
     });
     expect(lastLog().ctx).toMatchObject({

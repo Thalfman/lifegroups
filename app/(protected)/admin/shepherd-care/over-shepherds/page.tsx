@@ -59,7 +59,7 @@ export default async function AdminOverShepherdsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Leader care"
+        eyebrow="Shepherd care"
         title="Over-"
         italic="shepherds"
         lede="Over-Shepherds Julian tracks. These are admin-only records — they do not log in to the app."
@@ -71,7 +71,7 @@ export default async function AdminOverShepherdsPage() {
               href="/admin/shepherd-care"
               className="font-sans text-sm text-ink2 underline hover:text-ink"
             >
-              ← Back to leader care
+              ← Back to shepherd care
             </Link>
           </div>
 

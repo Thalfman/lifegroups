@@ -84,8 +84,8 @@ function AuthoredGroupNotes({
   return (
     <div className="grid gap-4 border-t border-line pt-4">
       <p className="m-0 font-sans text-sm text-ink2">
-        Notes this leader wrote about their own group(s). Same toggle gates them
-        — they&apos;re sealed to the leader until it&apos;s on.
+        Notes this shepherd wrote about their own group(s). Same toggle gates
+        them — they&apos;re sealed to the shepherd until it&apos;s on.
       </p>
       <div>
         <span className={LABEL}>About their group ({careNotes.length})</span>
@@ -154,9 +154,10 @@ export function CareNotesSection({
           Care notes &amp; prayer requests
         </h3>
         <p className="m-0 font-sans text-sm text-ink2">
-          Over-shepherds write notes about this leader; this leader writes notes
-          about their group. Both are private to their author &mdash; leadership
-          can read them only when this person&apos;s transparency toggle is on.
+          Over-shepherds write notes about this shepherd; this shepherd writes
+          notes about their group. Both are private to their author &mdash;
+          leadership can read them only when this person&apos;s transparency
+          toggle is on.
         </p>
       </div>
 

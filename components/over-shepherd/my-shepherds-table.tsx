@@ -7,8 +7,8 @@ import { CareDirectoryTable } from "@/components/admin/shepherd-care/care-direct
 // /over-shepherd care history rather than /admin.
 
 const roleLabel: Record<string, string> = {
-  leader: "Leader",
-  co_leader: "Co-Leader",
+  leader: "Shepherd",
+  co_leader: "Co-Shepherd",
 };
 
 export function MyShepherdsTable({
@@ -19,10 +19,10 @@ export function MyShepherdsTable({
   return (
     <CareDirectoryTable
       entries={entries}
-      firstColumnLabel="Leader"
+      firstColumnLabel="Shepherd"
       roleLabels={roleLabel}
       hrefForEntry={(entry) => `/over-shepherd/${entry.profile.id}`}
-      emptyText="No Leaders are assigned to your care yet."
+      emptyText="No Shepherds are assigned to your care yet."
     />
   );
 }

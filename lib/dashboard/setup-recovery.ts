@@ -160,14 +160,14 @@ export function buildSetupRecoveryChecklist(
           activeLeaders === null ? "unavailable" : statusFromCount(leaderNeeds),
         count: leaderNeeds,
         href: "/admin/groups?tab=needs_setup",
-        label: "Assign leaders",
-        actionLabel: "Assign leaders",
+        label: "Assign shepherds",
+        actionLabel: "Assign shepherds",
         detail:
           activeLeaders === null
-            ? "Leader counts could not be read, so review groups before launch."
+            ? "Shepherd counts could not be read, so review groups before launch."
             : leaderNeeds > 0
-              ? `${countWithNoun(leaderNeeds, "group")} need a leader.`
-              : "Every active group has a leader.",
+              ? `${countWithNoun(leaderNeeds, "group")} need a shepherd.`
+              : "Every active group has a shepherd.",
       },
       {
         key: "assign_members",

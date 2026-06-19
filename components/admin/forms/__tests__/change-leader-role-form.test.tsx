@@ -49,7 +49,7 @@ describe("ChangeLeaderRoleForm — non-blocking confirm (#666)", () => {
 
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog.textContent).toContain(
-      "Change Jane Leader from Leader to Co-Leader? This narrows what they can do."
+      "Change Jane Leader from Shepherd to Co-Shepherd? This narrows what they can do."
     );
     expect(adminChangeLeaderRole).not.toHaveBeenCalled();
   });

@@ -35,7 +35,7 @@ export default async function OverShepherdPage() {
     <LgAppShell user={user}>
       <PageHeader
         eyebrow="Over-Shepherd"
-        title="My Leaders"
+        title="My Shepherds"
         lede={lede}
         maxWidth={SHELL_MAX_WIDTH}
         actions={<AddToHomeScreenButton />}
@@ -55,7 +55,7 @@ export default async function OverShepherdPage() {
   // Either backend read failing — surface one controlled empty state rather
   // than leaking a 500.
   const unavailable = shell(
-    "We couldn't load your Leaders just now.",
+    "We couldn't load your Shepherds just now.",
     <EmptyState
       title="Temporarily unavailable"
       description="Your care list couldn't be loaded. Please refresh in a moment."
@@ -96,8 +96,8 @@ export default async function OverShepherdPage() {
   const entries = directoryResult.data;
   const lede =
     entries.length === 0
-      ? "No Leaders are assigned to your care yet. A ministry admin will route coverage your way."
-      : "The Leaders you cover, with their current care status.";
+      ? "No Shepherds are assigned to your care yet. A ministry admin will route coverage your way."
+      : "The Shepherds you cover, with their current care status.";
 
   return shell(
     lede,

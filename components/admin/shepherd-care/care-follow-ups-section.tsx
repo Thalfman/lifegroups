@@ -54,7 +54,7 @@ export function CareFollowUpsSection({
         <p className="m-0 font-sans text-sm italic text-ink3">
           {drawer.isOpen
             ? "Fill in the details in the panel and save to add the first one."
-            : "No follow-ups yet. Use Add follow-up to capture the next concrete step you owe this leader."}
+            : "No follow-ups yet. Use Add follow-up to capture the next concrete step you owe this shepherd."}
         </p>
       ) : (
         <CareFollowUpList
@@ -72,7 +72,7 @@ export function CareFollowUpsSection({
         onRequestClose={drawer.requestClose}
         eyebrow="Care follow-up"
         title="Add a follow-up"
-        description={`A concrete next step you owe ${leaderName}. Admin-only — it never appears on leader or member surfaces.`}
+        description={`A concrete next step you owe ${leaderName}. Admin-only — it never appears on shepherd or member surfaces.`}
         closeLabel={`Close new follow-up form for ${leaderName}`}
       >
         <CareFollowUpCreateForm

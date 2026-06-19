@@ -35,7 +35,7 @@ export function GroupEditorDrawer({
       description={
         group
           ? "Update this group's details. Saving affects only this group."
-          : "Just a name is enough to get started — capacity, day, and leader can be filled in now or later."
+          : "Just a name is enough to get started — capacity, day, and shepherd can be filled in now or later."
       }
       closeLabel={group ? `Close ${group.name} editor` : "Close new group form"}
     >

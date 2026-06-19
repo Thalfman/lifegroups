@@ -6,8 +6,8 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: "Super Admin",
   ministry_admin: "Ministry Admin",
   over_shepherd: "Over-Shepherd",
-  leader: "Leader",
-  co_leader: "Co-Leader",
+  leader: "Shepherd",
+  co_leader: "Co-Shepherd",
 };
 
 const ADMIN_ROLES: ReadonlySet<UserRole> = new Set([
@@ -192,7 +192,7 @@ export function navItemsForRole(
     // Focused Over-Shepherd nav: a single "My Leaders" entry. The directory it
     // links to arrives in the read-surface slice; this slice lands the entry
     // pointing at the placeholder landing.
-    items.push({ href: "/over-shepherd", label: "My Leaders" });
+    items.push({ href: "/over-shepherd", label: "My Shepherds" });
   }
   // Shepherd (leader) surface re-opened under the verify-before-flip gate (#376,
   // ADR 0017). leader / co_leader get a single focused "Care" entry pointing at
@@ -287,7 +287,7 @@ export function navGroupsForRole(
         group: "top",
         label: "",
         items: [
-          { href: "/over-shepherd", label: "My Leaders", icon: "people" },
+          { href: "/over-shepherd", label: "My Shepherds", icon: "people" },
         ],
       },
     ];

@@ -87,7 +87,7 @@ const FLOWS: Flow[] = [
       ),
     primaries: (region) => [
       region.getByRole("link", { name: /Import people/ }),
-      region.getByRole("link", { name: /Assign leaders/ }),
+      region.getByRole("link", { name: /Assign shepherds/ }),
       region.getByRole("link", { name: /Assess health/ }),
     ],
   },
@@ -98,19 +98,19 @@ const FLOWS: Flow[] = [
     open: async (page, method) => {
       await trigger(
         surface(page, "group-roster").getByRole("button", {
-          name: "Add a new leader to this group",
+          name: "Add a new shepherd to this group",
         }),
         method
       );
       await expect(
         page
           .getByRole("dialog")
-          .getByRole("heading", { name: "Add a new leader to this group" })
+          .getByRole("heading", { name: "Add a new shepherd to this group" })
       ).toBeVisible();
     },
     region: (page) => page.getByRole("dialog"),
     primaries: (region) => [
-      region.getByRole("button", { name: "Add leader to group" }),
+      region.getByRole("button", { name: "Add shepherd to group" }),
     ],
   },
   {
@@ -128,7 +128,7 @@ const FLOWS: Flow[] = [
     },
     region: (page) => page.getByRole("dialog"),
     primaries: (region) => [
-      region.getByRole("button", { name: "Add leader", exact: true }),
+      region.getByRole("button", { name: "Add shepherd", exact: true }),
     ],
   },
   {
