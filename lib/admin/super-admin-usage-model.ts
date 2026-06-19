@@ -38,6 +38,18 @@ export type UsageRecentLogin = {
   at: string;
 };
 
+export type UsagePersonRow = {
+  // actor_profile_id of the person whose activity this row tallies.
+  id: string;
+  // Resolved from the profile map, else "Unknown" (e.g. a deleted actor).
+  name: string;
+  loginCount: number;
+  areaViewCount: number;
+  // Pre-formatted via formatStatusTime for this actor's newest event; the
+  // panel appends " UTC".
+  lastSeenAt: string;
+};
+
 export type UsagePanelModel = {
   // Resolved usage_tracking flag, so the panel can tell "off" apart from
   // "on but quiet".
@@ -52,6 +64,9 @@ export type UsagePanelModel = {
   areaRows: UsageAreaRow[];
   // The latest logins, newest first (the read is already newest-first).
   recentLogins: UsageRecentLogin[];
+  // Per-person activity, most active first (logins + area views), then by name.
+  // Null-actor events can't be attributed, so they're excluded here.
+  byPerson: UsagePersonRow[];
 };
 
 export function buildUsagePanelModel(input: {
@@ -76,6 +91,51 @@ export function buildUsagePanelModel(input: {
   }
   const sortedAreas = [...areaCounts.entries()].sort((a, b) => b[1] - a[1]);
   const maxAreaCount = sortedAreas.length > 0 ? sortedAreas[0][1] : 0;
+
+  // Per-person tally. Group every attributable event by its actor, counting
+  // logins vs. area views and tracking each actor's newest event time. Compute
+  // the latest timestamp explicitly rather than trusting input order, matching
+  // how the rest of the model filters defensively.
+  type PersonTally = {
+    id: string;
+    loginCount: number;
+    areaViewCount: number;
+    lastSeen: number;
+  };
+  const personTallies = new Map<string, PersonTally>();
+  for (const e of events) {
+    const actorId = e.actor_profile_id;
+    if (!actorId) continue;
+    const tally = personTallies.get(actorId) ?? {
+      id: actorId,
+      loginCount: 0,
+      areaViewCount: 0,
+      lastSeen: Number.NEGATIVE_INFINITY,
+    };
+    if (e.event_type === "login") tally.loginCount += 1;
+    else if (e.event_type === "area_view") tally.areaViewCount += 1;
+    const at = Date.parse(e.created_at);
+    if (!Number.isNaN(at) && at > tally.lastSeen) tally.lastSeen = at;
+    personTallies.set(actorId, tally);
+  }
+  const byPerson: UsagePersonRow[] = [...personTallies.values()]
+    .map((t) => ({
+      id: t.id,
+      name: profilesById.get(t.id)?.full_name ?? "Unknown",
+      loginCount: t.loginCount,
+      areaViewCount: t.areaViewCount,
+      lastSeenAt: formatStatusTime(
+        t.lastSeen === Number.NEGATIVE_INFINITY
+          ? new Date(0).toISOString()
+          : new Date(t.lastSeen).toISOString()
+      ),
+    }))
+    .sort((a, b) => {
+      const totalA = a.loginCount + a.areaViewCount;
+      const totalB = b.loginCount + b.areaViewCount;
+      if (totalB !== totalA) return totalB - totalA;
+      return a.name.localeCompare(b.name);
+    });
 
   const recentLogins = logins.slice(0, RECENT_LOGINS_LIMIT).map((e) => {
     const actor = e.actor_profile_id
@@ -103,5 +163,6 @@ export function buildUsagePanelModel(input: {
         maxAreaCount > 0 ? Math.round((count / maxAreaCount) * 100) : 0,
     })),
     recentLogins,
+    byPerson,
   };
 }
