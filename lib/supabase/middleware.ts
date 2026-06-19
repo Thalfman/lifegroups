@@ -6,6 +6,11 @@ import {
   passwordSetupCookieSetOptions,
   shouldRedirectToPasswordSetup,
 } from "@/lib/auth/password-setup";
+import {
+  LANDING_HINT_COOKIE,
+  isValidLandingHint,
+  landingHintCookieClearOptions,
+} from "@/lib/auth/landing-hint";
 import { getSupabaseEnvSafe } from "./config";
 
 // Copy every Set-Cookie the working response accumulated (session cookies
@@ -101,6 +106,36 @@ export async function updateSupabaseSession(
     return redirectResponse;
   }
 
+  // Fast path for an authenticated bare-domain (`/`) launch. The dynamic `/`
+  // server render (app/page.tsx, force-dynamic) only resolves the session and
+  // redirects to the role's surface (e.g. /admin) — pure overhead on the common
+  // logged-in launch. If the role's landing-path hint cookie is present and
+  // valid, redirect straight there from here so `/` never renders. The hint is
+  // a non-authoritative UX shortcut: the destination's own route guard still
+  // runs, so a stale/tampered hint can only mis-route, never bypass auth.
+  // Restricted to GET (POST `/` is never a launch) and skipped when auth
+  // callback params (`code` / `token_hash`) are present so an email link landing
+  // on `/` is handled by the existing flow below instead of being hijacked.
+  if (
+    claimsData?.claims &&
+    request.method === "GET" &&
+    request.nextUrl.pathname === "/" &&
+    !request.nextUrl.searchParams.has("code") &&
+    !request.nextUrl.searchParams.has("token_hash")
+  ) {
+    const hint = request.cookies.get(LANDING_HINT_COOKIE)?.value;
+    if (isValidLandingHint(hint)) {
+      const target = request.nextUrl.clone();
+      target.pathname = hint;
+      target.search = "";
+      const redirectResponse = NextResponse.redirect(target);
+      // Carry over the session cookies getClaims() rotated above so the
+      // redirect drops none of them.
+      carryCookies(response, redirectResponse);
+      return redirectResponse;
+    }
+  }
+
   // Serve the statically-generated /login document for anonymous visitors
   // landing on the bare domain. A rewrite (not a redirect) keeps the address
   // bar at "/" while the response is the CDN-cached static page, so the most
@@ -138,6 +173,29 @@ export async function updateSupabaseSession(
     // there are no cookies to copy, so this is a no-op on the common path.)
     carryCookies(response, rewriteResponse);
     return rewriteResponse;
+  }
+
+  // Self-heal a stale landing hint. A role guard that denies access lands the
+  // user on /unauthorized, and the hint is set for up to 30 days — so if a
+  // signed-in user's role changed since the cookie was written (e.g. a Super
+  // Admin moved a ministry_admin to over_shepherd), the fast path above would
+  // send `/` → /admin → requireAdmin → /unauthorized, and the page's "Back to
+  // home" link (→ `/`) would loop straight back through the same stale
+  // redirect. Middleware can't revalidate the hint against the live role (it
+  // does no DB read), so clear it here at the denial landing instead: the next
+  // `/` visit then renders normally, and the protected-layout refresher
+  // re-establishes the correct hint on the first surface the user can actually
+  // reach. Clearing a still-valid hint is harmless — it only costs one ordinary
+  // `/` render before it's re-set.
+  if (
+    request.nextUrl.pathname === "/unauthorized" &&
+    request.cookies.has(LANDING_HINT_COOKIE)
+  ) {
+    response.cookies.set(
+      LANDING_HINT_COOKIE,
+      "",
+      landingHintCookieClearOptions()
+    );
   }
 
   return response;

@@ -9,6 +9,10 @@ import {
   PW_SETUP_COOKIE,
   passwordSetupCookieClearOptions,
 } from "@/lib/auth/password-setup";
+import {
+  LANDING_HINT_COOKIE,
+  landingHintCookieClearOptions,
+} from "@/lib/auth/landing-hint";
 
 export async function logoutAction(): Promise<void> {
   const ctx = startActionLog("auth.logout");
@@ -31,6 +35,8 @@ export async function logoutAction(): Promise<void> {
   // so the next request isn't bounced back to /reset-password.
   const cookieStore = await cookies();
   cookieStore.set(PW_SETUP_COOKIE, "", passwordSetupCookieClearOptions());
+  // Drop the landing-path hint so the next sign-in re-resolves it fresh.
+  cookieStore.set(LANDING_HINT_COOKIE, "", landingHintCookieClearOptions());
 
   ctx.finish("ok", {
     actor_role,
