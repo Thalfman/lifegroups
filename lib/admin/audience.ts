@@ -1,5 +1,5 @@
 // The Audience vocabulary (CONTEXT.md › Audience): who a Life Group is for, by the
-// `audience_category` attribute — Men, Women, or Mixed / couples.
+// `audience_category` attribute — Men, Women, or Mixed.
 //
 // One pure leaf so the ordered set of the three top types, the canonical labels,
 // and the type guard have a single home, rather than being re-spelled as
@@ -19,14 +19,14 @@ export const AUDIENCE_CATEGORIES: readonly GroupAudienceCategory[] = [
   "mixed",
 ];
 
-// The canonical Audience labels (CONTEXT.md wording: "Men, Women, or Mixed /
-// couples"). Surfaces that deliberately show different copy — the possessive
+// The canonical Audience labels (CONTEXT.md wording: "Men, Women, or Mixed").
+// Surfaces that deliberately show different copy — the possessive
 // "Men's / Women's" on the prospect form and the per-type Multiply editor — keep
 // their own label maps; this is the segmentation/default wording.
 export const AUDIENCE_LABEL: Record<GroupAudienceCategory, string> = {
   men: "Men",
   women: "Women",
-  mixed: "Mixed / couples",
+  mixed: "Mixed",
 };
 
 // Narrow an arbitrary value to a GroupAudienceCategory. Replaces the membership
