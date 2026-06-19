@@ -41,3 +41,46 @@ describe("ProspectCreateForm — Full name accessibility wiring", () => {
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Add prospect<\/button>/);
   });
 });
+
+describe("ProspectCreateForm — one group-type box + add-a-group shortcut", () => {
+  const WITH_CELLS: CategoryOptionsByAudience = {
+    men: [{ id: "m1", label: "Multi-generational" }],
+    women: [{ id: "w1", label: "Young families" }],
+    mixed: [],
+  };
+
+  it("posts the desired cell as two hidden fields derived from the one select", () => {
+    const html = renderToStaticMarkup(
+      <ProspectCreateForm categoryOptionsByAudience={WITH_CELLS} />
+    );
+
+    // ONE combined select (no separate top-type + category dropdowns)…
+    expect(html).toContain('id="prospect-desired_cell"');
+    expect(html).not.toContain('name="desired_audience_category"\n');
+    // …backed by the two hidden fields the unchanged action/RPC still read.
+    expect(html).toContain('type="hidden"');
+    expect(html).toContain('name="desired_audience_category"');
+    expect(html).toContain('name="desired_category_id"');
+    // The cells are grouped by top type via <optgroup>, encoding audience:id.
+    expect(html).toContain('value="men:m1"');
+    expect(html).toContain('value="women:w1"');
+  });
+
+  it("offers a shortcut into Settings › Groups that returns to the funnel", () => {
+    const html = renderToStaticMarkup(
+      <ProspectCreateForm categoryOptionsByAudience={WITH_CELLS} />
+    );
+    expect(html).toContain("+ Add a group type");
+    expect(html).toContain(
+      "/admin/settings?tab=groups&amp;from=plan&amp;add=1"
+    );
+  });
+
+  it("disables the group-type box and names the empty state with no cells", () => {
+    const html = renderToStaticMarkup(
+      <ProspectCreateForm categoryOptionsByAudience={OPTIONS} />
+    );
+    expect(html).toMatch(/<select[^>]*id="prospect-desired_cell"[^>]*disabled/);
+    expect(html).toContain("No group types yet");
+  });
+});
