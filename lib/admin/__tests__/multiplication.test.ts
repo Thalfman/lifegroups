@@ -154,9 +154,7 @@ describe("evaluateReadiness (Julian P4 answer 10 criteria)", () => {
 
 describe("segmentLabel (#398: audience × category label)", () => {
   it("combines audience and the free-form category label", () => {
-    expect(segmentLabel("mixed", "Retirement")).toBe(
-      "Mixed / couples · Retirement"
-    );
+    expect(segmentLabel("mixed", "Retirement")).toBe("Mixed · Retirement");
     // A group with an audience but NO category has no cell, so it buckets under
     // Uncategorized rather than masquerading as an audience-only segment.
     expect(segmentLabel("men", null)).toBe("Uncategorized");

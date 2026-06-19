@@ -267,7 +267,7 @@ export function GroupEditForm({
             <option value="">Unset</option>
             <option value="men">Men</option>
             <option value="women">Women</option>
-            <option value="mixed">Mixed / couples</option>
+            <option value="mixed">Mixed</option>
           </select>
         </div>
         <div>
