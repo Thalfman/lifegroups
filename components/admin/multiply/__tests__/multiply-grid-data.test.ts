@@ -6,7 +6,10 @@ import {
   type MultiplyGridReads,
 } from "@/components/admin/multiply/multiply-grid-data";
 import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
-import { EMPTY_CELL_ACTIVE_GROUP_SIZES } from "@/lib/supabase/multiplication-config-reads";
+import {
+  EMPTY_CELL_ACTIVE_GROUP_SIZES,
+  EMPTY_CELL_MATURITY,
+} from "@/lib/supabase/multiplication-config-reads";
 import { EMPTY_CELL_HEALTH_GRADES } from "@/lib/admin/cell-health";
 import type { ReadResult } from "@/lib/supabase/read-core";
 
@@ -32,6 +35,7 @@ function emptyReads(
     fetchAudienceReadinessRules: async () => ok([]),
     fetchCellInterestCounts: async () => ok({}),
     fetchCellActiveGroupSizes: async () => ok(EMPTY_CELL_ACTIVE_GROUP_SIZES),
+    fetchCellGroupMaturity: async () => ok(EMPTY_CELL_MATURITY),
     fetchCellHealthGrades: async () => ok(EMPTY_CELL_HEALTH_GRADES),
     ...overrides,
   };

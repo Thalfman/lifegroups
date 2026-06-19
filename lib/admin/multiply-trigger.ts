@@ -14,8 +14,11 @@ import {
   resolveReadinessRuleWithSources,
   type CapacityRule,
   type CellReadinessOverride,
+  type CoShepherdTenureRule,
+  type GroupTenureRule,
   type HealthRule,
   type InterestRule,
+  type MemberCountRule,
   type PerTypeReadinessRule,
   type ReadinessLetter,
   type ReadinessPillarKey,
@@ -100,6 +103,15 @@ export type PillarFields = {
   groupMin: ReadinessLetter;
   leaderRequired: boolean;
   leaderMin: ReadinessLetter;
+  // Julian's three multiplication criteria, each a COUNT/YEARS threshold (a string
+  // for the number input, parsed on submit): members, years as a group, Co-Leader
+  // tenure.
+  memberRequired: boolean;
+  memberMin: string;
+  tenureRequired: boolean;
+  tenureMin: string;
+  coShepherdRequired: boolean;
+  coShepherdMin: string;
 };
 
 // Which pillars the level OVERRIDES (the rest inherit the parent). The global level
@@ -109,6 +121,9 @@ export type PillarToggles = {
   capacity: boolean;
   groupHealth: boolean;
   leaderHealth: boolean;
+  memberCount: boolean;
+  groupTenure: boolean;
+  coShepherdTenure: boolean;
 };
 
 export const ALL_OVERRIDDEN: PillarToggles = {
@@ -116,6 +131,9 @@ export const ALL_OVERRIDDEN: PillarToggles = {
   capacity: true,
   groupHealth: true,
   leaderHealth: true,
+  memberCount: true,
+  groupTenure: true,
+  coShepherdTenure: true,
 };
 
 // A non-negative integer headcount from the interest-min input, flooring an
@@ -134,6 +152,12 @@ export function fieldsFromRule(rule: ReadinessRule): PillarFields {
     groupMin: rule.groupHealth.min,
     leaderRequired: rule.leaderHealth.required,
     leaderMin: rule.leaderHealth.min,
+    memberRequired: rule.memberCount.required,
+    memberMin: String(rule.memberCount.min),
+    tenureRequired: rule.groupTenure.required,
+    tenureMin: String(rule.groupTenure.min),
+    coShepherdRequired: rule.coShepherdTenure.required,
+    coShepherdMin: String(rule.coShepherdTenure.min),
   };
 }
 
@@ -145,6 +169,12 @@ export function ruleFromFields(f: PillarFields): ReadinessRule {
     capacity: { required: f.capacityRequired },
     groupHealth: { required: f.groupRequired, min: f.groupMin },
     leaderHealth: { required: f.leaderRequired, min: f.leaderMin },
+    memberCount: { required: f.memberRequired, min: parseMin(f.memberMin) },
+    groupTenure: { required: f.tenureRequired, min: parseMin(f.tenureMin) },
+    coShepherdTenure: {
+      required: f.coShepherdRequired,
+      min: parseMin(f.coShepherdMin),
+    },
   };
 }
 
@@ -167,6 +197,21 @@ export function buildPartial(
     out.groupHealth = { required: f.groupRequired, min: f.groupMin };
   if (over.leaderHealth)
     out.leaderHealth = { required: f.leaderRequired, min: f.leaderMin };
+  if (over.memberCount)
+    out.memberCount = {
+      required: f.memberRequired,
+      min: parseMin(f.memberMin),
+    };
+  if (over.groupTenure)
+    out.groupTenure = {
+      required: f.tenureRequired,
+      min: parseMin(f.tenureMin),
+    };
+  if (over.coShepherdTenure)
+    out.coShepherdTenure = {
+      required: f.coShepherdRequired,
+      min: parseMin(f.coShepherdMin),
+    };
   return out;
 }
 
@@ -177,6 +222,9 @@ export function togglesFromPartial(p: PerTypeReadinessRule): PillarToggles {
     capacity: p.capacity !== undefined,
     groupHealth: p.groupHealth !== undefined,
     leaderHealth: p.leaderHealth !== undefined,
+    memberCount: p.memberCount !== undefined,
+    groupTenure: p.groupTenure !== undefined,
+    coShepherdTenure: p.coShepherdTenure !== undefined,
   };
 }
 
@@ -206,6 +254,9 @@ export type ParentRule = {
   capacity: ResolvedPillar<CapacityRule>;
   groupHealth: ResolvedPillar<HealthRule>;
   leaderHealth: ResolvedPillar<HealthRule>;
+  memberCount: ResolvedPillar<MemberCountRule>;
+  groupTenure: ResolvedPillar<GroupTenureRule>;
+  coShepherdTenure: ResolvedPillar<CoShepherdTenureRule>;
 };
 
 // A CONSUMER of the cascade home (#487): a level's parent is the cascade resolved
@@ -236,6 +287,9 @@ export function resolveParent(
     capacity: label(resolved.capacity),
     groupHealth: label(resolved.groupHealth),
     leaderHealth: label(resolved.leaderHealth),
+    memberCount: label(resolved.memberCount),
+    groupTenure: label(resolved.groupTenure),
+    coShepherdTenure: label(resolved.coShepherdTenure),
   };
 }
 
@@ -252,6 +306,20 @@ export function describeCapacity(rule: CapacityRule): string {
 
 export function describeHealth(rule: HealthRule): string {
   return rule.required ? `≥ ${rule.min}` : "not required";
+}
+
+// Members read as a headcount (≥ N members); the two tenures read as whole years
+// (≥ N years). Each is a count threshold, off by default.
+export function describeMembers(rule: MemberCountRule): string {
+  if (!rule.required) return "not required";
+  return `≥ ${rule.min} ${rule.min === 1 ? "member" : "members"}`;
+}
+
+export function describeYears(
+  rule: GroupTenureRule | CoShepherdTenureRule
+): string {
+  if (!rule.required) return "not required";
+  return `≥ ${rule.min} ${rule.min === 1 ? "year" : "years"}`;
 }
 
 // The full "inherits … (from …)" line the editor shows for a pillar it doesn't
@@ -276,6 +344,18 @@ export function pillarInheritedText(
     case "leaderHealth":
       return `Inherits ${describeHealth(parent.leaderHealth.rule)} (from ${sourceLabel(
         parent.leaderHealth.source
+      )})`;
+    case "memberCount":
+      return `Inherits ${describeMembers(parent.memberCount.rule)} (from ${sourceLabel(
+        parent.memberCount.source
+      )})`;
+    case "groupTenure":
+      return `Inherits ${describeYears(parent.groupTenure.rule)} (from ${sourceLabel(
+        parent.groupTenure.source
+      )})`;
+    case "coShepherdTenure":
+      return `Inherits ${describeYears(parent.coShepherdTenure.rule)} (from ${sourceLabel(
+        parent.coShepherdTenure.source
       )})`;
   }
 }
@@ -306,6 +386,9 @@ export function seedFieldsForLevel(
     capacity: stored.capacity ?? p.capacity.rule,
     groupHealth: stored.groupHealth ?? p.groupHealth.rule,
     leaderHealth: stored.leaderHealth ?? p.leaderHealth.rule,
+    memberCount: stored.memberCount ?? p.memberCount.rule,
+    groupTenure: stored.groupTenure ?? p.groupTenure.rule,
+    coShepherdTenure: stored.coShepherdTenure ?? p.coShepherdTenure.rule,
   };
 
   return {

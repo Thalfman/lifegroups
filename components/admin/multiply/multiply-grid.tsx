@@ -34,6 +34,9 @@ const BLOCKER_LABEL: Record<ReadinessPillarKey, string> = {
   capacity: "Capacity",
   groupHealth: "Group Health",
   leaderHealth: "Leader Health",
+  memberCount: "Members",
+  groupTenure: "Years as a group",
+  coShepherdTenure: "Co-Leader tenure",
 };
 
 // Shared cell chrome: lineSoft separators between rows and columns.

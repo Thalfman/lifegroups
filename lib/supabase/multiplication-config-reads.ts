@@ -9,6 +9,7 @@ import {
 import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
 import { isAudienceCategory } from "@/lib/admin/audience";
 import { cellKey } from "@/lib/admin/cell-coordinate";
+import { wholeYearsBetween } from "@/lib/admin/multiplication";
 import {
   tallyCellHealthGrades,
   type CellHealthGrades,
@@ -290,6 +291,203 @@ export const EMPTY_CELL_ACTIVE_GROUP_SIZES: CellActiveGroupSizes = {
   byCell: new Map(),
   keys: new Map(),
 };
+
+// ---------------------------------------------------------------------------
+// Per-CELL group maturity (#483) — inputs to the three new readiness pillars.
+// ---------------------------------------------------------------------------
+//
+// The member-count / group-tenure / Co-Leader-tenure pillars (lib/admin/cell-
+// readiness.ts) are Julian's per-GROUP multiplication criteria folded into the
+// per-CELL rule. A cell is "ready to multiply" when its STRONGEST group is, so
+// each pillar reads the BEST group in the cell: the max group tenure (years since
+// groups.launched_on) and the max Co-Leader tenure (years since the earliest
+// ACTIVE co_leader's group_leaders.assigned_at). Member count is the max active
+// roster size, already read per cell by fetchCellActiveGroupSizes — so this read
+// supplies only the two TENURE maxima, computed in whole years against today.
+//
+// Same considered-cells discipline as the sizes read: the ACTIVE
+// category_type_targets cells seed the map, and only active, categorised groups in
+// an active cell contribute. A cell with no qualifying group keeps null (an
+// ungrounded tenure → blocks a required pillar, mirroring an ungraded health
+// letter). Column-allowlisted + paged, like its sibling.
+
+export type CellMaturity = {
+  // Stable cell key → the cell's BEST (max) group tenure and Co-Leader tenure in
+  // whole years, or null when no active group in the cell supplies one.
+  byCell: Map<
+    string,
+    { groupTenureYears: number | null; coShepherdTenureYears: number | null }
+  >;
+};
+
+export const EMPTY_CELL_MATURITY: CellMaturity = { byCell: new Map() };
+
+// One active-group row for the maturity read: the cell-keying columns plus the
+// launch date the group-tenure pillar reads.
+type CellMaturityGroupRow = {
+  id: string;
+  audience_category: GroupAudienceCategory | null;
+  category_id: string | null;
+  lifecycle_status: string | null;
+  launched_on: string | null;
+};
+
+// One active co_leader leadership row: the group it serves + when it began.
+type CellCoLeaderRow = {
+  group_id: string;
+  assigned_at: string | null;
+};
+
+const CELL_MATURITY_GROUP_COLUMNS = columns<CellMaturityGroupRow>()(
+  "id",
+  "audience_category",
+  "category_id",
+  "lifecycle_status",
+  "launched_on"
+);
+const CELL_CO_LEADER_COLUMNS = columns<CellCoLeaderRow>()(
+  "group_id",
+  "assigned_at"
+);
+
+// Pure aggregator (exported for testing): bucket each ACTIVE group's tenure maxima
+// under its cell, with every active cell pre-seeded to nulls. A group's Co-Leader
+// tenure reads the EARLIEST active co_leader assignment for that group (the
+// longest-serving co-leader gives the strongest signal). Both maxima are whole
+// years against `todayIso`; a cell with no qualifying group stays null.
+export function tallyCellMaturity(
+  groups: readonly CellMaturityGroupRow[],
+  coLeaders: readonly CellCoLeaderRow[],
+  activeCells: readonly CellKey[],
+  todayIso: string
+): CellMaturity {
+  // Earliest active co_leader assignment per group → the max Co-Leader tenure.
+  const earliestCoLeaderByGroup = new Map<string, string>();
+  for (const cl of coLeaders) {
+    if (!cl.group_id || !cl.assigned_at) continue;
+    const current = earliestCoLeaderByGroup.get(cl.group_id);
+    if (current === undefined || cl.assigned_at < current) {
+      earliestCoLeaderByGroup.set(cl.group_id, cl.assigned_at);
+    }
+  }
+
+  const byCell = new Map<
+    string,
+    { groupTenureYears: number | null; coShepherdTenureYears: number | null }
+  >();
+  for (const cell of activeCells) {
+    if (!isAudienceCategory(cell.audience)) continue;
+    if (cell.categoryId == null) continue;
+    const key = cellKey({
+      audience: cell.audience,
+      categoryId: cell.categoryId,
+    });
+    if (!byCell.has(key)) {
+      byCell.set(key, { groupTenureYears: null, coShepherdTenureYears: null });
+    }
+  }
+
+  const maxOrKeep = (
+    current: number | null,
+    next: number | null
+  ): number | null => {
+    if (next === null) return current;
+    return current === null ? next : Math.max(current, next);
+  };
+
+  for (const g of groups) {
+    if (g.lifecycle_status !== "active") continue;
+    const audience = g.audience_category;
+    if (!isAudienceCategory(audience)) continue;
+    if (g.category_id == null) continue;
+    const key = cellKey({ audience, categoryId: g.category_id });
+    const acc = byCell.get(key);
+    if (!acc) continue;
+    acc.groupTenureYears = maxOrKeep(
+      acc.groupTenureYears,
+      wholeYearsBetween(g.launched_on, todayIso)
+    );
+    acc.coShepherdTenureYears = maxOrKeep(
+      acc.coShepherdTenureYears,
+      wholeYearsBetween(earliestCoLeaderByGroup.get(g.id) ?? null, todayIso)
+    );
+  }
+
+  return { byCell };
+}
+
+// Read the per-cell group-tenure + Co-Leader-tenure maxima: active groups (with
+// launch date), active co_leader leadership rows (with assignment date), and the
+// active cells to seed the considered set, then aggregate purely against today.
+// All reads page through to completion so a large ministry isn't truncated. A read
+// failure surfaces so the grid notes it rather than evaluating these pillars on a
+// partial set.
+export async function fetchCellGroupMaturity(
+  client: ReadClient,
+  todayIso: string
+): Promise<ReadResult<CellMaturity>> {
+  const [groupsRes, coLeadersRes, cellsRes] = await Promise.all([
+    fetchAllPages<CellMaturityGroupRow>((from, to) =>
+      client
+        .from("groups")
+        .select(CELL_MATURITY_GROUP_COLUMNS.select)
+        .eq("lifecycle_status", "active")
+        .range(from, to)
+        .returns<CellMaturityGroupRow[]>()
+    ),
+    fetchAllPages<CellCoLeaderRow>((from, to) =>
+      client
+        .from("group_leaders")
+        .select(CELL_CO_LEADER_COLUMNS.select)
+        .eq("active", true)
+        .eq("role", "co_leader")
+        .range(from, to)
+        .returns<CellCoLeaderRow[]>()
+    ),
+    fetchAllPages<ActiveCellRow>((from, to) =>
+      client
+        .from("category_type_targets")
+        .select(ACTIVE_CELL_COLUMNS.select)
+        .eq("active", true)
+        .range(from, to)
+        .returns<ActiveCellRow[]>()
+    ),
+  ]);
+
+  if (groupsRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchCellGroupMaturity/groups", groupsRes.error),
+    };
+  if (coLeadersRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchCellGroupMaturity/coLeaders", coLeadersRes.error),
+    };
+  if (cellsRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchCellGroupMaturity/cells", cellsRes.error),
+    };
+
+  const activeCells: CellKey[] = [];
+  for (const cell of cellsRes.data ?? []) {
+    const audience = cell.audience_category;
+    if (!isAudienceCategory(audience)) continue;
+    if (cell.category_id == null) continue;
+    activeCells.push({ audience, categoryId: cell.category_id });
+  }
+
+  return {
+    data: tallyCellMaturity(
+      groupsRes.data ?? [],
+      coLeadersRes.data ?? [],
+      activeCells,
+      todayIso
+    ),
+    error: null,
+  };
+}
 
 // Page a single PostgREST read through to completion: re-issues the query with a
 // sliding `range` window until a short page comes back, so the caller never grades
