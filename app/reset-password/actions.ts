@@ -8,6 +8,10 @@ import {
   PW_SETUP_COOKIE,
   passwordSetupCookieClearOptions,
 } from "@/lib/auth/password-setup";
+import {
+  LANDING_HINT_COOKIE,
+  landingHintCookieClearOptions,
+} from "@/lib/auth/landing-hint";
 import { readOwnNameState } from "@/lib/account/own-name";
 import { validateOwnFullName } from "@/lib/account/validation";
 import { rpcSetOwnFullName } from "@/lib/account/rpc";
@@ -110,6 +114,7 @@ export async function resetPasswordAction(
   // next request isn't bounced back here by middleware.
   const cookieStore = await cookies();
   cookieStore.set(PW_SETUP_COOKIE, "", passwordSetupCookieClearOptions());
+  cookieStore.set(LANDING_HINT_COOKIE, "", landingHintCookieClearOptions());
 
   // Sign out the recovery session so the next page load lands on /login
   // clean — the user can sign in fresh with the new password.

@@ -10,6 +10,12 @@ import {
   PW_SETUP_COOKIE,
   passwordSetupCookieClearOptions,
 } from "@/lib/auth/password-setup";
+import {
+  LANDING_HINT_COOKIE,
+  landingHintCookieClearOptions,
+  landingHintCookieSetOptions,
+  landingHintForRole,
+} from "@/lib/auth/landing-hint";
 import { rpcLogUsageEvent } from "@/lib/usage/rpc";
 import { isSafeNextPath } from "./next-path";
 import type { ProfileStatus } from "@/types/enums";
@@ -116,6 +122,7 @@ export async function loginAction(
     // Scope `local` so we only revoke the session we just created, not every
     // session the user has across other devices.
     await client.auth.signOut({ scope: "local" });
+    cookieStore.set(LANDING_HINT_COOKIE, "", landingHintCookieClearOptions());
     return {
       error:
         "Sign-in succeeded but we couldn't load your profile. Please try again.",
@@ -165,6 +172,14 @@ export async function loginAction(
     await rpcLogUsageEvent(client, { p_event_type: "login", p_area: null });
   } catch {
     // Telemetry must not affect auth.
+  }
+
+  // Record the role's landing path so a later bare-domain (`/`) launch can be
+  // redirected straight to this surface by middleware, skipping the dynamic `/`
+  // server render. Non-authoritative UX hint only (see lib/auth/landing-hint).
+  const hint = landingHintForRole(profile.role);
+  if (hint) {
+    cookieStore.set(LANDING_HINT_COOKIE, hint, landingHintCookieSetOptions());
   }
 
   redirect(next ?? defaultLandingPathForRole(profile.role));

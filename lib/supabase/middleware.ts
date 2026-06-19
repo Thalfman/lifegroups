@@ -6,6 +6,10 @@ import {
   passwordSetupCookieSetOptions,
   shouldRedirectToPasswordSetup,
 } from "@/lib/auth/password-setup";
+import {
+  LANDING_HINT_COOKIE,
+  isValidLandingHint,
+} from "@/lib/auth/landing-hint";
 import { getSupabaseEnvSafe } from "./config";
 
 // Copy every Set-Cookie the working response accumulated (session cookies
@@ -99,6 +103,36 @@ export async function updateSupabaseSession(
     // renewed above so the redirect drops neither.
     carryCookies(response, redirectResponse);
     return redirectResponse;
+  }
+
+  // Fast path for an authenticated bare-domain (`/`) launch. The dynamic `/`
+  // server render (app/page.tsx, force-dynamic) only resolves the session and
+  // redirects to the role's surface (e.g. /admin) — pure overhead on the common
+  // logged-in launch. If the role's landing-path hint cookie is present and
+  // valid, redirect straight there from here so `/` never renders. The hint is
+  // a non-authoritative UX shortcut: the destination's own route guard still
+  // runs, so a stale/tampered hint can only mis-route, never bypass auth.
+  // Restricted to GET (POST `/` is never a launch) and skipped when auth
+  // callback params (`code` / `token_hash`) are present so an email link landing
+  // on `/` is handled by the existing flow below instead of being hijacked.
+  if (
+    claimsData?.claims &&
+    request.method === "GET" &&
+    request.nextUrl.pathname === "/" &&
+    !request.nextUrl.searchParams.has("code") &&
+    !request.nextUrl.searchParams.has("token_hash")
+  ) {
+    const hint = request.cookies.get(LANDING_HINT_COOKIE)?.value;
+    if (isValidLandingHint(hint)) {
+      const target = request.nextUrl.clone();
+      target.pathname = hint;
+      target.search = "";
+      const redirectResponse = NextResponse.redirect(target);
+      // Carry over the session cookies getClaims() rotated above so the
+      // redirect drops none of them.
+      carryCookies(response, redirectResponse);
+      return redirectResponse;
+    }
   }
 
   // Serve the statically-generated /login document for anonymous visitors
