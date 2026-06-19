@@ -111,11 +111,32 @@ alter table public.prospects
 -- pipeline cleanly instead of lingering as an Untyped, group-less candidate the
 -- planner can't save. Rows with a group are untouched (their type follows the
 -- group). No-op when there are none.
-update public.multiplication_candidates
-   set archived_at = now(),
-       updated_at  = now()
- where group_id is null
-   and archived_at is null;
+--
+-- The archive is a mutation, so it carries a paired audit_events row per row
+-- retired (audit-integrity invariant) — captured via RETURNING so the insert
+-- runs in the same statement/transaction as the update. actor_profile_id is
+-- null: this is a one-time, system-initiated migration with no app actor.
+with archived as (
+  update public.multiplication_candidates
+     set archived_at = now(),
+         updated_at  = now()
+   where group_id is null
+     and archived_at is null
+  returning id
+)
+insert into public.audit_events
+  (actor_profile_id, action, entity_type, entity_id, metadata)
+select
+  null,
+  'admin.archive_multiplication_candidate',
+  'multiplication_candidates',
+  archived.id,
+  jsonb_build_object(
+    'reason', 'collapse_cells_migration',
+    'kind', 'type_only_watch_retired',
+    'migration', '20260708000000_collapse_cells_to_group_type_list'
+  )
+from archived;
 
 alter table public.multiplication_candidates
   drop column if exists audience_category,

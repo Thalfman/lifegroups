@@ -75,6 +75,16 @@ describe("collapse-cells migration — schema changes", () => {
     expect(sql.lower).toContain("update public.multiplication_candidates");
     expect(sql.lower).toContain("set archived_at = now()");
   });
+
+  it("writes a paired audit row for each migration-time candidate archive", () => {
+    // The archive is a mutation, so the audit-integrity invariant applies even
+    // to migration-time DML: capture the archived ids via RETURNING and insert
+    // one audit_events row per retired candidate in the same statement.
+    expect(sql.lower).toContain("with archived as (");
+    expect(sql.lower).toContain("returning id");
+    expect(sql.lower).toContain("insert into public.audit_events");
+    expect(sql.lower).toContain("'admin.archive_multiplication_candidate'");
+  });
 });
 
 describe("collapse-cells migration — new audited RPCs", () => {
