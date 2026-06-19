@@ -1,5 +1,6 @@
 import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 import {
+  columns,
   wrapError,
   decodeNumericRecord,
   type ReadClient,
@@ -56,11 +57,9 @@ import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
 
 // #401: `fed_capacity` is removed from the allowlist — the column was dropped by
 // the retire-fed-capacity migration and capacity is now a derived per-cell issue.
-export const MULTIPLICATION_CONFIG_COLUMNS =
-  "id, group_type, ministry_year, thresholds, trigger_rubric, updated_at";
-
 // One persisted config row, as read through the allowlist. The two jsonb fields
-// are raw; the caller decodes them with decodePillarThresholds / etc.
+// are raw; the caller decodes them with decodePillarThresholds / etc. The
+// allowlist below is pinned to this type via `columns<…>()`.
 export type MultiplicationConfigRow = {
   id: string;
   group_type: GroupAudienceCategory;
@@ -69,6 +68,15 @@ export type MultiplicationConfigRow = {
   trigger_rubric: unknown;
   updated_at: string;
 };
+
+export const MULTIPLICATION_CONFIG_COLUMNS = columns<MultiplicationConfigRow>()(
+  "id",
+  "group_type",
+  "ministry_year",
+  "thresholds",
+  "trigger_rubric",
+  "updated_at"
+);
 
 // Fetch all config rows for a ministry year (one per group type at most). An
 // empty result is the success-with-empty case — a fresh ministry has no config
@@ -79,7 +87,7 @@ export async function fetchMultiplicationConfigs(
 ): Promise<ReadResult<MultiplicationConfigRow[]>> {
   const { data, error } = await client
     .from("multiplication_config")
-    .select(MULTIPLICATION_CONFIG_COLUMNS)
+    .select(MULTIPLICATION_CONFIG_COLUMNS.select)
     .eq("ministry_year", ministryYear)
     .returns<MultiplicationConfigRow[]>();
 
@@ -108,8 +116,12 @@ export const EMPTY_CELL_INTEREST: CellInterestTally = {};
 
 // The desired-cell + state/archived columns the tally needs. Allowlisted —
 // never select("*"); RLS already restricts SELECT to admins (belt-and-braces).
-const INTEREST_VOLUME_COLUMNS =
-  "state, archived, desired_audience_category, desired_category_id";
+const INTEREST_VOLUME_COLUMNS = columns<InterestProspectRow>()(
+  "state",
+  "archived",
+  "desired_audience_category",
+  "desired_category_id"
+);
 const INTEREST_PAGE_LIMIT = 10000;
 
 // Per-cell interest headcount from the prospects' desired cells. Filters archived
@@ -123,7 +135,7 @@ export async function fetchCellInterestCounts(
 ): Promise<ReadResult<CellInterestTally>> {
   const { data, error } = await client
     .from("prospects")
-    .select(INTEREST_VOLUME_COLUMNS)
+    .select(INTEREST_VOLUME_COLUMNS.select)
     .eq("archived", false)
     .eq("state", "interested")
     .not("desired_audience_category", "is", null)
@@ -184,10 +196,20 @@ type ActiveCellRow = {
   category_id: string | null;
 };
 
-const CELL_GROUP_COLUMNS =
-  "id, audience_category, category_id, lifecycle_status";
-const CELL_MEMBERSHIP_COLUMNS = "group_id, status";
-const ACTIVE_CELL_COLUMNS = "audience_category, category_id";
+const CELL_GROUP_COLUMNS = columns<CellGroupRow>()(
+  "id",
+  "audience_category",
+  "category_id",
+  "lifecycle_status"
+);
+const CELL_MEMBERSHIP_COLUMNS = columns<CellMembershipRow>()(
+  "group_id",
+  "status"
+);
+const ACTIVE_CELL_COLUMNS = columns<ActiveCellRow>()(
+  "audience_category",
+  "category_id"
+);
 
 // Page size for the cell reads. We page through until a short page rather than
 // trusting a single fixed window, so the derived capacity is never computed from a
@@ -301,7 +323,7 @@ export async function fetchCellActiveGroupSizes(
     fetchAllPages<CellGroupRow>((from, to) =>
       client
         .from("groups")
-        .select(CELL_GROUP_COLUMNS)
+        .select(CELL_GROUP_COLUMNS.select)
         .eq("lifecycle_status", "active")
         .range(from, to)
         .returns<CellGroupRow[]>()
@@ -309,7 +331,7 @@ export async function fetchCellActiveGroupSizes(
     fetchAllPages<CellMembershipRow>((from, to) =>
       client
         .from("group_memberships")
-        .select(CELL_MEMBERSHIP_COLUMNS)
+        .select(CELL_MEMBERSHIP_COLUMNS.select)
         .eq("status", "active")
         .range(from, to)
         .returns<CellMembershipRow[]>()
@@ -317,7 +339,7 @@ export async function fetchCellActiveGroupSizes(
     fetchAllPages<ActiveCellRow>((from, to) =>
       client
         .from("category_type_targets")
-        .select(ACTIVE_CELL_COLUMNS)
+        .select(ACTIVE_CELL_COLUMNS.select)
         .eq("active", true)
         .range(from, to)
         .returns<ActiveCellRow[]>()
@@ -429,8 +451,12 @@ type LeaderCellJoinRow = {
   profile: { role: string | null } | null;
 };
 
-const GRADE_SCORE_COLUMNS =
-  "criterion_scores, override_letter, override_scope, override_period_month";
+const GRADE_SCORE_COLUMNS = columns<GradeScoreFields>()(
+  "criterion_scores",
+  "override_letter",
+  "override_scope",
+  "override_period_month"
+);
 
 // Page cap for the rollup reads, mirroring the interest read. A ministry year with
 // more grade rows than this would otherwise be silently truncated by PostgREST's
@@ -459,14 +485,14 @@ export async function fetchCellHealthGrades(
       client
         .from("group_rubric_grades")
         .select(
-          `${GRADE_SCORE_COLUMNS}, group:groups(audience_category, category_id, lifecycle_status)`
+          `${GRADE_SCORE_COLUMNS.select}, group:groups(audience_category, category_id, lifecycle_status)`
         )
         .eq("ministry_year", ministryYear)
         .range(0, HEALTH_GRADE_PAGE_LIMIT - 1)
         .returns<GroupGradeJoinRow[]>(),
       client
         .from("leader_rubric_grades")
-        .select(`profile_id, ${GRADE_SCORE_COLUMNS}`)
+        .select(`profile_id, ${GRADE_SCORE_COLUMNS.select}`)
         .eq("ministry_year", ministryYear)
         .range(0, HEALTH_GRADE_PAGE_LIMIT - 1)
         .returns<LeaderGradeRow[]>(),

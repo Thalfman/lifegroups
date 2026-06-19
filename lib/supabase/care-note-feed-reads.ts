@@ -72,7 +72,7 @@ export async function fetchAllReadableCareNotes(
 ): Promise<ReadResult<CareNotesRow[]>> {
   const { data, error } = await client
     .from("care_notes")
-    .select(CARE_NOTE_COLUMNS)
+    .select(CARE_NOTE_COLUMNS.select)
     .order("created_at", { ascending: false })
     .limit(options.limit ?? DEFAULT_FEED_LIMIT);
   if (error)
@@ -86,7 +86,7 @@ export async function fetchAllReadablePrayerRequests(
 ): Promise<ReadResult<PrayerRequestsRow[]>> {
   const { data, error } = await client
     .from("prayer_requests")
-    .select(PRAYER_REQUEST_COLUMNS)
+    .select(PRAYER_REQUEST_COLUMNS.select)
     .order("created_at", { ascending: false })
     .limit(options.limit ?? DEFAULT_FEED_LIMIT);
   if (error)

@@ -2,7 +2,12 @@ import type {
   GroupAudienceCategory,
   GroupLifecycleStatus,
 } from "@/types/enums";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 import { AUDIENCE_CATEGORIES, isAudienceCategory } from "@/lib/admin/audience";
 
 // Group Category catalog + cell read models (#396, reworked #412 / ADR 0015).
@@ -16,14 +21,18 @@ import { AUDIENCE_CATEGORIES, isAudienceCategory } from "@/lib/admin/audience";
 //      target_count + trigger_overrides, feeding the group-type list's coverage
 //      ("have X of Y") and the readiness editor's per-cell rows.
 
-export const GROUP_CATEGORY_COLUMNS = "id, label, created_at";
-
 // One live catalog category, as read through the allowlist.
 export type GroupCategoryRow = {
   id: string;
   label: string;
   created_at: string;
 };
+
+export const GROUP_CATEGORY_COLUMNS = columns<GroupCategoryRow>()(
+  "id",
+  "label",
+  "created_at"
+);
 
 // Fetch the live (non-archived) catalog, ordered by label. An empty result is
 // the success-with-empty case — a fresh ministry ships an EMPTY catalog (PRD
@@ -33,7 +42,7 @@ export async function fetchGroupCategories(
 ): Promise<ReadResult<GroupCategoryRow[]>> {
   const { data, error } = await client
     .from("group_categories")
-    .select(GROUP_CATEGORY_COLUMNS)
+    .select(GROUP_CATEGORY_COLUMNS.select)
     .is("archived_at", null)
     .order("label", { ascending: true })
     .returns<GroupCategoryRow[]>();
@@ -45,9 +54,6 @@ export async function fetchGroupCategories(
 // The cell columns the category picker read (fetchCategoriesForAudience) pins —
 // id + active flag, no target_count (it has no need of it). Kept narrow so that
 // read stays column-allowlisted.
-export const CATEGORY_TYPE_CELL_COLUMNS =
-  "id, audience_category, category_id, active";
-
 // One cell row, as read through the allowlist for the picker — target_count +
 // trigger_overrides are not read in this shape (the coverage read below carries
 // them).
@@ -57,6 +63,13 @@ export type CategoryTypeCellRow = {
   category_id: string;
   active: boolean;
 };
+
+export const CATEGORY_TYPE_CELL_COLUMNS = columns<CategoryTypeCellRow>()(
+  "id",
+  "audience_category",
+  "category_id",
+  "active"
+);
 
 // ---------------------------------------------------------------------------
 // Per-cell target_count + coverage reads (#400 / PRD §2.3).
@@ -69,9 +82,6 @@ export type CategoryTypeCellRow = {
 //      {audience_category, category_id, lifecycle_status}, so the coverage
 //      builder counts X (active + launching) per cell. Member counts are NOT
 //      needed for #400, so they are deliberately not read here.
-
-export const CATEGORY_TYPE_TARGET_COLUMNS =
-  "id, audience_category, category_id, active, target_count, trigger_overrides";
 
 // One cell row with its target_count AND trigger_overrides, as read through the
 // allowlist. Carries the target (Y) the coverage readout reads against (#400) and
@@ -87,6 +97,15 @@ export type CategoryTypeTargetRow = {
   trigger_overrides: unknown;
 };
 
+export const CATEGORY_TYPE_TARGET_COLUMNS = columns<CategoryTypeTargetRow>()(
+  "id",
+  "audience_category",
+  "category_id",
+  "active",
+  "target_count",
+  "trigger_overrides"
+);
+
 // Fetch every cell row with its target_count. The coverage builder keeps only the
 // ACTIVE cells (a cell is active when active=true) and pairs them against the
 // group lifecycle rows below.
@@ -95,7 +114,7 @@ export async function fetchCategoryTypeTargetCells(
 ): Promise<ReadResult<CategoryTypeTargetRow[]>> {
   const { data, error } = await client
     .from("category_type_targets")
-    .select(CATEGORY_TYPE_TARGET_COLUMNS)
+    .select(CATEGORY_TYPE_TARGET_COLUMNS.select)
     .returns<CategoryTypeTargetRow[]>();
 
   if (error)
@@ -105,9 +124,6 @@ export async function fetchCategoryTypeTargetCells(
     };
   return { data: data ?? [], error: null };
 }
-
-export const GROUP_CELL_LIFECYCLE_COLUMNS =
-  "audience_category, category_id, lifecycle_status";
 
 // One group's cell membership + lifecycle, as read through the allowlist — the
 // fact the coverage count (X) needs. A NULL category_id (Uncategorized) is filtered
@@ -119,6 +135,12 @@ export type GroupCellLifecycleRow = {
   lifecycle_status: GroupLifecycleStatus;
 };
 
+export const GROUP_CELL_LIFECYCLE_COLUMNS = columns<GroupCellLifecycleRow>()(
+  "audience_category",
+  "category_id",
+  "lifecycle_status"
+);
+
 // Fetch every non-closed group that carries a category, as its cell + lifecycle.
 // The active+launching rule (which lifecycle states count toward X) is applied
 // purely in lib/admin/cell-coverage.ts, so it stays unit-testable without a DB.
@@ -127,7 +149,7 @@ export async function fetchGroupCellLifecycleRows(
 ): Promise<ReadResult<GroupCellLifecycleRow[]>> {
   const { data, error } = await client
     .from("groups")
-    .select(GROUP_CELL_LIFECYCLE_COLUMNS)
+    .select(GROUP_CELL_LIFECYCLE_COLUMNS.select)
     .not("category_id", "is", null)
     .neq("lifecycle_status", "closed")
     .returns<GroupCellLifecycleRow[]>();
@@ -153,7 +175,7 @@ export async function fetchCategoriesForAudience(
 ): Promise<ReadResult<GroupCategoryRow[]>> {
   const cellsRes = await client
     .from("category_type_targets")
-    .select(CATEGORY_TYPE_CELL_COLUMNS)
+    .select(CATEGORY_TYPE_CELL_COLUMNS.select)
     .eq("audience_category", audienceCategory)
     .eq("active", true)
     .returns<CategoryTypeCellRow[]>();
@@ -170,7 +192,7 @@ export async function fetchCategoriesForAudience(
 
   const catalogRes = await client
     .from("group_categories")
-    .select(GROUP_CATEGORY_COLUMNS)
+    .select(GROUP_CATEGORY_COLUMNS.select)
     .is("archived_at", null)
     .in("id", activeCategoryIds)
     .order("label", { ascending: true })

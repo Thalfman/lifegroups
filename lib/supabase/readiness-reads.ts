@@ -1,5 +1,10 @@
 import type { GroupAudienceCategory } from "@/types/enums";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 // Per-cell readiness rule read model (#402 / PRD §2.4). One allowlisted read feeds
 // the Settings > Groups readiness editor: the GLOBAL rule for the current ministry
@@ -12,16 +17,22 @@ import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 // a typed ReadinessRule at the trust boundary (lib/admin/cell-readiness.ts); the
 // row type here stays raw.
 
-export const READINESS_RULE_COLUMNS = "id, ministry_year, rule, updated_at";
-
 // One persisted global-rule row, as read through the allowlist. The `rule` field
-// is raw jsonb; the caller decodes it with decodeReadinessRule.
+// is raw jsonb; the caller decodes it with decodeReadinessRule. The allowlist
+// below is pinned to this type via `columns<…>()`.
 export type ReadinessRuleRow = {
   id: string;
   ministry_year: number;
   rule: unknown;
   updated_at: string;
 };
+
+export const READINESS_RULE_COLUMNS = columns<ReadinessRuleRow>()(
+  "id",
+  "ministry_year",
+  "rule",
+  "updated_at"
+);
 
 // Fetch the global readiness rule for a ministry year (at most one row). A null
 // result is the success-with-empty case — a fresh ministry has no rule until
@@ -32,7 +43,7 @@ export async function fetchReadinessRule(
 ): Promise<ReadResult<ReadinessRuleRow | null>> {
   const { data, error } = await client
     .from("multiplication_readiness_rule")
-    .select(READINESS_RULE_COLUMNS)
+    .select(READINESS_RULE_COLUMNS.select)
     .eq("ministry_year", ministryYear)
     .maybeSingle<ReadinessRuleRow>();
 
@@ -51,11 +62,9 @@ export async function fetchReadinessRule(
 // `rule` jsonb is a PARTIAL of the global rule, decoded into a typed
 // PerTypeReadinessRule at the trust boundary (lib/admin/cell-readiness.ts).
 
-export const AUDIENCE_READINESS_RULE_COLUMNS =
-  "id, ministry_year, audience_category, rule, updated_at";
-
 // One persisted per-type rule row, as read through the allowlist. The `rule` field
-// is raw jsonb; the caller decodes it with decodePerTypeRule.
+// is raw jsonb; the caller decodes it with decodePerTypeRule. The allowlist below
+// is pinned to this type via `columns<…>()`.
 export type AudienceReadinessRuleRow = {
   id: string;
   ministry_year: number;
@@ -63,6 +72,15 @@ export type AudienceReadinessRuleRow = {
   rule: unknown;
   updated_at: string;
 };
+
+export const AUDIENCE_READINESS_RULE_COLUMNS =
+  columns<AudienceReadinessRuleRow>()(
+    "id",
+    "ministry_year",
+    "audience_category",
+    "rule",
+    "updated_at"
+  );
 
 // Fetch every per-type readiness rule for a ministry year (0–3 rows). An empty
 // result is the success-with-empty case — until a per-type rule is set, every type
@@ -73,7 +91,7 @@ export async function fetchAudienceReadinessRules(
 ): Promise<ReadResult<AudienceReadinessRuleRow[]>> {
   const { data, error } = await client
     .from("audience_readiness_rule")
-    .select(AUDIENCE_READINESS_RULE_COLUMNS)
+    .select(AUDIENCE_READINESS_RULE_COLUMNS.select)
     .eq("ministry_year", ministryYear)
     .returns<AudienceReadinessRuleRow[]>();
 

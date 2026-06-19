@@ -5,7 +5,7 @@ import type {
   ShepherdCareInteractionType,
   ShepherdCareStatus,
 } from "@/types/enums";
-import { wrapError, type ReadResult } from "@/lib/supabase/read-core";
+import { columns, wrapError, type ReadResult } from "@/lib/supabase/read-core";
 import { isUuid } from "@/lib/shared/uuid";
 
 // Read side for the Member Care list backend (the member half of the Care
@@ -17,14 +17,6 @@ import { isUuid } from "@/lib/shared/uuid";
 // Column-allowlisted — never select("*"). The tables are not in the generated
 // supabase schema types, so their selects are cast here, the same trust seam
 // the leader-/group-health grade reads use.
-
-export const MEMBER_CARE_PROFILE_COLUMNS =
-  "id, member_id, current_status, last_contact_at, " +
-  "next_touchpoint_due, admin_summary, archived_at, created_at, updated_at";
-
-export const MEMBER_CARE_INTERACTION_COLUMNS =
-  "id, care_profile_id, interaction_at, interaction_type, notes, " +
-  "created_by_profile_id, created_at";
 
 export type MemberCareProfileRow = {
   id: string;
@@ -48,6 +40,31 @@ export type MemberCareInteractionRow = {
   created_at: string;
 };
 
+// Column allowlists pinned to the row types above via `columns<…>()`, so each
+// select string and its row type derive from one list.
+export const MEMBER_CARE_PROFILE_COLUMNS = columns<MemberCareProfileRow>()(
+  "id",
+  "member_id",
+  "current_status",
+  "last_contact_at",
+  "next_touchpoint_due",
+  "admin_summary",
+  "archived_at",
+  "created_at",
+  "updated_at"
+);
+
+export const MEMBER_CARE_INTERACTION_COLUMNS =
+  columns<MemberCareInteractionRow>()(
+    "id",
+    "care_profile_id",
+    "interaction_at",
+    "interaction_type",
+    "notes",
+    "created_by_profile_id",
+    "created_at"
+  );
+
 // One member's care profile, or null when no care has been recorded yet
 // (success-with-null, not an error).
 export async function fetchMemberCareProfileByMemberId(
@@ -57,7 +74,7 @@ export async function fetchMemberCareProfileByMemberId(
   if (!isUuid(memberId)) return { data: null, error: null };
   const { data, error } = await (client as AppSupabaseClient)
     .from("member_care_profiles" as never)
-    .select(MEMBER_CARE_PROFILE_COLUMNS as never)
+    .select(MEMBER_CARE_PROFILE_COLUMNS.select as never)
     .eq("member_id" as never, memberId as never)
     .maybeSingle<MemberCareProfileRow>();
   if (error)
@@ -76,7 +93,7 @@ export async function fetchMemberCareInteractionsForAdmin(
   if (!isUuid(careProfileId)) return { data: [], error: null };
   const { data, error } = await (client as AppSupabaseClient)
     .from("member_care_interactions" as never)
-    .select(MEMBER_CARE_INTERACTION_COLUMNS as never)
+    .select(MEMBER_CARE_INTERACTION_COLUMNS.select as never)
     .eq("care_profile_id" as never, careProfileId as never)
     .order("interaction_at" as never, { ascending: false } as never)
     .order("created_at" as never, { ascending: false } as never);
@@ -99,7 +116,7 @@ export async function fetchAllMemberCareProfilesForAdmin(
 ): Promise<ReadResult<MemberCareProfileRow[]>> {
   const { data, error } = await (client as AppSupabaseClient)
     .from("member_care_profiles" as never)
-    .select(MEMBER_CARE_PROFILE_COLUMNS as never)
+    .select(MEMBER_CARE_PROFILE_COLUMNS.select as never)
     .is("archived_at" as never, null as never);
   if (error)
     return {

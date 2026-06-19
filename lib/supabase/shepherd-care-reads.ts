@@ -22,6 +22,7 @@ import {
   type AttentionBaselines,
 } from "@/lib/admin/attention-reset";
 import {
+  columns,
   currentUtcDateIso,
   fetchByIds,
   unwrapEmbed,
@@ -49,9 +50,16 @@ import {
  * If you add a column, also extend `ShepherdCareProfilesRow` in
  * types/database.ts.
  */
-export const SHEPHERD_CARE_PROFILE_COLUMNS =
-  "id, shepherd_profile_id, current_status, last_contact_at, " +
-  "next_touchpoint_due, archived_at, created_at, updated_at";
+export const SHEPHERD_CARE_PROFILE_COLUMNS = columns<ShepherdCareProfilesRow>()(
+  "id",
+  "shepherd_profile_id",
+  "current_status",
+  "last_contact_at",
+  "next_touchpoint_due",
+  "archived_at",
+  "created_at",
+  "updated_at"
+);
 
 /**
  * Admin-only column allowlist for shepherd_care_interactions. Same
@@ -59,8 +67,15 @@ export const SHEPHERD_CARE_PROFILE_COLUMNS =
  * admin code path.
  */
 export const SHEPHERD_CARE_INTERACTION_COLUMNS =
-  "id, care_profile_id, interaction_at, interaction_type, notes, " +
-  "created_by_profile_id, created_at";
+  columns<ShepherdCareInteractionsRow>()(
+    "id",
+    "care_profile_id",
+    "interaction_at",
+    "interaction_type",
+    "notes",
+    "created_by_profile_id",
+    "created_at"
+  );
 
 /**
  * Phase SC.4 private care notes. Creator-scoped column allowlists; never
@@ -71,12 +86,30 @@ export const SHEPHERD_CARE_INTERACTION_COLUMNS =
  * super_admin read path exists.
  */
 export const SHEPHERD_CARE_PRIVATE_NOTE_COLUMNS =
-  "id, care_profile_id, created_by_profile_id, ciphertext, iv, dek_version, " +
-  "created_at, updated_at";
+  columns<RawPrivateNoteCiphertext>()(
+    "id",
+    "care_profile_id",
+    "created_by_profile_id",
+    "ciphertext",
+    "iv",
+    "dek_version",
+    "created_at",
+    "updated_at"
+  );
 
-export const SHEPHERD_CARE_KEY_SLOT_COLUMNS =
-  "id, created_by_profile_id, dek_version, slot_type, credential_id, label, " +
-  "prf_salt, hkdf_salt, wrapped_dek, wrap_iv, created_at";
+export const SHEPHERD_CARE_KEY_SLOT_COLUMNS = columns<RawPrivateNoteKeySlot>()(
+  "id",
+  "created_by_profile_id",
+  "dek_version",
+  "slot_type",
+  "credential_id",
+  "label",
+  "prf_salt",
+  "hkdf_salt",
+  "wrapped_dek",
+  "wrap_iv",
+  "created_at"
+);
 
 // Read-shape DTOs. The bytea columns arrive from PostgREST in hex output and
 // are normalised to base64 here so the whole app/client layer speaks one
@@ -148,8 +181,16 @@ export type ShepherdCareDirectorySummary = Pick<
 // (admin_summary-free) care columns from one source of truth, rather than
 // maintaining a byte-identical copy.
 export const SHEPHERD_CARE_DIRECTORY_COLUMNS =
-  "id, shepherd_profile_id, current_status, last_contact_at, " +
-  "next_touchpoint_due, archived_at, created_at, updated_at";
+  columns<ShepherdCareDirectorySummary>()(
+    "id",
+    "shepherd_profile_id",
+    "current_status",
+    "last_contact_at",
+    "next_touchpoint_due",
+    "archived_at",
+    "created_at",
+    "updated_at"
+  );
 
 export type ShepherdCareDirectoryEntry = {
   profile: Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">;
@@ -287,7 +328,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
   if (shepherdIds.length > 0) {
     const careQuery = await client
       .from("shepherd_care_profiles")
-      .select(SHEPHERD_CARE_DIRECTORY_COLUMNS)
+      .select(SHEPHERD_CARE_DIRECTORY_COLUMNS.select)
       .in("shepherd_profile_id", shepherdIds);
     if (careQuery.error) {
       return {
@@ -328,7 +369,7 @@ export async function fetchShepherdCareProfileByShepherdId(
 ): Promise<ReadResult<ShepherdCareProfilesRow | null>> {
   const { data, error } = await client
     .from("shepherd_care_profiles")
-    .select(SHEPHERD_CARE_PROFILE_COLUMNS)
+    .select(SHEPHERD_CARE_PROFILE_COLUMNS.select)
     .eq("shepherd_profile_id", shepherdProfileId)
     .maybeSingle();
   if (error) {
@@ -375,7 +416,7 @@ export async function fetchShepherdCareInteractionsForAdmin(
 ): Promise<ReadResult<ShepherdCareInteractionsRow[]>> {
   const { data, error } = await client
     .from("shepherd_care_interactions")
-    .select(SHEPHERD_CARE_INTERACTION_COLUMNS)
+    .select(SHEPHERD_CARE_INTERACTION_COLUMNS.select)
     .eq("care_profile_id", careProfileId)
     .order("interaction_at", { ascending: false })
     .order("created_at", { ascending: false });
@@ -412,8 +453,19 @@ export async function fetchShepherdCareInteractionsForAdmin(
  * types/database.ts.
  */
 export const SHEPHERD_CARE_FOLLOW_UP_COLUMNS =
-  "id, care_profile_id, title, due_date, status, notes, " +
-  "created_by_profile_id, created_at, updated_at, completed_at, archived_at";
+  columns<ShepherdCareFollowUpsRow>()(
+    "id",
+    "care_profile_id",
+    "title",
+    "due_date",
+    "status",
+    "notes",
+    "created_by_profile_id",
+    "created_at",
+    "updated_at",
+    "completed_at",
+    "archived_at"
+  );
 
 /**
  * Admin-only list of care follow-ups for one care profile. Returns the raw
@@ -427,7 +479,7 @@ export async function fetchShepherdCareFollowUpsForProfile(
 ): Promise<ReadResult<ShepherdCareFollowUpsRow[]>> {
   const { data, error } = await client
     .from("shepherd_care_follow_ups")
-    .select(SHEPHERD_CARE_FOLLOW_UP_COLUMNS)
+    .select(SHEPHERD_CARE_FOLLOW_UP_COLUMNS.select)
     .eq("care_profile_id", careProfileId)
     // Archived (soft-deleted) follow-ups drop out of the list entirely.
     .is("archived_at", null)
@@ -746,17 +798,38 @@ export async function fetchAdminShepherdProfileById(
  * the column doesn't leave the server. Use OVER_SHEPHERD_DETAIL_COLUMNS
  * when loading a single record for the edit form.
  */
-export const OVER_SHEPHERD_LIST_COLUMNS =
-  "id, full_name, email, phone, active, archived_at, created_at, updated_at";
+export const OVER_SHEPHERD_LIST_COLUMNS = columns<OverShepherdsRow>()(
+  "id",
+  "full_name",
+  "email",
+  "phone",
+  "active",
+  "archived_at",
+  "created_at",
+  "updated_at"
+);
 
 /**
  * Admin-only column allowlist that INCLUDES `notes`. Used only by the
- * over-shepherd edit form's loader.
+ * over-shepherd edit form's loader. Pinned to the same row as the list columns
+ * via `columns<…>()`, with `notes` added.
  */
-export const OVER_SHEPHERD_DETAIL_COLUMNS = `${OVER_SHEPHERD_LIST_COLUMNS}, notes`;
+export const OVER_SHEPHERD_DETAIL_COLUMNS = columns<OverShepherdsRow>()(
+  ...OVER_SHEPHERD_LIST_COLUMNS.list,
+  "notes"
+);
 
 export const SHEPHERD_COVERAGE_ASSIGNMENT_COLUMNS =
-  "id, shepherd_profile_id, over_shepherd_id, active, assigned_at, ended_at, created_at, updated_at";
+  columns<ShepherdCoverageAssignmentsRow>()(
+    "id",
+    "shepherd_profile_id",
+    "over_shepherd_id",
+    "active",
+    "assigned_at",
+    "ended_at",
+    "created_at",
+    "updated_at"
+  );
 
 export type OverShepherdListRow = Pick<
   OverShepherdsRow,
@@ -788,7 +861,7 @@ export async function fetchOverShepherdsForAdmin(
 ): Promise<ReadResult<OverShepherdListRow[]>> {
   let query = client
     .from("over_shepherds")
-    .select(OVER_SHEPHERD_LIST_COLUMNS)
+    .select(OVER_SHEPHERD_LIST_COLUMNS.select)
     .order("active", { ascending: false })
     .order("full_name", { ascending: true });
   if (!options.includeArchived) {
@@ -815,7 +888,7 @@ export async function fetchOverShepherdByIdForAdmin(
 ): Promise<ReadResult<OverShepherdsRow | null>> {
   const { data, error } = await client
     .from("over_shepherds")
-    .select(OVER_SHEPHERD_DETAIL_COLUMNS)
+    .select(OVER_SHEPHERD_DETAIL_COLUMNS.select)
     .eq("id", overShepherdId)
     .maybeSingle();
   if (error) {
@@ -1040,7 +1113,7 @@ export async function fetchShepherdCarePrivateNoteCiphertextForCreator(
 ): Promise<ReadResult<PrivateNoteCiphertext | null>> {
   const { data, error } = await client
     .from("shepherd_care_private_notes")
-    .select(SHEPHERD_CARE_PRIVATE_NOTE_COLUMNS)
+    .select(SHEPHERD_CARE_PRIVATE_NOTE_COLUMNS.select)
     .eq("care_profile_id", careProfileId)
     .eq("created_by_profile_id", creatorProfileId)
     .maybeSingle();
@@ -1081,7 +1154,7 @@ export async function fetchPrivateNoteKeySlotsForCreator(
 ): Promise<ReadResult<PrivateNoteKeySlot[]>> {
   const { data, error } = await client
     .from("shepherd_care_note_key_slots")
-    .select(SHEPHERD_CARE_KEY_SLOT_COLUMNS)
+    .select(SHEPHERD_CARE_KEY_SLOT_COLUMNS.select)
     .eq("created_by_profile_id", creatorProfileId)
     .order("created_at", { ascending: true });
   if (error) {
