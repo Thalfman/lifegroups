@@ -9,6 +9,7 @@ import {
 import {
   LANDING_HINT_COOKIE,
   isValidLandingHint,
+  landingHintCookieClearOptions,
 } from "@/lib/auth/landing-hint";
 import { getSupabaseEnvSafe } from "./config";
 
@@ -172,6 +173,29 @@ export async function updateSupabaseSession(
     // there are no cookies to copy, so this is a no-op on the common path.)
     carryCookies(response, rewriteResponse);
     return rewriteResponse;
+  }
+
+  // Self-heal a stale landing hint. A role guard that denies access lands the
+  // user on /unauthorized, and the hint is set for up to 30 days — so if a
+  // signed-in user's role changed since the cookie was written (e.g. a Super
+  // Admin moved a ministry_admin to over_shepherd), the fast path above would
+  // send `/` → /admin → requireAdmin → /unauthorized, and the page's "Back to
+  // home" link (→ `/`) would loop straight back through the same stale
+  // redirect. Middleware can't revalidate the hint against the live role (it
+  // does no DB read), so clear it here at the denial landing instead: the next
+  // `/` visit then renders normally, and the protected-layout refresher
+  // re-establishes the correct hint on the first surface the user can actually
+  // reach. Clearing a still-valid hint is harmless — it only costs one ordinary
+  // `/` render before it's re-set.
+  if (
+    request.nextUrl.pathname === "/unauthorized" &&
+    request.cookies.has(LANDING_HINT_COOKIE)
+  ) {
+    response.cookies.set(
+      LANDING_HINT_COOKIE,
+      "",
+      landingHintCookieClearOptions()
+    );
   }
 
   return response;

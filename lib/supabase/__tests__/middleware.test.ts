@@ -131,3 +131,26 @@ describe("updateSupabaseSession landing-hint fast path", () => {
   // still denies access. That guard behavior is covered by
   // lib/auth/__tests__/session.test.ts; middleware only performs the redirect.
 });
+
+describe("updateSupabaseSession stale-hint self-heal", () => {
+  it("clears the hint when an authenticated request lands on /unauthorized", async () => {
+    // A role guard denied access (e.g. role changed since the cookie was set);
+    // the stale hint must be cleared so /unauthorized → `/` doesn't loop back
+    // through the same redirect.
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/unauthorized", { cookies: { [LANDING_HINT_COOKIE]: "/admin" } })
+    );
+
+    const cleared = res.cookies.get(LANDING_HINT_COOKIE);
+    expect(cleared?.value).toBe("");
+    expect(cleared?.maxAge).toBe(0);
+  });
+
+  it("does not touch cookies on /unauthorized when no hint is present", async () => {
+    setSession(true);
+    const res = await updateSupabaseSession(request("/unauthorized"));
+
+    expect(res.cookies.get(LANDING_HINT_COOKIE)).toBeUndefined();
+  });
+});
