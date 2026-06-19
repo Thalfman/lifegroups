@@ -742,7 +742,7 @@ function PillarInputs({
           />
           <span className={THRESHOLD_NOTE}>≥</span>
           <CountInput
-            ariaLabel="Minimum Co-Leader years"
+            ariaLabel="Minimum Co-Shepherd years"
             value={fields.coShepherdMin}
             onChange={(v) => update({ coShepherdMin: v })}
           />
