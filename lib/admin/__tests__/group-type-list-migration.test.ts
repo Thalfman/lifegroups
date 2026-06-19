@@ -52,13 +52,28 @@ describe("collapse-cells migration — schema changes", () => {
     expect(sql.lower).toContain(
       "create table if not exists public.group_type_configs"
     );
+    // Keyed on the NORMALIZED identity (case-insensitive) so case-only twins
+    // can't split a type's config.
     expect(sql.lower).toContain(
-      "constraint group_type_configs_group_type_unique"
+      "create unique index if not exists group_type_configs_group_type_norm_unique"
     );
+    expect(sql.lower).toContain("(lower(btrim(group_type)))");
     expect(sql.lower).toContain(
       "alter table public.group_type_configs enable row level security"
     );
     expect(sql.lower).toContain("group_type_configs_admin_read");
+  });
+
+  it("serializes per-type config upserts with a per-key advisory lock", () => {
+    // Matches the 20260617 audit-before-advisory-lock pattern so a brand-new
+    // type's concurrent upserts can't both audit an empty `before`.
+    expect(sql.lower).toContain("pg_advisory_xact_lock");
+    expect(sql.lower).toContain("hashtext('group_type_configs')");
+  });
+
+  it("soft-archives type-only multiplication candidates before dropping the cell columns", () => {
+    expect(sql.lower).toContain("update public.multiplication_candidates");
+    expect(sql.lower).toContain("set archived_at = now()");
   });
 });
 

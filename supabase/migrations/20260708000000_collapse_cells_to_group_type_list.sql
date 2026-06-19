@@ -105,6 +105,18 @@ alter table public.prospects
 --    columns drops multiplication_candidates_one_active_type_only with them.
 -- ===========================================================================
 
+-- A type-only watch (group_id null) carried its intent ONLY in the cell columns
+-- about to drop, and the new planner requires a concrete group. Soft-archive any
+-- active type-only rows first (Archive convention) so they leave the active
+-- pipeline cleanly instead of lingering as an Untyped, group-less candidate the
+-- planner can't save. Rows with a group are untouched (their type follows the
+-- group). No-op when there are none.
+update public.multiplication_candidates
+   set archived_at = now(),
+       updated_at  = now()
+ where group_id is null
+   and archived_at is null;
+
 alter table public.multiplication_candidates
   drop column if exists audience_category,
   drop column if exists category_id;
@@ -765,7 +777,6 @@ create table if not exists public.group_type_configs (
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
 
-  constraint group_type_configs_group_type_unique unique (group_type),
   constraint group_type_configs_group_type_not_blank
     check (length(btrim(group_type)) > 0),
   constraint group_type_configs_group_type_len
@@ -775,6 +786,15 @@ create table if not exists public.group_type_configs (
   constraint group_type_configs_readiness_is_object
     check (readiness_rule is null or jsonb_typeof(readiness_rule) = 'object')
 );
+
+-- One config row per type, on the NORMALIZED (trimmed, case-insensitive)
+-- identity — every consumer keys types by lower(btrim(name)) (the group_types
+-- list dedupes case-insensitively; the coverage/override maps fold case), so the
+-- DB key matches that identity. This blocks case-only twins ("Men's" vs "men's")
+-- a direct insert/seed could otherwise create, which the coverage roll-up would
+-- silently collapse to whichever row was read last.
+create unique index if not exists group_type_configs_group_type_norm_unique
+  on public.group_type_configs (lower(btrim(group_type)));
 
 drop trigger if exists group_type_configs_set_updated_at on public.group_type_configs;
 create trigger group_type_configs_set_updated_at
@@ -948,19 +968,37 @@ begin
     v_rule := p_readiness_rule;
   end if;
 
+  -- Serialize concurrent upserts for the SAME (normalized) type before the
+  -- snapshot. For a brand-new type, SELECT ... FOR UPDATE locks nothing (no row
+  -- yet), so two racers would both read `before` empty and the loser would
+  -- clobber the winner while auditing an empty before. A per-key advisory xact
+  -- lock — the same pattern as 20260617000000_phase_groups7 — closes that race;
+  -- the two int4 keys namespace the lock to this table + the normalized name.
+  perform pg_advisory_xact_lock(
+    hashtext('group_type_configs'),
+    hashtext(lower(v_type))
+  );
+
+  -- Match on the NORMALIZED identity (the unique index key) so a case-only
+  -- variant updates the existing row rather than spawning a twin.
   select id, jsonb_build_object('target_count', target_count, 'readiness_rule', readiness_rule)
     into v_row_id, v_before
     from public.group_type_configs
-   where group_type = v_type
+   where lower(btrim(group_type)) = lower(v_type)
    for update;
 
-  insert into public.group_type_configs (group_type, target_count, readiness_rule, created_by, updated_by)
-  values (v_type, v_target, v_rule, v_actor, v_actor)
-  on conflict (group_type) do update
-    set target_count   = excluded.target_count,
-        readiness_rule = excluded.readiness_rule,
-        updated_by     = v_actor
-  returning id into v_row_id;
+  if v_row_id is null then
+    insert into public.group_type_configs (group_type, target_count, readiness_rule, created_by, updated_by)
+    values (v_type, v_target, v_rule, v_actor, v_actor)
+    returning id into v_row_id;
+  else
+    update public.group_type_configs
+       set group_type     = v_type,
+           target_count   = v_target,
+           readiness_rule = v_rule,
+           updated_by     = v_actor
+     where id = v_row_id;
+  end if;
 
   v_after := jsonb_build_object('target_count', v_target, 'readiness_rule', v_rule);
 

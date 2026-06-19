@@ -38,15 +38,19 @@
 
 -- 1. Group-type list --------------------------------------------------------
 -- The free-text group_type catalog lives in the app_settings `group_types` row
--- (`{ types: string[] }`); seed it so the demo groups' types are pickable.
+-- (`{ types: string[] }`). The collapse migration pre-seeds it to an empty list,
+-- so DO NOTHING would leave the demo catalog empty and the demo groups' types
+-- unpickable in Settings/Groups. Replace the value so the demo list is populated.
 insert into public.app_settings (setting_key, setting_value)
 values (
   'group_types',
   '{"types": ["Men''s", "Women''s", "Young families", "50s+"]}'::jsonb
 )
-on conflict (setting_key) do nothing;
+on conflict (setting_key) do update
+  set setting_value = excluded.setting_value;
 
 -- 2. Per-type config (target group counts) ----------------------------------
+-- Conflict target is the NORMALIZED unique index (lower(btrim(group_type))).
 insert into public.group_type_configs (group_type, target_count)
 select v.group_type, v.target
 from (values
@@ -55,7 +59,8 @@ from (values
   ('Young families', 1),
   ('50s+', 1)
 ) as v(group_type, target)
-on conflict (group_type) do nothing;
+on conflict (lower(btrim(group_type))) do update
+  set target_count = excluded.target_count;
 
 -- 3. Groups -----------------------------------------------------------------
 insert into public.groups (
