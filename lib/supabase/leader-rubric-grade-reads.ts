@@ -6,6 +6,7 @@ import type {
   GroupHealthOverrideScope,
 } from "@/types/enums";
 import {
+  columns,
   wrapError,
   decodeNumericRecord,
   type ReadResult,
@@ -18,10 +19,6 @@ import {
 // leader_rubric_grades), so the select is fully typed — no `as never` cast. The
 // raw jsonb `criterion_scores` is decoded to a clean Record at the trust
 // boundary here; the effective-letter resolution lives in the model.
-
-export const LEADER_RUBRIC_GRADE_COLUMNS =
-  "profile_id, ministry_year, criterion_scores, computed_letter, " +
-  "override_letter, override_scope, override_period_month, updated_at";
 
 // One persisted Leader-Health Grade row, as read through the column allowlist.
 export type LeaderRubricGradeRow = {
@@ -47,6 +44,19 @@ type PersistedLeaderGrade = {
   updated_at: string | null;
 };
 
+// Admin-only column allowlist, pinned to the raw read shape so the select string
+// and the row type derive from one list.
+export const LEADER_RUBRIC_GRADE_COLUMNS = columns<PersistedLeaderGrade>()(
+  "profile_id",
+  "ministry_year",
+  "criterion_scores",
+  "computed_letter",
+  "override_letter",
+  "override_scope",
+  "override_period_month",
+  "updated_at"
+);
+
 // Fetch a leader's persisted Leader-Health Grade for a ministry year, or null
 // when none has been entered yet (the success-with-null case, not an error).
 export async function fetchLeaderRubricGradeRow(
@@ -56,7 +66,7 @@ export async function fetchLeaderRubricGradeRow(
 ): Promise<ReadResult<LeaderRubricGradeRow | null>> {
   const { data, error } = await client
     .from("leader_rubric_grades")
-    .select(LEADER_RUBRIC_GRADE_COLUMNS)
+    .select(LEADER_RUBRIC_GRADE_COLUMNS.select)
     .eq("profile_id", profileId)
     .eq("ministry_year", ministryYear)
     .maybeSingle<PersistedLeaderGrade>();

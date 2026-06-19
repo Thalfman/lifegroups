@@ -4,7 +4,12 @@ import type {
   PrayerRequestsRow,
 } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 // Pivot slice 9 (#381 / ADR 0017) — Care Notes + Prayer Requests + the
 // per-subject transparency grant reads. Extracted from read-models so this
@@ -20,14 +25,35 @@ import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 // Exported so the cross-subject feed reads (care-note-feed-reads.ts, ADR 0023)
 // reuse exactly this allowlist rather than declaring a second one that could
 // drift wider.
-export const CARE_NOTE_COLUMNS =
-  "id, author_profile_id, subject_profile_id, subject_group_id, body, created_at, updated_at";
+export const CARE_NOTE_COLUMNS = columns<CareNotesRow>()(
+  "id",
+  "author_profile_id",
+  "subject_profile_id",
+  "subject_group_id",
+  "body",
+  "created_at",
+  "updated_at"
+);
 
-export const PRAYER_REQUEST_COLUMNS =
-  "id, author_profile_id, subject_profile_id, subject_group_id, body, status, created_at, updated_at";
+export const PRAYER_REQUEST_COLUMNS = columns<PrayerRequestsRow>()(
+  "id",
+  "author_profile_id",
+  "subject_profile_id",
+  "subject_group_id",
+  "body",
+  "status",
+  "created_at",
+  "updated_at"
+);
 
-const NOTE_TRANSPARENCY_GRANT_COLUMNS =
-  "id, subject_profile_id, granted, set_by, created_at, updated_at";
+const NOTE_TRANSPARENCY_GRANT_COLUMNS = columns<NoteTransparencyGrantsRow>()(
+  "id",
+  "subject_profile_id",
+  "granted",
+  "set_by",
+  "created_at",
+  "updated_at"
+);
 
 export async function fetchCareNotesForSubject(
   client: ReadClient,
@@ -36,7 +62,7 @@ export async function fetchCareNotesForSubject(
   if (!isUuid(subjectProfileId)) return { data: [], error: null };
   const { data, error } = await client
     .from("care_notes")
-    .select(CARE_NOTE_COLUMNS)
+    .select(CARE_NOTE_COLUMNS.select)
     .eq("subject_profile_id", subjectProfileId)
     .order("created_at", { ascending: false });
   if (error)
@@ -51,7 +77,7 @@ export async function fetchPrayerRequestsForSubject(
   if (!isUuid(subjectProfileId)) return { data: [], error: null };
   const { data, error } = await client
     .from("prayer_requests")
-    .select(PRAYER_REQUEST_COLUMNS)
+    .select(PRAYER_REQUEST_COLUMNS.select)
     .eq("subject_profile_id", subjectProfileId)
     .order("created_at", { ascending: false });
   if (error)
@@ -74,7 +100,7 @@ export async function fetchGroupCareNotes(
   if (!isUuid(groupId)) return { data: [], error: null };
   const { data, error } = await client
     .from("care_notes")
-    .select(CARE_NOTE_COLUMNS)
+    .select(CARE_NOTE_COLUMNS.select)
     .eq("subject_group_id", groupId)
     .order("created_at", { ascending: false });
   if (error)
@@ -89,7 +115,7 @@ export async function fetchGroupPrayerRequests(
   if (!isUuid(groupId)) return { data: [], error: null };
   const { data, error } = await client
     .from("prayer_requests")
-    .select(PRAYER_REQUEST_COLUMNS)
+    .select(PRAYER_REQUEST_COLUMNS.select)
     .eq("subject_group_id", groupId)
     .order("created_at", { ascending: false });
   if (error)
@@ -113,7 +139,7 @@ export async function fetchAuthoredGroupCareNotes(
   if (!isUuid(authorProfileId)) return { data: [], error: null };
   const { data, error } = await client
     .from("care_notes")
-    .select(CARE_NOTE_COLUMNS)
+    .select(CARE_NOTE_COLUMNS.select)
     .eq("author_profile_id", authorProfileId)
     .not("subject_group_id", "is", null)
     .order("created_at", { ascending: false });
@@ -132,7 +158,7 @@ export async function fetchAuthoredGroupPrayerRequests(
   if (!isUuid(authorProfileId)) return { data: [], error: null };
   const { data, error } = await client
     .from("prayer_requests")
-    .select(PRAYER_REQUEST_COLUMNS)
+    .select(PRAYER_REQUEST_COLUMNS.select)
     .eq("author_profile_id", authorProfileId)
     .not("subject_group_id", "is", null)
     .order("created_at", { ascending: false });
@@ -153,7 +179,7 @@ export async function fetchNoteTransparencyGrant(
   if (!isUuid(subjectProfileId)) return { data: null, error: null };
   const { data, error } = await client
     .from("note_transparency_grants")
-    .select(NOTE_TRANSPARENCY_GRANT_COLUMNS)
+    .select(NOTE_TRANSPARENCY_GRANT_COLUMNS.select)
     .eq("subject_profile_id", subjectProfileId)
     .maybeSingle();
   if (error)

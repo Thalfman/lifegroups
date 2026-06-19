@@ -44,7 +44,7 @@ function makeClient(tables: Record<string, TableData>) {
         },
         then<R1, R2>(
           onResolve: (value: TableData) => R1 | PromiseLike<R1>,
-          onReject?: (reason: unknown) => R2 | PromiseLike<R2>,
+          onReject?: (reason: unknown) => R2 | PromiseLike<R2>
         ) {
           return Promise.resolve(result).then(onResolve, onReject);
         },
@@ -57,8 +57,10 @@ function makeClient(tables: Record<string, TableData>) {
 
 describe("admin_summary exclusion", () => {
   it("omits admin_summary from the Over-Shepherd care-profile column allowlist", () => {
-    expect(OVER_SHEPHERD_CARE_PROFILE_COLUMNS).not.toContain("admin_summary");
-    expect(OVER_SHEPHERD_CARE_PROFILE_COLUMNS).not.toContain("*");
+    expect(OVER_SHEPHERD_CARE_PROFILE_COLUMNS.select).not.toContain(
+      "admin_summary"
+    );
+    expect(OVER_SHEPHERD_CARE_PROFILE_COLUMNS.select).not.toContain("*");
   });
 
   it("never selects admin_summary (or *) when reading the directory care rows", async () => {
@@ -86,8 +88,20 @@ describe("fetchOverShepherdCareDirectory — in-scope visibility", () => {
     const { client } = makeClient({
       profiles: {
         data: [
-          { id: SHEP_1, full_name: "Ann", email: "ann@x.com", role: "leader", status: "active" },
-          { id: SHEP_2, full_name: "Bob", email: "bob@x.com", role: "co_leader", status: "active" },
+          {
+            id: SHEP_1,
+            full_name: "Ann",
+            email: "ann@x.com",
+            role: "leader",
+            status: "active",
+          },
+          {
+            id: SHEP_2,
+            full_name: "Bob",
+            email: "bob@x.com",
+            role: "co_leader",
+            status: "active",
+          },
         ],
         error: null,
       },
@@ -132,7 +146,10 @@ describe("fetchOverShepherdCareDirectory — in-scope visibility", () => {
 });
 
 describe("isCoveredShepherd — out-of-scope denial", () => {
-  const coverage = { overShepherdId: OS_ID, coveredShepherdIds: [SHEP_1, SHEP_2] };
+  const coverage = {
+    overShepherdId: OS_ID,
+    coveredShepherdIds: [SHEP_1, SHEP_2],
+  };
 
   it("admits a covered shepherd", () => {
     expect(isCoveredShepherd(coverage, SHEP_1)).toBe(true);

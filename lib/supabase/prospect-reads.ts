@@ -9,7 +9,12 @@ import {
   type DueFollowUp,
   type NextStep,
 } from "@/lib/admin/prospect-next-step";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 // Read-model for the Interest Funnel board (#375, extended in #379). Column-
 // allowlisted: the board needs identity, state, the attached group, plus the
@@ -44,8 +49,20 @@ type ProspectRawRow = Omit<ProspectBoardEntry, "next_step"> & {
   next_step: unknown;
 };
 
-const PROSPECT_BOARD_COLUMNS =
-  "id, full_name, email, phone, state, group_id, archived, created_at, next_step, additional_note, desired_audience_category, desired_category_id";
+const PROSPECT_BOARD_COLUMNS = columns<ProspectBoardEntry>()(
+  "id",
+  "full_name",
+  "email",
+  "phone",
+  "state",
+  "group_id",
+  "archived",
+  "created_at",
+  "next_step",
+  "additional_note",
+  "desired_audience_category",
+  "desired_category_id"
+);
 
 // Same default-cap rationale as fetchGuests: widen past PostgREST's ~1000 row
 // default so funnel counts don't silently truncate.
@@ -68,7 +85,7 @@ export async function fetchProspects(
 ): Promise<ReadResult<ProspectBoardEntry[]>> {
   const { data, error } = await client
     .from("prospects")
-    .select(PROSPECT_BOARD_COLUMNS)
+    .select(PROSPECT_BOARD_COLUMNS.select)
     // Active rows (archived = false) OR joined rows (always archived, shown in
     // the roll-up). This excludes only cleanup-archived non-joined rows.
     .or("archived.eq.false,state.eq.joined")
@@ -94,7 +111,10 @@ export async function fetchProspects(
 
 export type ProspectStateCounts = Record<ProspectState, number>;
 
-const PROSPECT_STATE_COUNT_COLUMNS = "state, archived";
+const PROSPECT_STATE_COUNT_COLUMNS = columns<ProspectStateCountRow>()(
+  "state",
+  "archived"
+);
 
 type ProspectStateCountRow = {
   state: ProspectState;
@@ -143,7 +163,7 @@ export async function fetchProspectStateCounts(
 ): Promise<ReadResult<ProspectStateCounts>> {
   const { data, error } = await client
     .from("prospects")
-    .select(PROSPECT_STATE_COUNT_COLUMNS)
+    .select(PROSPECT_STATE_COUNT_COLUMNS.select)
     .or("archived.eq.false,state.eq.joined")
     .range(0, PROSPECT_PAGE_LIMIT - 1)
     .returns<ProspectStateCountRow[]>();
@@ -161,7 +181,11 @@ export async function fetchProspectStateCounts(
 // today — so the cap only ever bounds the (small) already-due set, then re-derives
 // the canonical list purely via dueFollowUps. The jsonb path filters mirror
 // decodeNextStep's stored snake_case keys (type / due_date).
-const DUE_FOLLOW_UP_COLUMNS = "id, full_name, next_step";
+const DUE_FOLLOW_UP_COLUMNS = columns<DueFollowUpRawRow>()(
+  "id",
+  "full_name",
+  "next_step"
+);
 
 type DueFollowUpRawRow = {
   id: string;
@@ -175,7 +199,7 @@ export async function fetchDueFollowUps(
 ): Promise<ReadResult<DueFollowUp[]>> {
   const { data, error } = await client
     .from("prospects")
-    .select(DUE_FOLLOW_UP_COLUMNS)
+    .select(DUE_FOLLOW_UP_COLUMNS.select)
     .eq("archived", false)
     // jsonb-path filters on the stored Next Step (snake_case keys, per
     // decodeNextStep): a dated follow_up step due on/before today.
@@ -212,7 +236,12 @@ export type GroupProspectSignals = {
   joinedCount: number;
 };
 
-const GROUP_PROSPECT_SIGNAL_COLUMNS = "id, full_name, state, archived";
+const GROUP_PROSPECT_SIGNAL_COLUMNS = columns<GroupProspectSignalRow>()(
+  "id",
+  "full_name",
+  "state",
+  "archived"
+);
 
 type GroupProspectSignalRow = {
   id: string;
@@ -259,7 +288,7 @@ export async function fetchProspectSignalsForGroup(
 ): Promise<ReadResult<GroupProspectSignals>> {
   const { data, error } = await client
     .from("prospects")
-    .select(GROUP_PROSPECT_SIGNAL_COLUMNS)
+    .select(GROUP_PROSPECT_SIGNAL_COLUMNS.select)
     .eq("group_id", groupId)
     .or("archived.eq.false,state.eq.joined")
     .range(0, PROSPECT_PAGE_LIMIT - 1)
@@ -284,14 +313,18 @@ export type PlanGroupRow = {
   lifecycle_status: GroupLifecycleStatus;
 };
 
-const PLAN_GROUP_COLUMNS = "id, name, lifecycle_status";
+const PLAN_GROUP_COLUMNS = columns<PlanGroupRow>()(
+  "id",
+  "name",
+  "lifecycle_status"
+);
 
 export async function fetchPlanGroupOptions(
   client: ReadClient
 ): Promise<ReadResult<PlanGroupRow[]>> {
   const { data, error } = await client
     .from("groups")
-    .select(PLAN_GROUP_COLUMNS)
+    .select(PLAN_GROUP_COLUMNS.select)
     .order("name", { ascending: true })
     .returns<PlanGroupRow[]>();
   if (error)

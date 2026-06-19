@@ -41,12 +41,16 @@ function wrapError(prefix: string, err: unknown): Error {
 // own fenced table as of phase_os5), so reuse that single source of truth
 // rather than maintaining a byte-identical copy. Re-exported under this name
 // for the read surface + the admin_summary-exclusion test.
-export const OVER_SHEPHERD_CARE_PROFILE_COLUMNS = SHEPHERD_CARE_DIRECTORY_COLUMNS;
+export const OVER_SHEPHERD_CARE_PROFILE_COLUMNS =
+  SHEPHERD_CARE_DIRECTORY_COLUMNS;
 
 // Typed row for the Over-Shepherd care profile read: the full row minus the
 // admin-only field, so a future `admin_summary` reader on this path is a
 // compile error, not a runtime leak.
-export type OverShepherdCareProfile = Omit<ShepherdCareProfilesRow, "admin_summary">;
+export type OverShepherdCareProfile = Omit<
+  ShepherdCareProfilesRow,
+  "admin_summary"
+>;
 
 /**
  * Directory of the Shepherds an Over-Shepherd actively covers, joined with
@@ -60,7 +64,7 @@ export async function fetchOverShepherdCareDirectory(
   // No delegatedShepherdIds is passed through to buildCareDirectoryEntries:
   // every shepherd an over-shepherd covers is delegated by definition, so they
   // all use the delegated staleness window (Julian Q5).
-  options: { todayIso?: string; windows?: CareCadenceWindows } = {},
+  options: { todayIso?: string; windows?: CareCadenceWindows } = {}
 ): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
   if (coveredShepherdIds.length === 0) {
     return { data: [], error: null };
@@ -80,13 +84,16 @@ export async function fetchOverShepherdCareDirectory(
       .order("full_name", { ascending: true }),
     client
       .from("shepherd_care_profiles")
-      .select(OVER_SHEPHERD_CARE_PROFILE_COLUMNS)
+      .select(OVER_SHEPHERD_CARE_PROFILE_COLUMNS.select)
       .in("shepherd_profile_id", coveredShepherdIds),
   ]);
   if (profilesQuery.error) {
     return {
       data: null,
-      error: wrapError("fetchOverShepherdCareDirectory/profiles", profilesQuery.error),
+      error: wrapError(
+        "fetchOverShepherdCareDirectory/profiles",
+        profilesQuery.error
+      ),
     };
   }
   if (careQuery.error) {
@@ -115,11 +122,11 @@ export async function fetchOverShepherdCareDirectory(
  */
 export async function fetchOverShepherdCareProfileByShepherdId(
   client: ReadClient,
-  shepherdProfileId: string,
+  shepherdProfileId: string
 ): Promise<ReadResult<OverShepherdCareProfile | null>> {
   const { data, error } = await client
     .from("shepherd_care_profiles")
-    .select(OVER_SHEPHERD_CARE_PROFILE_COLUMNS)
+    .select(OVER_SHEPHERD_CARE_PROFILE_COLUMNS.select)
     .eq("shepherd_profile_id", shepherdProfileId)
     .maybeSingle();
   if (error) {
@@ -140,7 +147,7 @@ export async function fetchOverShepherdCareProfileByShepherdId(
  */
 export function fetchOverShepherdCareInteractions(
   client: ReadClient,
-  careProfileId: string,
+  careProfileId: string
 ): Promise<ReadResult<ShepherdCareInteractionsRow[]>> {
   // The interaction history carries no admin-only field, and an Over-Shepherd
   // is permitted to read broad care notes, so this is exactly the admin read

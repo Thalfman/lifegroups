@@ -5,7 +5,7 @@ import type {
   GroupHealthLetter,
   GroupHealthOverrideScope,
 } from "@/types/enums";
-import { wrapError, type ReadResult } from "@/lib/supabase/read-core";
+import { columns, wrapError, type ReadResult } from "@/lib/supabase/read-core";
 
 // Read side for the persisted Group-Health Grade row (#377 / ADR 0018), behind
 // the reads seam (ADR 0015): the surface that needs it binds this through
@@ -16,13 +16,11 @@ import { wrapError, type ReadResult } from "@/lib/supabase/read-core";
 // select is fully typed — no `as never` cast. Resolution into an effective
 // letter stays in the model (lib/admin/group-rubric-grade), keeping this pure I/O.
 
-export const GROUP_RUBRIC_GRADE_COLUMNS =
-  "group_id, ministry_year, criterion_scores, computed_letter, " +
-  "override_letter, override_scope, override_period_month, updated_at";
-
 // One persisted Group-Health Grade row, read through the column allowlist.
 // `criterion_scores` arrives as raw jsonb; the model decodes it at the trust
-// boundary when it resolves the effective letter.
+// boundary when it resolves the effective letter. The allowlist below is pinned
+// to this type via `columns<…>()`, so the select string and the row type derive
+// from one list.
 export type GroupRubricGradeRow = {
   group_id: string;
   ministry_year: number;
@@ -34,6 +32,17 @@ export type GroupRubricGradeRow = {
   updated_at: string | null;
 };
 
+export const GROUP_RUBRIC_GRADE_COLUMNS = columns<GroupRubricGradeRow>()(
+  "group_id",
+  "ministry_year",
+  "criterion_scores",
+  "computed_letter",
+  "override_letter",
+  "override_scope",
+  "override_period_month",
+  "updated_at"
+);
+
 // Fetch a group's persisted rubric grade row for a ministry year, or null when
 // none has been entered yet (success-with-null, not an error).
 export async function fetchGroupRubricGradeRow(
@@ -43,7 +52,7 @@ export async function fetchGroupRubricGradeRow(
 ): Promise<ReadResult<GroupRubricGradeRow | null>> {
   const { data, error } = await client
     .from("group_rubric_grades")
-    .select(GROUP_RUBRIC_GRADE_COLUMNS)
+    .select(GROUP_RUBRIC_GRADE_COLUMNS.select)
     .eq("group_id", groupId)
     .eq("ministry_year", ministryYear)
     .maybeSingle<GroupRubricGradeRow>();
