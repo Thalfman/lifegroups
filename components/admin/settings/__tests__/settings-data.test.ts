@@ -25,12 +25,8 @@ function emptyReads(overrides: Partial<SettingsReads> = {}): SettingsReads {
     fetchAllGroupMetricSettings: async () => ok([]),
     fetchGroupHealthRubric: async () => ok(null),
     fetchReadinessRule: async () => ok(null),
-    fetchAudienceReadinessRules: async () => ok([]),
     fetchLeaderHealthRubric: async () => ok(null),
-    fetchGroupCategories: async () => ok([]),
-    fetchCategoryTypeTargetCells: async () => ok([]),
-    fetchGroupCellLifecycleRows: async () => ok([]),
-    fetchCategoriesForAudience: async () => ok([]),
+    fetchGroupTypes: async () => ok([]),
     ...overrides,
   };
 }
@@ -50,7 +46,7 @@ describe("buildSettingsData — degradation", () => {
       overrides: null,
       groupRubric: null,
       leaderRubric: null,
-      groupCategories: null,
+      groupTypes: null,
       readiness: null,
     });
     expect(data.groups).toEqual([GROUP]);
@@ -74,49 +70,32 @@ describe("buildSettingsData — degradation", () => {
     expect(data.groups).toEqual([GROUP]);
   });
 
-  it("surfaces a later (lifecycle) failure on the Groups-tab key, keeping earlier sections", async () => {
+  it("flows the admin-managed group-type list through to groupTypes", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchGroupTypes: async () => ok(["Men", "Women", "Mixed"]),
+      }),
+      { isSuperAdmin: false }
+    );
+
+    expect(data.groupTypes).toEqual(["Men", "Women", "Mixed"]);
+    expect(data.errors.groupTypes).toBeNull();
+  });
+
+  it("surfaces a group-types read failure on the Groups-tab key, keeping earlier sections", async () => {
     const data = await buildSettingsData(
       emptyReads({
         fetchAllGroups: async () => ok([GROUP]),
-        fetchGroupCellLifecycleRows: async () => fail("lifecycle boom"),
+        fetchGroupTypes: async () => fail("group types boom"),
       }),
       { isSuperAdmin: false }
     );
 
-    expect(data.errors.groupCategories).toBe("lifecycle boom");
-    expect(data.cellCoverage).toEqual([]);
+    expect(data.errors.groupTypes).toBe("group types boom");
+    expect(data.groupTypes).toEqual([]);
+    // One failed read doesn't blank the surface.
     expect(data.errors.groups).toBeNull();
     expect(data.groups).toEqual([GROUP]);
-  });
-
-  it("orders the Groups-tab key precedence as data: catalog before targets before lifecycle", async () => {
-    const data = await buildSettingsData(
-      emptyReads({
-        fetchGroupCategories: async () => fail("catalog boom"),
-        fetchGroupCellLifecycleRows: async () => fail("lifecycle boom"),
-      }),
-      { isSuperAdmin: false }
-    );
-
-    expect(data.errors.groupCategories).toBe("catalog boom");
-  });
-
-  it("narrows the category picker silently when a per-audience read fails (no error key)", async () => {
-    const data = await buildSettingsData(
-      emptyReads({
-        fetchCategoriesForAudience: async () => fail("picker boom"),
-      }),
-      { isSuperAdmin: false }
-    );
-
-    // Same silent fallback the Groups page uses: the drawer's picker just
-    // offers no options for that type.
-    expect(data.categoriesByAudience).toEqual({
-      men: [],
-      women: [],
-      mixed: [],
-    });
-    expect(data.errors.groupCategories).toBeNull();
     expect(data.errors.readiness).toBeNull();
   });
 
@@ -139,7 +118,7 @@ describe("buildSettingsData — degradation", () => {
     expect(data.leaderRubricCriteria).toEqual([]);
     // …and the keys fed by the surviving reads stay null.
     expect(data.errors.defaults).toBeNull();
-    expect(data.errors.groupCategories).toBeNull();
+    expect(data.errors.groupTypes).toBeNull();
     expect(data.errors.readiness).toBeNull();
   });
 

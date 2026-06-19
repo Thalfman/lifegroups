@@ -10,6 +10,7 @@ import type {
   GroupMembershipsRow,
   GroupMetricSettingsRow,
   GroupsRow,
+  GroupTypeConfigsRow,
   GuestsRow,
   LaunchPlanningScenariosRow,
   LeaderPipelineRow,
@@ -19,7 +20,6 @@ import type {
   ProfilesRow,
 } from "@/types/database";
 import type {
-  GroupAudienceCategory,
   GuestPipelineStage,
   LeaderReadinessStage,
   MembershipStatus,
@@ -103,8 +103,7 @@ export const GROUP_COLUMNS = [
   "capacity",
   "lifecycle_status",
   "health_status",
-  "audience_category",
-  "category_id",
+  "group_type",
   "launched_on",
   "pause_reason",
   "pause_start_date",
@@ -130,14 +129,14 @@ export async function fetchAllGroups(
   return { data: data ?? [], error: null };
 }
 
-// A group reference is the id, name, lifecycle status, and the group's cell
-// (audience × category) — enough to list active groups (e.g. a
-// candidate/apprentice picker) and bucket them by type, without pulling the
-// full row's privacy-sensitive columns (e.g. admin_notes). Prefer this over
-// fetchAllGroups on read paths that only need to identify active groups.
+// A group reference is the id, name, lifecycle status, and the group's free-text
+// type — enough to list active groups (e.g. a candidate/apprentice picker) and
+// bucket them by type, without pulling the full row's privacy-sensitive columns
+// (e.g. admin_notes). Prefer this over fetchAllGroups on read paths that only
+// need to identify active groups.
 export type GroupRef = Pick<
   GroupsRow,
-  "id" | "name" | "lifecycle_status" | "audience_category" | "category_id"
+  "id" | "name" | "lifecycle_status" | "group_type"
 >;
 
 export async function fetchGroupRefs(
@@ -145,7 +144,7 @@ export async function fetchGroupRefs(
 ): Promise<ReadResult<GroupRef[]>> {
   const { data, error } = await client
     .from("groups")
-    .select("id, name, lifecycle_status, audience_category, category_id")
+    .select("id, name, lifecycle_status, group_type")
     .order("name", { ascending: true });
   if (error) return { data: null, error: wrapError("fetchGroupRefs", error) };
   return { data: (data ?? []) as GroupRef[], error: null };
@@ -912,6 +911,56 @@ export async function fetchMetricDefaults(
   return { data, error: null };
 }
 
+// Returns the admin-managed canonical free-text group-type list from the
+// `group_types` keyed app_settings row (`{ types: string[] }`). Mirrors
+// fetchMetricDefaults: a null/absent/shape-invalid row decodes to the empty
+// list (no types configured yet). Admin-only via RLS.
+export async function fetchGroupTypes(
+  client: ReadClient
+): Promise<ReadResult<string[]>> {
+  const { data, error } = await client
+    .from("app_settings")
+    .select(APP_SETTINGS_SELECT)
+    .eq("setting_key", "group_types")
+    .maybeSingle();
+  if (error) return { data: null, error: wrapError("fetchGroupTypes", error) };
+  if (data === null || data === undefined) return { data: [], error: null };
+  const row: unknown = data;
+  if (!isAppSettingsRow(row)) {
+    return {
+      data: null,
+      error: wrapError("fetchGroupTypes", new Error("shape_invalid")),
+    };
+  }
+  const raw = (row.setting_value as Record<string, unknown>).types;
+  if (!Array.isArray(raw)) return { data: [], error: null };
+  const types = raw.filter((v): v is string => typeof v === "string");
+  return { data: types, error: null };
+}
+
+// Returns the per-type config rows (target group count + optional readiness-rule
+// override) keyed on the free-text group_type name. A type with no row inherits
+// target 0 + the single global readiness rule. Admin-only via RLS.
+const GROUP_TYPE_CONFIG_COLUMNS =
+  "group_type, target_count, readiness_rule" as const;
+
+export type GroupTypeConfigEntry = Pick<
+  GroupTypeConfigsRow,
+  "group_type" | "target_count" | "readiness_rule"
+>;
+
+export async function fetchGroupTypeConfigs(
+  client: ReadClient
+): Promise<ReadResult<GroupTypeConfigEntry[]>> {
+  const { data, error } = await client
+    .from("group_type_configs")
+    .select(GROUP_TYPE_CONFIG_COLUMNS)
+    .order("group_type", { ascending: true });
+  if (error)
+    return { data: null, error: wrapError("fetchGroupTypeConfigs", error) };
+  return { data: (data ?? []) as GroupTypeConfigEntry[], error: null };
+}
+
 // Phase SAC.1 (#159): returns the single `platform_config` row from the
 // Super-Admin-only platform_config table. RLS scopes the read to super_admin;
 // a non-super-admin caller sees no row (and the console route never reaches
@@ -1018,7 +1067,7 @@ export async function fetchChurchAttendanceSnapshots(
 }
 
 const MULTIPLICATION_CANDIDATE_COLUMNS =
-  "id, group_id, audience_category, category_id, target_year, status, " +
+  "id, group_id, target_year, status, " +
   "shepherd_willing, needs_similar_stage, " +
   "notes, successor_designate, meeting_time, leader_pipeline_id, " +
   "manual_member_count, archived_at, " +
@@ -1026,14 +1075,8 @@ const MULTIPLICATION_CANDIDATE_COLUMNS =
 
 export type MultiplicationCandidateGroup = Pick<
   GroupsRow,
-  "id" | "name" | "audience_category" | "launched_on" | "lifecycle_status"
-> & {
-  // #398: the group's category label, resolved from category_id →
-  // group_categories.label. null = Uncategorized (no category, or its category
-  // was archived). Replaces the retired life_stage field as the segmentation
-  // axis the planner buckets by.
-  category_label: string | null;
-};
+  "id" | "name" | "group_type" | "launched_on" | "lifecycle_status"
+>;
 
 // Capacity & Multiplication #184: the linked apprentice's identity + stage,
 // surfaced inline in the planner. Null when the candidate has no link.
@@ -1046,10 +1089,6 @@ export type MultiplicationCandidateApprentice = {
 export type MultiplicationCandidateEntry = {
   candidate: MultiplicationCandidatesRow;
   group: MultiplicationCandidateGroup | null;
-  // Type-first: the candidate's OWN category label, resolved from
-  // candidate.category_id → group_categories.label. Drives segmentation for
-  // type-only candidates (no group). null = Uncategorized / unresolved.
-  candidateCategoryLabel: string | null;
   activeMemberCount: number;
   // Earliest active co_leader assignment date (YYYY-MM-DD), or null.
   coShepherdSince: string | null;
@@ -1060,8 +1099,7 @@ export type MultiplicationCandidateEntry = {
 // Group projection read for the multiplication planner's batched group facts.
 type MultiplicationGroupProjection = {
   id: string;
-  audience_category: GroupAudienceCategory | null;
-  category_id: string | null;
+  group_type: string | null;
   launched_on: string | null;
   lifecycle_status: GroupsRow["lifecycle_status"];
   name: string;
@@ -1098,20 +1136,16 @@ function indexApprentices(
 }
 
 function indexCandidateGroups(
-  groupRows: ReadonlyArray<MultiplicationGroupProjection>,
-  categoryLabelById: ReadonlyMap<string, string>
+  groupRows: ReadonlyArray<MultiplicationGroupProjection>
 ): Map<string, MultiplicationCandidateGroup> {
   const m = new Map<string, MultiplicationCandidateGroup>();
   for (const g of groupRows) {
     m.set(g.id, {
       id: g.id,
       name: g.name,
-      audience_category: g.audience_category,
+      group_type: g.group_type,
       launched_on: g.launched_on,
       lifecycle_status: g.lifecycle_status,
-      category_label: g.category_id
-        ? (categoryLabelById.get(g.category_id) ?? null)
-        : null,
     });
   }
   return m;
@@ -1180,9 +1214,7 @@ export async function fetchMultiplicationCandidatesForAdmin(
         ? Promise.resolve({ data: [], error: null })
         : client
             .from("groups")
-            .select(
-              "id, name, audience_category, category_id, launched_on, lifecycle_status"
-            )
+            .select("id, name, group_type, launched_on, lifecycle_status")
             .in("id", groupIds),
       noGroups
         ? Promise.resolve({ data: [], error: null })
@@ -1234,39 +1266,10 @@ export async function fetchMultiplicationCandidatesForAdmin(
     }[]
   );
 
-  // #398: resolve each group's category_id to its catalog label so the planner
-  // buckets by audience × category label. Batch-read the referenced categories
-  // (one extra round-trip keyed by the distinct category ids) and map id →
-  // label; a null/absent/archived category resolves to null = Uncategorized.
+  // The planner buckets by the anchoring group's free-text group_type, read
+  // directly off the group projection — no catalog round-trip needed.
   const groupRows = (groupsRes.data ?? []) as MultiplicationGroupProjection[];
-  // Resolve labels for both the groups' categories AND each candidate's own
-  // category (type-only candidates have no group but still segment by their
-  // cell), so one batched read covers every label the planner needs.
-  // fetchByIds dedups the combined category ids and short-circuits the empty
-  // set; the refinement keeps the live-categories-only filter.
-  const categoryIds = [
-    ...groupRows.map((g) => g.category_id),
-    ...candidates.map((c) => c.category_id),
-  ].filter((id): id is string => id != null);
-  const categoriesRes = await fetchByIds<{ id: string; label: string }>(
-    client,
-    "group_categories",
-    categoryIds,
-    "id, label",
-    {
-      label: "fetchMultiplicationCandidatesForAdmin/categories",
-      refine: (q) => q.is("archived_at", null),
-    }
-  );
-  if (categoriesRes.error) {
-    return { data: null, error: categoriesRes.error };
-  }
-  const categoryLabelById = new Map<string, string>();
-  for (const c of categoriesRes.data ?? []) {
-    categoryLabelById.set(c.id, c.label);
-  }
-
-  const groupById = indexCandidateGroups(groupRows, categoryLabelById);
+  const groupById = indexCandidateGroups(groupRows);
   const memberCountByGroup = countActiveMembersByGroup(
     (membershipsRes.data ?? []) as {
       group_id: string;
@@ -1284,9 +1287,6 @@ export async function fetchMultiplicationCandidatesForAdmin(
       // absent (group: null, 0 members, no co-shepherd date).
       group: candidate.group_id
         ? (groupById.get(candidate.group_id) ?? null)
-        : null,
-      candidateCategoryLabel: candidate.category_id
-        ? (categoryLabelById.get(candidate.category_id) ?? null)
         : null,
       activeMemberCount: candidate.group_id
         ? (memberCountByGroup.get(candidate.group_id) ?? 0)
@@ -1404,10 +1404,9 @@ export type CapacityBoardExtras = {
     { shepherdWilling: boolean; needsSimilarStage: boolean }
   >;
   candidateGroupIds: string[];
-  // #398: group id → resolved category label (from category_id →
-  // group_categories.label), so the board's segment is audience × category
-  // label. A group with no/archived category is simply absent (= Uncategorized).
-  categoryLabelByGroup: Record<string, string>;
+  // group id → free-text group_type, so the board's segment is the type name.
+  // A group with no type is simply absent (= Untyped).
+  groupTypeByGroup: Record<string, string>;
   error: string | null;
 };
 
@@ -1419,7 +1418,7 @@ export async function fetchCapacityBoardExtras(
     coShepherdSinceByGroup: {},
     candidateFlagsByGroup: {},
     candidateGroupIds: [],
-    categoryLabelByGroup: {},
+    groupTypeByGroup: {},
     error: null,
   };
 
@@ -1438,8 +1437,8 @@ export async function fetchCapacityBoardExtras(
         .from("multiplication_candidates")
         .select("group_id, shepherd_willing, needs_similar_stage")
         .is("archived_at", null),
-      // #398: each group's category id, to resolve the board's segment label.
-      client.from("groups").select("id, category_id"),
+      // Each group's free-text type, for the board's segment label.
+      client.from("groups").select("id, group_type"),
     ]);
 
   const error =
@@ -1457,39 +1456,16 @@ export async function fetchCapacityBoardExtras(
     null;
   if (error) return { ...empty, error };
 
-  // #398: resolve each group's category_id to its catalog label (live
-  // categories only) so the board buckets by audience × category label.
-  const categoryLabelByGroup: Record<string, string> = {};
+  // Each group's free-text type drives the board segment label directly; an
+  // absent entry reads as Untyped.
+  const groupTypeByGroup: Record<string, string> = {};
   const groupRows = (groupsRes.data ?? []) as {
     id: string;
-    category_id: string | null;
+    group_type: string | null;
   }[];
-  const boardCategoryIds = groupRows
-    .map((g) => g.category_id)
-    .filter((id): id is string => id != null);
-  // fetchByIds dedups the board's category ids and short-circuits the empty
-  // set; the refinement keeps the live-categories-only filter.
-  const categoriesRes = await fetchByIds<{ id: string; label: string }>(
-    client,
-    "group_categories",
-    boardCategoryIds,
-    "id, label",
-    {
-      label: "fetchCapacityBoardExtras/categories",
-      refine: (q) => q.is("archived_at", null),
-    }
-  );
-  if (categoriesRes.error) {
-    return { ...empty, error: categoriesRes.error.message };
-  }
-  const labelById = new Map<string, string>();
-  for (const c of categoriesRes.data ?? []) {
-    labelById.set(c.id, c.label);
-  }
   for (const g of groupRows) {
-    if (g.category_id && labelById.has(g.category_id)) {
-      categoryLabelByGroup[g.id] = labelById.get(g.category_id)!;
-    }
+    const type = g.group_type?.trim();
+    if (type) groupTypeByGroup[g.id] = type;
   }
 
   const coShepherdSinceByGroup: Record<string, string> = {};
@@ -1529,7 +1505,7 @@ export async function fetchCapacityBoardExtras(
     coShepherdSinceByGroup,
     candidateFlagsByGroup,
     candidateGroupIds,
-    categoryLabelByGroup,
+    groupTypeByGroup,
     error: null,
   };
 }

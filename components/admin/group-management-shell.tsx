@@ -1,8 +1,4 @@
 import { GroupsDirectory } from "@/components/admin/groups-directory";
-import {
-  EMPTY_CATEGORIES_BY_AUDIENCE,
-  type CategoriesByAudience,
-} from "@/components/admin/forms/group-category-options";
 import type { GroupListTab } from "@/lib/dashboard/group-status";
 import type { MetricDefaults } from "@/lib/admin/metrics";
 import type { GroupHealthLetter } from "@/types/enums";
@@ -49,10 +45,9 @@ export type GroupManagementData = {
   // and leader-care concern reads. These drive the Needs Health Check (missing
   // required ratings) and Needs Attention (union of concerns) tabs per plan §4.
   healthSignalsByGroupId: Record<string, GroupHealthSignals>;
-  // #398: category-picker options grouped by top type, for the group create/edit
-  // forms. Each list is the live categories applied (active cell) to that
-  // audience. Empty when the catalog read failed or nothing is applied yet.
-  categoriesByAudience: CategoriesByAudience;
+  // The admin-managed free-text group-type list, for the group create/edit
+  // forms' type picker. Empty when the list read failed or nothing is configured.
+  groupTypes: string[];
   errors: {
     groups: string | null;
     leaders: string | null;
@@ -64,10 +59,10 @@ export type GroupManagementData = {
     // empty, so every group would otherwise read as "Not assessed" with no
     // warning — surface the failure rather than silently misclassifying.
     health: string | null;
-    // #398 review: the create/edit category-picker option reads. When they fail
-    // the picker degrades to no categories; surfaced so an admin sees that
-    // rather than unknowingly editing with an empty picker.
-    categoryOptions: string | null;
+    // The group-type list read. When it fails the picker degrades to Untyped
+    // only; surfaced so an admin sees that rather than editing with an empty
+    // picker.
+    groupTypes: string | null;
   };
 };
 
@@ -126,9 +121,7 @@ export function GroupManagementShell({
         isSuperAdmin={isSuperAdmin}
         initialTab={initialTab}
         fromSetup={fromSetup}
-        categoriesByAudience={
-          data.categoriesByAudience ?? EMPTY_CATEGORIES_BY_AUDIENCE
-        }
+        groupTypes={data.groupTypes ?? []}
       />
     </div>
   );

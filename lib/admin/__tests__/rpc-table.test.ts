@@ -17,8 +17,16 @@ function clientReturning(result: { data: unknown; error: unknown }) {
 // super_admin_* families.
 const UUID_CASES = [
   {
-    name: "admin_create_group_category",
-    args: { p_label: "Young Families" },
+    name: "admin_set_group_types",
+    args: { p_types: ["Young Families", "Couples"] as unknown[] },
+  },
+  {
+    name: "admin_set_group_type_config",
+    args: {
+      p_group_type: "Young Families",
+      p_target_count: 3,
+      p_readiness_rule: null,
+    },
   },
   {
     name: "admin_close_group",

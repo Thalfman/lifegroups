@@ -187,13 +187,16 @@ schema change). Recorded here per issues #472/#475:
   frozen weekly check-in surface (ADR 0002). No app code reads it today; the
   settings RPCs still accept and merge the key, and any stored value is
   preserved.
-- **`multiplication_config.thresholds` / `.trigger_rubric`** — the
-  pre-cascade per-type pillar thresholds and letter-grade trigger rubric,
-  retired by ADR 0019/#401 and superseded by the tiered readiness-rule
-  cascade (ADR 0021: `multiplication_readiness_rule` →
-  `audience_readiness_rule` → `category_type_targets.trigger_overrides`).
-  No surface consumes these columns any more; the rows, columns, and their
-  audited write RPC stay in place (nothing in the app calls it).
+- **Cell model (retired)** — the `group_categories` catalog,
+  `category_type_targets` matrix, `audience_readiness_rule`,
+  `multiplication_config`, and the `groups.audience_category` / `groups.category_id`
+  columns were **dropped** by the collapse-cells migration
+  (`20260708000000_collapse_cells_to_group_type_list.sql`). A group's
+  segmentation is now the single free-text `groups.group_type` column (null =
+  Untyped), chosen from the admin-managed `app_settings` `group_types` list.
+  Per-type config (target group count + optional readiness-rule override) lives
+  in `group_type_configs`, keyed on the type name. The single global readiness
+  rule (`multiplication_readiness_rule`) is kept.
 - **`group_metric_settings.check_in_due_offset_hours_override`** — retired
   from the Settings per-group form in #472. The full-state upsert RPC still
   accepts the parameter; the app now always passes null, which clears any

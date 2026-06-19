@@ -58,10 +58,6 @@ import type {
   ProfilesRow,
 } from "@/types/database";
 import {
-  EMPTY_CATEGORIES_BY_AUDIENCE,
-  type CategoriesByAudience,
-} from "@/components/admin/forms/group-category-options";
-import {
   isGroupsViewSnapshot,
   type GroupsViewSnapshot,
 } from "@/components/admin/groups/view-snapshot";
@@ -124,10 +120,9 @@ type GroupsDirectoryProps = {
   // marker into each group's detail link so the roster work keeps the "← Back to
   // setup" affordance.
   fromSetup?: boolean;
-  // #398: category-picker options grouped by top type, for the create/edit
-  // forms in the editing drawer. Each list is the categories applied (active
-  // cell) to that audience.
-  categoriesByAudience?: CategoriesByAudience;
+  // The admin-managed free-text group-type list, for the create/edit forms'
+  // type picker in the editing drawer.
+  groupTypes?: readonly string[];
 };
 
 export function GroupsDirectory(props: GroupsDirectoryProps) {
@@ -618,9 +613,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
       <GroupEditorDrawer
         editor={editor}
         defaultCapacity={props.metricDefaults.default_group_capacity}
-        categoriesByAudience={
-          props.categoriesByAudience ?? EMPTY_CATEGORIES_BY_AUDIENCE
-        }
+        groupTypes={props.groupTypes ?? []}
         onDirty={markDirty}
         onPendingChange={reportPending}
         onRequestClose={requestClose}

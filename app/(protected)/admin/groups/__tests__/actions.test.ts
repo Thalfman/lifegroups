@@ -72,8 +72,7 @@ describe("adminCreateGroup", () => {
       p_capacity: null,
       p_meeting_frequency: "weekly",
       p_meeting_week_parity: null,
-      p_audience_category: null,
-      p_category_id: null,
+      p_group_type: null,
       p_launched_on: null,
     });
     expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/groups");

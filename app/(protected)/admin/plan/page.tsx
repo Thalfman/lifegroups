@@ -22,10 +22,7 @@ export default adminPage({
   // latency; `describe` carries only a coarse ok/error discriminant.
   load: () =>
     measureReadBundle("plan_page", loadPlanData, (d) => ({
-      result_kind:
-        (d.errors.prospects ?? d.errors.groups ?? d.errors.categoryOptions)
-          ? "error"
-          : "ok",
+      result_kind: (d.errors.prospects ?? d.errors.groups) ? "error" : "ok",
     })),
   header: () => ({
     eyebrow: "Plan",
@@ -35,17 +32,12 @@ export default adminPage({
   }),
   fallback: <PageSkeleton bodyOnly />,
   render: (data) => {
-    const error =
-      data.errors.prospects ??
-      data.errors.groups ??
-      data.errors.categoryOptions;
+    const error = data.errors.prospects ?? data.errors.groups;
     return (
       <PageBody>
         <div className="grid gap-6">
           <section className="rounded-lg border border-line bg-surface p-card">
-            <ProspectCreateForm
-              categoryOptionsByAudience={data.categoryOptionsByAudience}
-            />
+            <ProspectCreateForm />
           </section>
 
           {error ? (

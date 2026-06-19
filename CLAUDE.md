@@ -204,9 +204,10 @@ result-returning guards (`requireAdminSession`, …) in server actions.
 Defer to [`CONTEXT.md`](./CONTEXT.md) for definitions. Must-use terms: **Leader**
 (not "Shepherd" / "group leader"), **Over-Shepherd**, **Ministry Admin**, **Care
 Note** and **Prayer Request** (distinct), **Prospect** in the **Interest Funnel**
-(not "Guest" / "Lead" / "Guests pipeline"), **Cell** = Audience × Category,
-**Multiplication**, **Archive** (soft delete). Use these terms in code
-identifiers, UX copy, and commit messages.
+(not "Guest" / "Lead" / "Guests pipeline"), **Group type** (a single free-text
+label per group, chosen from the admin-managed list — the Audience × Category
+"Cell" model was retired), **Multiplication**, **Archive** (soft delete). Use
+these terms in code identifiers, UX copy, and commit messages.
 
 ## Where to look (docs map)
 

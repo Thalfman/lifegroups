@@ -17,13 +17,8 @@ import {
   MEETING_PARITY_OPTIONS,
 } from "./meeting-schedule-options";
 import type { GroupsRow } from "@/types/database";
-import type { GroupAudienceCategory, MeetingFrequency } from "@/types/enums";
+import type { MeetingFrequency } from "@/types/enums";
 import { useActionForm, FormStatus } from "./action-form";
-import {
-  EMPTY_CATEGORIES_BY_AUDIENCE,
-  optionsForAudience,
-  type CategoriesByAudience,
-} from "./group-category-options";
 
 function isoTimeForInput(value: string | null): string {
   if (!value) return "";
@@ -45,25 +40,21 @@ export function GroupEditForm({
   onSaved,
   onDirty,
   onPendingChange,
-  // #398: category-picker options grouped by top type (see create form).
-  categoriesByAudience = EMPTY_CATEGORIES_BY_AUDIENCE,
+  // The admin-managed free-text group-type list (see create form).
+  groupTypes = [],
 }: {
   group: GroupsRow;
   onCancel?: () => void;
   onSaved?: () => void;
   onDirty?: () => void;
   onPendingChange?: (pending: boolean) => void;
-  categoriesByAudience?: CategoriesByAudience;
+  groupTypes?: readonly string[];
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateGroup
   );
   const [frequency, setFrequency] = useState<MeetingFrequency>(
     group.meeting_frequency
-  );
-  // #398: the live audience selection drives the category picker's options.
-  const [audience, setAudience] = useState<GroupAudienceCategory | "">(
-    group.audience_category ?? ""
   );
 
   // Notify the drawer once the update lands so it can close and refresh the
@@ -80,19 +71,13 @@ export function GroupEditForm({
 
   const showParity = frequency === "biweekly";
 
-  // #398 review: the group's current category may not appear in the active-cell
-  // options — its cell was later un-applied/archived, or the options read
-  // failed. While the audience is unchanged, keep that current tag as a
-  // selectable (and pre-selected) option so saving an unrelated edit can't
-  // silently clear it. The update RPC accepts an unchanged category, so this
-  // round-trips cleanly; a top-type change intentionally resets the picker.
-  const audienceUnchanged = audience === (group.audience_category ?? "");
-  const currentCategoryId = group.category_id ?? "";
-  const activeOptions = optionsForAudience(categoriesByAudience, audience);
-  const currentCategoryMissing =
-    audienceUnchanged &&
-    currentCategoryId !== "" &&
-    !activeOptions.some((c) => c.id === currentCategoryId);
+  // The group's stored type may no longer be in the admin-managed list (it was
+  // removed, or this group was typed via free text). Keep it as a selectable
+  // (and pre-selected) option so saving an unrelated edit can't silently clear
+  // it; the update RPC round-trips the unchanged value cleanly.
+  const currentType = group.group_type ?? "";
+  const currentTypeMissing =
+    currentType !== "" && !groupTypes.includes(currentType);
 
   return (
     <form action={formAction} onChange={onDirty} className="grid gap-3">
@@ -250,57 +235,26 @@ export function GroupEditForm({
         </div>
         <div>
           <label
-            htmlFor={`edit-audience_category-${group.id}`}
+            htmlFor={`edit-group_type-${group.id}`}
             className={fieldLabelClassName}
           >
-            Audience
+            Group type
           </label>
           <select
-            id={`edit-audience_category-${group.id}`}
-            name="audience_category"
-            value={audience}
-            onChange={(e) =>
-              setAudience(e.target.value as GroupAudienceCategory | "")
-            }
+            id={`edit-group_type-${group.id}`}
+            name="group_type"
+            defaultValue={currentType}
             className={fieldSelectClassName}
           >
-            <option value="">Unset</option>
-            <option value="men">Men</option>
-            <option value="women">Women</option>
-            <option value="mixed">Mixed</option>
-          </select>
-        </div>
-        <div>
-          <label
-            htmlFor={`edit-category_id-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Category
-          </label>
-          <select
-            id={`edit-category_id-${group.id}`}
-            name="category_id"
-            // Keyed by audience so a top-type change resets the picker to the
-            // new type's categories. Defaults to the group's current category
-            // only while the audience is unchanged; otherwise "" = Uncategorized.
-            key={audience}
-            defaultValue={
-              audience === (group.audience_category ?? "")
-                ? (group.category_id ?? "")
-                : ""
-            }
-            disabled={!audience}
-            className={fieldSelectClassName}
-          >
-            <option value="">Uncategorized</option>
-            {currentCategoryMissing ? (
-              <option value={currentCategoryId}>
-                Keep current category (no longer applied)
+            <option value="">Untyped</option>
+            {currentTypeMissing ? (
+              <option value={currentType}>
+                {currentType} (not in current list)
               </option>
             ) : null}
-            {activeOptions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
+            {groupTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
               </option>
             ))}
           </select>

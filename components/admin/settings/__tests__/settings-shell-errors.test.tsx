@@ -25,16 +25,8 @@ vi.mock("@/app/(protected)/admin/settings/actions", () => ({
   adminUpsertGroupMetricSettings: vi.fn(),
   adminResetMetricDefaults: vi.fn(),
   adminSetHealthRubric: vi.fn(),
-  adminSetMultiplicationConfig: vi.fn(),
-  adminCreateGroupCategory: vi.fn(),
-  adminRenameGroupCategory: vi.fn(),
-  adminArchiveGroupCategory: vi.fn(),
-  adminSetCategoryTypeCell: vi.fn(),
-  adminSetCategoryTypeTargetCount: vi.fn(),
-  adminSetGroupCategory: vi.fn(),
+  adminSetGroupTypes: vi.fn(),
   adminSetReadinessRule: vi.fn(),
-  adminSetAudienceReadinessRule: vi.fn(),
-  adminSetCellTriggerOverrides: vi.fn(),
 }));
 vi.mock("@/app/(protected)/admin/groups/actions", () => ({
   adminCreateGroup: vi.fn(),
@@ -55,7 +47,6 @@ import {
 } from "@/components/admin/settings-shell";
 import { BUILT_IN_METRIC_DEFAULTS } from "@/lib/admin/metrics";
 import { BUILT_IN_READINESS_RULE } from "@/lib/admin/cell-readiness";
-import { EMPTY_CATEGORIES_BY_AUDIENCE } from "@/components/admin/forms/group-category-options";
 import { group, settings } from "@/lib/dashboard/group-fixtures";
 
 const NO_ERRORS: SettingsShellData["errors"] = {
@@ -64,7 +55,7 @@ const NO_ERRORS: SettingsShellData["errors"] = {
   overrides: null,
   groupRubric: null,
   leaderRubric: null,
-  groupCategories: null,
+  groupTypes: null,
   readiness: null,
 };
 
@@ -82,15 +73,11 @@ function shellData(
     groupRubricCriteria: [],
     hasSavedGroupRubric: true,
     leaderRubricCriteria: [],
-    groupCategories: [],
-    categoriesByAudience: EMPTY_CATEGORIES_BY_AUDIENCE,
-    cellCoverage: [],
+    groupTypes: [],
     readiness: {
       ministryYear: 2026,
       rule: BUILT_IN_READINESS_RULE,
       ruleFellBack: false,
-      perType: {},
-      cells: [],
     },
     isSuperAdmin: false,
     errors: NO_ERRORS,
@@ -137,7 +124,8 @@ const MULTIPLY_EDITOR = "Loading multiplication trigger editor";
 describe("buildSettingsWorkspace", () => {
   it("scopes Settings shell data into tab-specific models", () => {
     const data = shellData({
-      groups: [group({ id: "group-1", category_id: "cat-1" })],
+      groups: [group({ id: "group-1", group_type: "Men" })],
+      groupTypes: ["Men", "Women"],
       groupMetricSettings: [
         settings({
           group_id: "group-1",
@@ -148,6 +136,7 @@ describe("buildSettingsWorkspace", () => {
         ...NO_ERRORS,
         groups: "groups unavailable",
         groupRubric: "group rubric unavailable",
+        groupTypes: "group types unavailable",
         readiness: "readiness unavailable",
       },
     });
@@ -158,8 +147,8 @@ describe("buildSettingsWorkspace", () => {
       groupRubric: "group rubric unavailable",
       leaderRubric: null,
     });
-    expect(workspace.groups.groupReferencesKnown).toBe(false);
-    expect(workspace.groups.categoryIdsWithGroups.has("cat-1")).toBe(true);
+    expect(workspace.groups.groupTypes).toEqual(["Men", "Women"]);
+    expect(workspace.groups.error).toBe("group types unavailable");
     expect(workspace.multiply.readinessError).toBe("readiness unavailable");
     expect(workspace.thresholds.settingsByGroupId.get("group-1")).toBe(
       data.groupMetricSettings[0]
@@ -199,8 +188,8 @@ describe("SettingsShell Care tab — rubric read errors (#469)", () => {
 });
 
 describe("SettingsShell Groups tab — group-types read error (#469)", () => {
-  it("renders the couldn't-load notice and no editor when the group-types reads fail", () => {
-    const html = render(withErrors({ groupCategories: "boom" }), "groups");
+  it("renders the couldn't-load notice and no editor when the group-types read fails", () => {
+    const html = render(withErrors({ groupTypes: "boom" }), "groups");
 
     expect(html).toContain(`Your group types ${COULD_NOT_LOAD}`);
     expect(html).not.toContain(NOT_CONFIGURED);
@@ -225,21 +214,7 @@ describe("SettingsShell Multiply tab — trigger read errors (#469)", () => {
     expect(html).not.toContain(MULTIPLY_EDITOR);
   });
 
-  it("names the group-types read when only THAT read failed — not the trigger's", () => {
-    // The per-cell rows are built from the group-types reads, so their failure
-    // softens this editor too — but the notice must blame the actual failing
-    // read, not claim the trigger itself couldn't be read.
-    const html = render(withErrors({ groupCategories: "boom" }), "multiply");
-
-    expect(html).toContain(
-      `The group types this trigger depends on ${COULD_NOT_LOAD}`
-    );
-    expect(html).not.toContain(`The multiplication trigger ${COULD_NOT_LOAD}`);
-    expect(html).not.toContain(NOT_CONFIGURED);
-    expect(html).not.toContain(MULTIPLY_EDITOR);
-  });
-
-  it("opens the editor when the reads succeeded (built-in rule, no cells)", () => {
+  it("opens the editor when the reads succeeded (built-in rule)", () => {
     const html = render(shellData(), "multiply");
 
     expect(html).toContain(MULTIPLY_EDITOR);

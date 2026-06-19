@@ -2,16 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   currentMinistryYear,
-  MULTIPLY_TYPE_LABEL,
-  MULTIPLY_TYPES,
   resolveMultiplyInitialTab,
 } from "@/components/admin/multiply/multiply-data";
 
 // multiply-data.ts carries the Multiply area's PURE helpers — it has no reads
 // seam of its own (the old per-type board loader folded into the grid loader,
 // #403; see multiply-grid-data.test.ts for that seam's adapter suite). What
-// remains is the tab resolver the server page shares with the shell, the
-// off-season-clamping ministry-year variant, and the shared type constants.
+// remains is the tab resolver the server page shares with the shell and the
+// off-season-clamping ministry-year variant.
 
 describe("resolveMultiplyInitialTab", () => {
   it("defaults to the Plan tab (Julian's working view) for an absent param", () => {
@@ -51,14 +49,5 @@ describe("currentMinistryYear (Multiply's off-season-clamping variant)", () => {
     // is never blank in summer: the off-season clamps to the calendar year.
     expect(currentMinistryYear(new Date("2026-06-11T12:00:00Z"))).toBe(2026);
     expect(currentMinistryYear(new Date("2026-07-31T23:59:59Z"))).toBe(2026);
-  });
-});
-
-describe("Multiply type constants", () => {
-  it("covers every top type, in the canonical Audience order", () => {
-    expect(MULTIPLY_TYPES).toEqual(["men", "women", "mixed"]);
-    for (const type of MULTIPLY_TYPES) {
-      expect(MULTIPLY_TYPE_LABEL[type]).toBeTruthy();
-    }
   });
 });

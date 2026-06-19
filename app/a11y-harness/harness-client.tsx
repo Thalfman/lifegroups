@@ -74,10 +74,7 @@ import type {
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 import { ShepherdCareDirectoryTable } from "@/components/admin/shepherd-care/directory-table";
 import { MultiplyGridView } from "@/components/admin/multiply/multiply-grid";
-import { buildMultiplyGrid } from "@/lib/admin/multiply-grid";
-import { resolveCells } from "@/lib/admin/cell";
-import { cellKey } from "@/lib/admin/cell-coordinate";
-import { BUILT_IN_READINESS_RULE } from "@/lib/admin/cell-readiness";
+import type { MultiplyTypeRow } from "@/components/admin/multiply/multiply-grid-data";
 import type {
   ActiveShepherdCoverageAssignmentSummary,
   ShepherdCareDirectoryEntry,
@@ -692,55 +689,29 @@ const CARE_DIRECTORY_COVERAGE = new Map<
   ],
 ]);
 
-// Multiply readiness grid (#567 mobile stacking). A small grid with one
-// category applied to two top types (one ready, one held back) so the mobile-
-// smoke spec can assert the stacked category cards render at 375px while the
-// matrix table renders at md+. Built with the same resolveCells + buildMultiplyGrid
-// the live surface uses, so the resolved readout shape can't drift from production.
-const MULTIPLY_GRID = (() => {
-  const menKey = cellKey({ audience: "men", categoryId: "cat-2030" });
-  const womenKey = cellKey({ audience: "women", categoryId: "cat-2030" });
-  return buildMultiplyGrid(
-    [{ id: "cat-2030", label: "20-30s" }],
-    resolveCells(
-      [
-        {
-          id: "cell-men",
-          audience_category: "men",
-          category_id: "cat-2030",
-          active: true,
-          target_count: 2,
-          trigger_overrides: {},
-        },
-        {
-          id: "cell-women",
-          audience_category: "women",
-          category_id: "cat-2030",
-          active: true,
-          target_count: 2,
-          trigger_overrides: {},
-        },
-      ],
-      {
-        // Men's: interest 5, two joinable groups (no capacity issue), B/B health
-        // → ready. Women's: no interest, no joinable group (capacity issue) → held.
-        interest: { [menKey]: 5 },
-        cellSizes: {
-          byCell: new Map([[menKey, [5, 6]]]),
-          keys: new Map(),
-        },
-        cellHealth: new Map([
-          [menKey, { groupGrades: ["B"], leaderGrades: ["B"] }],
-        ]),
-        haveByKey: new Map([
-          [menKey, 2],
-          [womenKey, 1],
-        ]),
-      },
-      { globalRule: BUILT_IN_READINESS_RULE, perTypeRules: {} }
-    )
-  );
-})();
+// Multiply by-type list. A couple of group-type rows (one meeting its target,
+// one short) so the smoke spec can assert the per-type list + config editors
+// render. Shaped like the live MultiplyTypeRow rows.
+const MULTIPLY_ROWS: MultiplyTypeRow[] = [
+  {
+    groupType: "Men's",
+    label: "Men's",
+    have: 2,
+    target: 2,
+    configured: true,
+    gap: 0,
+    readinessRule: null,
+  },
+  {
+    groupType: "Women's",
+    label: "Women's",
+    have: 1,
+    target: 3,
+    configured: true,
+    gap: 2,
+    readinessRule: null,
+  },
+];
 
 const SETTINGS_DATA: SettingsShellData = {
   defaults: DEMO_METRIC_DEFAULTS,
@@ -767,42 +738,11 @@ const SETTINGS_DATA: SettingsShellData = {
     { key: "walk", label: "Walk with God", weight: 50 },
     { key: "team", label: "Team development", weight: 50 },
   ],
-  // #412 Settings > Groups: the live catalog (id + label) the create flow dedupes
-  // against, so the group-type list + "+" add flow is in the tree for the a11y
-  // scan.
-  groupCategories: [{ id: "cat-1", label: "20-30s" }],
-  // The category-picker options per top type for the Groups tab's inline edit
-  // drawer; cat-1 is applied under men + women in the coverage rows below.
-  categoriesByAudience: {
-    men: [{ id: "cat-1", label: "20-30s" }],
-    women: [{ id: "cat-1", label: "20-30s" }],
-    mixed: [],
-  },
-  // #400 / #412 Settings > Groups: coverage rows for the two active cat-1 cells —
-  // each is a row in the group-type list (its label, target, and live count) for
-  // the a11y scan.
-  cellCoverage: [
-    {
-      audienceCategory: "men",
-      categoryId: "cat-1",
-      label: "20-30s",
-      have: 1,
-      target: 3,
-      gap: 2,
-    },
-    {
-      audienceCategory: "women",
-      categoryId: "cat-1",
-      label: "20-30s",
-      have: 2,
-      target: 2,
-      gap: 0,
-    },
-  ],
-  // #402 / #410 / #411 Settings > Multiply: the three-tier readiness trigger — the
-  // global rule, a per-type (Audience) rule, and one row per active cat-1 cell — so
-  // the Multiply tiered trigger editor (the level dropdown + pillar controls) is in
-  // the tree for the a11y scan.
+  // Settings > Groups: the admin-managed free-text group-type list, so the
+  // group-types editor (a single textarea) is in the tree for the a11y scan.
+  groupTypes: ["Men's", "Women's", "Married Couples"],
+  // Settings > Multiply: the single global readiness rule, so the readiness
+  // editor (pillar controls) is in the tree for the a11y scan.
   readiness: {
     ministryYear: 2026,
     rule: {
@@ -811,25 +751,8 @@ const SETTINGS_DATA: SettingsShellData = {
       groupHealth: { required: false, min: "C" },
       leaderHealth: { required: false, min: "C" },
     },
-    // #473: demo rule decodes cleanly — no stored-trigger-unreadable notice.
+    // demo rule decodes cleanly — no stored-trigger-unreadable notice.
     ruleFellBack: false,
-    perType: {
-      men: { interest: { required: true, min: 5 } },
-    },
-    cells: [
-      {
-        audienceCategory: "men",
-        categoryId: "cat-1",
-        label: "20-30s",
-        override: { interest: { required: true, min: 5 } },
-      },
-      {
-        audienceCategory: "women",
-        categoryId: "cat-1",
-        label: "20-30s",
-        override: {},
-      },
-    ],
   },
   // Issue #304: render the super_admin variant so the super-admin-only System
   // tab affordances are in the tree for the a11y scan.
@@ -840,7 +763,7 @@ const SETTINGS_DATA: SettingsShellData = {
     overrides: null,
     groupRubric: null,
     leaderRubric: null,
-    groupCategories: null,
+    groupTypes: null,
     readiness: null,
   },
 };
@@ -855,7 +778,7 @@ const SETTINGS_ERRORS_DATA: SettingsShellData = {
     ...SETTINGS_DATA.errors,
     groupRubric: "read failed",
     leaderRubric: "read failed",
-    groupCategories: "read failed",
+    groupTypes: "read failed",
     readiness: "read failed",
   },
 };
@@ -1486,7 +1409,7 @@ export function A11yHarnessClient() {
           matrix table at md+ — mounted so the mobile-smoke spec can assert the
           grid is readable at 375px without horizontal scroll. */}
       <Surface id="multiply-readiness-grid" heading="Multiply readiness grid">
-        <MultiplyGridView grid={MULTIPLY_GRID} ministryYear={2026} />
+        <MultiplyGridView rows={MULTIPLY_ROWS} ministryYear={2026} />
       </Surface>
 
       {/* #469: the toggle swaps the ONE Settings instance to the read-error

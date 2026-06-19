@@ -1,6 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { CategoryOptionsByAudience } from "@/lib/supabase/group-categories-reads";
 
 // The form binds a "use server" action; stub the module so static rendering
 // never pulls server-only deps (the markup never invokes the action anyway).
@@ -10,15 +9,9 @@ vi.mock("@/app/(protected)/admin/plan/actions", () => ({
 
 import { ProspectCreateForm } from "@/components/admin/plan/prospect-create-form";
 
-// Built inline (rather than imported from the reads module) to keep the test
-// free of any server-only read-layer imports.
-const OPTIONS: CategoryOptionsByAudience = { men: [], women: [], mixed: [] };
-
 describe("ProspectCreateForm — Full name accessibility wiring", () => {
   it("marks Full name required and describes it by a live error region", () => {
-    const html = renderToStaticMarkup(
-      <ProspectCreateForm categoryOptionsByAudience={OPTIONS} />
-    );
+    const html = renderToStaticMarkup(<ProspectCreateForm />);
 
     // The required field is wired for assistive tech...
     expect(html).toContain('id="prospect-full_name"');
@@ -33,9 +26,7 @@ describe("ProspectCreateForm — Full name accessibility wiring", () => {
   });
 
   it("disables Add prospect until a full name is entered", () => {
-    const html = renderToStaticMarkup(
-      <ProspectCreateForm categoryOptionsByAudience={OPTIONS} />
-    );
+    const html = renderToStaticMarkup(<ProspectCreateForm />);
 
     expect(html).toContain("Enter a full name to enable Add prospect.");
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Add prospect<\/button>/);

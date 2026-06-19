@@ -10,7 +10,6 @@ import type {
   LaunchPlanningInputsBundle,
   MultiplicationCandidateEntry,
 } from "@/lib/supabase/read-models";
-import type { GroupTypeOption } from "@/lib/admin/audience";
 import type { ReadResult } from "@/lib/supabase/read-core";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
@@ -37,7 +36,7 @@ const EMPTY_EXTRAS: CapacityBoardExtras = {
   coShepherdSinceByGroup: {},
   candidateFlagsByGroup: {},
   candidateGroupIds: [],
-  categoryLabelByGroup: {},
+  groupTypeByGroup: {},
   error: null,
 };
 
@@ -51,7 +50,6 @@ function emptyReads(
     fetchLeaderPipelineForAdmin: async () => ok([]),
     fetchMultiplicationCandidatesForAdmin: async () => ok([]),
     fetchCapacityBoardExtras: async () => EMPTY_EXTRAS,
-    fetchCategoriesForAudience: async () => ok([]),
     ...overrides,
   };
 }
@@ -106,44 +104,38 @@ describe("buildLaunchPlanningData", () => {
   });
 });
 
-// Type-first (group-types-multiplication): the planner picks a group TYPE, then
-// (when willing) a group OF that type. buildMultiplicationView turns the active
-// groups into `groupsByType`, excluding groups already used by a concrete
-// candidate, and passes the type options through.
+// Group-anchored multiplication: a candidate anchors to a concrete group, and
+// its type derives from that group's free-text group_type. buildMultiplicationView
+// turns the active groups into `groupOptions`, excluding groups already used by
+// a candidate, and carrying each group's group_type through (null = Untyped).
 describe("buildMultiplicationView", () => {
   const TODAY = "2026-06-08";
-  const TYPE_OPTIONS: GroupTypeOption[] = [
-    { audienceCategory: "men", categoryId: "c1", label: "20-30s" },
-  ];
   const GROUPS = [
     {
       id: "g1",
       name: "Alpha",
       lifecycle_status: "active",
-      audience_category: "men" as const,
-      category_id: "c1",
+      group_type: "Men 20-30s" as string | null,
     },
     {
       id: "g2",
       name: "Beta",
       lifecycle_status: "active",
-      audience_category: "men" as const,
-      category_id: "c1",
+      group_type: "Men 20-30s" as string | null,
     },
-    // Excluded: not active, and Uncategorized (no category).
+    // Excluded: not active.
     {
       id: "g3",
       name: "Gamma",
       lifecycle_status: "closed",
-      audience_category: "men" as const,
-      category_id: "c1",
+      group_type: "Men 20-30s" as string | null,
     },
+    // Active but with no group_type — still pickable, with groupType null.
     {
       id: "g4",
       name: "Delta",
       lifecycle_status: "active",
-      audience_category: "men" as const,
-      category_id: null,
+      group_type: null as string | null,
     },
   ];
 
@@ -152,8 +144,6 @@ describe("buildMultiplicationView", () => {
       candidate: {
         id: `cand-${groupId ?? "type"}`,
         group_id: groupId,
-        audience_category: "men",
-        category_id: "c1",
         target_year: null,
         status: "watching",
         shepherd_willing: false,
@@ -170,44 +160,33 @@ describe("buildMultiplicationView", () => {
         updated_at: "2026-01-01T00:00:00Z",
       },
       group: null,
-      candidateCategoryLabel: "20-30s",
       activeMemberCount: 0,
       coShepherdSince: null,
       linkedApprentice: null,
     };
   }
 
-  it("buckets only active, typed groups by type and passes typeOptions through", () => {
-    const view = buildMultiplicationView([], GROUPS, [], TYPE_OPTIONS, TODAY);
-    expect(view.typeOptions).toBe(TYPE_OPTIONS);
-    expect(view.groupsByType["men:c1"].map((g) => g.name)).toEqual([
-      "Alpha",
-      "Beta",
+  it("offers only active groups, each carrying its group_type (null = Untyped)", () => {
+    const view = buildMultiplicationView([], GROUPS, [], TODAY);
+    expect(view.groupOptions).toEqual([
+      { id: "g1", name: "Alpha", groupType: "Men 20-30s" },
+      { id: "g2", name: "Beta", groupType: "Men 20-30s" },
+      // The active, untyped group still appears, with groupType null.
+      { id: "g4", name: "Delta", groupType: null },
     ]);
   });
 
-  it("excludes a group already attached to a concrete candidate", () => {
-    const view = buildMultiplicationView(
-      [candidate("g1")],
-      GROUPS,
-      [],
-      TYPE_OPTIONS,
-      TODAY
-    );
-    expect(view.groupsByType["men:c1"].map((g) => g.name)).toEqual(["Beta"]);
+  it("excludes a group already attached to a candidate", () => {
+    const view = buildMultiplicationView([candidate("g1")], GROUPS, [], TODAY);
+    expect(view.groupOptions.map((g) => g.name)).toEqual(["Beta", "Delta"]);
   });
 
-  it("a type-only candidate removes no group from its type bucket", () => {
-    const view = buildMultiplicationView(
-      [candidate(null)],
-      GROUPS,
-      [],
-      TYPE_OPTIONS,
-      TODAY
-    );
-    expect(view.groupsByType["men:c1"].map((g) => g.name)).toEqual([
+  it("a candidate with no group removes no group from the options", () => {
+    const view = buildMultiplicationView([candidate(null)], GROUPS, [], TODAY);
+    expect(view.groupOptions.map((g) => g.name)).toEqual([
       "Alpha",
       "Beta",
+      "Delta",
     ]);
   });
 });

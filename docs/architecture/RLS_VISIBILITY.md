@@ -46,15 +46,16 @@ Read access is enforced in Postgres by RLS `USING` predicates, gating on
 ### ADMIN_READ — both admins, nothing below
 
 `group_metric_settings`, `shepherd_care_admin_notes`, `shepherd_care_follow_ups`,
-`leader_pipeline`, `group_categories`, `category_type_targets`,
+`leader_pipeline`, `group_type_configs`,
 `member_care_profiles`, `member_care_interactions`, `health_rubrics`,
 `prospects`, `leader_rubric_grades`, `group_rubric_grades`,
 `group_health_assessments`, `church_attendance_snapshots`,
-`multiplication_candidates`, `multiplication_config`,
-`multiplication_readiness_rule`, `audience_readiness_rule`, `over_shepherds`,
+`multiplication_candidates`, `multiplication_readiness_rule`, `over_shepherds`,
 `launch_planning_scenarios`, `attention_reset_baselines`,
 `activity_reset_baselines`, `note_transparency_grants` (the transparency toggle
-table itself is admin-only).
+table itself is admin-only). The retired cell tables (`group_categories`,
+`category_type_targets`, `multiplication_config`, `audience_readiness_rule`) were
+dropped by the collapse-cells migration.
 
 ### CONFIG_SCOPED — admins read all keys; non-admins read one shared key
 

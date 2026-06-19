@@ -59,7 +59,7 @@ beforeEach(() => {
 });
 
 describe("adminCreateProspect", () => {
-  it("creates a prospect with a null desired cell and refreshes the funnel", async () => {
+  it("creates a prospect and refreshes the funnel", async () => {
     const result = await adminCreateProspect(
       undefined,
       form({ full_name: "  Pat Prospect  " })
@@ -70,8 +70,6 @@ describe("adminCreateProspect", () => {
       p_full_name: "Pat Prospect",
       p_email: null,
       p_phone: null,
-      p_desired_audience_category: null,
-      p_desired_category_id: null,
     });
     for (const path of FUNNEL_PATHS) {
       expect(mockRevalidatePath).toHaveBeenCalledWith(path);

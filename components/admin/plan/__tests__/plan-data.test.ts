@@ -5,7 +5,6 @@ import {
   EMPTY_PLAN_DATA,
   type PlanReads,
 } from "@/components/admin/plan/plan-data";
-import { EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE } from "@/lib/supabase/group-categories-reads";
 import type { ReadResult } from "@/lib/supabase/read-core";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
@@ -22,8 +21,6 @@ function emptyReads(overrides: Partial<PlanReads> = {}): PlanReads {
     fetchProspects: async () => ok([]),
     fetchPlanGroupOptions: async () => ok([]),
     fetchDueFollowUps: async () => ok([]),
-    fetchActiveCategoryOptionsByAudience: async () =>
-      ok(EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE),
     ...overrides,
   };
 }
@@ -70,7 +67,6 @@ describe("buildPlanData", () => {
     expect(data.errors).toEqual({
       prospects: null,
       groups: null,
-      categoryOptions: null,
     });
     // The interested column carries the prospect.
     const interested = data.board.columns.find((c) => c.state === "interested");
@@ -137,24 +133,6 @@ describe("buildPlanData", () => {
     );
 
     expect(data.errors.prospects).toBe("prospects boom");
-  });
-
-  it("softens a category-options failure to the documented empty options, surfaced on its own key", async () => {
-    const data = await buildPlanData(
-      emptyReads({
-        fetchProspects: async () => ok([PROSPECT]),
-        fetchActiveCategoryOptionsByAudience: async () => fail("options boom"),
-      }),
-      TODAY
-    );
-
-    expect(data.errors.categoryOptions).toBe("options boom");
-    expect(data.categoryOptionsByAudience).toEqual(
-      EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE
-    );
-    // The funnel still renders — prospects can be added without naming a cell.
-    expect(data.errors.prospects).toBeNull();
-    expect(data.board.columns[0].prospects).toHaveLength(1);
   });
 
   it("documents the no-database fallback shape", () => {

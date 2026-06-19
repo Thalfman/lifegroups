@@ -1,25 +1,18 @@
-import { isAudienceCategory } from "@/lib/admin/audience";
 import type { ValidationResult } from "./shared";
-import { isNonEmptyString, isRecord, normalizeUuid } from "./shared";
+import { isRecord } from "./shared";
 import {
-  decodeCellOverride,
-  decodePerTypeRule,
   decodeReadinessRule,
-  type CellReadinessOverride,
-  type PerTypeReadinessRule,
   type ReadinessRule,
 } from "@/lib/admin/cell-readiness";
 
-// Per-cell readiness rule write-validation contracts (#402 / PRD §2.4). The
-// Settings > Groups readiness editor posts two writes:
-//   1. the GLOBAL rule — { ministry_year, rule }, where rule is a JSON object
-//      payload (form submission) or an already-parsed object (tests);
-//   2. a cell's overrides — { category_id, audience_category, overrides }, where
-//      overrides is the per-cell partial of the rule.
-// Each validator parses + decodes through the pure trust-boundary decoders in
-// lib/admin/cell-readiness.ts, so the client and server reject identically. The
-// SECURITY DEFINER RPCs stay the authoritative gate; this keeps malformed input
-// off the wire and supplies friendlier messages.
+// Global readiness rule write-validation. The Settings/Multiply readiness editor
+// posts the GLOBAL rule — { ministry_year, rule }, where rule is a JSON object
+// payload (form submission) or an already-parsed object (tests). It parses +
+// decodes through the pure trust-boundary decoder in lib/admin/cell-readiness.ts,
+// so the client and server reject identically. The SECURITY DEFINER RPC stays the
+// authoritative gate; this keeps malformed input off the wire with friendlier
+// messages. (Per-type readiness overrides ride on the group-type config payload —
+// see validation/group-types.ts.)
 
 // Parse a JSON payload field from either a JSON string or an already-parsed
 // object. Returns undefined when unparseable / not an object.
@@ -80,107 +73,6 @@ export function validateReadinessRulePayload(
     value: {
       ministryYear: ministryYear as number,
       rule: decodeReadinessRule(ruleRaw),
-    },
-  };
-}
-
-export type AudienceReadinessRulePayload = {
-  ministryYear: number;
-  audienceCategory: "men" | "women" | "mixed";
-  rule: PerTypeReadinessRule;
-};
-
-// The per-TYPE readiness rule write (#410 / ADR 0021) — the MIDDLE tier of the
-// cascade. Posts { ministry_year, audience_category, rule }, where rule is a
-// PARTIAL of the global rule (present pillar overrides, absent inherits; an empty
-// `{}` clears it back to the global rule). Decodes through decodePerTypeRule so
-// only validly-shaped pillars survive; the SECURITY DEFINER RPC stays the gate.
-export function validateAudienceReadinessRulePayload(
-  input: unknown
-): ValidationResult<AudienceReadinessRulePayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-
-  const errors: string[] = [];
-
-  const ministryYear = parseYear(input.ministry_year);
-  if (
-    ministryYear === undefined ||
-    ministryYear < 2000 ||
-    ministryYear > 3000
-  ) {
-    errors.push("ministry_year must be a four-digit year.");
-  }
-
-  const audienceCategory =
-    typeof input.audience_category === "string" ? input.audience_category : "";
-  if (!isAudienceCategory(audienceCategory)) {
-    errors.push("The top type must be 'men', 'women', or 'mixed'.");
-  }
-
-  const ruleRaw = parseJsonObject(input.rule);
-  if (ruleRaw === undefined) {
-    errors.push("rule must be a JSON object.");
-  }
-
-  if (errors.length > 0) return { ok: false, errors };
-
-  return {
-    ok: true,
-    value: {
-      ministryYear: ministryYear as number,
-      audienceCategory: audienceCategory as "men" | "women" | "mixed",
-      rule: decodePerTypeRule(ruleRaw),
-    },
-  };
-}
-
-export type CellTriggerOverridePayload = {
-  categoryId: string;
-  audienceCategory: "men" | "women" | "mixed";
-  overrides: CellReadinessOverride;
-};
-
-export function validateCellTriggerOverridePayload(
-  input: unknown
-): ValidationResult<CellTriggerOverridePayload> {
-  if (!isRecord(input))
-    return { ok: false, errors: ["payload must be an object"] };
-
-  const errors: string[] = [];
-
-  const categoryId = isNonEmptyString(input.category_id)
-    ? normalizeUuid(input.category_id.trim())
-    : "";
-  if (!isNonEmptyString(categoryId)) {
-    errors.push("A category id is required.");
-  }
-
-  const audienceCategory =
-    typeof input.audience_category === "string" ? input.audience_category : "";
-  if (!isAudienceCategory(audienceCategory)) {
-    errors.push("The top type must be 'men', 'women', or 'mixed'.");
-  }
-
-  // The overrides payload is a JSON object (possibly empty `{}` = clear). An
-  // absent / unparseable payload is rejected rather than silently treated as "no
-  // override" — a save must carry an explicit (possibly empty) object.
-  const overridesRaw = parseJsonObject(input.overrides);
-  if (overridesRaw === undefined) {
-    errors.push("overrides must be a JSON object.");
-  }
-
-  if (errors.length > 0) return { ok: false, errors };
-
-  // Decode through the pure trust-boundary decoder: only validly-shaped pillars
-  // survive as overrides; everything else is dropped so it inherits the global
-  // rule.
-  return {
-    ok: true,
-    value: {
-      categoryId,
-      audienceCategory: audienceCategory as "men" | "women" | "mixed",
-      overrides: decodeCellOverride(overridesRaw),
     },
   };
 }

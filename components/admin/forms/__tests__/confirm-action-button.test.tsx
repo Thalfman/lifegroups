@@ -26,12 +26,8 @@ vi.mock("@/app/(protected)/admin/people/actions", () => ({
 vi.mock("@/app/(protected)/admin/settings/actions", () => ({
   adminUpsertGroupMetricSettings: vi.fn(),
   adminResetMetricDefaults: vi.fn(),
-  adminArchiveGroupCategory: vi.fn(),
-  adminCreateGroupCategory: vi.fn(),
-  adminRenameGroupCategory: vi.fn(),
-  adminSetCategoryTypeCell: vi.fn(),
-  adminSetCategoryTypeTargetCount: vi.fn(),
-  adminSetGroupCategory: vi.fn(),
+  adminSetGroupTypes: vi.fn(),
+  adminSetGroupTypeConfig: vi.fn(),
 }));
 vi.mock("@/app/(protected)/admin/shepherd-care/actions", () => ({
   adminSetOverShepherdActive: vi.fn(),
@@ -78,7 +74,6 @@ import {
   archiveFollowUpConfirmMessage,
 } from "@/components/admin/shepherd-care/care-follow-up-status-controls";
 import { archiveProspectConfirmMessage } from "@/components/admin/plan/prospect-card";
-import { deleteCategoryConfirmMessage } from "@/components/admin/settings/groups-catalog-editor";
 
 // #489 collapsed six hand-wired button modules into configs of one deep
 // ConfirmActionButton. The user-facing strings must stay byte-identical to
@@ -245,13 +240,6 @@ describe("confirmation copy — byte-identical to the pre-#494 modules", () => {
     expect(archiveProspectConfirmMessage("Riley Newcomer")).toBe(
       "Archive Riley Newcomer? They leave the board (kept in history). " +
         'Use "Not at this time" instead if you only want to park them.'
-    );
-  });
-
-  it("Delete unused category", () => {
-    expect(deleteCategoryConfirmMessage("20-30s")).toBe(
-      'Delete the category "20-30s"? It\'s applied to no group type. ' +
-        "It stops showing in Multiply and stays in history."
     );
   });
 });

@@ -40,10 +40,10 @@ export const HealthRubricEditor = dynamic(
   { ssr: false, loading: () => <EditorSkeleton label="health rubric editor" /> }
 );
 
-export const GroupsCatalogEditor = dynamic(
+export const GroupTypesEditor = dynamic(
   () =>
-    import("@/components/admin/settings/groups-catalog-editor").then(
-      (m) => m.GroupsCatalogEditor
+    import("@/components/admin/settings/group-types-editor").then(
+      (m) => m.GroupTypesEditor
     ),
   { ssr: false, loading: () => <EditorSkeleton label="group types editor" /> }
 );

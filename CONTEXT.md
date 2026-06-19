@@ -110,66 +110,25 @@ _Avoid_: Backup, archive (that is the soft-delete), trash.
 
 ### Group concepts
 
-**Audience**:
-Who a Life Group is for, by the `audience_category` attribute — Men, Women, or
-Mixed. A user-facing grouping on the capacity board and the
-multiplication planner.
-_Avoid_: Segment, gender category.
-
-**Category**:
-The free-form bracket a Life Group serves, by the `category_id` attribute — a
-label from the `group_categories` catalog (e.g. "20-30s", "Young families"),
-applied to the group's Audience via a cell (`category_type_targets`). Replaced
-the retired `life_stage` enum as the single segmentation source (#398). A group
-with no category reads as **Uncategorized** — a visible bucket so untagged
-groups are never lost. The `group_life_stage` enum type still exists but is no
-longer read by any code path.
-_Avoid_: Segment, age bracket, cohort, life stage (the old enum).
+**Group type**:
+A single free-text string on each group (`groups.group_type`, nullable = **Untyped**),
+chosen from an admin-managed list. The ministry sets the names to whatever it
+wants (e.g. "Men's", "Young families") in Settings › Groups — the list lives in
+the `app_settings` `group_types` row. A group type is the **single segmentation
+source**: it replaced the retired Cell model (Audience × Category, the
+`group_categories` catalog, `category_type_targets`, and per-cell readiness). Per-type
+config (a target group count + an optional readiness-rule override) lives in
+`group_type_configs`, keyed on the type name; Multiply lists groups by type and
+shows each type's **coverage** ("have X of Y") plus that config. A group with no
+type reads as **Untyped** — a visible bucket so untyped groups are never lost.
+_Avoid_: Cell, Audience, Category, segment (as user-facing labels), life stage.
 
 **Segment**:
-The internal umbrella term for the Audience × Category bucket (the cell) a group
-falls into. Stays in code and docs (`segmentLabel`, `buildPlannerSegments`,
-`bucketGroupsBySegment`); it is **not shown to users** — surfaces say Audience,
-Category, or Group type instead. Treated like "Admin OS": an internal-only name.
+The internal name for the bucket a group falls into — now simply its **group type**
+(null = Untyped). Stays in code (`segmentLabel`, `buildPlannerSegments`,
+`bucketGroupsBySegment`); it is **not shown to users** — surfaces say Group type.
+Treated like "Admin OS": an internal-only name.
 _Avoid_: Segment, segmented, unsegmented (as user-facing labels).
-
-**Cell**:
-The live unit of the groups overhaul: one `category_type_targets` row =
-(Audience × Category). A cell is **active** when the category is applied to that
-top type. Each active cell carries its own **target group count**, derived
-**coverage**, derived **capacity issue**, per-cell **interest**, **Cell Health**,
-and readiness signal. A category not applied to a type has no active cell there
-(blank on the Multiply grid). The live Cell has one home — `resolveCell`
-(`lib/admin/cell.ts`) — which composes the per-cell facet modules (coverage,
-capacity, interest, health) through a single `cellKey` and resolves the readiness
-cascade, yielding a fully-resolved Cell. The Multiply grid builder only arranges
-resolved Cells into the rows × columns matrix; it no longer resolves them.
-_Avoid_: Tile, slot, segment (the internal umbrella name, not this row).
-
-**Cell Health**:
-The per-**Cell** A–F roll-up of that cell's Group-Health and Leader-Health grades
-over the **Ministry Year** — the facet feeding the **Group Health** and **Leader
-Health** Multiplication Pillars on the Multiply grid. One concept with one home
-(`lib/admin/cell-health.ts`): it **buckets** each resolved grade under its cell
-coordinate (a leader feeds every cell they actively lead; closed, ungraded, and
-uncategorised rows drop) and **rolls** each cell's grades up to a letter through
-the shared grade averaging (`rollUpGrades`, `lib/admin/health-rubric.ts`), so a
-body of grades grades identically whether rolled up per **Cell** or per type
-(the per-type board's pillars). Null until a cell has any grade (shown as "—").
-_Avoid_: Cell-Health Grade (there is no separate rubric — it rolls up the
-existing Group/Leader grades), cell score.
-
-**Cell coordinate**:
-The bare identity of a Cell — the **Audience × `category_id`** pair that names
-which cell something belongs to, distinct from the live **Cell** unit (which
-also carries target, coverage, capacity, and readiness). The coordinate is what
-keys per-cell maps; it has **one canonical string form** (`cellKey`) so the
-grid, the interest tally, and the capacity read agree without translating
-between separators. Both coordinates are collision-safe (`category_id` is a UUID,
-Audience an enum), so the key format is an implementation detail behind the
-composer.
-_Avoid_: Cell (the derived unit, not its identity), cell key string (the
-encoding, not the coordinate), segment label (the display string).
 
 ### Interest funnel concepts
 

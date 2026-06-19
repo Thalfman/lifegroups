@@ -11,7 +11,6 @@ import type {
   FollowUpPriority,
   FollowUpStatus,
   FollowUpType,
-  GroupAudienceCategory,
   GroupCalendarEventStatus,
   GroupCalendarEventType,
   GuestPipelineStage,
@@ -52,10 +51,9 @@ export type GroupRpcArgs = {
   p_capacity: number | null;
   p_meeting_frequency: MeetingFrequency;
   p_meeting_week_parity: MeetingWeekParity | null;
-  p_audience_category: GroupAudienceCategory | null;
-  // #398: the group's category id (its cell). null = Uncategorized. Replaces
-  // the retired p_life_stage argument.
-  p_category_id: string | null;
+  // Free-text group type, chosen from the admin-managed list. null = Untyped.
+  // Replaces the retired p_audience_category + p_category_id cell args.
+  p_group_type: string | null;
   p_launched_on: string | null;
 };
 
@@ -470,8 +468,9 @@ export type AdminUuidRpcArgs = {
   };
   // Julian P4: multiplication candidate writes.
   admin_create_multiplication_candidate: {
-    // Type-first: optional multiplying group (null = type-only watch).
-    p_group_id: string | null;
+    // A candidate always anchors to a concrete group; its type is the group's
+    // group_type (type-only watches were retired with the cell model).
+    p_group_id: string;
     p_target_year: number | null;
     p_status: MultiplicationCandidateStatus;
     p_shepherd_willing: boolean;
@@ -482,10 +481,6 @@ export type AdminUuidRpcArgs = {
     p_leader_pipeline_id: string | null;
     // ADR 0022: Julian-fed headcount. Null falls back to the in-app roster count.
     p_manual_member_count: number | null;
-    // The candidate's cell (audience × category). Null when a group is attached
-    // (the RPC derives the cell from the group); required for a type-only watch.
-    p_audience_category: GroupAudienceCategory | null;
-    p_category_id: string | null;
   };
   admin_update_multiplication_candidate: {
     p_candidate_id: string;
@@ -499,12 +494,8 @@ export type AdminUuidRpcArgs = {
     p_leader_pipeline_id: string | null;
     // ADR 0022: Julian-fed headcount. Null falls back to the in-app roster count.
     p_manual_member_count: number | null;
-    // The candidate's cell (audience × category). Null when a group is attached
-    // (the RPC derives the cell from the group); required for a type-only watch.
-    p_audience_category: GroupAudienceCategory | null;
-    p_category_id: string | null;
-    // Type-first: optional multiplying group (null = type-only watch).
-    p_group_id: string | null;
+    // The multiplying group this candidate anchors to.
+    p_group_id: string;
   };
   admin_archive_multiplication_candidate: { p_candidate_id: string };
   // Capacity & Multiplication #183: Leader Pipeline (apprentice) writes.
@@ -547,10 +538,6 @@ export type AdminUuidRpcArgs = {
     p_full_name: string;
     p_email: string | null;
     p_phone: string | null;
-    // #399: the DESIRED (top type × category) cell named at intake. Both null
-    // when no cell was chosen.
-    p_desired_audience_category: GroupAudienceCategory | null;
-    p_desired_category_id: string | null;
   };
   admin_transition_prospect: {
     p_prospect_id: string;
@@ -644,43 +631,11 @@ export type AdminUuidRpcArgs = {
     p_kind: "group" | "leader";
     p_criteria: Array<Record<string, unknown>>;
   };
-  // #380 Multiplication Pillars (updated #401): upsert one group type's pillar
-  // config (thresholds + trigger rubric) for a ministry year. #401 retired the
-  // fed-capacity payload — capacity is now a derived per-cell issue. The two
-  // jsonb payloads are validated in TS first; the RPC re-guards their object
-  // shape.
-  admin_set_multiplication_config: {
-    p_group_type: GroupAudienceCategory;
-    p_ministry_year: number;
-    p_thresholds: Record<string, unknown>;
-    p_trigger: Record<string, unknown>;
-  };
-  // #402 / PRD §2.4 per-cell readiness rule: upsert the GLOBAL readiness rule
-  // for a ministry year (interest/capacity/group+leader health in natural
-  // units). The rule jsonb is validated in TS first; the RPC re-guards its
-  // object shape.
+  // The single GLOBAL readiness rule for a ministry year (interest/capacity/
+  // group+leader health in natural units). The rule jsonb is validated in TS
+  // first; the RPC re-guards its object shape.
   admin_set_readiness_rule: {
     p_ministry_year: number;
-    p_rule: Record<string, unknown>;
-  };
-  // #402 / PRD §2.4: set a cell's trigger overrides (a partial of the global
-  // rule; absent pillars inherit). Upserts
-  // category_type_targets.trigger_overrides on the same (audience_category,
-  // category_id) conflict target as the cell apply RPC. An empty `{}` clears
-  // the cell's overrides back to the global rule.
-  admin_set_cell_trigger_overrides: {
-    p_category_id: string;
-    p_audience_category: GroupAudienceCategory;
-    p_overrides: Record<string, unknown>;
-  };
-  // #410 / ADR 0021 per-TYPE readiness rule: upsert the per-type (Audience)
-  // rule for a ministry year — the MIDDLE tier of the global → per-type →
-  // per-cell cascade. A partial of the global rule (absent pillars inherit);
-  // an empty `{}` clears it back to the global rule. The jsonb is validated in
-  // TS first; the RPC re-guards shape.
-  admin_set_audience_readiness_rule: {
-    p_ministry_year: number;
-    p_audience_category: GroupAudienceCategory;
     p_rule: Record<string, unknown>;
   };
   // #378 / ADR 0018 (pivot slice 5) Leader-Health Grade: upsert a leader's
@@ -706,37 +661,16 @@ export type AdminUuidRpcArgs = {
   admin_write_care_note: AdminWriteCareNoteArgs;
   admin_write_prayer_request: AdminWritePrayerRequestArgs;
   set_note_transparency_grant: SetNoteTransparencyGrantArgs;
-  // #396 Settings > Groups: the group Category catalog + the (top type ×
-  // category) cell matrix. Free-form catalog CRUD (create / rename / archive)
-  // and the cell apply/unapply, each through an audited SECURITY DEFINER RPC.
-  // Archive is the reversible soft delete (Archive convention); the cell
-  // upsert flips the (audience_category × category) row's active flag.
-  admin_create_group_category: { p_label: string };
-  admin_rename_group_category: { p_category_id: string; p_label: string };
-  admin_archive_group_category: { p_category_id: string };
-  admin_set_category_type_cell: {
-    p_category_id: string;
-    p_audience_category: GroupAudienceCategory;
-    p_active: boolean;
-  };
-  // #400 / PRD §2.3: set a cell's target group count. Upserts the cell row's
-  // target_count on the same (audience_category, category_id) conflict target
-  // as the cell apply RPC. Tracking only — does NOT feed the multiply trigger.
-  admin_set_category_type_target_count: {
-    p_category_id: string;
-    p_audience_category: GroupAudienceCategory;
-    p_count: number;
-  };
-  // Settings › Groups "+ Add existing group": tag an existing group into a
-  // cell (audience × category). Focused audited write — updates ONLY the
-  // group's audience_category + category_id under a row lock, rejecting closed
-  // groups and inactive/archived cells. Used instead of replaying
-  // admin_update_group so a concurrent edit to the group's other fields can't
-  // be clobbered.
-  admin_set_group_category: {
-    p_group_id: string;
-    p_audience_category: GroupAudienceCategory;
-    p_category_id: string;
+  // Settings > Group types: replace the canonical free-text type-name list
+  // (app_settings keyed row). p_types is the validated, trimmed, deduped list.
+  admin_set_group_types: { p_types: unknown[] };
+  // Multiply: upsert one group type's config (target group count + an optional
+  // readiness-rule override; null/empty rule = inherit the global rule), keyed
+  // on the free-text type name.
+  admin_set_group_type_config: {
+    p_group_type: string;
+    p_target_count: number;
+    p_readiness_rule: Record<string, unknown> | null;
   };
 };
 

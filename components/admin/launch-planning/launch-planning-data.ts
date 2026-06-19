@@ -32,15 +32,7 @@ import {
   buildPlannerSegments,
   type SegmentGroup,
 } from "@/lib/admin/multiplication";
-import {
-  AUDIENCE_CATEGORIES,
-  groupTypeKey,
-  type GroupTypeOption,
-  type GroupTypeRef,
-} from "@/lib/admin/audience";
-import { fetchCategoriesForAudience } from "@/lib/supabase/group-categories-reads";
 import { STAGE_LABEL } from "@/lib/admin/leader-pipeline";
-import type { GroupAudienceCategory } from "@/types/enums";
 import {
   BUILT_IN_METRIC_DEFAULTS,
   decodeMetricDefaults,
@@ -70,9 +62,6 @@ export type LaunchPlanningReads = {
     typeof fetchMultiplicationCandidatesForAdmin
   >;
   fetchCapacityBoardExtras: OmitClient<typeof fetchCapacityBoardExtras>;
-  // Type-first planner: the active-cell category options per top type, for the
-  // candidate form's group-type picker (same read the group create/edit form uses).
-  fetchCategoriesForAudience: OmitClient<typeof fetchCategoriesForAudience>;
 };
 
 export function supabaseLaunchPlanningReads(
@@ -85,7 +74,6 @@ export function supabaseLaunchPlanningReads(
     fetchLeaderPipelineForAdmin,
     fetchMultiplicationCandidatesForAdmin,
     fetchCapacityBoardExtras,
-    fetchCategoriesForAudience,
   });
 }
 
@@ -118,10 +106,9 @@ export type LaunchPlanningPageData = {
   capacityError: string | null;
   // Multiplication planner (merged-in surface).
   segments: SegmentGroup[];
-  // Type-first: the group-type picker options, and the active groups per type
-  // for the "willing to multiply" group picker.
-  typeOptions: GroupTypeOption[];
-  groupsByType: Record<string, GroupTypeRef[]>;
+  // The active groups a candidate can anchor to (its type is derived from the
+  // group's free-text group_type).
+  groupOptions: GroupOption[];
   // Apprentices keyed by group id, so a candidate's link picker only offers
   // same-group apprentices (the RPC + trigger reject cross-group links).
   apprenticesByGroup: Record<string, ApprenticeOption[]>;
@@ -136,38 +123,21 @@ const EMPTY_CAPACITY_MODEL: CapacityBoardModel = {
   segments: [],
 };
 
-// GroupTypeOption / GroupTypeRef / groupTypeKey live in the pure @/lib/admin/
-// audience leaf so the client planner can share them without bundling this
-// server data module. Re-exported here as the shaping layer's public surface.
-export type { GroupTypeOption, GroupTypeRef };
-
-// Flatten the per-audience active-category reads into the flat type-picker list,
-// in board order (men → women → mixed), then by the read's alphabetical labels.
-export function buildGroupTypeOptions(
-  byAudience: Record<GroupAudienceCategory, { id: string; label: string }[]>
-): GroupTypeOption[] {
-  const out: GroupTypeOption[] = [];
-  for (const audience of AUDIENCE_CATEGORIES) {
-    for (const c of byAudience[audience] ?? []) {
-      out.push({
-        audienceCategory: audience,
-        categoryId: c.id,
-        label: c.label,
-      });
-    }
-  }
-  return out;
-}
+// A pickable group for anchoring a multiplication candidate. The candidate's
+// type is derived from the group's free-text group_type (null = Untyped).
+export type GroupOption = {
+  id: string;
+  name: string;
+  groupType: string | null;
+};
 
 // Exported so the Multiply area's thin Plan-tab loader
 // (components/admin/multiply/multiply-plan-data.ts) can shape the same planner
 // props without pulling in the heavy launch-planning forecast bundle.
 export type MultiplicationView = {
   segments: SegmentGroup[];
-  typeOptions: GroupTypeOption[];
-  // Active groups of each type (key = groupTypeKey), excluding groups already
-  // attached to a concrete candidate. Feeds the "willing to multiply" picker.
-  groupsByType: Record<string, GroupTypeRef[]>;
+  // Active groups not already anchored to a candidate, for the group picker.
+  groupOptions: GroupOption[];
   apprenticesByGroup: Record<string, ApprenticeOption[]>;
 };
 
@@ -176,46 +146,34 @@ type CandidatesData = NonNullable<
 >;
 
 // Shape the multiplication-candidate, group, and pipeline reads into the
-// planner's props. Only called once its three source reads have succeeded.
-// Shared by this loader and the Multiply Plan-tab loader. Both `allGroups` and
-// `pipeline` are typed to only the fields this builder reads (id/name/lifecycle;
-// apprentice id/group/name/stage), so callers may pass either the full rows
-// (launch planning) or the lean fetchGroupRefs / fetchApprenticePickerRefs
-// projections — the latter avoid pulling privacy-sensitive columns (group
-// admin_notes, apprentice notes) into the always-on Plan read path.
+// planner's props. Only called once its source reads have succeeded. Shared by
+// this loader and the Multiply Plan-tab loader. Both `allGroups` and `pipeline`
+// are typed to only the fields this builder reads, so callers may pass either
+// the full rows (launch planning) or the lean fetchGroupRefs /
+// fetchApprenticePickerRefs projections.
 export function buildMultiplicationView(
   candidates: CandidatesData,
   allGroups: readonly {
     id: string;
     name: string;
     lifecycle_status: string;
-    audience_category: GroupAudienceCategory | null;
-    category_id: string | null;
+    group_type: string | null;
   }[],
   pipeline: readonly { apprentice: ApprenticePickerRef }[],
-  typeOptions: GroupTypeOption[],
   todayIso: string
 ): MultiplicationView {
   const segments = buildPlannerSegments(candidates, todayIso);
-  // A group already attached to a concrete candidate can't be picked again
-  // (one active candidate per group). Type-only candidates hold no group, so
-  // they remove nothing here.
+  // A group already attached to a candidate can't be picked again (one active
+  // candidate per group).
   const usedGroupIds = new Set(
     candidates
       .map((e) => e.candidate.group_id)
       .filter((id): id is string => id != null)
   );
-  const groupsByType: Record<string, GroupTypeRef[]> = {};
-  for (const g of allGroups) {
-    if (g.lifecycle_status !== "active") continue;
-    if (g.audience_category == null || g.category_id == null) continue;
-    if (usedGroupIds.has(g.id)) continue;
-    const key = groupTypeKey(g.audience_category, g.category_id);
-    (groupsByType[key] ??= []).push({ id: g.id, name: g.name });
-  }
-  for (const key of Object.keys(groupsByType)) {
-    groupsByType[key].sort((a, b) => a.name.localeCompare(b.name));
-  }
+  const groupOptions: GroupOption[] = allGroups
+    .filter((g) => g.lifecycle_status === "active" && !usedGroupIds.has(g.id))
+    .map((g) => ({ id: g.id, name: g.name, groupType: g.group_type }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const apprenticesByGroup: Record<string, ApprenticeOption[]> = {};
   for (const e of pipeline) {
     const list = (apprenticesByGroup[e.apprentice.group_id] ??= []);
@@ -224,7 +182,7 @@ export function buildMultiplicationView(
       label: `${e.apprentice.display_name} · ${STAGE_LABEL[e.apprentice.readiness_stage]}`,
     });
   }
-  return { segments, typeOptions, groupsByType, apprenticesByGroup };
+  return { segments, groupOptions, apprenticesByGroup };
 }
 
 function emptyData(): LaunchPlanningPageData {
@@ -270,8 +228,7 @@ function emptyData(): LaunchPlanningPageData {
     capacityModel: EMPTY_CAPACITY_MODEL,
     capacityError: dbError,
     segments: [],
-    typeOptions: [],
-    groupsByType: {},
+    groupOptions: [],
     apprenticesByGroup: {},
     multiplicationError: dbError,
     todayIso: new Date().toISOString().slice(0, 10),
@@ -301,9 +258,6 @@ export async function buildLaunchPlanningData(
     pipelineRes,
     candidatesRes,
     boardExtras,
-    menCatsRes,
-    womenCatsRes,
-    mixedCatsRes,
   ] = await Promise.all([
     reads.fetchLaunchPlanningAssumptions(),
     reads.fetchLaunchPlanningInputsForAdmin(),
@@ -311,9 +265,6 @@ export async function buildLaunchPlanningData(
     reads.fetchLeaderPipelineForAdmin(),
     reads.fetchMultiplicationCandidatesForAdmin(),
     reads.fetchCapacityBoardExtras(),
-    reads.fetchCategoriesForAudience("men"),
-    reads.fetchCategoriesForAudience("women"),
-    reads.fetchCategoriesForAudience("mixed"),
   ]);
 
   const metricDefaults = decodeMetricDefaults(inputsBundle.metricDefaultsRow);
@@ -385,9 +336,6 @@ export async function buildLaunchPlanningData(
         coShepherdSinceByGroup: boardExtras.coShepherdSinceByGroup,
         candidateFlagsByGroup: boardExtras.candidateFlagsByGroup,
         candidateGroupIds: boardExtras.candidateGroupIds,
-        categoryLabelByGroup: new Map(
-          Object.entries(boardExtras.categoryLabelByGroup)
-        ),
         todayIso,
       });
 
@@ -401,20 +349,16 @@ export async function buildLaunchPlanningData(
     inputsBundle.errors.groups ??
     pipelineRes.error?.message ??
     null;
-  // The type picker degrades to empty rather than blocking the planner on a
-  // category read failure — the edit form preserves a candidate's existing type.
-  const typeOptions = buildGroupTypeOptions({
-    men: (menCatsRes.data ?? []).map((c) => ({ id: c.id, label: c.label })),
-    women: (womenCatsRes.data ?? []).map((c) => ({ id: c.id, label: c.label })),
-    mixed: (mixedCatsRes.data ?? []).map((c) => ({ id: c.id, label: c.label })),
-  });
-  const { segments, groupsByType, apprenticesByGroup } = multiplicationError
-    ? { segments: [], groupsByType: {}, apprenticesByGroup: {} }
+  const { segments, groupOptions, apprenticesByGroup } = multiplicationError
+    ? {
+        segments: [],
+        groupOptions: [] as GroupOption[],
+        apprenticesByGroup: {},
+      }
     : buildMultiplicationView(
         candidatesRes.data ?? [],
         inputsBundle.groups,
         pipelineRes.data ?? [],
-        typeOptions,
         todayIso
       );
 
@@ -442,8 +386,7 @@ export async function buildLaunchPlanningData(
     capacityModel,
     capacityError,
     segments,
-    typeOptions,
-    groupsByType,
+    groupOptions,
     apprenticesByGroup,
     multiplicationError,
     todayIso,

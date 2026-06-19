@@ -46,11 +46,10 @@ export interface GroupsRow {
   capacity: number | null;
   lifecycle_status: E.GroupLifecycleStatus;
   health_status: E.GroupHealthStatus;
-  audience_category: E.GroupAudienceCategory | null;
-  // #398: the catalog category this group carries under its audience_category —
-  // the group's cell. null = Uncategorized. Replaces the retired life_stage
-  // column as the single segmentation source.
-  category_id: string | null;
+  // Free-text group type the ministry sets to anything it wants, chosen from the
+  // admin-managed group_types list. null = Untyped. Replaces the retired
+  // audience_category × category_id cell as the single segmentation source.
+  group_type: string | null;
   launched_on: DateString | null;
   pause_reason: string | null;
   pause_start_date: DateString | null;
@@ -399,12 +398,10 @@ export interface ChurchAttendanceSnapshotsRow {
 
 export interface MultiplicationCandidatesRow {
   id: UUID;
-  // Type-first: a candidate is anchored to a cell (audience_category ×
-  // category_id); the multiplying group is optional, set only once a leader is
-  // willing and a specific group of that type is picked. null = type-only watch.
+  // A candidate is anchored to a concrete group; the candidate's type is the
+  // group's group_type. (Type-only watches were retired with the cell model;
+  // group_id stays nullable for legacy rows but new writes always set it.)
   group_id: UUID | null;
-  audience_category: E.GroupAudienceCategory | null;
-  category_id: UUID | null;
   target_year: number | null;
   status: E.MultiplicationCandidateStatus;
   shepherd_willing: boolean;
@@ -686,44 +683,14 @@ export interface ProspectsRow {
   updated_by: UUID | null;
   created_at: Timestamp;
   updated_at: Timestamp;
-  // #399: the DESIRED (audience_category × catalog category) cell named at
-  // intake. Both null when no cell was chosen; the per-cell tally keys on them.
-  desired_audience_category: E.GroupAudienceCategory | null;
-  desired_category_id: UUID | null;
 }
 
-// ── Groups overhaul: category catalog + per-cell config (#396, #402, #410) ────
-// group_categories is the free-form label catalog; category_type_targets is one
-// row per active (audience_category × category) cell. Readiness cascades
-// global (multiplication_readiness_rule) → per-type (audience_readiness_rule) →
-// per-cell (category_type_targets.trigger_overrides). All admin-only; writes via
-// admin_create/rename/archive_group_category, admin_set_category_type_cell,
-// admin_set_category_type_target_count, admin_set_readiness_rule,
-// admin_set_audience_readiness_rule. audience_category is stored as text but
-// carries the GroupAudienceCategory vocabulary (mirrors GroupsRow).
-export interface GroupCategoriesRow {
-  id: UUID;
-  label: string;
-  archived_at: Timestamp | null;
-  created_by: UUID | null;
-  updated_by: UUID | null;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
-
-export interface CategoryTypeTargetsRow {
-  id: UUID;
-  audience_category: E.GroupAudienceCategory;
-  category_id: UUID;
-  active: boolean;
-  target_count: number;
-  trigger_overrides: Record<string, unknown>;
-  created_by: UUID | null;
-  updated_by: UUID | null;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
-
+// ── Group-type config (free-text type model) ─────────────────────────────────
+// The single global readiness rule lives in multiplication_readiness_rule.
+// Per-type config (a target group count + an optional readiness-rule override,
+// null = inherit the global rule) lives in group_type_configs, keyed on the
+// free-text group_type name. Both admin-only; writes via admin_set_readiness_rule
+// and admin_set_group_type_config respectively.
 export interface MultiplicationReadinessRuleRow {
   id: UUID;
   ministry_year: number;
@@ -734,27 +701,12 @@ export interface MultiplicationReadinessRuleRow {
   updated_at: Timestamp;
 }
 
-export interface AudienceReadinessRuleRow {
+export interface GroupTypeConfigsRow {
   id: UUID;
-  ministry_year: number;
-  audience_category: E.GroupAudienceCategory;
-  rule: Record<string, unknown>;
-  created_by: UUID | null;
-  updated_by: UUID | null;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
-
-// ── Multiplication Pillars config (#380 / ADR 0016; fed capacity retired #401) ─
-// Per-type, per-ministry-year pillar thresholds + trigger rubric. group_type is
-// stored as text but carries the GroupAudienceCategory vocabulary. Admin-only;
-// writes via admin_set_multiplication_config.
-export interface MultiplicationConfigRow {
-  id: UUID;
-  group_type: E.GroupAudienceCategory;
-  ministry_year: number;
-  thresholds: Record<string, unknown>;
-  trigger_rubric: Record<string, unknown>;
+  group_type: string;
+  target_count: number;
+  // null = inherit the global multiplication_readiness_rule.
+  readiness_rule: Record<string, unknown> | null;
   created_by: UUID | null;
   updated_by: UUID | null;
   created_at: Timestamp;
@@ -1224,29 +1176,6 @@ export interface Database {
         Update: Partial<ProspectsRow>;
         Relationships: [];
       };
-      group_categories: {
-        Row: GroupCategoriesRow;
-        Insert: InsertOf<
-          GroupCategoriesRow,
-          "id" | "created_at" | "updated_at"
-        >;
-        Update: Partial<GroupCategoriesRow>;
-        Relationships: [];
-      };
-      category_type_targets: {
-        Row: CategoryTypeTargetsRow;
-        Insert: InsertOf<
-          CategoryTypeTargetsRow,
-          | "id"
-          | "active"
-          | "target_count"
-          | "trigger_overrides"
-          | "created_at"
-          | "updated_at"
-        >;
-        Update: Partial<CategoryTypeTargetsRow>;
-        Relationships: [];
-      };
       multiplication_readiness_rule: {
         Row: MultiplicationReadinessRuleRow;
         Insert: InsertOf<
@@ -1256,22 +1185,19 @@ export interface Database {
         Update: Partial<MultiplicationReadinessRuleRow>;
         Relationships: [];
       };
-      audience_readiness_rule: {
-        Row: AudienceReadinessRuleRow;
+      group_type_configs: {
+        Row: GroupTypeConfigsRow;
         Insert: InsertOf<
-          AudienceReadinessRuleRow,
-          "id" | "created_at" | "updated_at"
+          GroupTypeConfigsRow,
+          | "id"
+          | "target_count"
+          | "readiness_rule"
+          | "created_by"
+          | "updated_by"
+          | "created_at"
+          | "updated_at"
         >;
-        Update: Partial<AudienceReadinessRuleRow>;
-        Relationships: [];
-      };
-      multiplication_config: {
-        Row: MultiplicationConfigRow;
-        Insert: InsertOf<
-          MultiplicationConfigRow,
-          "id" | "created_at" | "updated_at"
-        >;
-        Update: Partial<MultiplicationConfigRow>;
+        Update: Partial<GroupTypeConfigsRow>;
         Relationships: [];
       };
       group_status_history: {

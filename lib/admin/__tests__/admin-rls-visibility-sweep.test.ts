@@ -106,6 +106,7 @@ const M = {
   appSettingsSeal: "20260629000000_seal_app_settings_to_admin.sql",
   accountDeletion: "20260704000000_account_deletion_requests.sql",
   firstRunOrientation: "20260705000000_first_run_orientation.sql",
+  collapseCells: "20260708000000_collapse_cells_to_group_type_list.sql",
 } as const;
 
 // Token bundles shared by a whole class.
@@ -249,6 +250,17 @@ const MATRIX: readonly RlsExpectation[] = [
     cls: "ADMIN_READ",
     authoritativeMigration: M.audienceReadiness,
     policyName: "audience_readiness_rule_admin_read",
+    expect: ADMIN,
+  },
+  {
+    // The free-text group-type config table (collapse-cells migration). Admin-
+    // only read; the old per-cell tables above are dropped by the same migration
+    // but their RLS-enable statements remain in migration history, so they stay
+    // classified here too.
+    table: "group_type_configs",
+    cls: "ADMIN_READ",
+    authoritativeMigration: M.collapseCells,
+    policyName: "group_type_configs_admin_read",
     expect: ADMIN,
   },
   {
