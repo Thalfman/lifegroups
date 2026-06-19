@@ -4,32 +4,32 @@
 // resolves so existing bookmarks work, and the pipeline data is left
 // intact. No new work here without an EXT.1 spec. See
 // docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
-import { PageHeader, PageBody } from "@/components/lg/PageHeader";
-import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
+//
+// Wired through the admin page runner (ADR 0028); the frozen-surface banner is
+// the runner's `frozenBanner`.
+import { PageBody } from "@/components/lg/PageHeader";
 import { GuestsManagementShell } from "@/components/admin/guests/guests-shell";
 import { loadGuestsData } from "@/components/admin/guests/guests-data";
-import { requireAdmin } from "@/lib/auth/session";
+import { adminPage } from "@/lib/admin/admin-page";
 import { isSuperAdminRole } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminGuestsPage() {
-  const session = await requireAdmin();
-  const isSuperAdmin = isSuperAdminRole(session.profile.role);
-  const data = await loadGuestsData();
-
-  return (
-    <>
-      <FrozenSurfaceBanner />
-      <PageHeader
-        eyebrow="Guests"
-        title="Guests"
-        italic="& invitations"
-        lede="Add a guest, walk them through the pipeline, and assign a follow-up owner. Nothing here sends an SMS or email — this is your manual record."
-      />
-      <PageBody>
-        <GuestsManagementShell data={data} isSuperAdmin={isSuperAdmin} />
-      </PageBody>
-    </>
-  );
-}
+export default adminPage({
+  frozenBanner: true,
+  load: async (_params, session) => ({
+    data: await loadGuestsData(),
+    isSuperAdmin: isSuperAdminRole(session.profile.role),
+  }),
+  header: () => ({
+    eyebrow: "Guests",
+    title: "Guests",
+    italic: "& invitations",
+    lede: "Add a guest, walk them through the pipeline, and assign a follow-up owner. Nothing here sends an SMS or email — this is your manual record.",
+  }),
+  render: ({ data, isSuperAdmin }) => (
+    <PageBody>
+      <GuestsManagementShell data={data} isSuperAdmin={isSuperAdmin} />
+    </PageBody>
+  ),
+});

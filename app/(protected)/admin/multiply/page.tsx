@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { requireAdmin } from "@/lib/auth/session";
 import { measureReadBundle } from "@/lib/observability/read-timing";
-import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { PageBody } from "@/components/lg/PageHeader";
+import { adminPage } from "@/lib/admin/admin-page";
 import { loadMultiplyGridData } from "@/components/admin/multiply/multiply-grid-data";
 import { loadMultiplyPlanData } from "@/components/admin/multiply/multiply-plan-data";
 import { loadLeaderPipelineData } from "@/components/admin/leader-pipeline/leader-pipeline-data";
@@ -30,6 +30,9 @@ import {
 // The Plan + Leaders data/tables/routes are unchanged and still resolve by direct
 // URL; this re-homing surfaces them in the visible Multiply area (ADR 0022). The
 // active tab is driven by the URL's `?tab=` param inside MultiplyShell.
+//
+// Wired through the admin page runner (ADR 0028): the guard + header + body are
+// the runner's; the load assembles the three tabs.
 export const dynamic = "force-dynamic";
 
 // A compact, per-tab error note so one failed read degrades only its own tab
@@ -53,12 +56,9 @@ function calmNote(message: string): ReactNode {
   );
 }
 
-// Shared loader: run the admin guard once, then assemble the three tabs' data in
-// parallel so TTFB tracks the slowest read rather than their sum. Each tab owns
-// its own error so the others still render.
-async function loadMultiplyPageData(): Promise<{ tabs: MultiplyTab[] }> {
-  await requireAdmin();
-
+// Assemble the three tabs' data in parallel so TTFB tracks the slowest read
+// rather than their sum. Each tab owns its own error so the others still render.
+async function loadMultiplyTabs(): Promise<{ tabs: MultiplyTab[] }> {
   // All three tabs' reads still run on every visit (the default tab is "plan",
   // so the grid compute + pipeline read are wasted on the common path — a
   // server-side per-tab split is a follow-up). Time each one separately so the
@@ -144,20 +144,17 @@ async function loadMultiplyPageData(): Promise<{ tabs: MultiplyTab[] }> {
   return { tabs };
 }
 
-export default async function AdminMultiplyPage() {
-  const { tabs } = await loadMultiplyPageData();
-
-  return (
-    <>
-      <PageHeader
-        eyebrow="Multiply"
-        title="Plan your"
-        italic="multiplication"
-        lede="Which groups are slated to multiply, which cells are ready, and who's in the leader pipeline — in one place."
-      />
-      <PageBody>
-        <MultiplyShell tabs={tabs} />
-      </PageBody>
-    </>
-  );
-}
+export default adminPage({
+  load: () => loadMultiplyTabs(),
+  header: () => ({
+    eyebrow: "Multiply",
+    title: "Plan your",
+    italic: "multiplication",
+    lede: "Which groups are slated to multiply, which cells are ready, and who's in the leader pipeline — in one place.",
+  }),
+  render: ({ tabs }) => (
+    <PageBody>
+      <MultiplyShell tabs={tabs} />
+    </PageBody>
+  ),
+});

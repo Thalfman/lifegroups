@@ -4,10 +4,12 @@
 // now leads with shepherd care and launch planning; missing_check_in
 // dropped from priority 20 to 65 in the attention queue. See
 // docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
-import { PageHeader, PageBody } from "@/components/lg/PageHeader";
-import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
+//
+// Wired through the admin page runner (ADR 0028); the frozen-surface banner is
+// the runner's `frozenBanner`.
+import { PageBody } from "@/components/lg/PageHeader";
 import { CheckInReviewShell } from "@/components/admin/check-in-review-shell";
-import { requireAdmin } from "@/lib/auth/session";
+import { adminPage } from "@/lib/admin/admin-page";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   buildWeekOptions,
@@ -42,39 +44,29 @@ const EMPTY_DATA: (meetingWeek: string) => WeeklyReviewData = (
   },
 });
 
-type SearchParams = { week?: string | string[] };
-
-export default async function AdminCheckInsPage({
-  searchParams,
-}: {
-  searchParams?: Promise<SearchParams>;
-}) {
-  await requireAdmin();
-  const params = (await searchParams) ?? {};
-  const meetingWeek = validateWeekParam(params.week);
-  const weekOptions = buildWeekOptions(new Date());
-
-  const client = await createSupabaseServerClient();
-  const data = client
-    ? await fetchAdminWeeklyCheckInReview(client, meetingWeek)
-    : EMPTY_DATA(meetingWeek);
-
-  return (
-    <>
-      <FrozenSurfaceBanner />
-      <PageHeader
-        eyebrow="Check-ins"
-        title="Check-ins"
-        italic="this week"
-        lede="Who turned in their group check-in this week, and which groups raised a follow-up signal. Closed groups aren't counted."
+export default adminPage({
+  frozenBanner: true,
+  params: (raw) => ({ meetingWeek: validateWeekParam(raw.searchParams.week) }),
+  load: async ({ meetingWeek }) => {
+    const client = await createSupabaseServerClient();
+    const data = client
+      ? await fetchAdminWeeklyCheckInReview(client, meetingWeek)
+      : EMPTY_DATA(meetingWeek);
+    return { data, weekOptions: buildWeekOptions(new Date()) };
+  },
+  header: () => ({
+    eyebrow: "Check-ins",
+    title: "Check-ins",
+    italic: "this week",
+    lede: "Who turned in their group check-in this week, and which groups raised a follow-up signal. Closed groups aren't counted.",
+  }),
+  render: ({ data, weekOptions }, { meetingWeek }) => (
+    <PageBody>
+      <CheckInReviewShell
+        data={data}
+        meetingWeek={meetingWeek}
+        weekOptions={weekOptions}
       />
-      <PageBody>
-        <CheckInReviewShell
-          data={data}
-          meetingWeek={meetingWeek}
-          weekOptions={weekOptions}
-        />
-      </PageBody>
-    </>
-  );
-}
+    </PageBody>
+  ),
+});
