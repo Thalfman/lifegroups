@@ -132,6 +132,92 @@ describe("buildUsagePanelModel — recent sign-ins", () => {
   });
 });
 
+describe("buildUsagePanelModel — by person", () => {
+  it("groups each actor's logins and area views, excluding null actors", () => {
+    const model = buildUsagePanelModel({
+      events: [
+        login("p1"),
+        areaView("care", "p1"),
+        areaView("plan", "p1"),
+        login("p2"),
+        areaView(null), // anonymous — not attributable, so it drops out
+      ],
+      profilesById: new Map([
+        ["p1", { full_name: "Julian Reyes" }],
+        ["p2", { full_name: "Tom Halfman" }],
+      ]),
+      featureFlags: TRACKING_ON,
+    });
+    expect(model.byPerson).toHaveLength(2);
+    const julian = model.byPerson.find((p) => p.id === "p1");
+    expect(julian).toMatchObject({
+      name: "Julian Reyes",
+      loginCount: 1,
+      areaViewCount: 2,
+    });
+    const tom = model.byPerson.find((p) => p.id === "p2");
+    expect(tom).toMatchObject({
+      name: "Tom Halfman",
+      loginCount: 1,
+      areaViewCount: 0,
+    });
+  });
+
+  it("falls back to Unknown when the actor isn't in the profile map", () => {
+    const model = buildUsagePanelModel({
+      events: [login("p-missing")],
+      profilesById: NO_PROFILES,
+      featureFlags: TRACKING_ON,
+    });
+    expect(model.byPerson).toHaveLength(1);
+    expect(model.byPerson[0].name).toBe("Unknown");
+  });
+
+  it("orders by total activity, then by name for ties", () => {
+    const model = buildUsagePanelModel({
+      events: [
+        // p2: 1 event; p1: 3 events; p3: 1 event (ties p2 by total).
+        login("p2"),
+        login("p1"),
+        areaView("care", "p1"),
+        areaView("plan", "p1"),
+        login("p3"),
+      ],
+      profilesById: new Map([
+        ["p1", { full_name: "Alice" }],
+        ["p2", { full_name: "Zoe" }],
+        ["p3", { full_name: "Amir" }],
+      ]),
+      featureFlags: TRACKING_ON,
+    });
+    // Alice (3) leads; Amir before Zoe on the 1-event tie (name order).
+    expect(model.byPerson.map((p) => p.name)).toEqual(["Alice", "Amir", "Zoe"]);
+  });
+
+  it("reports the newest event time as lastSeenAt, ignoring input order", () => {
+    const model = buildUsagePanelModel({
+      events: [
+        usageEvent({
+          event_type: "login",
+          actor_profile_id: "p1",
+          created_at: "2026-01-05T09:00:00Z",
+        }),
+        usageEvent({
+          event_type: "area_view",
+          area: "care",
+          actor_profile_id: "p1",
+          created_at: "2026-01-05T15:00:00Z",
+        }),
+      ],
+      profilesById: new Map([["p1", { full_name: "Julian Reyes" }]]),
+      featureFlags: TRACKING_ON,
+    });
+    expect(model.byPerson[0].lastSeenAt).toBe(
+      formatStatusTime("2026-01-05T15:00:00Z")
+    );
+  });
+});
+
 describe("labelForArea", () => {
   it("capitalises the first segment and spaces the hyphens", () => {
     expect(labelForArea("super-admin")).toBe("Super admin");
