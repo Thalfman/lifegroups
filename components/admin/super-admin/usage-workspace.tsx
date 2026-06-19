@@ -1,14 +1,11 @@
-import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/admin/console-status";
-import { buildUsagePanelModel } from "@/lib/admin/super-admin-usage-model";
+import { resolveFlag } from "@/lib/admin/feature-flags";
+import { listUsagePeople } from "@/lib/admin/super-admin-usage-model";
 import type { SuperAdminConsoleData } from "@/components/admin/super-admin/console-data";
+import { UsagePanelShell } from "@/components/admin/super-admin/usage-panel-shell";
 import {
-  CARD_GRID_CLASS,
-  MetricRow,
   Panel,
   PanelTitle,
-  SubsectionHeader,
-  TWO_CARD_GRID_CLASS,
   WorkspaceHeader,
 } from "@/components/admin/super-admin/console-primitives";
 
@@ -18,16 +15,19 @@ import {
 
 // Read-only usage telemetry: sign-ins and which top-level area each user opens,
 // recorded only while the usage_tracking flag is on (the model resolves the flag
-// to tell "off" apart from "on but quiet"). Computed server-side from the recent
-// usage_events + the loaded profile map — no client interactivity needed; the
-// tallies and empty-state branching live in the pure usage model. Lifted out of
-// Diagnostics into its own top-level tab so the activity log is a first-class
-// destination, not a panel buried beneath the readiness checks.
+// to tell "off" apart from "on but quiet"). The server resolves the distinct
+// people from the recent usage_events + the loaded profile map and hands the
+// coarse events, that flat people list, and the flags to a client shell, which
+// holds the person-filter selection and recomputes the pure usage model so the
+// panel narrows to whoever is selected. Lifted out of Diagnostics into its own
+// top-level tab so the activity log is a first-class destination, not a panel
+// buried beneath the readiness checks.
 function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
-  const usage = buildUsagePanelModel({
+  const trackingOn = resolveFlag(data.appConfig.featureFlags, "usage_tracking");
+
+  const people = listUsagePeople({
     events: data.usageEvents,
     profilesById: data.profilesById,
-    featureFlags: data.appConfig.featureFlags,
   });
 
   return (
@@ -35,8 +35,8 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <PanelTitle>Usage &amp; logins</PanelTitle>
         <StatusBadge
-          label={usage.trackingOn ? "Tracking on" : "Tracking off"}
-          tone={usage.trackingOn ? "active" : "disabled"}
+          label={trackingOn ? "Tracking on" : "Tracking off"}
+          tone={trackingOn ? "active" : "disabled"}
         />
       </div>
       <p className="m-0 font-sans text-sm text-ink2">
@@ -47,130 +47,11 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
         facts only (which surface), never the content a user viewed.
       </p>
 
-      {usage.emptyState === "tracking-off" ? (
-        <p className="m-0 font-sans text-sm text-ink3">
-          Tracking is off and nothing has been recorded. Turn on{" "}
-          <strong>Usage &amp; login tracking</strong> in Config → Feature flags
-          to start seeing logins and area usage here.
-        </p>
-      ) : usage.emptyState === "tracking-on" ? (
-        <p className="m-0 font-sans text-sm text-ink3">
-          Tracking is on. No activity has been recorded yet — events will appear
-          here as users sign in and move around the app.
-        </p>
-      ) : (
-        <>
-          <div className={CARD_GRID_CLASS}>
-            <div className="grid gap-1.5 rounded-lg border border-line bg-surface px-3.5 py-3">
-              <MetricRow label="Sign-ins" value={usage.loginCount} />
-              <MetricRow label="Area opens" value={usage.areaViewCount} />
-              <MetricRow label="People seen" value={usage.peopleSeenCount} />
-            </div>
-          </div>
-
-          <div className={cn(TWO_CARD_GRID_CLASS, "items-start")}>
-            <div className="grid min-w-0 gap-2">
-              <SubsectionHeader
-                title="Areas opened"
-                hint="How often each top-level area was entered, busiest first."
-              />
-              {usage.areaRows.length === 0 ? (
-                <p className="m-0 font-sans text-sm text-ink3">
-                  No area views recorded yet.
-                </p>
-              ) : (
-                <div className="grid gap-1.5">
-                  {usage.areaRows.map((row) => (
-                    <div key={row.area} className="grid gap-1">
-                      <div className="flex justify-between gap-3 font-sans text-xs text-ink2">
-                        <span>{row.label}</span>
-                        <strong className="text-ink">{row.count}</strong>
-                      </div>
-                      <div
-                        aria-hidden
-                        className="h-1.5 overflow-hidden rounded-pill bg-lineSoft"
-                      >
-                        <div
-                          className="h-full bg-sage"
-                          style={{ width: `${row.barPercent}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="grid min-w-0 gap-2">
-              <SubsectionHeader
-                title="Recent sign-ins"
-                hint="The latest logins, newest first."
-              />
-              {usage.recentLogins.length === 0 ? (
-                <p className="m-0 font-sans text-sm text-ink3">
-                  No sign-ins recorded yet.
-                </p>
-              ) : (
-                <div className="grid gap-1.5">
-                  {usage.recentLogins.map((login) => (
-                    <div
-                      key={login.id}
-                      className="flex justify-between gap-3 font-sans text-xs text-ink2"
-                    >
-                      <span className="truncate font-semibold text-ink">
-                        {login.name}
-                      </span>
-                      <span className="whitespace-nowrap">{login.at} UTC</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="grid min-w-0 gap-2">
-            <SubsectionHeader
-              title="By person"
-              hint="Each person's activity, most active first — sign-ins, area opens, and when they were last seen."
-            />
-            {usage.byPerson.length === 0 ? (
-              <p className="m-0 font-sans text-sm text-ink3">
-                No per-person activity recorded yet.
-              </p>
-            ) : (
-              <div className="grid gap-1.5">
-                {usage.byPerson.map((person) => (
-                  <div
-                    key={person.id}
-                    className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 font-sans text-xs text-ink2"
-                  >
-                    <span className="truncate font-semibold text-ink">
-                      {person.name}
-                    </span>
-                    <span className="flex flex-wrap items-baseline gap-x-3">
-                      <span>
-                        <strong className="text-ink">
-                          {person.loginCount}
-                        </strong>{" "}
-                        sign-ins
-                      </span>
-                      <span>
-                        <strong className="text-ink">
-                          {person.areaViewCount}
-                        </strong>{" "}
-                        area opens
-                      </span>
-                      <span className="whitespace-nowrap">
-                        {person.lastSeenAt} UTC
-                      </span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
+      <UsagePanelShell
+        events={data.usageEvents}
+        people={people}
+        featureFlags={data.appConfig.featureFlags}
+      />
     </Panel>
   );
 }
