@@ -23,6 +23,8 @@ import {
 } from "@/lib/admin/attention-reset";
 import {
   currentUtcDateIso,
+  fetchByIds,
+  unwrapEmbed,
   wrapError,
   type ReadClient,
   type ReadResult,
@@ -511,31 +513,19 @@ export async function fetchLedGroupSummariesForProfile(
       ),
     };
   }
-  const groupIds = Array.from(
-    new Set(
-      ((assignments.data ?? []) as { group_id: string }[]).map(
-        (r) => r.group_id
-      )
-    )
+  const groupIds = ((assignments.data ?? []) as { group_id: string }[]).map(
+    (r) => r.group_id
   );
-  if (groupIds.length === 0) return { data: [], error: null };
-
-  const groups = await client
-    .from("groups")
-    .select("id, name")
-    .in("id", groupIds)
-    // Closing a group sets groups.lifecycle_status but leaves its group_leaders
-    // rows active, so exclude non-active groups here — otherwise the Group /
-    // Overview tabs would show (and link to) a closed group as a current one.
-    .eq("lifecycle_status", "active")
-    .order("name", { ascending: true });
-  if (groups.error) {
-    return {
-      data: null,
-      error: wrapError("fetchLedGroupSummariesForProfile/groups", groups.error),
-    };
-  }
-  return { data: (groups.data ?? []) as LedGroupSummary[], error: null };
+  // fetchByIds owns the id dedup + empty short-circuit; the refinement adds the
+  // active-only filter and the name ordering this summary needs. Closing a
+  // group sets groups.lifecycle_status but leaves its group_leaders rows active,
+  // so excluding non-active groups here keeps the Group / Overview tabs from
+  // showing (and linking to) a closed group as a current one.
+  return fetchByIds<LedGroupSummary>(client, "groups", groupIds, "id, name", {
+    label: "fetchLedGroupSummariesForProfile/groups",
+    refine: (q) =>
+      q.eq("lifecycle_status", "active").order("name", { ascending: true }),
+  });
 }
 
 // Minimal cross-profile projection for the Care area's Completed tab (#301).
@@ -660,13 +650,9 @@ function projectRecentInteractionRows(
         }[]
       | null;
   }>) {
-    const cp = Array.isArray(r.care_profile)
-      ? (r.care_profile[0] ?? null)
-      : r.care_profile;
+    const cp = unwrapEmbed(r.care_profile);
     if (cp === null) continue;
-    const shepherd = Array.isArray(cp.shepherd)
-      ? (cp.shepherd[0] ?? null)
-      : cp.shepherd;
+    const shepherd = unwrapEmbed(cp.shepherd);
     if (shepherd === null) continue;
     out.push({
       id: r.id,
@@ -856,9 +842,7 @@ function projectCoverageAssignmentRows(
       | { id: string; full_name: string; active: boolean }[]
       | null;
   }>) {
-    const embedded = Array.isArray(r.over_shepherd)
-      ? (r.over_shepherd[0] ?? null)
-      : r.over_shepherd;
+    const embedded = unwrapEmbed(r.over_shepherd);
     if (embedded === null) continue;
     summaries.push({
       id: r.id,
@@ -1001,9 +985,7 @@ export async function fetchShepherdsCoveredByOverShepherdForAdmin(
   }>;
   const out: ShepherdCoveredByOverShepherd[] = [];
   for (const r of rows) {
-    const embedded = Array.isArray(r.shepherd)
-      ? (r.shepherd[0] ?? null)
-      : r.shepherd;
+    const embedded = unwrapEmbed(r.shepherd);
     if (embedded === null) continue;
     out.push({
       assignment: {
