@@ -107,12 +107,12 @@ function CareSetupNotice({
         Care setup path
       </div>
       <p className="m-0 mt-1 font-sans text-sm text-ink2">
-        Care will turn on after people are imported, leaders are marked, group
-        leaders are assigned, and over-shepherd coverage is in place.
+        Care will turn on after people are imported, shepherds are marked, group
+        shepherds are assigned, and over-shepherd coverage is in place.
       </p>
       {!hasCoverage && hasLeaders ? (
         <p className="m-0 mt-1 font-sans text-sm text-ink2">
-          Leaders exist, but coverage is not assigned yet.
+          Shepherds exist, but coverage is not assigned yet.
         </p>
       ) : null}
       <Link

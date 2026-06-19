@@ -131,7 +131,7 @@ export function LogTouchForm({
       <input type="hidden" name="interaction_type" value={interactionType} />
       <p className={FORM_NOTE}>
         Record a {touchLabel} with this shepherd. Admin-only — it never appears
-        on leader or member surfaces.
+        on shepherd or member surfaces.
       </p>
       <div>
         <label htmlFor="cta-interaction_at" className={FIELD_LABEL}>
@@ -269,7 +269,7 @@ export function CareProfileFieldForm({
           <input type="hidden" name="set_admin_summary" value="true" />
           <p className={FORM_NOTE}>
             A high-level read on how this shepherd is doing. Admin-only — it
-            never appears on leader or member surfaces.
+            never appears on shepherd or member surfaces.
           </p>
           <div>
             <label htmlFor="cta-admin_summary" className={FIELD_LABEL}>

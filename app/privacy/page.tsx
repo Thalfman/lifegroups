@@ -31,7 +31,7 @@ export default function PrivacyPolicyPage() {
         </h1>
         <p className="mb-8 mt-0 max-w-[58ch] font-sans text-base text-ink2">
           Life Groups is an invite-only ministry tool that Fox Valley Church
-          staff, Over-Shepherds, and Life Group Leaders use to care for their
+          staff, Over-Shepherds, and Life Group Shepherds use to care for their
           groups. This policy explains what information the app holds, who
           processes it on our behalf, and the choices you have. There is no
           public sign-up: group members do not log in, and the app does not
@@ -47,7 +47,7 @@ export default function PrivacyPolicyPage() {
           </h2>
           <p className="m-0 font-sans text-base text-ink2">
             Only invited people <strong>sign in</strong> — ministry staff,
-            Over-Shepherds, and Life Group Leaders. Group{" "}
+            Over-Shepherds, and Life Group Shepherds. Group{" "}
             <strong>members</strong> do not have logins; they are records that
             ministry staff maintain on their behalf so the team can care for
             them. The app does not offer a public account or member-facing
@@ -85,8 +85,8 @@ export default function PrivacyPolicyPage() {
             <li>
               <strong>Care information.</strong> Pastoral{" "}
               <strong>Care Notes</strong> and <strong>Prayer Requests</strong>,
-              shepherd-care status and follow-ups, and group- and leader-health
-              updates and grades.
+              shepherd-care status and follow-ups, and group- and
+              shepherd-health updates and grades.
             </li>
             <li>
               <strong>Interest Funnel.</strong> For people interested in joining
@@ -96,7 +96,7 @@ export default function PrivacyPolicyPage() {
             <li>
               <strong>Operational records.</strong> An audit trail of who did
               what (actions and metadata, not free-text bodies), which
-              Over-Shepherd covers which Leader, and — only when the ministry
+              Over-Shepherd covers which Shepherd, and — only when the ministry
               turns it on — coarse usage signals (such as a sign-in or which
               area was viewed).
             </li>
@@ -119,7 +119,7 @@ export default function PrivacyPolicyPage() {
           <p className="m-0 font-sans text-base text-ink2">
             We use this information solely to run the ministry&apos;s care work
             — signing you in, organizing groups, tracking who needs care and
-            what the next step is, and helping leaders decide when to launch
+            what the next step is, and helping shepherds decide when to launch
             another group. We do not use it for advertising, and we do not track
             you across other apps or sites.
           </p>
@@ -135,7 +135,7 @@ export default function PrivacyPolicyPage() {
           <p className="m-0 font-sans text-base text-ink2">
             Care Notes, Prayer Requests, and shepherd-care notes are fenced by
             database-level access rules and a visibility ladder (Super Admin ▸
-            Ministry Admin ▸ Over-Shepherd ▸ Leader). Two protections go
+            Ministry Admin ▸ Over-Shepherd ▸ Shepherd). Two protections go
             further: a Care Note stays sealed to the person who wrote it until
             the Ministry Admin grants a per-person transparency setting, and the
             Ministry Admin&apos;s own Private Care Note is hidden even from the

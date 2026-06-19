@@ -258,7 +258,7 @@ insert into public.multiplication_candidates (
   notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc note: on the same source line as the Krispins. Section reconciliation: the Doc''s mixed header says "18 groups"; the listed leaders do not cleanly reconcile to that count (e.g. the Beasley line shares a source line with the Krispins).', null, null, null
+  'Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc note: on the same source line as the Krispins. Section reconciliation: the Doc''s mixed header says "18 groups"; the listed shepherds do not cleanly reconcile to that count (e.g. the Beasley line shares a source line with the Krispins).', null, null, null
 from public.groups g
 where g.name = 'Mike and Mary Jo Beasley'
   and not exists (

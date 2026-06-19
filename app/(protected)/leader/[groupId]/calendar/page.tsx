@@ -233,7 +233,7 @@ export default async function LeaderCalendarPage({
             />
             {groupClosed ? (
               <p className="m-0 font-sans text-sm italic text-ink2">
-                Leader edits are paused while this group is closed. Contact an
+                Shepherd edits are paused while this group is closed. Contact an
                 admin to make changes.
               </p>
             ) : null}

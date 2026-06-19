@@ -48,9 +48,9 @@ export function ShepherdCareDashboardSummaryCards({
             Care coverage is not active yet
           </div>
           <p className="m-0 mt-1 font-sans text-sm text-ink2">
-            There are no active leaders to care for yet, so there is nothing to
-            track. Add and assign leaders to turn on care coverage — then this
-            summary shows who needs a touch.
+            There are no active shepherds to care for yet, so there is nothing
+            to track. Add and assign shepherds to turn on care coverage — then
+            this summary shows who needs a touch.
           </p>
           <Link
             href={SETUP_CHAIN_HREF}
