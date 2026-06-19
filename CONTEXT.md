@@ -112,7 +112,7 @@ _Avoid_: Backup, archive (that is the soft-delete), trash.
 
 **Audience**:
 Who a Life Group is for, by the `audience_category` attribute — Men, Women, or
-Mixed / couples. A user-facing grouping on the capacity board and the
+Mixed. A user-facing grouping on the capacity board and the
 multiplication planner.
 _Avoid_: Segment, gender category.
 
