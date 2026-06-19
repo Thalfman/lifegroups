@@ -69,13 +69,48 @@ export type UsagePanelModel = {
   byPerson: UsagePersonRow[];
 };
 
+// Distinct, attributable people who appear in the loaded usage window — the
+// option list for the panel's person filter. Resolves each actor to a name
+// (falling back to "Unknown" for deleted/missing actors), dedupes by id, and
+// sorts by name. Null-actor (anonymous) events have no person to filter to, so
+// they're excluded.
+export function listUsagePeople(input: {
+  events: readonly UsageEventsRow[];
+  profilesById: ReadonlyMap<string, Pick<ProfilesRow, "full_name">>;
+}): { id: string; name: string }[] {
+  const { events, profilesById } = input;
+  const byId = new Map<string, string>();
+  for (const e of events) {
+    const actorId = e.actor_profile_id;
+    if (!actorId || byId.has(actorId)) continue;
+    byId.set(actorId, profilesById.get(actorId)?.full_name ?? "Unknown");
+  }
+  return [...byId.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function buildUsagePanelModel(input: {
   events: readonly UsageEventsRow[];
   profilesById: ReadonlyMap<string, Pick<ProfilesRow, "full_name">>;
   featureFlags: FeatureFlagsConfig;
+  // When provided, narrow every tally to events from these actors (the person
+  // filter). Null/undefined means no filter — the full window, including
+  // anonymous (null-actor) events. The empty-state branching always reads the
+  // unfiltered window, so a narrow selection never flips the panel into its
+  // "tracking off / nothing recorded" messaging.
+  selectedActorIds?: readonly string[] | null;
 }): UsagePanelModel {
-  const { events, profilesById, featureFlags } = input;
+  const { events: allEvents, profilesById, featureFlags } = input;
   const trackingOn = resolveFlag(featureFlags, "usage_tracking");
+
+  const selected = input.selectedActorIds;
+  const events =
+    selected == null
+      ? allEvents
+      : allEvents.filter(
+          (e) => e.actor_profile_id && selected.includes(e.actor_profile_id)
+        );
 
   const logins = events.filter((e) => e.event_type === "login");
   const areaViews = events.filter((e) => e.event_type === "area_view");
@@ -151,7 +186,7 @@ export function buildUsagePanelModel(input: {
   return {
     trackingOn,
     emptyState:
-      events.length > 0 ? null : trackingOn ? "tracking-on" : "tracking-off",
+      allEvents.length > 0 ? null : trackingOn ? "tracking-on" : "tracking-off",
     loginCount: logins.length,
     areaViewCount: areaViews.length,
     peopleSeenCount: activeActors.size,

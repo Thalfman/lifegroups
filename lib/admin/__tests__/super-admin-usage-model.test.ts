@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildUsagePanelModel,
   labelForArea,
+  listUsagePeople,
 } from "@/lib/admin/super-admin-usage-model";
 import { formatStatusTime } from "@/lib/admin/super-admin-console-model";
 import type { UsageEventsRow } from "@/types/database";
@@ -215,6 +216,106 @@ describe("buildUsagePanelModel — by person", () => {
     expect(model.byPerson[0].lastSeenAt).toBe(
       formatStatusTime("2026-01-05T15:00:00Z")
     );
+  });
+});
+
+describe("buildUsagePanelModel — person filter (selectedActorIds)", () => {
+  const profiles = new Map([
+    ["p1", { full_name: "Julian Reyes" }],
+    ["p2", { full_name: "Tom Halfman" }],
+  ]);
+
+  it("narrows every tally to the selected actors", () => {
+    const events = [
+      login("p1"),
+      areaView("care", "p1"),
+      login("p2"),
+      areaView("plan", "p2"),
+      login(null), // anonymous — outside any person selection
+    ];
+    const model = buildUsagePanelModel({
+      events,
+      profilesById: profiles,
+      featureFlags: TRACKING_ON,
+      selectedActorIds: ["p1"],
+    });
+    expect(model.loginCount).toBe(1);
+    expect(model.areaViewCount).toBe(1);
+    expect(model.peopleSeenCount).toBe(1);
+    expect(model.areaRows).toEqual([
+      { area: "care", label: "Care", count: 1, barPercent: 100 },
+    ]);
+    expect(model.recentLogins).toHaveLength(1);
+    expect(model.recentLogins[0].name).toBe("Julian Reyes");
+    expect(model.byPerson).toHaveLength(1);
+    expect(model.byPerson[0].id).toBe("p1");
+  });
+
+  it("treats null selectedActorIds as no filter, matching the omitted case", () => {
+    const events = [login("p1"), areaView("plan", "p2"), login(null)];
+    const unfiltered = buildUsagePanelModel({
+      events,
+      profilesById: profiles,
+      featureFlags: TRACKING_ON,
+    });
+    const explicitNull = buildUsagePanelModel({
+      events,
+      profilesById: profiles,
+      featureFlags: TRACKING_ON,
+      selectedActorIds: null,
+    });
+    expect(explicitNull).toEqual(unfiltered);
+    // The anonymous login is kept in the login tally when there's no person
+    // filter, but only the two attributable actors count as people seen.
+    expect(explicitNull.loginCount).toBe(2);
+    expect(explicitNull.peopleSeenCount).toBe(2);
+  });
+
+  it("keeps emptyState null on a selection that matches no events", () => {
+    const model = buildUsagePanelModel({
+      events: [login("p1"), login("p2")],
+      profilesById: profiles,
+      featureFlags: TRACKING_ON,
+      selectedActorIds: ["nobody"],
+    });
+    // There IS recorded activity, so the panel must not flip to a tracking
+    // empty-state — the sub-sections just render their own empty lines.
+    expect(model.emptyState).toBeNull();
+    expect(model.loginCount).toBe(0);
+    expect(model.recentLogins).toHaveLength(0);
+    expect(model.byPerson).toHaveLength(0);
+  });
+});
+
+describe("listUsagePeople", () => {
+  it("lists distinct attributable actors, name-resolved and sorted by name", () => {
+    const people = listUsagePeople({
+      events: [
+        login("p2"),
+        areaView("care", "p1"),
+        login("p1"), // p1 again — deduped
+        login("p3"), // not in the profile map
+        areaView(null), // anonymous — excluded
+      ],
+      profilesById: new Map([
+        ["p1", { full_name: "Alice" }],
+        ["p2", { full_name: "Zoe" }],
+      ]),
+    });
+    expect(people).toEqual([
+      { id: "p1", name: "Alice" },
+      { id: "p3", name: "Unknown" },
+      { id: "p2", name: "Zoe" },
+    ]);
+  });
+
+  it("returns an empty list when there are no attributable events", () => {
+    expect(
+      listUsagePeople({
+        events: [login(null), areaView("care")],
+        profilesById: NO_PROFILES,
+      })
+    ).toEqual([]);
   });
 });
 
