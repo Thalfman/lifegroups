@@ -197,7 +197,10 @@ result-returning guards (`requireAdminSession`, …) in server actions.
   suite. The **Codex review loop is advisory only** — it never auto-merges,
   enables auto-merge, or deletes branches.
 - Issue tracker and triage-label conventions live in
-  [`docs/agents/`](./docs/agents/).
+  [`docs/agents/`](./docs/agents/). Reusable Claude Code loop workflows (green
+  gate, fitness inner-loop, PR CI watch) are documented in
+  [`docs/agents/claude-loops.md`](./docs/agents/claude-loops.md), with saved
+  commands in `.claude/commands/`.
 
 ## Domain vocabulary (use it)
 

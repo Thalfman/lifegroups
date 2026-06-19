@@ -44,3 +44,7 @@ Default vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 ### Domain docs
 
 Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Claude Code loops
+
+Reusable, repo-specific loop workflows (the green gate, the fitness inner-loop, and PR CI watch) and the loops we deliberately don't run live in `docs/agents/claude-loops.md`, with saved commands in `.claude/commands/`. They honor the advisory-only rule above — no auto-merge, no auto-applied migrations.
