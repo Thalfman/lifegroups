@@ -15,7 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Fox Valley Church Life Groups",
     short_name: "LifeGroups",
     description:
-      "Ministry operations for Life Group leaders and oversight teams.",
+      "Ministry operations for Life Group shepherds and oversight teams.",
     start_url: "/",
     scope: "/",
     display: "standalone",

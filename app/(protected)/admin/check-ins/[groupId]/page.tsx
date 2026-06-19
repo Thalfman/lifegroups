@@ -69,7 +69,7 @@ export default async function AdminCheckInDetailPage({
         eyebrow="Check-in detail"
         title={data.group?.name ?? "Group"}
         italic="this week."
-        lede="Read the leader's full note, see who showed up, and confirm the health pulse for the week."
+        lede="Read the shepherd's full note, see who showed up, and confirm the health pulse for the week."
         maxWidth={920}
       />
       <PageBody maxWidth={920}>

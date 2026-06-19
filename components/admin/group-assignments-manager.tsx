@@ -81,7 +81,7 @@ export function GroupAssignmentsManager({
       <SectionHeader
         eyebrow="Groups"
         title="Assignments"
-        description="Place leaders and members into their Life Group. Open a group to edit its roster — leaders sign in; members are tracked through the directory."
+        description="Place shepherds and members into their Life Group. Open a group to edit its roster — shepherds sign in; members are tracked through the directory."
       />
 
       {groupsError ? (
@@ -162,8 +162,8 @@ export function GroupAssignmentsManager({
                   >
                     <span>
                       {leadersError
-                        ? "Leaders: —"
-                        : `${activeLeaders.length} leader${activeLeaders.length === 1 ? "" : "s"}`}
+                        ? "Shepherds: —"
+                        : `${activeLeaders.length} shepherd${activeLeaders.length === 1 ? "" : "s"}`}
                     </span>
                     <span>
                       {membershipsError
@@ -197,7 +197,7 @@ export function GroupAssignmentsManager({
         onRequestClose={drawer.requestClose}
         eyebrow="Assignments"
         title={selectedGroup ? selectedGroup.name : "Assignments"}
-        description="Add leaders and members to this group. Each assignment saves on its own; close when you're done."
+        description="Add shepherds and members to this group. Each assignment saves on its own; close when you're done."
         closeLabel={
           selectedGroup
             ? `Close assignments for ${selectedGroup.name}`
@@ -210,12 +210,12 @@ export function GroupAssignmentsManager({
           // about the drawer.
           <div onChange={drawer.markDirty} style={{ display: "grid", gap: 22 }}>
             <Subsection
-              title={`Leaders (${leadersFor(selectedGroup.id).length})`}
+              title={`Shepherds (${leadersFor(selectedGroup.id).length})`}
             >
               {leadersError ? (
-                <SoftError>Couldn&rsquo;t load leader assignments.</SoftError>
+                <SoftError>Couldn&rsquo;t load shepherd assignments.</SoftError>
               ) : leadersFor(selectedGroup.id).length === 0 ? (
-                <SoftEmpty>No leaders assigned yet.</SoftEmpty>
+                <SoftEmpty>No shepherds assigned yet.</SoftEmpty>
               ) : (
                 <ul style={pillListStyle}>
                   {leadersFor(selectedGroup.id).map((gl) => {
@@ -229,7 +229,7 @@ export function GroupAssignmentsManager({
                           color: "#3e4f29",
                         }}
                       >
-                        {profile?.full_name ?? "Unknown leader"}
+                        {profile?.full_name ?? "Unknown shepherd"}
                         <span
                           style={{
                             fontSize: 10,

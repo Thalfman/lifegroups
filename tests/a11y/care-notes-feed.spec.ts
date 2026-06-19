@@ -18,7 +18,7 @@ test.describe("care notes feed (All Notes)", () => {
   }) => {
     const surface = page.locator('[data-a11y-surface="care-notes-feed"]');
     for (const [label, allOption] of [
-      ["Leader", "All leaders"],
+      ["Shepherd", "All shepherds"],
       ["Group", "All groups"],
       ["Type", "All types"],
     ] as const) {

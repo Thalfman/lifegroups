@@ -16,7 +16,7 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
   insufficient_privilege:
     "You're not signed in as an admin, or your session expired. Sign in again and retry.",
   duplicate_email:
-    "A profile with that email already exists. Check the leader list before adding a new one.",
+    "A profile with that email already exists. Check the shepherd list before adding a new one.",
   duplicate_assignment:
     "That assignment already exists. They're already part of the group.",
   missing_group: "We couldn't find that group. Refresh the page and try again.",
@@ -29,7 +29,7 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
   self_target_not_allowed:
     "You can't deactivate, reassign, or change your own role through this screen.",
   invalid_role:
-    "That role isn't allowed here. Leaders and co-leaders are managed through the leader assignment workflow.",
+    "That role isn't allowed here. Shepherds and co-shepherds are managed through the shepherd assignment workflow.",
   inactive_target:
     "That person isn't currently active. Reactivation isn't part of this phase yet.",
   invalid_input: "Some required fields are missing or malformed.",
@@ -61,7 +61,7 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
   group_closed:
     "That group is closed. Reopen it before assigning new guests or placements.",
   invalid_status:
-    "That status isn't allowed here. Leaders can mark follow-ups in progress or done.",
+    "That status isn't allowed here. Shepherds can mark follow-ups in progress or done.",
   invalid_status_transition:
     "That follow-up has already been closed or moved past this step. Refresh to see the latest state.",
   // Phase 5A.6 group calendar tokens.
@@ -82,7 +82,7 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
   // Phase LDR.1 (#126) over-shepherd broad-note token: the caller tried to
   // write a note on a Leader outside their active coverage.
   not_covered:
-    "That Leader isn't in your coverage. Refresh your list and try again.",
+    "That Shepherd isn't in your coverage. Refresh your list and try again.",
   invalid_assigned_at_before_prior:
     "That assigned date is earlier than the previous assignment's start. Pick a date on or after the prior assignment began.",
   invalid_ended_at_before_start:
@@ -142,7 +142,7 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "The restore can't run because a record it depends on no longer exists. Restore that parent record first.",
   // Phase IL.1 shareable invite-link tokens.
   group_not_allowed:
-    "Only leaders and co-leaders can be tied to a group. Clear the group or pick a leader role.",
+    "Only shepherds and co-shepherds can be tied to a group. Clear the group or pick a shepherd role.",
   invalid_expiry:
     "That expiry isn't allowed. Pick a time in the future, at most 90 days out.",
 };

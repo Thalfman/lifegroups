@@ -21,7 +21,7 @@ const lifecycleLabels: Record<GroupLifecycleStatus, string> = {
   planned_pause: "Planned Pause",
   seasonal_break: "Seasonal Break",
   launching_soon: "Launching Soon",
-  needs_leader: "Needs Leader",
+  needs_leader: "Needs Shepherd",
   at_risk: "At Risk",
   closed: "Closed",
 };
@@ -34,7 +34,7 @@ const healthLabels: Record<GroupHealthStatus, string> = {
   restart_soon: "Restart Soon",
   overdue_restart: "Overdue Restart",
   capacity_full: "Capacity Full",
-  needs_leader_support: "Needs Leader Support",
+  needs_leader_support: "Needs Shepherd Support",
 };
 
 const pipelineLabels: Record<GuestPipelineStage, string> = {
@@ -50,7 +50,7 @@ const pipelineLabels: Record<GuestPipelineStage, string> = {
 const followUpTypeLabels: Record<FollowUpType, string> = {
   attendance: "Attendance",
   guest: "Guest",
-  leader: "Leader",
+  leader: "Shepherd",
   capacity: "Capacity",
   pause: "Pause",
   care: "Care",
@@ -138,7 +138,7 @@ export type GroupSetupCategory =
 const setupCategoryLabels: Record<GroupSetupCategory, string> = {
   complete: "Setup complete",
   needs_setup: "Needs setup",
-  needs_leader: "Needs leader",
+  needs_leader: "Needs shepherd",
   missing_meeting: "Missing meeting details",
 };
 

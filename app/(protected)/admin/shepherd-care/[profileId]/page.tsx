@@ -83,7 +83,7 @@ export default async function AdminShepherdCareDetailPage({
       <>
         <PageHeader
           eyebrow="Care"
-          title="Leader"
+          title="Shepherd"
           italic="care"
           lede="Database is not configured in this environment."
         />
@@ -108,7 +108,7 @@ export default async function AdminShepherdCareDetailPage({
       <PageHeader
         eyebrow="Care"
         title={spine.spine.profileFullName}
-        lede="Care notes here are admin-only. They never appear on leader or member surfaces."
+        lede="Care notes here are admin-only. They never appear on shepherd or member surfaces."
       />
       <PageBody>
         <div className="grid gap-5">
@@ -170,7 +170,8 @@ async function ShepherdCareDetailBody({
     );
   }
 
-  const roleLabel = detail.profileRole === "leader" ? "Leader" : "Co-leader";
+  const roleLabel =
+    detail.profileRole === "leader" ? "Shepherd" : "Co-shepherd";
   const today = currentUtcDateIso();
 
   // Resolve the stored leader override against the current period BEFORE seeding
@@ -423,8 +424,8 @@ async function ShepherdCareDetailBody({
   // separate tab/card from the Overview's Care Status. The two are distinct
   // concepts (a graded report card vs a pastoral signal) and must read that way.
   const leaderHealthPanel = (
-    <section className={CARD} aria-label="Leader-Health Grade">
-      <h2 className={SECTION_HEADING}>Leader-Health Grade</h2>
+    <section className={CARD} aria-label="Shepherd-Health Grade">
+      <h2 className={SECTION_HEADING}>Shepherd-Health Grade</h2>
       <p className="m-0 mb-3.5 font-sans text-sm leading-normal text-ink2">
         A rubric-driven A–F grade for this leader, scored against the
         Leader-Health Rubric and kept for the ministry year. This is separate
@@ -470,7 +471,11 @@ async function ShepherdCareDetailBody({
 
   const tabs = [
     { key: "overview", label: "Overview", panel: overviewPanel },
-    { key: "leader-health", label: "Leader Health", panel: leaderHealthPanel },
+    {
+      key: "leader-health",
+      label: "Shepherd Health",
+      panel: leaderHealthPanel,
+    },
     {
       // Key stays "contact-history" so existing ?tab= deep links keep landing
       // here; the label speaks the spreadsheet's "Update of communication".

@@ -83,7 +83,7 @@ const SET_LEADER_GRADE_SPEC: AdminWriteActionSpec<
     `/admin/shepherd-care/${value.profile_id}`,
     "/admin/care",
   ],
-  noDataError: "The Leader-Health Grade wasn't saved. Please try again.",
+  noDataError: "The Shepherd-Health Grade wasn't saved. Please try again.",
 };
 
 export async function adminSetLeaderRubricGrade(

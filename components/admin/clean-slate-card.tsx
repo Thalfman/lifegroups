@@ -83,7 +83,7 @@ export function CleanSlateCard({
   return (
     <DangerCard
       title="Clean Slate — clear history"
-      intro="Permanently clears accumulated history (attendance, follow-ups, guests, group-health, status history, church-attendance snapshots, and shepherd-care activity). People, groups, leaders, memberships, settings, care profiles & notes, and the audit log are kept. A recoverable snapshot is captured before anything is deleted."
+      intro="Permanently clears accumulated history (attendance, follow-ups, guests, group-health, status history, church-attendance snapshots, and shepherd-care activity). People, groups, shepherds, memberships, settings, care profiles & notes, and the audit log are kept. A recoverable snapshot is captured before anything is deleted."
     >
       <DangerSection
         variant="destructive"

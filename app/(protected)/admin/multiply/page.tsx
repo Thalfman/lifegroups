@@ -127,10 +127,10 @@ async function loadMultiplyTabs(): Promise<{ tabs: MultiplyTab[] }> {
     },
     {
       key: "leaders",
-      label: "Leaders",
+      label: "Shepherds",
       count: leaders.rollup.totalApprentices,
       panel: leaders.error ? (
-        errorNote(`The leader pipeline could not be loaded: ${leaders.error}`)
+        errorNote(`The shepherd pipeline could not be loaded: ${leaders.error}`)
       ) : (
         <LeaderPipeline
           rollup={leaders.rollup}
@@ -150,7 +150,7 @@ export default adminPage({
     eyebrow: "Multiply",
     title: "Plan your",
     italic: "multiplication",
-    lede: "Which groups are slated to multiply, which cells are ready, and who's in the leader pipeline — in one place.",
+    lede: "Which groups are slated to multiply, which cells are ready, and who's in the shepherd pipeline — in one place.",
   }),
   render: ({ tabs }) => (
     <PageBody>

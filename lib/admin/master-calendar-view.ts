@@ -266,7 +266,8 @@ export function calendarFilterSummarySegments({
 
   if (leaderFilter) {
     const name =
-      leaderOptions.find((l) => l.profileId === leaderFilter)?.name ?? "Leader";
+      leaderOptions.find((l) => l.profileId === leaderFilter)?.name ??
+      "Shepherd";
     segments.push(name);
   }
 
@@ -351,10 +352,10 @@ export function calendarActiveFilterChips(
     const leaderFilter = filters.leaderFilter;
     const name =
       options.leaderOptions.find((l) => l.profileId === leaderFilter)?.name ??
-      "Leader";
+      "Shepherd";
     chips.push({
       key: `leader:${leaderFilter}`,
-      category: "Leader",
+      category: "Shepherd",
       label: name,
       remove: (f) => ({ ...f, leaderFilter: "" }),
     });

@@ -294,7 +294,7 @@ test.describe("groups directory editing surface", () => {
     await expect(surface.getByRole("table")).toBeVisible();
 
     const leaderHeader = surface.getByRole("columnheader", {
-      name: /Leader \/ co-leader/i,
+      name: /Shepherd \/ co-shepherd/i,
     });
     await expect(leaderHeader).toHaveAttribute("aria-sort", "none");
     await leaderHeader.getByRole("button").click();

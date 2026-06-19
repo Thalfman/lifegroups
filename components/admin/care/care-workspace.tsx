@@ -99,7 +99,7 @@ function CareSetupNotice({
     ? "Import people"
     : isSuperAdmin
       ? "Assign coverage"
-      : "Review leaders";
+      : "Review shepherds";
 
   return (
     <aside className="rounded-md border border-line bg-surface px-4 py-3.5">
@@ -252,7 +252,7 @@ export function buildCareWorkspace({
     },
     {
       key: "all-leaders",
-      label: "All leaders",
+      label: "All shepherds",
       count: care.entries.length,
       panel: (
         <div className="grid gap-5">
@@ -269,7 +269,7 @@ export function buildCareWorkspace({
           />
           <div className="grid gap-3">
             <p className="m-0 font-sans text-sm text-ink2">
-              Every leader in one flat list {"\u2014"} the same leaders the
+              Every shepherd in one flat list {"\u2014"} the same shepherds the
               Over-Shepherds tab groups by their over-shepherd.
             </p>
             <ShepherdCareFilterChips
@@ -283,14 +283,14 @@ export function buildCareWorkspace({
               coverageByShepherdId={coverageByShepherdId}
               emptyText={
                 rosterFilter === "needs_attention"
-                  ? "No leaders are flagged for attention right now."
+                  ? "No shepherds are flagged for attention right now."
                   : undefined
               }
               emptyAction={
                 rosterFilter === "needs_attention"
                   ? {
                       href: "/admin/care?view=all-leaders",
-                      label: "Show all leaders",
+                      label: "Show all shepherds",
                     }
                   : care.entries.length === 0
                     ? {
@@ -313,7 +313,7 @@ export function buildCareWorkspace({
       panel: (
         <div className="grid gap-6">
           <p className={FOLLOW_UPS_LEDE}>
-            Two queues live here: care follow-ups are about your leaders, and
+            Two queues live here: care follow-ups are about your shepherds, and
             general follow-ups cover groups and tasks.
           </p>
           {openFollowUpCounts ? (
@@ -333,8 +333,8 @@ export function buildCareWorkspace({
           <div className="grid gap-9">
             <section className="grid gap-5">
               <SectionHeader
-                eyebrow="Leader care"
-                title={"Care follow-ups \u2014 about your leaders"}
+                eyebrow="Shepherd care"
+                title={"Care follow-ups \u2014 about your shepherds"}
                 description={
                   "Care follow-ups due soon, overdue, or recently completed. This is a separate list from the general follow-up queue further down \u2014 the two are tracked independently, so their counts won't match."
                 }

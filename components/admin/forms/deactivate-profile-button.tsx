@@ -8,8 +8,8 @@ import { ConfirmActionButton } from "./confirm-action-button";
 // underlying audited RPC (admin_deactivate_profile) is unchanged (#645).
 export function deactivateProfileConfirmMessage(fullName?: string): string {
   return fullName
-    ? `Archive ${fullName}? Their leader assignments will also be closed.`
-    : "Archive this profile? Their leader assignments will also be closed.";
+    ? `Archive ${fullName}? Their shepherd assignments will also be closed.`
+    : "Archive this profile? Their shepherd assignments will also be closed.";
 }
 
 export function DeactivateProfileButton({

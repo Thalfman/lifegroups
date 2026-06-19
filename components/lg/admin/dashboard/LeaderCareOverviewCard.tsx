@@ -14,10 +14,10 @@ export function LeaderCareOverviewCard({
   if (!summary.available) {
     return (
       <StatusCard
-        eyebrow="Leader care"
+        eyebrow="Shepherd care"
         title="Care triage"
         action={
-          <OpenLink href="/admin/shepherd-care" label="Contact leaders" />
+          <OpenLink href="/admin/shepherd-care" label="Contact shepherds" />
         }
       >
         <EmptyState
@@ -34,14 +34,16 @@ export function LeaderCareOverviewCard({
     summary.attentionItemsTotal === 0
       ? "Care queue is clear."
       : summary.attentionItemsTotal === 1
-        ? "1 leader in the attention queue."
-        : `${summary.attentionItemsTotal} leaders in the attention queue.`;
+        ? "1 shepherd in the attention queue."
+        : `${summary.attentionItemsTotal} shepherds in the attention queue.`;
 
   return (
     <StatusCard
-      eyebrow="Leader care"
+      eyebrow="Shepherd care"
       title="Care triage"
-      action={<OpenLink href="/admin/shepherd-care" label="Contact leaders" />}
+      action={
+        <OpenLink href="/admin/shepherd-care" label="Contact shepherds" />
+      }
     >
       {summary.error ? (
         <p

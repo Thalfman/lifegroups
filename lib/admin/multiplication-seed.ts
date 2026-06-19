@@ -125,7 +125,7 @@ export function buildSeedRows(entries: MultiplicationSeedEntry[]): {
 // every entry in the affected section so the mismatch is never dropped and is
 // visible on whichever candidate Julian opens.
 const WOMENS_COUNT_CAVEAT =
-  "Section reconciliation: the Doc's women's header says \"6 groups\" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.";
+  "Section reconciliation: the Doc's women's header says \"6 groups\" but seven shepherds are listed; the count and the listed shepherds do not reconcile in the source.";
 const MIXED_COUNT_CAVEAT =
   'Section reconciliation: the Doc\'s mixed header says "18 groups"; the listed leaders do not cleanly reconcile to that count (e.g. the Beasley line shares a source line with the Krispins).';
 const RETIREMENT_HEDGE_CAVEAT =

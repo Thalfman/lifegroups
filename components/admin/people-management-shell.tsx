@@ -216,7 +216,7 @@ export function PeopleManagementShell({
         <section className="grid gap-[18px]">
           <div>
             <h3 className="m-0 font-display text-xl font-medium text-ink">
-              Leader pipeline
+              Shepherd pipeline
             </h3>
             <p className="m-0 mt-1.5 max-w-lede font-sans text-sm text-ink2">
               Future leaders and where they stand &mdash; Identified, In
@@ -244,7 +244,7 @@ export function PeopleManagementShell({
         onRequestClose={drawer.requestClose}
         eyebrow="People"
         title="Add a person"
-        description="A Leader signs in and shepherds a group. A Member takes part in a group — no login."
+        description="A Shepherd signs in and cares for a group. A Member takes part in a group — no login."
         closeLabel="Close add person form"
       >
         <AddPersonKindToggle value={addKind} onChange={setAddKind} />
@@ -332,7 +332,7 @@ function AddPersonKindToggle({
   onChange: (next: AddPersonKind) => void;
 }) {
   const options: { key: AddPersonKind; label: string }[] = [
-    { key: "leader", label: "Leader" },
+    { key: "leader", label: "Shepherd" },
     { key: "member", label: "Member" },
   ];
   return (

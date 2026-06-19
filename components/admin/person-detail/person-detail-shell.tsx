@@ -46,8 +46,8 @@ export type PersonDetail = {
 };
 
 const ROLE_IN_GROUP_LABEL: Record<string, string> = {
-  leader: "Leader",
-  co_leader: "Co-leader",
+  leader: "Shepherd",
+  co_leader: "Co-shepherd",
   member: "Member",
 };
 
@@ -227,7 +227,7 @@ function GroupPanel({
             title="Assign to a group"
             caption={
               person.kind === "profile"
-                ? "Assign this leader to a group as leader or co-leader."
+                ? "Assign this shepherd to a group as shepherd or co-shepherd."
                 : "Assign this member to a group."
             }
           />
@@ -247,7 +247,7 @@ function CarePanel({ person }: { person: PersonDetail }) {
     <Card className="grid gap-3">
       <PanelHeading
         title="Care"
-        caption="Shepherd care and follow-ups for this leader."
+        caption="Shepherd care and follow-ups for this shepherd."
       />
       <div className="flex flex-wrap items-center gap-2.5">
         <Badge

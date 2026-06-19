@@ -184,7 +184,7 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
     },
     {
       id: "fallback-fu-3",
-      title: "Check in with Eastside leader on attendance",
+      title: "Check in with Eastside shepherd on attendance",
       type: "attendance",
       priority: "normal",
       status: "in_progress",

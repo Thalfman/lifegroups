@@ -42,7 +42,9 @@ export function CoverageAssignForm({
           className={fieldSelectClassName}
         >
           <option value="" disabled>
-            {leaders.length === 0 ? "No assignable leaders" : "Pick a leader…"}
+            {leaders.length === 0
+              ? "No assignable shepherds"
+              : "Pick a shepherd…"}
           </option>
           {leaders.map((l) => (
             <option key={l.profile_id} value={l.profile_id}>

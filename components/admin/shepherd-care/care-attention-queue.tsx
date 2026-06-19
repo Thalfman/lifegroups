@@ -58,7 +58,7 @@ export function CareAttentionQueue({
       {items.length === 0 ? (
         <EmptyState
           title="Nothing urgent right now"
-          description="No leaders match the attention rules today. Keep checking back as touchpoints come due."
+          description="No shepherds match the attention rules today. Keep checking back as touchpoints come due."
         />
       ) : (
         <div>

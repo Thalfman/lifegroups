@@ -44,7 +44,7 @@ describe("validateCreateInviteLinkPayload", () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.errors.some((e) => /leaders and co-leaders/i.test(e))).toBe(
+      expect(r.errors.some((e) => /shepherds and co-shepherds/i.test(e))).toBe(
         true
       );
     }

@@ -258,7 +258,7 @@ export function CheckInReviewShell({
         <SectionHeader
           eyebrow="Groups"
           title="The week in review"
-          description="Missing groups float to the top. Tap a card to read the leader's full note and the member-by-member attendance."
+          description="Missing groups float to the top. Tap a card to read the shepherd's full note and the member-by-member attendance."
         />
         {everyoneIn ? (
           // All-clear tone is a sage status dot on a soft tint — never a side

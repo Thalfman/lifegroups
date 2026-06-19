@@ -57,7 +57,7 @@ const CREATE_LEADER_SPEC: AdminWriteActionSpec<
   rpc: (client, value) =>
     adminRpc(client, "admin_create_leader_profile", createLeaderRpcArgs(value)),
   revalidate: () => REVALIDATE_PATH,
-  noDataError: "The leader was not created. Please try again.",
+  noDataError: "The shepherd was not created. Please try again.",
 };
 
 export async function adminCreateLeaderProfile(
@@ -262,7 +262,7 @@ const UNASSIGN_LEADER_SPEC: AdminWriteActionSpec<
     `/admin/people/profile/${value.profile_id}`,
     `/admin/groups/${value.group_id}`,
   ],
-  noDataError: "The leader was not removed from the group. Please try again.",
+  noDataError: "The shepherd was not removed from the group. Please try again.",
 };
 
 export async function adminUnassignLeaderFromGroup(

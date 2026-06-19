@@ -66,8 +66,8 @@ describe("PeopleDirectory role sections", () => {
     expect(sectionHeadings(html)).toEqual([
       "Ministry Admins",
       "Over-Shepherds",
-      "Leaders",
-      "Co-Leaders",
+      "Shepherds",
+      "Co-Shepherds",
       "Members",
     ]);
   });
@@ -78,17 +78,20 @@ describe("PeopleDirectory role sections", () => {
     );
     expect(sectionHeadings(html)).toEqual([
       "Ministry Admins",
-      "Leaders",
-      "Co-Leaders",
+      "Shepherds",
+      "Co-Shepherds",
       "Members",
     ]);
   });
 
   it("collapses to one aggregate empty section when no profiles match", () => {
     const html = renderDirectory([]);
-    expect(sectionHeadings(html)).toEqual(["Leaders and oversight", "Members"]);
+    expect(sectionHeadings(html)).toEqual([
+      "Shepherds and oversight",
+      "Members",
+    ]);
     expect(html).toContain(
-      "Add people, mark leaders, then assign group leaders"
+      "Add people, mark shepherds, then assign group shepherds"
     );
   });
 
@@ -101,7 +104,10 @@ describe("PeopleDirectory role sections", () => {
         memberships: null,
       },
     });
-    expect(sectionHeadings(html)).toEqual(["Leaders and oversight", "Members"]);
+    expect(sectionHeadings(html)).toEqual([
+      "Shepherds and oversight",
+      "Members",
+    ]);
     expect(html).toContain("load profiles: boom");
     expect(html).not.toContain("Ministry Admins");
   });

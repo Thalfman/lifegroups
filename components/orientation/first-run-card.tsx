@@ -15,7 +15,7 @@ const BODY: Record<OrientationVariant, string> = {
   leader:
     "This is where you care for the group(s) you lead. Open Care notes or the calendar for a group from its card below.",
   over_shepherd:
-    "This is where you oversee the Leaders you cover. Open a Leader to see how their care is going and where to follow up.",
+    "This is where you oversee the Shepherds you cover. Open a Shepherd to see how their care is going and where to follow up.",
 };
 
 // First-run welcome card (#560). One-time and dismissible: shown only when the

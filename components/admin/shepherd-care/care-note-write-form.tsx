@@ -47,8 +47,8 @@ export function CareNoteWriteForm({
   const idPrefix = `${kind === "care_note" ? "cn" : "pr"}-${subjectProfileId}`;
   const placeholder =
     kind === "care_note"
-      ? "What's going on with this leader pastorally?"
-      : "How can we be praying for this leader?";
+      ? "What's going on with this shepherd pastorally?"
+      : "How can we be praying for this shepherd?";
   const submitLabel = `Add ${label.toLowerCase()}`;
 
   return (

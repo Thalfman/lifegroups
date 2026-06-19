@@ -220,7 +220,7 @@ export function FollowUpCreateForm({
             rows={2}
             maxLength={1000}
             className={`${FIELD_INPUT} min-h-[60px] resize-y`}
-            placeholder="Anything the assigned leader should see when they open this."
+            placeholder="Anything the assigned shepherd should see when they open this."
           />
         </div>
         <div className="col-span-full">

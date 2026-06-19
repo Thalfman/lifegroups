@@ -137,8 +137,8 @@ export function LeaderHealthGradeEditor({
   if (noRubric) {
     return (
       <p className={NOTE}>
-        No Leader-Health Rubric has been built yet. An admin can create one in
-        Settings → Leader Health Rubric, then grade {leaderName} here.
+        No Shepherd-Health Rubric has been built yet. An admin can create one in
+        Settings → Shepherd Health Rubric, then grade {leaderName} here.
       </p>
     );
   }
@@ -147,7 +147,7 @@ export function LeaderHealthGradeEditor({
     <form
       action={formAction}
       className="grid gap-4"
-      aria-label={`Leader-Health Grade for ${leaderName}`}
+      aria-label={`Shepherd-Health Grade for ${leaderName}`}
     >
       <input type="hidden" name="profile_id" value={profileId} />
       <input type="hidden" name="ministry_year" value={String(ministryYear)} />
@@ -161,7 +161,7 @@ export function LeaderHealthGradeEditor({
 
       <p className={NOTE}>
         Score {leaderName} on each criterion (0–100). The scores roll up to a
-        Leader-Health Grade for the {ministryYear}–{ministryYear + 1} ministry
+        Shepherd-Health Grade for the {ministryYear}–{ministryYear + 1} ministry
         year. This is distinct from their Care Status.
       </p>
 
@@ -203,14 +203,14 @@ export function LeaderHealthGradeEditor({
           thing. */}
       <div className="flex items-center gap-3 rounded-md bg-blueSoft px-3.5 py-3">
         <span className="font-sans text-sm font-medium text-blue">
-          Leader-Health Grade
+          Shepherd-Health Grade
         </span>
         <span
           className="min-w-6 text-center font-display text-2xl leading-none text-blue"
           aria-label={
             effectiveLetter
-              ? `Leader-Health Grade ${effectiveLetter}`
-              : "Leader-Health Grade not yet scored"
+              ? `Shepherd-Health Grade ${effectiveLetter}`
+              : "Shepherd-Health Grade not yet scored"
           }
         >
           {effectiveLetter ?? "—"}
@@ -268,7 +268,7 @@ export function LeaderHealthGradeEditor({
         >
           {pending ? "Saving…" : "Save grade"}
         </PButton>
-        <FormStatus state={state} successText="Leader-Health Grade saved." />
+        <FormStatus state={state} successText="Shepherd-Health Grade saved." />
       </div>
     </form>
   );

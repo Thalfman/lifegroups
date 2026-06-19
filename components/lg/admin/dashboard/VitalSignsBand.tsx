@@ -138,20 +138,20 @@ export function VitalSignsBand({
           meta={degraded ? "Group data unavailable" : "Currently meeting"}
         />
         <VitalSign
-          title="Active leaders"
+          title="Active shepherds"
           value={careOk ? String(care.totalActiveShepherds) : "—"}
           empty={!careOk}
           meta={leadersMeta}
         />
         <VitalSign
-          title="Leaders needing care"
+          title="Shepherds needing care"
           value={careOk ? String(needsCare) : "—"}
           empty={!careOk}
           meta={
             !careOk
               ? "Care data unavailable"
               : needsCare > 0
-                ? `of ${care.totalActiveShepherds} active leaders`
+                ? `of ${care.totalActiveShepherds} active shepherds`
                 : "Care queue is clear"
           }
           valueColor={careOk && needsCare > 0 ? P.terraTextStrong : undefined}

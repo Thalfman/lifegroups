@@ -171,9 +171,9 @@ export function validateLaunchPlanningAssumptionsPayload(
   if ("leaders_per_new_group" in input) {
     const n = readOptionalInteger(input.leaders_per_new_group);
     if (n === "invalid")
-      errors.push("Leaders per new group must be a whole number.");
+      errors.push("Shepherds per new group must be a whole number.");
     else if (n !== undefined && (n < 0 || n > 10))
-      errors.push("Leaders per new group must be between 0 and 10.");
+      errors.push("Shepherds per new group must be between 0 and 10.");
     else if (n !== undefined) value.leaders_per_new_group = n;
   }
 
@@ -534,7 +534,7 @@ function validateMultiplicationCandidateFields(
     successor.length > MULTIPLICATION_SUCCESSOR_MAX
   ) {
     errors.push(
-      `Successor / leader-designate is too long (max ${MULTIPLICATION_SUCCESSOR_MAX} characters).`
+      `Successor / shepherd-designate is too long (max ${MULTIPLICATION_SUCCESSOR_MAX} characters).`
     );
   }
 

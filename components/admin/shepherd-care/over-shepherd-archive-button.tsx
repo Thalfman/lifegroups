@@ -19,7 +19,7 @@ export function overShepherdArchiveConfirmMessage(
 ): string {
   const coverageNote =
     coveredCount > 0
-      ? ` This ends coverage for ${coveredCount} leader${coveredCount === 1 ? "" : "s"}; they move to Unassigned for reassignment.`
+      ? ` This ends coverage for ${coveredCount} shepherd${coveredCount === 1 ? "" : "s"}; they move to Unassigned for reassignment.`
       : "";
   return `Archive ${fullName}? They stay in history but drop off the active list. Restore any time (coverage is not restored).${coverageNote}`;
 }

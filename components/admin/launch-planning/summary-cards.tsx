@@ -137,9 +137,9 @@ export function LaunchPlanningBreakdownCards({
           accent={P.sage}
         />
         <MetricCard
-          title="Estimated new leaders"
+          title="Estimated new shepherds"
           {...metricValue(outputs.estimated_new_leaders_needed)}
-          meta="New groups × leaders per new group."
+          meta="New groups × shepherds per new group."
           accent={P.sage}
         />
       </div>

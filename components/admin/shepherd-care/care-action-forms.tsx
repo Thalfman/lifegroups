@@ -282,7 +282,7 @@ export function CareProfileFieldForm({
               maxLength={2000}
               defaultValue={current?.admin_summary ?? ""}
               className={`${FIELD_INPUT} min-h-24 resize-y`}
-              placeholder="High-level read on how this leader is doing."
+              placeholder="High-level read on how this shepherd is doing."
             />
           </div>
         </>

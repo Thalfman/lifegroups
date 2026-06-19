@@ -32,8 +32,8 @@ const HOME = '[data-a11y-surface="home"]';
 
 const PIVOT_VITAL_SIGNS = [
   "Active groups",
-  "Active leaders",
-  "Leaders needing care",
+  "Active shepherds",
+  "Shepherds needing care",
   "Prospects in funnel",
   "Cells ready to multiply",
   "Follow-ups due this week",
@@ -142,7 +142,7 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
     // planning, no leader pipeline, no legacy guests funnel — and no link into
     // a hidden surface.
     await expect(home.getByText("Launch planning")).toHaveCount(0);
-    await expect(home.getByText("Leader pipeline")).toHaveCount(0);
+    await expect(home.getByText("Shepherd pipeline")).toHaveCount(0);
     await expect(home.getByText("Pipeline funnel")).toHaveCount(0);
     for (const href of [
       "/admin/planning",

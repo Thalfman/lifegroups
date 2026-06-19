@@ -72,14 +72,14 @@ export function buildNeedsAttentionItems(
   const candidates: NeedsAttentionItem[] = [
     {
       key: "no_leader",
-      label: "Groups without a leader",
+      label: "Groups without a shepherd",
       count: gaps.noLeader,
       href: "/admin/groups",
       tone: "primary",
     },
     {
       key: "care_attention",
-      label: "Leaders needing care attention",
+      label: "Shepherds needing care attention",
       count: care.available ? care.needsAttention : 0,
       // Land on the canonical Care page's merged All-leaders tab with the
       // roster's needs-attention filter pre-applied (#477): the legacy
@@ -174,10 +174,11 @@ export type TopNextAction = NeedsAttentionItem & {
 // derived purely — never references the live count. Tone is calm and pastoral
 // (req #323): it explains the cost of leaving the work undone without alarm.
 const TOP_ACTION_WHY: Record<string, string> = {
-  no_leader: "Import people, mark leaders, then assign them so care can start.",
+  no_leader:
+    "Import people, mark shepherds, then assign them so care can start.",
   setup_gaps:
     "Complete group setup so meeting rhythms and care coverage have a clear base.",
-  care_attention: "Leaders carry more when no one is checking in.",
+  care_attention: "Shepherds carry more when no one is checking in.",
   health: "Regular checks keep a group's health from drifting unseen.",
   follow_ups: "Follow-ups close the loop on care already begun.",
 };
@@ -208,13 +209,13 @@ function imperativeAction(item: NeedsAttentionItem): string {
   const n = item.count;
   switch (item.key) {
     case "no_leader":
-      return `Assign ${pluralWord(n, "a leader", "leaders")} to ${n} ${pluralWord(n, "group", "groups")}`;
+      return `Assign ${pluralWord(n, "a shepherd", "shepherds")} to ${n} ${pluralWord(n, "group", "groups")}`;
     case "setup_gaps":
       // count sums noCapacity + noMeetingDayTime + noMembers, so it is a count
       // of gaps (one group can contribute several), not a count of groups.
       return `Resolve ${n} setup ${pluralWord(n, "gap", "gaps")}`;
     case "care_attention":
-      return `Reach out to ${n} ${pluralWord(n, "leader", "leaders")} needing care`;
+      return `Reach out to ${n} ${pluralWord(n, "shepherd", "shepherds")} needing care`;
     case "health":
       // count = missing + needs_follow_up; "missing" checks were never done, so
       // they are not "overdue" — mirror the #260 "overdue or missing" wording.

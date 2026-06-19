@@ -300,7 +300,7 @@ function WillingGroupField({
           checked={state.willing}
           onChange={(e) => state.setWilling(e.target.checked)}
         />
-        Leader willing to multiply
+        Shepherd willing to multiply
       </label>
       {state.showGroupPicker ? (
         <div>

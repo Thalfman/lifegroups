@@ -84,7 +84,7 @@ export function CareActions({
       const { type, touchLabel } = TOUCH_TYPE[kind];
       return {
         title: `Log a ${touchLabel}`,
-        description: `Record a ${touchLabel} with ${leaderName}. Admin-only — never shown on leader or member surfaces.`,
+        description: `Record a ${touchLabel} with ${leaderName}. Admin-only — never shown on shepherd or member surfaces.`,
         form: (
           <LogTouchForm
             {...shared}
@@ -120,7 +120,7 @@ export function CareActions({
       title: current?.admin_summary
         ? "Edit issue / concern"
         : "Add issue / concern",
-      description: `A high-level read on ${leaderName}. Admin-only — never shown on leader or member surfaces.`,
+      description: `A high-level read on ${leaderName}. Admin-only — never shown on shepherd or member surfaces.`,
       form: (
         <CareProfileFieldForm {...shared} field="summary" current={current} />
       ),

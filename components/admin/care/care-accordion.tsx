@@ -31,7 +31,7 @@ import { pluralize } from "@/lib/shared/pluralize";
 // roll-up, so a collapsed pane signals where the work is without expanding it.
 
 function leaderCountLabel(count: number): string {
-  return pluralize(count, "leader");
+  return pluralize(count, "shepherd");
 }
 
 function attentionLabel(count: number): string {
@@ -101,8 +101,8 @@ function CarePane({
         {pane.leaders.length === 0 ? (
           <p className="m-0 font-sans text-sm italic text-ink3">
             {pane.isUnassigned
-              ? "Every leader has an over-shepherd."
-              : "No leaders covered yet. Finish the people-to-leader-to-group setup first."}
+              ? "Every shepherd has an over-shepherd."
+              : "No shepherds covered yet. Finish the people-to-shepherd-to-group setup first."}
           </p>
         ) : (
           pane.leaders.map((leader) => (

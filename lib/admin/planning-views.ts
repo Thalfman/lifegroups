@@ -33,7 +33,7 @@ export const PLANNING_VIEWS: { key: PlanningViewKey; label: string }[] = [
   { key: "this-week", label: "This week" },
   { key: "needs-coverage", label: "Needs coverage" },
   { key: "cancelled-off", label: "Cancelled / OFF" },
-  { key: "by-leader", label: "By leader" },
+  { key: "by-leader", label: "By shepherd" },
 ];
 
 // "Needs coverage" predicate (#331, PRD req 12). Calendar/STAFFING coverage,

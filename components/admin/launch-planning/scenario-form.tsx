@@ -178,7 +178,7 @@ function AssumptionFields({
             defaultValue={defaults.leaders_per_new_group}
             style={fieldInputStyle}
           />
-          <p style={hintStyle}>e.g. 2 = one leader + one co-leader.</p>
+          <p style={hintStyle}>e.g. 2 = one shepherd + one co-shepherd.</p>
         </div>
 
         <div>

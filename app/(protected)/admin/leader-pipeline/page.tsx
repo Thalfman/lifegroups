@@ -12,7 +12,7 @@ export default adminPage({
   load: () => loadLeaderPipelineData(),
   header: () => ({
     eyebrow: "People",
-    title: "Leader",
+    title: "Shepherd",
     italic: "pipeline",
     lede: "Every apprentice and where they stand — Identified, In training, Ready to lead, Launched. The supply side of multiplication: who's ready to lead the next group, and which groups have no apprentice yet.",
   }),

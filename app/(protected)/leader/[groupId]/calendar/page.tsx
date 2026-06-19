@@ -129,7 +129,7 @@ export default async function LeaderCalendarPage({
       titleItalic={showArchived ? "— archived" : "— calendar"}
       lede={
         groupClosed
-          ? "This group is closed, so leader edits are paused. Past occurrences are kept here for reference; a ministry admin can make changes if you need them."
+          ? "This group is closed, so shepherd edits are paused. Past occurrences are kept here for reference; a ministry admin can make changes if you need them."
           : "Click any date to set the gathering type or mark it OFF / Cancelled. Time is inherited from the group's schedule."
       }
       contentMaxWidth={840}
@@ -227,7 +227,7 @@ export default async function LeaderCalendarPage({
               canEdit={!groupClosed}
               disabledReason={
                 groupClosed
-                  ? "This group is closed; leader edits are paused."
+                  ? "This group is closed; shepherd edits are paused."
                   : undefined
               }
             />

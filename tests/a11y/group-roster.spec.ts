@@ -36,7 +36,7 @@ test.describe("group roster manager", () => {
     const surface = page.locator(SURFACE);
 
     const leaderSelect = surface.getByRole("combobox", {
-      name: "Leader",
+      name: "Shepherd",
       exact: true,
     });
     await expect(leaderSelect).toBeVisible();

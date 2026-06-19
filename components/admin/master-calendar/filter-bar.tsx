@@ -232,11 +232,11 @@ export function FilterBar({
           onChange={(next) => setDayFilter(next)}
         />
         <SelectField
-          label="Leader / co-leader"
+          label="Shepherd / co-shepherd"
           value={leaderFilter}
           onChange={setLeaderFilter}
           options={[
-            { value: "", label: "All leaders" },
+            { value: "", label: "All shepherds" },
             ...leaderOptions.map((l) => ({
               value: l.profileId,
               label: l.name,

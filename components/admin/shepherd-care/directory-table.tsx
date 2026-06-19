@@ -8,8 +8,8 @@ import {
 } from "./care-directory-table-base";
 
 const roleLabel: Record<string, string> = {
-  leader: "Leader",
-  co_leader: "Co-leader",
+  leader: "Shepherd",
+  co_leader: "Co-shepherd",
 };
 
 // Admin roster: the shared care table plus an "Over-shepherd" coverage column
@@ -19,7 +19,7 @@ const roleLabel: Record<string, string> = {
 export function ShepherdCareDirectoryTable({
   entries,
   coverageByShepherdId,
-  emptyText = "No leaders to show.",
+  emptyText = "No shepherds to show.",
   emptyAction,
 }: {
   entries: ShepherdCareDirectoryEntry[];
@@ -30,7 +30,7 @@ export function ShepherdCareDirectoryTable({
   return (
     <CareDirectoryTable
       entries={entries}
-      firstColumnLabel="Leader"
+      firstColumnLabel="Shepherd"
       roleLabels={roleLabel}
       hrefForEntry={(entry) => `/admin/shepherd-care/${entry.profile.id}`}
       emptyText={emptyText}

@@ -1058,7 +1058,7 @@ const PERSON_DETAIL_LEADER: PersonDetail = {
   email: "priya@example.test",
   phone: "(555) 010-2030",
   status: "active",
-  roleLabel: "Leader",
+  roleLabel: "Shepherd",
   isLoginBacked: true,
   isLeader: true,
   needsContact: true,
@@ -1420,7 +1420,7 @@ export function A11yHarnessClient() {
           Pattern drawer doing one thing; the buttons carry distinct,
           non-generic names and the drawer's Close control carries leader
           context. */}
-      <Surface id="care-actions" heading="Leader care actions (redesigned)">
+      <Surface id="care-actions" heading="Shepherd care actions (redesigned)">
         <CareActions
           shepherdProfileId="00000000-0000-4000-8000-000000000001"
           current={null}
@@ -1467,7 +1467,7 @@ export function A11yHarnessClient() {
           rows={GROUP_HEALTH_ROWS}
           period="2026-05-01"
           spiritualGrowthLabel="Spiritual growth (1–5)"
-          groupQuestionLabel="Group engagement — leader-reported (1–5)"
+          groupQuestionLabel="Group engagement — shepherd-reported (1–5)"
           watchGrade="C"
         />
       </Surface>

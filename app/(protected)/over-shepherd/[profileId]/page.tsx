@@ -87,7 +87,7 @@ export default async function OverShepherdShepherdPage({
     ]);
   const myCareNotes: CareNotesRow[] = careNotesResult.data ?? [];
   const myPrayerRequests: PrayerRequestsRow[] = prayerRequestsResult.data ?? [];
-  const shepherdName = profileQuery.data?.full_name ?? "This Leader";
+  const shepherdName = profileQuery.data?.full_name ?? "This Shepherd";
 
   let interactions: ShepherdCareInteractionsRow[] = [];
   if (careResult.data) {
@@ -155,7 +155,7 @@ export default async function OverShepherdShepherdPage({
           {interactions.length === 0 ? (
             <EmptyState
               title="No care interactions logged yet"
-              description="Care touches with this Leader will appear here."
+              description="Care touches with this Shepherd will appear here."
             />
           ) : (
             <InteractionTimeline interactions={interactions} />

@@ -66,9 +66,9 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
   },
   {
     key: "leader_surface",
-    label: "Leader surface",
+    label: "Shepherd surface",
     description:
-      "Let Leaders sign in and use their own surface. On by default (it passed its safety review); turn it off to close Leader logins.",
+      "Let Shepherds sign in and use their own surface. On by default (it passed its safety review); turn it off to close Shepherd logins.",
     kind: "frozen_surface",
   },
   {
@@ -122,9 +122,9 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
   // admin team's Home view (see resolveMutedAttentionKeys), not just the owner's.
   {
     key: "mute_care_attention",
-    label: "Mute: leaders needing care attention",
+    label: "Mute: shepherds needing care attention",
     description:
-      "Hide the time-based 'Leaders needing care attention' item from the Home 'Needs attention' queue. Useful before launch, when no leader has been contacted yet.",
+      "Hide the time-based 'Shepherds needing care attention' item from the Home 'Needs attention' queue. Useful before launch, when no shepherd has been contacted yet.",
     kind: "new_surface",
   },
   {
@@ -151,7 +151,7 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
     key: "care_member_list",
     label: "Member care list",
     description:
-      "Show the member care list in the admin Care area, alongside the Leader care list. Off by default — Care stays Leaders-only until this is on. Member care records are kept either way; this only controls whether the list is shown.",
+      "Show the member care list in the admin Care area, alongside the Shepherd care list. Off by default — Care stays Shepherds-only until this is on. Member care records are kept either way; this only controls whether the list is shown.",
     kind: "new_surface",
   },
   // Usage & login tracking (Phase USAGE.1). A plain on/off switch that gates

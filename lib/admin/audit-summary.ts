@@ -17,9 +17,9 @@ import type {
 } from "@/types/database";
 
 export const AUDIT_ACTION_LABELS: Record<string, string> = {
-  "admin.create_leader_profile": "Added leader",
+  "admin.create_leader_profile": "Added shepherd",
   "admin.create_member": "Added member",
-  "admin.assign_leader_to_group": "Assigned leader",
+  "admin.assign_leader_to_group": "Assigned shepherd",
   "admin.assign_member_to_group": "Placed member",
   "admin.deactivate_profile": "Deactivated profile",
   "admin.deactivate_member": "Deactivated member",
@@ -44,21 +44,21 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "admin.mark_guest_not_now": "Marked guest not now",
   "admin.create_follow_up": "Created follow-up",
   "admin.update_follow_up_status": "Updated follow-up status",
-  "leader.update_follow_up_status": "Leader updated follow-up",
+  "leader.update_follow_up_status": "Shepherd updated follow-up",
   // Phase 5A.4 settings + Phase 5A.5 reset
   "admin.update_metric_defaults": "Updated metric defaults",
   "admin.upsert_group_metric_settings": "Updated group overrides",
-  "admin.change_leader_role": "Changed leader role",
+  "admin.change_leader_role": "Changed shepherd role",
   "admin.reset_metric_defaults": "Reset metric defaults",
   // Phase 5A.6 group calendar.
   "admin.group_calendar_event_created": "Created calendar event",
   "admin.group_calendar_event_updated": "Updated calendar event",
   "admin.group_calendar_event_archived": "Archived calendar event",
   "admin.group_calendar_event_restored": "Restored calendar event",
-  "leader.group_calendar_event_created": "Leader created calendar event",
-  "leader.group_calendar_event_updated": "Leader updated calendar event",
-  "leader.group_calendar_event_archived": "Leader archived calendar event",
-  "leader.group_calendar_event_restored": "Leader restored calendar event",
+  "leader.group_calendar_event_created": "Shepherd created calendar event",
+  "leader.group_calendar_event_updated": "Shepherd updated calendar event",
+  "leader.group_calendar_event_archived": "Shepherd archived calendar event",
+  "leader.group_calendar_event_restored": "Shepherd restored calendar event",
   // SC.1 Julian shepherd care tracker.
   "admin.upsert_shepherd_care_profile": "Updated care profile",
   "admin.log_shepherd_care_interaction": "Logged care interaction",
@@ -164,7 +164,7 @@ export function summarizeAuditEvent(
 
   switch (event.action) {
     case "admin.create_leader_profile":
-      return `Added leader ${fullName ?? "(unknown)"}`;
+      return `Added shepherd ${fullName ?? "(unknown)"}`;
     case "admin.create_member":
       return `Added member ${fullName ?? "(unknown)"}`;
     case "admin.assign_leader_to_group": {
@@ -173,10 +173,10 @@ export function summarizeAuditEvent(
       const role = asString(md.role) ?? "leader";
       const profile = profileId ? profilesById.get(profileId) : undefined;
       const group = groupId ? groupsById.get(groupId) : undefined;
-      return `Assigned ${profile?.full_name ?? "leader"} as ${role.replace(
-        /_/g,
-        "-"
-      )} to ${group?.name ?? "a group"}`;
+      const roleLabel = role === "co_leader" ? "co-shepherd" : "shepherd";
+      return `Assigned ${profile?.full_name ?? "shepherd"} as ${roleLabel} to ${
+        group?.name ?? "a group"
+      }`;
     }
     case "admin.assign_member_to_group": {
       const memberId = asString(md.member_id);
@@ -276,9 +276,9 @@ export function summarizeAuditEvent(
       const beforeStatus = asString(before.status);
       const afterStatus = asString(after.status);
       if (beforeStatus && afterStatus && beforeStatus !== afterStatus) {
-        return `Leader moved "${title}" ${beforeStatus} → ${afterStatus}`;
+        return `Shepherd moved "${title}" ${beforeStatus} → ${afterStatus}`;
       }
-      return `Leader updated follow-up: ${title}`;
+      return `Shepherd updated follow-up: ${title}`;
     }
     case "admin.reset_metric_defaults":
       return "Reset metric defaults to baseline";

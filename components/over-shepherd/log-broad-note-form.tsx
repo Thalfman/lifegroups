@@ -44,7 +44,7 @@ export function LogBroadNoteForm({
           maxLength={2000}
           required
           className={cn(fieldInputClassName, "min-h-20 resize-y")}
-          placeholder="A broad, shareable note on how this Leader is doing."
+          placeholder="A broad, shareable note on how this Shepherd is doing."
         />
         <p className={cn(formNoteClassName, "mt-1.5")}>
           Broad notes are visible to ministry admins. Keep anything private out

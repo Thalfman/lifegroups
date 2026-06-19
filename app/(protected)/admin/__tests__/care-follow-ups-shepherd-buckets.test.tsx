@@ -165,8 +165,8 @@ describe("The Follow-ups tab wires the shepherd-care buckets into the page (#334
 
   it("labels the shepherd-care section so the two sources are distinguishable", () => {
     // #479 — the eyebrow says whose work this is in CONTEXT.md vocabulary
-    // ("Leader", never "Shepherd" in user-facing copy).
-    expect(CARE_WORKSPACE).toContain('eyebrow="Leader care"');
+    // ("Shepherd" in user-facing copy, per ADR 0025).
+    expect(CARE_WORKSPACE).toContain('eyebrow="Shepherd care"');
   });
 
   it("scopes the bucket labels to care follow-ups so they can't read as a global done count", () => {
@@ -203,7 +203,7 @@ describe("The two follow-up queues read as a legible split (#479, copy only)", (
 
   it("the care section carries a subject-first heading", () => {
     expect(CARE_WORKSPACE).toContain(
-      'title={"Care follow-ups \\u2014 about your leaders"}'
+      'title={"Care follow-ups \\u2014 about your shepherds"}'
     );
   });
 
@@ -215,7 +215,9 @@ describe("The two follow-up queues read as a legible split (#479, copy only)", (
 
   it("the tab opens with a one-line lede stating the split", () => {
     expect(CARE_WORKSPACE).toContain("Two queues live here");
-    expect(CARE_WORKSPACE).toContain("care follow-ups are about your leaders");
+    expect(CARE_WORKSPACE).toContain(
+      "care follow-ups are about your shepherds"
+    );
     expect(CARE_WORKSPACE).toContain(
       "general follow-ups cover groups and tasks"
     );
