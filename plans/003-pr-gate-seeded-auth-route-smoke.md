@@ -146,6 +146,7 @@ Use a path list that covers changes likely to break authenticated routing:
 ```yaml
 pull_request:
   paths:
+    - "proxy.ts"
     - "app/(protected)/**"
     - "app/login/**"
     - "app/invite/**"
@@ -167,6 +168,12 @@ pull_request:
     - "tests/a11y/harness.ts"
     - ".github/workflows/seeded-auth-route-smoke.yml"
 ```
+
+Note on `proxy.ts`: the root `proxy.ts` (Next 16's renamed middleware) runs on
+every matched request and delegates to `updateSupabaseSession`, so it controls
+the Supabase session cookie and the password-setup / read-path RLS gates — the
+exact authenticated role-routing surface this lane exercises. A PR that touches
+only `proxy.ts` must trip this trigger, so it leads the list.
 
 Note on glob style: the parenthesized filter `app/(protected)/**` is valid —
 GitHub path filters treat `(` and `)` as literal characters, so it matches the
@@ -206,6 +213,7 @@ The test should read `.github/workflows/seeded-auth-route-smoke.yml` and assert:
 - The workflow has `workflow_dispatch`, `schedule`, and `pull_request`.
 - The `pull_request` block contains `paths:`.
 - The path filters include at least:
+  - `proxy.ts`
   - `app/(protected)/**`
   - `lib/auth/**`
   - `lib/supabase/**`

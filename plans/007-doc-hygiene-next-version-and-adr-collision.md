@@ -8,7 +8,7 @@
 > the index.
 >
 > **Drift check (run first)**:
-> `git diff --stat 976ccb82..HEAD -- CLAUDE.md docs/architecture docs/adr supabase/migrations`
+> `git diff --stat 976ccb82..HEAD -- CLAUDE.md docs/architecture docs/adr docs/REPO_SWEEP_PLAN.md supabase/migrations`
 
 ## Status
 
@@ -41,7 +41,13 @@ Stale "Next.js 15" references (the body of these same docs already says
 - `CLAUDE.md:19-20` - "Next.js\n15 (App Router)" (wrapped across two lines).
 - `docs/architecture/ARCHITECTURE.md:28` - "Next.js 15 App Router".
 - `docs/architecture/system-architecture.drawio:10` and `:31` - "Next.js 15" in
-  diagram cell text.
+  diagram cell text. (The rendered `docs/architecture/system-architecture.svg`
+  embeds the same stale text, but it is a **generated artifact** - the
+  `render-diagrams.yml` workflow re-renders it on push when the `.drawio`
+  changes, so the executor edits only the `.drawio` source and never hand-edits
+  the SVG.)
+- `docs/REPO_SWEEP_PLAN.md:25`, `:136`, `:611` - "Next.js 15" / "Next 15" in the
+  sweep narrative.
 - (`README.md` had no "Next 15" match at planning time - confirm with the grep
   below in case of drift.)
 
@@ -58,46 +64,59 @@ The ADR 0022 collision:
   infrastructure decision (DB re-guards jsonb writes + serialises the audit
   snapshot). Its "ADR 0022" citations are narrow: the regression test
   `lib/admin/__tests__/audit-before-advisory-locks-migration.test.ts` (which
-  asserts the migration's documentary header cites "ADR 0022"), plus that
-  migration's header comment under `supabase/migrations/`.
+  asserts the migration's documentary header cites "ADR 0022"), plus the
+  migration `supabase/migrations/20260617000000_phase_groups7_audit_before_advisory_locks.sql`,
+  which cites "ADR 0022" in **seven** comments - the file header **and** a
+  per-RPC `See ADR 0022 (#415)` line inside each of the four recreated RPCs (plus
+  two more narrative lines near the top). All seven are comments, not SQL.
 
-Next free ADR number: **0025** (0024 is the highest in `docs/adr/`).
+Next free ADR number: **0028** (0027 is the highest in `docs/adr/`; 0025, 0026,
+and 0027 are already taken - `0025-invitee-chooses-own-name`,
+`0026-flag-reads-stay-per-tier`, `0027-home-is-a-self-dismissing-setup-workspace`).
 
-Recommended resolution: renumber the **jsonb-write** ADR to **0025**. It is the
+Recommended resolution: renumber the **jsonb-write** ADR to **0028**. It is the
 one outside the pivot narrative and has the fewest, most-contained citations, so
 the multiply citations (the majority) stay correct on 0022 and need no edits.
 
 ## Commands you will need
 
-| Purpose                  | Command                                                                                                             | Expected on success                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Find stale Next 15       | `rg -n "Next\.?js? ?15\|Next 15" CLAUDE.md README.md docs`                                                          | lists every stale ref                                 |
-| Find jsonb-ADR citations | `rg -n "ADR ?0022\|adr/0022" supabase/migrations lib/admin/__tests__/audit-before-advisory-locks-migration.test.ts` | the citations to renumber                             |
-| Confirm no broken links  | `rg -n "0022-admin-jsonb-write-reguard-and-audit-locks" .`                                                          | only the renamed file + updated refs                  |
-| Markdown/lint sanity     | `npm run lint`                                                                                                      | exit 0                                                |
-| Full unit/fitness lane   | `npm run test:run`                                                                                                  | exit 0 (the audit-locks regression test still passes) |
+| Purpose                  | Command                                                                                                                                                      | Expected on success                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Find stale Next 15       | `rg -n "Next\.?js? ?15\|Next 15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio` | lists every stale ref in the in-scope files (the generated SVG is excluded - it is re-rendered from the `.drawio` by CI) |
+| Find jsonb-ADR citations | `rg -n "ADR ?0022\|adr/0022" supabase/migrations lib/admin/__tests__/audit-before-advisory-locks-migration.test.ts`                                          | the citations to renumber                                                                                                |
+| Confirm no broken links  | `rg -n "0022-admin-jsonb-write-reguard-and-audit-locks" . -g '!plans/**'`                                                                                    | only the renamed file + updated refs (this plan is excluded - it names the old filename in its own prose)                |
+| Markdown/lint sanity     | `npm run lint`                                                                                                                                               | exit 0                                                                                                                   |
+| Full unit/fitness lane   | `npm run test:run`                                                                                                                                           | exit 0 (the audit-locks regression test still passes)                                                                    |
 
 ## Scope
 
 **In scope**:
 
 - `CLAUDE.md`, `docs/architecture/ARCHITECTURE.md`,
-  `docs/architecture/system-architecture.drawio` (Next version text only)
+  `docs/architecture/system-architecture.drawio`, `docs/REPO_SWEEP_PLAN.md`
+  (Next version text only)
 - `README.md` (only if the grep finds a stale ref)
 - `docs/adr/0022-admin-jsonb-write-reguard-and-audit-locks.md` -> renamed to
-  `docs/adr/0025-admin-jsonb-write-reguard-and-audit-locks.md`
+  `docs/adr/0028-admin-jsonb-write-reguard-and-audit-locks.md`
 - `lib/admin/__tests__/audit-before-advisory-locks-migration.test.ts` (its
   "ADR 0022" assertions/comments)
-- the one migration under `supabase/migrations/` whose **header comment** cites
-  "ADR 0022" for the audit-locks decision (comment text only - **never** the SQL)
+- the migration
+  `supabase/migrations/20260617000000_phase_groups7_audit_before_advisory_locks.sql`
+  whose comments cite "ADR 0022" for the audit-locks decision: update **all seven**
+  comment citations (file header + each per-RPC `See ADR 0022 (#415)` line +
+  the two narrative lines), comment text only - **never** the SQL
 - a `docs/adr/` index/README, if one lists the renamed file
 - `plans/README.md` status row
 
 **Out of scope** (do NOT touch):
 
+- `docs/architecture/system-architecture.svg` - a **generated** render. Editing
+  the `.drawio` source is enough; the `render-diagrams.yml` workflow re-renders
+  the SVG on push. Do not hand-edit it (and the Next-15 grep above deliberately
+  excludes it).
 - The ~10 multiply "ADR 0022" citations - they correctly refer to the file that
   keeps 0022. Leave every one.
-- Any migration **SQL** (only a header comment may change, and only if it cites
+- Any migration **SQL** (only comment lines may change, and only where they cite
   the renumbered decision).
 - The content/decisions of either ADR - this is renumbering, not rewriting.
 
@@ -112,41 +131,52 @@ the multiply citations (the majority) stay correct on 0022 and need no edits.
 
 ### Step 1: Correct the Next.js version in docs (mechanical, safe)
 
-Run `rg -n "Next\.?js? ?15|Next 15" CLAUDE.md README.md docs` and change each
-"Next.js 15" / "Next 15" to "Next.js 16" / "Next 16". Note `CLAUDE.md:19-20`
-wraps the version across a line break ("Next.js" then "15") - fix the "15".
+Run
+`rg -n "Next\.?js? ?15|Next 15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio`
+and change each "Next.js 15" / "Next 15" to "Next.js 16" / "Next 16". Note
+`CLAUDE.md:19-20` wraps the version across a line break ("Next.js" then "15") -
+fix the "15". Do **not** edit `docs/architecture/system-architecture.svg` by
+hand: it is the rendered output of the `.drawio` and is regenerated on push by
+`render-diagrams.yml`, so the grep above (and the verify below) excludes it.
 
-**Verify**: `rg -n "Next\.?js? ?15|Next 15" CLAUDE.md README.md docs` -> no
-matches.
+**Verify**:
+`rg -n "Next\.?js? ?15|Next 15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio`
+-> no matches.
 
-### Step 2: Resolve the ADR 0022 collision (renumber the jsonb ADR to 0025)
+### Step 2: Resolve the ADR 0022 collision (renumber the jsonb ADR to 0028)
 
-> Decision gate: the default below renumbers the **jsonb-write** ADR to 0025,
-> which keeps `0022 = multiply` (what the docs already assume) and touches the
-> fewest files. If the operator instead wants the _multiply_ ADR renumbered,
-> STOP - that is a larger change (~12 code-comment sites) and needs their
-> explicit say-so.
+> Decision gate: the default below renumbers the **jsonb-write** ADR to 0028 (the
+> next free number - 0025/0026/0027 are already taken), which keeps
+> `0022 = multiply` (what the docs already assume) and touches the fewest files.
+> If the operator instead wants the _multiply_ ADR renumbered, STOP - that is a
+> larger change (~12 code-comment sites) and needs their explicit say-so.
 
 1. Rename the file:
-   `git mv docs/adr/0022-admin-jsonb-write-reguard-and-audit-locks.md docs/adr/0025-admin-jsonb-write-reguard-and-audit-locks.md`
+   `git mv docs/adr/0022-admin-jsonb-write-reguard-and-audit-locks.md docs/adr/0028-admin-jsonb-write-reguard-and-audit-locks.md`
 2. Update that ADR's own internal cross-references to its number if any ("This ADR
-   0022..." style) to 0025.
+   0022..." style) to 0028.
 3. Update the **jsonb-decision** citations only (found via the command above):
    - In `lib/admin/__tests__/audit-before-advisory-locks-migration.test.ts`,
      change the "ADR 0022" strings (and the assertion's expected substring) to
-     "ADR 0025", and update the migration header it checks.
-   - In the corresponding migration file under `supabase/migrations/`, update the
-     **header comment** "ADR 0022" -> "ADR 0025". Do not touch the SQL.
+     "ADR 0028", and update the migration header text it checks.
+   - In
+     `supabase/migrations/20260617000000_phase_groups7_audit_before_advisory_locks.sql`,
+     update **all seven** "ADR 0022" comment citations -> "ADR 0028": the file
+     header line, the two narrative lines below it, and the per-RPC
+     `See ADR 0022 (#415)` comment inside each of the four recreated RPCs. Change
+     comment text only; do not touch the SQL.
 4. Update any `docs/adr` index/README entry for the renamed file.
 5. Leave every multiply "ADR 0022" citation untouched.
 
 **Verify**:
 
-- `rg -n "0022-admin-jsonb-write-reguard-and-audit-locks" .` -> no matches (old
-  filename fully gone).
+- `rg -n "0022-admin-jsonb-write-reguard-and-audit-locks" . -g '!plans/**'` -> no
+  matches (old filename fully gone; this plan's own prose is excluded).
 - `npx vitest run lib/admin/__tests__/audit-before-advisory-locks-migration.test.ts`
-  -> exit 0 (the regression test now expects ADR 0025 and the migration header
+  -> exit 0 (the regression test now expects ADR 0028 and the migration header
   matches).
+- `rg -n "ADR ?0022" supabase/migrations/20260617000000_phase_groups7_audit_before_advisory_locks.sql`
+  -> no matches (every audit-locks citation moved to 0028).
 - `rg -n "ADR ?0022" docs/adr` -> only the multiply ADR file remains on 0022.
 
 ### Step 3: Run the lane
@@ -165,15 +195,20 @@ matches.
 
 Machine-checkable. ALL must hold:
 
-- [ ] `rg -n "Next\.?js? ?15|Next 15" CLAUDE.md README.md docs` returns no matches.
-- [ ] `docs/adr/0025-admin-jsonb-write-reguard-and-audit-locks.md` exists; the
+- [ ] `rg -n "Next\.?js? ?15|Next 15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio`
+      returns no matches. (The generated SVG is intentionally not gated here - CI
+      re-renders it from the `.drawio`.)
+- [ ] `docs/adr/0028-admin-jsonb-write-reguard-and-audit-locks.md` exists; the
       `0022-admin-*` filename is gone.
-- [ ] `rg -n "0022-admin-jsonb-write-reguard-and-audit-locks" .` returns no matches.
+- [ ] `rg -n "0022-admin-jsonb-write-reguard-and-audit-locks" . -g '!plans/**'`
+      returns no matches.
+- [ ] `rg -n "ADR ?0022" supabase/migrations/20260617000000_phase_groups7_audit_before_advisory_locks.sql`
+      returns no matches (all seven audit-locks citations moved to 0028).
 - [ ] The multiply ADR is still `0022` and its ~10 code citations are unchanged.
 - [ ] `npm run lint` exits 0.
 - [ ] `npm run test:run` exits 0 (audit-locks regression test green).
-- [ ] No migration SQL changed (`git diff supabase/migrations` shows only a
-      comment line, if anything).
+- [ ] No migration SQL changed (`git diff supabase/migrations` shows only
+      comment lines, if anything).
 - [ ] `plans/README.md` status row for Plan 007 is updated.
 
 ## STOP conditions
@@ -184,9 +219,9 @@ Stop and report back if:
   change.
 - Renumbering would require editing migration **SQL** (not just a comment) - it
   should not; if it seems to, you have the wrong migration.
-- `rg` finds "ADR 0022" jsonb citations outside the test + one migration header
-  (i.e. the blast radius is larger than documented) - report the extra sites
-  before proceeding.
+- `rg` finds "ADR 0022" jsonb citations outside the test + the seven comments in
+  `20260617000000_phase_groups7_audit_before_advisory_locks.sql` (i.e. the blast
+  radius is larger than documented) - report the extra sites before proceeding.
 - Any verification command fails twice after a reasonable fix attempt.
 
 ## Maintenance notes
