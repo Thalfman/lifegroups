@@ -114,13 +114,17 @@ export async function fetchByIds<Row>(
 
   // The typed client's `.from` expects a literal table name; this helper is
   // table-generic, so loosen that one signature (the column allowlist + `Row`
-  // generic keep the read itself explicit).
-  const from = client.from as unknown as (t: string) => IdTableBuilder;
+  // generic keep the read itself explicit). Call `from` ON the client — the
+  // supabase-js method reads `this` internally, so a detached alias would drop
+  // the receiver and throw before the query runs.
+  const idClient = client as unknown as {
+    from: (t: string) => IdTableBuilder;
+  };
 
   const out: Row[] = [];
   for (let i = 0; i < uniqueIds.length; i += chunkSize) {
     const chunk = uniqueIds.slice(i, i + chunkSize);
-    const base = from(table).select(columns).in(idColumn, chunk);
+    const base = idClient.from(table).select(columns).in(idColumn, chunk);
     const query = options.refine ? options.refine(base) : base;
     const { data, error } = await query;
     if (error) return { data: null, error: wrapError(label, error) };

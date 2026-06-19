@@ -101,8 +101,15 @@ function makeFetchByIdsClient(
       }).then(onFulfilled, onRejected);
     },
   };
+  // `from` reads `this` (like the real supabase-js client), so if fetchByIds
+  // ever detaches it from the client the call throws — locking the P1
+  // regression where a `const from = client.from` alias dropped the receiver.
   return {
-    from(table: string) {
+    _bound: true,
+    from(this: { _bound?: boolean } | undefined, table: string) {
+      if (!this?._bound) {
+        throw new TypeError("from() called unbound from the client");
+      }
       capture.table = table;
       return builder;
     },
