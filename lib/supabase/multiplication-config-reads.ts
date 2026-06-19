@@ -340,10 +340,16 @@ type CellMaturityGroupRow = {
   launched_on: string | null;
 };
 
-// One active co_leader leadership row: the group it serves + when it began.
+// One active co_leader leadership row: the group it serves, when it began, and
+// the holder's CURRENT profile role. A profile converted away from leadership can
+// leave an active group_leaders row behind (os7 predicate: group_leaders rows
+// don't cascade on a role change), so the row's own role/active flags aren't
+// enough — the profile must still BE a leader/co_leader, mirroring the health
+// rollup's profiles(role) guard.
 type CellCoLeaderRow = {
   group_id: string;
   assigned_at: string | null;
+  profile: { role: string | null } | null;
 };
 
 // One active multiplication candidate's Julian-fed headcount for its group.
@@ -359,10 +365,9 @@ const CELL_MATURITY_GROUP_COLUMNS = columns<CellMaturityGroupRow>()(
   "lifecycle_status",
   "launched_on"
 );
-const CELL_CO_LEADER_COLUMNS = columns<CellCoLeaderRow>()(
-  "group_id",
-  "assigned_at"
-);
+// Named-column select WITH the profiles(role) join (so the helper's flat-column
+// allowlist doesn't apply) — still explicit columns, never select("*").
+const CELL_CO_LEADER_SELECT = "group_id, assigned_at, profile:profiles(role)";
 const CELL_MANUAL_COUNT_COLUMNS = columns<CellManualCountRow>()(
   "group_id",
   "manual_member_count"
@@ -383,10 +388,14 @@ export function tallyCellMaturity(
   activeCells: readonly CellKey[],
   todayIso: string
 ): CellMaturity {
-  // Earliest active co_leader assignment per group → the max Co-Leader tenure.
+  // Earliest active co_leader assignment per group → the max Co-Leader tenure. A
+  // stale row whose profile is no longer a leader/co_leader is skipped (os7),
+  // so an ex-co-leader can't keep a cell "ready".
   const earliestCoLeaderByGroup = new Map<string, string>();
   for (const cl of coLeaders) {
     if (!cl.group_id || !cl.assigned_at) continue;
+    const role = cl.profile?.role ?? null;
+    if (role !== "leader" && role !== "co_leader") continue;
     const current = earliestCoLeaderByGroup.get(cl.group_id);
     if (current === undefined || cl.assigned_at < current) {
       earliestCoLeaderByGroup.set(cl.group_id, cl.assigned_at);
@@ -478,7 +487,7 @@ export async function fetchCellGroupMaturity(
       fetchAllPages<CellCoLeaderRow>((from, to) =>
         client
           .from("group_leaders")
-          .select(CELL_CO_LEADER_COLUMNS.select)
+          .select(CELL_CO_LEADER_SELECT)
           .eq("active", true)
           .eq("role", "co_leader")
           .range(from, to)

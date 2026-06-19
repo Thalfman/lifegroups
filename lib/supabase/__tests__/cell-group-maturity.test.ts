@@ -36,8 +36,12 @@ function group(
   };
 }
 
-function coLeader(groupId: string, assignedAt: string | null) {
-  return { group_id: groupId, assigned_at: assignedAt };
+function coLeader(
+  groupId: string,
+  assignedAt: string | null,
+  role: string | null = "co_leader"
+) {
+  return { group_id: groupId, assigned_at: assignedAt, profile: { role } };
 }
 
 function membership(groupId: string, status = "active") {
@@ -87,6 +91,25 @@ describe("tallyCellMaturity — per-cell max member count + tenures", () => {
       [cell("men", "cat-a")],
       TODAY
     );
+    expect(
+      result.byCell.get(keyOf("men", "cat-a"))?.coShepherdTenureYears
+    ).toBe(2);
+  });
+
+  it("ignores a stale co-leader whose profile is no longer a leader (os7)", () => {
+    const result = tallyCellMaturity(
+      [group("g1", "men", "cat-a", "2024-01-01")],
+      [
+        coLeader("g1", "2018-01-01", "member"), // longest-serving but demoted
+        coLeader("g1", "2024-06-01", "co_leader"), // the real co-leader → ~2 yrs
+      ],
+      [],
+      [],
+      [cell("men", "cat-a")],
+      TODAY
+    );
+    // The demoted row is skipped, so tenure comes from the active co-leader (2),
+    // not the stale 2018 assignment (~8).
     expect(
       result.byCell.get(keyOf("men", "cat-a"))?.coShepherdTenureYears
     ).toBe(2);
