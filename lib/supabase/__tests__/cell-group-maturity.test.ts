@@ -39,9 +39,14 @@ function group(
 function coLeader(
   groupId: string,
   assignedAt: string | null,
-  role: string | null = "co_leader"
+  role: string | null = "co_leader",
+  status: string | null = "active"
 ) {
-  return { group_id: groupId, assigned_at: assignedAt, profile: { role } };
+  return {
+    group_id: groupId,
+    assigned_at: assignedAt,
+    profile: { role, status },
+  };
 }
 
 function membership(groupId: string, status = "active") {
@@ -110,6 +115,23 @@ describe("tallyCellMaturity — per-cell max member count + tenures", () => {
     );
     // The demoted row is skipped, so tenure comes from the active co-leader (2),
     // not the stale 2018 assignment (~8).
+    expect(
+      result.byCell.get(keyOf("men", "cat-a"))?.coShepherdTenureYears
+    ).toBe(2);
+  });
+
+  it("ignores a deactivated co-leader (status inactive) even with role co_leader", () => {
+    const result = tallyCellMaturity(
+      [group("g1", "men", "cat-a", "2024-01-01")],
+      [
+        coLeader("g1", "2018-01-01", "co_leader", "inactive"), // deactivated
+        coLeader("g1", "2024-06-01", "co_leader", "active"), // the active one → 2
+      ],
+      [],
+      [],
+      [cell("men", "cat-a")],
+      TODAY
+    );
     expect(
       result.byCell.get(keyOf("men", "cat-a"))?.coShepherdTenureYears
     ).toBe(2);

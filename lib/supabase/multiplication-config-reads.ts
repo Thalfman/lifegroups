@@ -341,15 +341,17 @@ type CellMaturityGroupRow = {
 };
 
 // One active co_leader leadership row: the group it serves, when it began, and
-// the holder's CURRENT profile role. A profile converted away from leadership can
-// leave an active group_leaders row behind (os7 predicate: group_leaders rows
-// don't cascade on a role change), so the row's own role/active flags aren't
-// enough — the profile must still BE a leader/co_leader, mirroring the health
-// rollup's profiles(role) guard.
+// the holder's CURRENT profile role + status. A profile converted away from
+// leadership OR deactivated can leave an active group_leaders row behind
+// (group_leaders rows don't cascade on a role change — os7 — and
+// super_admin_set_profile_status flips profiles.status without touching them), so
+// the row's own role/active flags aren't enough: the profile must still BE a
+// leader/co_leader AND be active, so an ex- or deactivated co-leader can't keep a
+// cell "ready".
 type CellCoLeaderRow = {
   group_id: string;
   assigned_at: string | null;
-  profile: { role: string | null } | null;
+  profile: { role: string | null; status: string | null } | null;
 };
 
 // One active multiplication candidate's Julian-fed headcount for its group.
@@ -367,7 +369,8 @@ const CELL_MATURITY_GROUP_COLUMNS = columns<CellMaturityGroupRow>()(
 );
 // Named-column select WITH the profiles(role) join (so the helper's flat-column
 // allowlist doesn't apply) — still explicit columns, never select("*").
-const CELL_CO_LEADER_SELECT = "group_id, assigned_at, profile:profiles(role)";
+const CELL_CO_LEADER_SELECT =
+  "group_id, assigned_at, profile:profiles(role, status)";
 const CELL_MANUAL_COUNT_COLUMNS = columns<CellManualCountRow>()(
   "group_id",
   "manual_member_count"
@@ -389,13 +392,15 @@ export function tallyCellMaturity(
   todayIso: string
 ): CellMaturity {
   // Earliest active co_leader assignment per group → the max Co-Leader tenure. A
-  // stale row whose profile is no longer a leader/co_leader is skipped (os7),
-  // so an ex-co-leader can't keep a cell "ready".
+  // stale row whose profile is no longer a leader/co_leader (os7) or has been
+  // deactivated is skipped, so an ex- or deactivated co-leader can't keep a cell
+  // "ready".
   const earliestCoLeaderByGroup = new Map<string, string>();
   for (const cl of coLeaders) {
     if (!cl.group_id || !cl.assigned_at) continue;
     const role = cl.profile?.role ?? null;
     if (role !== "leader" && role !== "co_leader") continue;
+    if (cl.profile?.status !== "active") continue;
     const current = earliestCoLeaderByGroup.get(cl.group_id);
     if (current === undefined || cl.assigned_at < current) {
       earliestCoLeaderByGroup.set(cl.group_id, cl.assigned_at);
