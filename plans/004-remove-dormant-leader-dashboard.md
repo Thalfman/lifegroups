@@ -50,8 +50,9 @@ REJECTED.
     caller**.
   - `buildLeaderGroupDashboard(client, group, calendarEvents)` - private; called
     only by `getLeaderDashboardData`.
-  - `computeAttendanceRhythm(...)` - private helper; called only by
-    `buildLeaderGroupDashboard`.
+  - `computeAttendanceRhythm(...)`, `shortenName(...)`, `describeWeek(...)` -
+    private helpers defined above the `// Leader dashboard` banner but called
+    only by `buildLeaderGroupDashboard`.
 - `lib/dashboard/__tests__/fallback-data.test.ts` - imports `getLeaderDashboardData`
   and `LEADER_FALLBACK` and has one leader-path test case (lines 34-38).
 - `lib/dashboard/types.ts` - defines `LeaderCurrentWeek`, `LeaderGroupDashboard`,
@@ -102,12 +103,12 @@ Repo conventions to match:
 
 ## Commands you will need
 
-| Purpose                       | Command                                                                                                  | Expected on success                                 |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Dead-path proof               | `rg -n "getLeaderDashboardData\|buildLeaderGroupDashboard" app components lib --glob '!**/__tests__/**'` | matches only in queries.ts + read-models.ts comment |
-| Lint (catches orphan imports) | `npm run lint`                                                                                           | exit 0, no errors                                   |
-| Typecheck                     | `npm run typecheck`                                                                                      | exit 0, no TypeScript errors                        |
-| Full unit/fitness lane        | `npm run test:run`                                                                                       | exit 0, all Vitest tests pass                       |
+| Purpose                       | Command                                                                                                         | Expected on success                                 |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Dead-path proof               | `rg -n -e "getLeaderDashboardData" -e "buildLeaderGroupDashboard" app components lib --glob '!**/__tests__/**'` | matches only in queries.ts + read-models.ts comment |
+| Lint (catches orphan imports) | `npm run lint`                                                                                                  | exit 0, no errors                                   |
+| Typecheck                     | `npm run typecheck`                                                                                             | exit 0, no TypeScript errors                        |
+| Full unit/fitness lane        | `npm run test:run`                                                                                              | exit 0, all Vitest tests pass                       |
 
 ## Scope
 
@@ -145,15 +146,24 @@ In `lib/dashboard/queries.ts`, delete:
 
 - `export async function getLeaderDashboardData(...)` (the whole function).
 - `async function buildLeaderGroupDashboard(...)` (the whole function).
-- `function computeAttendanceRhythm(...)` (the whole function) - **only after**
-  confirming it has no other caller:
-  `rg -n "computeAttendanceRhythm" lib` -> matches only its definition once you
-  remove `buildLeaderGroupDashboard`.
+- The three leader-only helpers that sit **above** the
+  `// Leader dashboard (...)` banner but are consumed **only** by
+  `buildLeaderGroupDashboard`: `computeAttendanceRhythm` (`lib/dashboard/queries.ts`
+  ~L109), `shortenName` (~L102), and `describeWeek` (~L85). Delete each **only
+  after** confirming it has no other caller once `buildLeaderGroupDashboard` is
+  gone:
+  `rg -n -e "computeAttendanceRhythm" -e "shortenName" -e "describeWeek" app components lib`
+  -> after the deletion, each name matches only its own definition (no remaining
+  call site). At the planned commit, none is referenced anywhere outside the
+  deleted leader path.
 
-Do not touch `getAdminDashboardData` or anything above the
-`// Leader dashboard (...)` banner comment that the admin path uses.
+Do not touch `getAdminDashboardData`, `buildAdminGroupModel`, or any helper the
+**admin** path uses — that is the admin-owned code, regardless of where it sits
+relative to the banner. The three helpers above are leader-only and in scope for
+removal; the banner is a narrative marker, not a hard "nothing above this line"
+fence.
 
-**Verify**: `rg -n "getLeaderDashboardData|buildLeaderGroupDashboard|computeAttendanceRhythm" lib/dashboard/queries.ts`
+**Verify**: `rg -n -e "getLeaderDashboardData" -e "buildLeaderGroupDashboard" -e "computeAttendanceRhythm" -e "shortenName" -e "describeWeek" lib/dashboard/queries.ts`
 -> no matches.
 
 ### Step 2: Remove the broken leader test case

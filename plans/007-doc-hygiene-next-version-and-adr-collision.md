@@ -80,13 +80,13 @@ the multiply citations (the majority) stay correct on 0022 and need no edits.
 
 ## Commands you will need
 
-| Purpose                  | Command                                                                                                                                                      | Expected on success                                                                                                      |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| Find stale Next 15       | `rg -n "Next\.?js? ?15\|Next 15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio` | lists every stale ref in the in-scope files (the generated SVG is excluded - it is re-rendered from the `.drawio` by CI) |
-| Find jsonb-ADR citations | `rg -n "ADR ?0022\|adr/0022" supabase/migrations lib/admin/__tests__/audit-before-advisory-locks-migration.test.ts`                                          | the citations to renumber                                                                                                |
-| Confirm no broken links  | `rg -n "0022-admin-jsonb-write-reguard-and-audit-locks" . -g '!plans/**'`                                                                                    | only the renamed file + updated refs (this plan is excluded - it names the old filename in its own prose)                |
-| Markdown/lint sanity     | `npm run lint`                                                                                                                                               | exit 0                                                                                                                   |
-| Full unit/fitness lane   | `npm run test:run`                                                                                                                                           | exit 0 (the audit-locks regression test still passes)                                                                    |
+| Purpose                  | Command                                                                                                                                                    | Expected on success                                                                                                                                                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Find stale Next 15       | `rg -n -U "Next(\.?js?)?\s*15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio` | lists every stale ref in the in-scope files - `-U` (multiline) catches the `CLAUDE.md:19-20` case where "Next.js" and "15" are on separate lines; the generated SVG is excluded (CI re-renders it from the `.drawio`) |
+| Find jsonb-ADR citations | `rg -n -e "ADR ?0022" -e "adr/0022" supabase/migrations lib/admin/__tests__/audit-before-advisory-locks-migration.test.ts`                                 | the citations to renumber (separate `-e` patterns, not a `\|` alternation - ripgrep treats `\|` as a literal pipe)                                                                                                    |
+| Confirm no broken links  | `rg -n "0022-admin-jsonb-write-reguard-and-audit-locks" . -g '!plans/**'`                                                                                  | only the renamed file + updated refs (this plan is excluded - it names the old filename in its own prose)                                                                                                             |
+| Markdown/lint sanity     | `npm run lint`                                                                                                                                             | exit 0                                                                                                                                                                                                                |
+| Full unit/fitness lane   | `npm run test:run`                                                                                                                                         | exit 0 (the audit-locks regression test still passes)                                                                                                                                                                 |
 
 ## Scope
 
@@ -132,15 +132,16 @@ the multiply citations (the majority) stay correct on 0022 and need no edits.
 ### Step 1: Correct the Next.js version in docs (mechanical, safe)
 
 Run
-`rg -n "Next\.?js? ?15|Next 15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio`
-and change each "Next.js 15" / "Next 15" to "Next.js 16" / "Next 16". Note
-`CLAUDE.md:19-20` wraps the version across a line break ("Next.js" then "15") -
-fix the "15". Do **not** edit `docs/architecture/system-architecture.svg` by
-hand: it is the rendered output of the `.drawio` and is regenerated on push by
+`rg -n -U "Next(\.?js?)?\s*15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio`
+and change each "Next.js 15" / "Next 15" to "Next.js 16" / "Next 16". The `-U`
+(multiline) flag matters: `CLAUDE.md:19-20` wraps the version across a line break
+("Next.js" on line 19, "15" on line 20), and a single-line grep misses it - fix
+the "15" on line 20. Do **not** edit `docs/architecture/system-architecture.svg`
+by hand: it is the rendered output of the `.drawio` and is regenerated on push by
 `render-diagrams.yml`, so the grep above (and the verify below) excludes it.
 
 **Verify**:
-`rg -n "Next\.?js? ?15|Next 15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio`
+`rg -n -U "Next(\.?js?)?\s*15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio`
 -> no matches.
 
 ### Step 2: Resolve the ADR 0022 collision (renumber the jsonb ADR to 0028)
@@ -195,9 +196,10 @@ hand: it is the rendered output of the `.drawio` and is regenerated on push by
 
 Machine-checkable. ALL must hold:
 
-- [ ] `rg -n "Next\.?js? ?15|Next 15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio`
-      returns no matches. (The generated SVG is intentionally not gated here - CI
-      re-renders it from the `.drawio`.)
+- [ ] `rg -n -U "Next(\.?js?)?\s*15" CLAUDE.md README.md docs/REPO_SWEEP_PLAN.md docs/architecture/ARCHITECTURE.md docs/architecture/system-architecture.drawio`
+      returns no matches (`-U` so the wrapped `CLAUDE.md:19-20` case is caught;
+      the generated SVG is intentionally not gated here - CI re-renders it from
+      the `.drawio`).
 - [ ] `docs/adr/0028-admin-jsonb-write-reguard-and-audit-locks.md` exists; the
       `0022-admin-*` filename is gone.
 - [ ] `rg -n "0022-admin-jsonb-write-reguard-and-audit-locks" . -g '!plans/**'`
