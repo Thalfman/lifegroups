@@ -101,10 +101,11 @@ export function resolveCell(
     interestCount: facets.interest[key] ?? 0,
     capacityIssue: computeCellCapacityIssue(sizes).isIssue,
     ...resolveCellHealth(facets.cellHealth, key),
-    // Member count reads the STRONGEST group in the cell (max active roster size),
-    // 0 when the cell has no active groups. The two tenures come pre-aggregated
-    // (max whole years) from the maturity facet, null when ungrounded.
-    memberCount: sizes.length > 0 ? Math.max(...sizes) : 0,
+    // The three multiplication pillars come pre-aggregated (max across the cell's
+    // groups) from the maturity facet: the effective member count (Julian-fed
+    // manual count, else roster — ADR 0022) and the two tenures in whole years
+    // (null when ungrounded). Defaults stand for a cell with no maturity entry.
+    memberCount: maturity?.memberCount ?? 0,
     groupTenureYears: maturity?.groupTenureYears ?? null,
     coShepherdTenureYears: maturity?.coShepherdTenureYears ?? null,
   };

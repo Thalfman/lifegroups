@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PButton } from "@/components/pastoral/button";
 import { useValueChange } from "@/lib/hooks/use-value-change";
@@ -91,6 +91,20 @@ export function ProspectCreateForm({
   // by the board's revalidation.
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // The currently-valid cell values ("<audience>:<categoryId>"), so a restored
+  // draft can't resurrect a group type that has since been removed (or an old
+  // draft from a different ministry) — which would submit a stale audience/
+  // category pair and trip the RPC's `inactive_cell` guard.
+  const validCellValues = useMemo(() => {
+    const values = new Set<string>();
+    for (const t of TOP_TYPES) {
+      for (const opt of categoryOptionsByAudience[t.value]) {
+        values.add(`${t.value}:${opt.id}`);
+      }
+    }
+    return values;
+  }, [categoryOptionsByAudience]);
+
   // Restore a draft left when the admin stepped over to Settings to add a group.
   // Runs once on mount; the draft is consumed (removed) so a later fresh open
   // starts blank. Guarded for SSR / private-mode sessionStorage failures.
@@ -110,12 +124,17 @@ export function ProspectCreateForm({
       if (typeof draft.fullName === "string") setFullName(draft.fullName);
       if (typeof draft.email === "string") setEmail(draft.email);
       if (typeof draft.phone === "string") setPhone(draft.phone);
-      if (typeof draft.cell === "string") setCell(draft.cell);
+      // Only restore the cell if it still maps to an active group type; otherwise
+      // drop it so the box reads as no selection rather than submitting a stale
+      // pair.
+      if (typeof draft.cell === "string" && validCellValues.has(draft.cell)) {
+        setCell(draft.cell);
+      }
       /* eslint-enable react-hooks/set-state-in-effect */
     } catch {
       // A blocked or malformed sessionStorage just means no draft to restore.
     }
-  }, []);
+  }, [validCellValues]);
 
   // useActionForm resets the <form> element on success, but the fields are
   // controlled by React state, so reset them too. Otherwise the next prospect

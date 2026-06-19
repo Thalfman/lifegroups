@@ -240,17 +240,16 @@ function ReadinessRuleSummary({
   level: TriggerLevel;
   toggles: PillarToggles;
 }) {
-  const overrideCount =
-    (toggles.interest ? 1 : 0) +
-    (toggles.capacity ? 1 : 0) +
-    (toggles.groupHealth ? 1 : 0) +
-    (toggles.leaderHealth ? 1 : 0);
+  // Count every pillar (including the three multiplication pillars), derived from
+  // the toggle set so adding a pillar never drifts this summary out of sync.
+  const pillarTotal = Object.keys(toggles).length;
+  const overrideCount = Object.values(toggles).filter(Boolean).length;
   const detail =
     level.kind === "global"
-      ? "The global default defines all four pillars for the ministry year."
+      ? `The global default defines all ${pillarTotal} pillars for the ministry year.`
       : overrideCount === 0
-        ? "All four pillars inherit from the level above."
-        : `${overrideCount} of 4 pillars override the level above.`;
+        ? "All pillars inherit from the level above."
+        : `${overrideCount} of ${pillarTotal} pillars override the level above.`;
 
   return (
     <section className="grid gap-2 rounded-md border border-line bg-bg px-4 py-3.5">
@@ -311,8 +310,10 @@ function buildReadinessLevelOptions(
 function hasRuleOverrides(
   rule: PerTypeReadinessRule | CellReadinessOverride | undefined
 ): boolean {
-  return Boolean(
-    rule?.interest ?? rule?.capacity ?? rule?.groupHealth ?? rule?.leaderHealth
+  // A partial overrides the level above for any pillar PRESENT in it — including
+  // the three multiplication pillars — so check every fragment, not a fixed four.
+  return (
+    rule != null && Object.values(rule).some((fragment) => fragment != null)
   );
 }
 

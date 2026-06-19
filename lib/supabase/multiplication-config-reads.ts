@@ -311,13 +311,21 @@ export const EMPTY_CELL_ACTIVE_GROUP_SIZES: CellActiveGroupSizes = {
 // ungrounded tenure → blocks a required pillar, mirroring an ungraded health
 // letter). Column-allowlisted + paged, like its sibling.
 
+export type CellMaturityCell = {
+  // The cell's BEST (max) EFFECTIVE member count across its active groups — the
+  // Julian-fed manual_member_count when set, else the in-app active roster count
+  // (ADR 0022: the manual count is the source of truth for the "12+ members"
+  // criterion). 0 when the cell has no active groups.
+  memberCount: number;
+  // The cell's max group tenure and Co-Leader tenure in whole years, or null when
+  // no active group in the cell supplies one.
+  groupTenureYears: number | null;
+  coShepherdTenureYears: number | null;
+};
+
 export type CellMaturity = {
-  // Stable cell key → the cell's BEST (max) group tenure and Co-Leader tenure in
-  // whole years, or null when no active group in the cell supplies one.
-  byCell: Map<
-    string,
-    { groupTenureYears: number | null; coShepherdTenureYears: number | null }
-  >;
+  // Stable cell key → the cell's readiness maturity (max across its groups).
+  byCell: Map<string, CellMaturityCell>;
 };
 
 export const EMPTY_CELL_MATURITY: CellMaturity = { byCell: new Map() };
@@ -338,6 +346,12 @@ type CellCoLeaderRow = {
   assigned_at: string | null;
 };
 
+// One active multiplication candidate's Julian-fed headcount for its group.
+type CellManualCountRow = {
+  group_id: string;
+  manual_member_count: number | null;
+};
+
 const CELL_MATURITY_GROUP_COLUMNS = columns<CellMaturityGroupRow>()(
   "id",
   "audience_category",
@@ -349,15 +363,23 @@ const CELL_CO_LEADER_COLUMNS = columns<CellCoLeaderRow>()(
   "group_id",
   "assigned_at"
 );
+const CELL_MANUAL_COUNT_COLUMNS = columns<CellManualCountRow>()(
+  "group_id",
+  "manual_member_count"
+);
 
-// Pure aggregator (exported for testing): bucket each ACTIVE group's tenure maxima
-// under its cell, with every active cell pre-seeded to nulls. A group's Co-Leader
-// tenure reads the EARLIEST active co_leader assignment for that group (the
-// longest-serving co-leader gives the strongest signal). Both maxima are whole
-// years against `todayIso`; a cell with no qualifying group stays null.
+// Pure aggregator (exported for testing): bucket each ACTIVE group's maturity
+// maxima under its cell, with every active cell pre-seeded. A group's member
+// count is the Julian-fed manual_member_count when set, else its active roster
+// count (ADR 0022); its Co-Leader tenure reads the EARLIEST active co_leader
+// assignment (the longest-serving co-leader gives the strongest signal). Member
+// count maxes from 0; both tenures max from null (a cell with no qualifying group
+// stays null). All against `todayIso`.
 export function tallyCellMaturity(
   groups: readonly CellMaturityGroupRow[],
   coLeaders: readonly CellCoLeaderRow[],
+  memberships: readonly CellMembershipRow[],
+  manualCounts: readonly CellManualCountRow[],
   activeCells: readonly CellKey[],
   todayIso: string
 ): CellMaturity {
@@ -371,10 +393,17 @@ export function tallyCellMaturity(
     }
   }
 
-  const byCell = new Map<
-    string,
-    { groupTenureYears: number | null; coShepherdTenureYears: number | null }
-  >();
+  // Active roster count per group (the capacity-board count idiom) and the
+  // Julian-fed manual count that overrides it for the "12+ members" criterion.
+  const rosterCountByGroup = countActiveMembersByGroup(memberships);
+  const manualCountByGroup = new Map<string, number>();
+  for (const row of manualCounts) {
+    if (row.group_id && typeof row.manual_member_count === "number") {
+      manualCountByGroup.set(row.group_id, row.manual_member_count);
+    }
+  }
+
+  const byCell = new Map<string, CellMaturityCell>();
   for (const cell of activeCells) {
     if (!isAudienceCategory(cell.audience)) continue;
     if (cell.categoryId == null) continue;
@@ -383,7 +412,11 @@ export function tallyCellMaturity(
       categoryId: cell.categoryId,
     });
     if (!byCell.has(key)) {
-      byCell.set(key, { groupTenureYears: null, coShepherdTenureYears: null });
+      byCell.set(key, {
+        memberCount: 0,
+        groupTenureYears: null,
+        coShepherdTenureYears: null,
+      });
     }
   }
 
@@ -403,6 +436,11 @@ export function tallyCellMaturity(
     const key = cellKey({ audience, categoryId: g.category_id });
     const acc = byCell.get(key);
     if (!acc) continue;
+    // Effective count: the manual headcount wins; else the roster count (0 when
+    // the group has no active members).
+    const effectiveCount =
+      manualCountByGroup.get(g.id) ?? rosterCountByGroup.get(g.id) ?? 0;
+    acc.memberCount = Math.max(acc.memberCount, effectiveCount);
     acc.groupTenureYears = maxOrKeep(
       acc.groupTenureYears,
       wholeYearsBetween(g.launched_on, todayIso)
@@ -416,43 +454,62 @@ export function tallyCellMaturity(
   return { byCell };
 }
 
-// Read the per-cell group-tenure + Co-Leader-tenure maxima: active groups (with
-// launch date), active co_leader leadership rows (with assignment date), and the
-// active cells to seed the considered set, then aggregate purely against today.
-// All reads page through to completion so a large ministry isn't truncated. A read
-// failure surfaces so the grid notes it rather than evaluating these pillars on a
-// partial set.
+// Read the per-cell member-count + tenure maxima: active groups (with launch
+// date), active co_leader leadership rows (with assignment date), active
+// memberships + the Julian-fed manual counts (for the effective member count),
+// and the active cells to seed the considered set, then aggregate purely against
+// today. All reads page through to completion so a large ministry isn't
+// truncated. A read failure surfaces so the grid notes it rather than evaluating
+// these pillars on a partial set.
 export async function fetchCellGroupMaturity(
   client: ReadClient,
   todayIso: string
 ): Promise<ReadResult<CellMaturity>> {
-  const [groupsRes, coLeadersRes, cellsRes] = await Promise.all([
-    fetchAllPages<CellMaturityGroupRow>((from, to) =>
-      client
-        .from("groups")
-        .select(CELL_MATURITY_GROUP_COLUMNS.select)
-        .eq("lifecycle_status", "active")
-        .range(from, to)
-        .returns<CellMaturityGroupRow[]>()
-    ),
-    fetchAllPages<CellCoLeaderRow>((from, to) =>
-      client
-        .from("group_leaders")
-        .select(CELL_CO_LEADER_COLUMNS.select)
-        .eq("active", true)
-        .eq("role", "co_leader")
-        .range(from, to)
-        .returns<CellCoLeaderRow[]>()
-    ),
-    fetchAllPages<ActiveCellRow>((from, to) =>
-      client
-        .from("category_type_targets")
-        .select(ACTIVE_CELL_COLUMNS.select)
-        .eq("active", true)
-        .range(from, to)
-        .returns<ActiveCellRow[]>()
-    ),
-  ]);
+  const [groupsRes, coLeadersRes, membershipsRes, manualCountsRes, cellsRes] =
+    await Promise.all([
+      fetchAllPages<CellMaturityGroupRow>((from, to) =>
+        client
+          .from("groups")
+          .select(CELL_MATURITY_GROUP_COLUMNS.select)
+          .eq("lifecycle_status", "active")
+          .range(from, to)
+          .returns<CellMaturityGroupRow[]>()
+      ),
+      fetchAllPages<CellCoLeaderRow>((from, to) =>
+        client
+          .from("group_leaders")
+          .select(CELL_CO_LEADER_COLUMNS.select)
+          .eq("active", true)
+          .eq("role", "co_leader")
+          .range(from, to)
+          .returns<CellCoLeaderRow[]>()
+      ),
+      fetchAllPages<CellMembershipRow>((from, to) =>
+        client
+          .from("group_memberships")
+          .select(CELL_MEMBERSHIP_COLUMNS.select)
+          .eq("status", "active")
+          .range(from, to)
+          .returns<CellMembershipRow[]>()
+      ),
+      fetchAllPages<CellManualCountRow>((from, to) =>
+        client
+          .from("multiplication_candidates")
+          .select(CELL_MANUAL_COUNT_COLUMNS.select)
+          .is("archived_at", null)
+          .not("manual_member_count", "is", null)
+          .range(from, to)
+          .returns<CellManualCountRow[]>()
+      ),
+      fetchAllPages<ActiveCellRow>((from, to) =>
+        client
+          .from("category_type_targets")
+          .select(ACTIVE_CELL_COLUMNS.select)
+          .eq("active", true)
+          .range(from, to)
+          .returns<ActiveCellRow[]>()
+      ),
+    ]);
 
   if (groupsRes.error)
     return {
@@ -463,6 +520,22 @@ export async function fetchCellGroupMaturity(
     return {
       data: null,
       error: wrapError("fetchCellGroupMaturity/coLeaders", coLeadersRes.error),
+    };
+  if (membershipsRes.error)
+    return {
+      data: null,
+      error: wrapError(
+        "fetchCellGroupMaturity/memberships",
+        membershipsRes.error
+      ),
+    };
+  if (manualCountsRes.error)
+    return {
+      data: null,
+      error: wrapError(
+        "fetchCellGroupMaturity/manualCounts",
+        manualCountsRes.error
+      ),
     };
   if (cellsRes.error)
     return {
@@ -482,6 +555,8 @@ export async function fetchCellGroupMaturity(
     data: tallyCellMaturity(
       groupsRes.data ?? [],
       coLeadersRes.data ?? [],
+      membershipsRes.data ?? [],
+      manualCountsRes.data ?? [],
       activeCells,
       todayIso
     ),

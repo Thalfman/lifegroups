@@ -417,6 +417,20 @@ function decodeInterestRule(
   };
 }
 
+// A count/years pillar that is NEW to the rule (memberCount / groupTenure /
+// coShepherdTenure): an ABSENT key takes the built-in fragment silently (the
+// legacy "off by default"), but a PRESENT key reports through `onFallback` like
+// any original pillar — so a corrupt fragment after an admin opts the pillar in
+// still raises the unreadable-trigger notice rather than silently reading as off.
+function decodeCountPillarWithReport(
+  raw: unknown,
+  fallback: InterestRule,
+  onFallback: () => void
+): InterestRule {
+  if (raw === undefined) return fallback;
+  return decodeInterestRule(raw, fallback, onFallback);
+}
+
 function decodeCapacityRule(
   raw: unknown,
   fallback: CapacityRule,
@@ -499,21 +513,26 @@ export function decodeReadinessRuleWithReport(
       flag
     ),
     // The three new pillars share the count/years threshold shape, so they reuse
-    // the interest fragment decoder ({ required, min }). They are decoded WITHOUT
-    // the fellBack flag on purpose: every rule stored before this slice predates
-    // them, so their ABSENCE is expected (they default off) — not the corruption
-    // signal that warns "the stored trigger couldn't be read".
-    memberCount: decodeInterestRule(
+    // the interest fragment decoder ({ required, min }). Their ABSENCE is NOT a
+    // fallback — every rule stored before this slice predates them, so a missing
+    // key is the legitimate "off by default", not the corruption signal. But a
+    // PRESENT-yet-malformed fragment (e.g. a non-boolean required after an admin
+    // opted the pillar in) MUST flag, exactly like the original four pillars — so
+    // pass the flag only when the key is present.
+    memberCount: decodeCountPillarWithReport(
       raw.memberCount,
-      BUILT_IN_READINESS_RULE.memberCount
+      BUILT_IN_READINESS_RULE.memberCount,
+      flag
     ),
-    groupTenure: decodeInterestRule(
+    groupTenure: decodeCountPillarWithReport(
       raw.groupTenure,
-      BUILT_IN_READINESS_RULE.groupTenure
+      BUILT_IN_READINESS_RULE.groupTenure,
+      flag
     ),
-    coShepherdTenure: decodeInterestRule(
+    coShepherdTenure: decodeCountPillarWithReport(
       raw.coShepherdTenure,
-      BUILT_IN_READINESS_RULE.coShepherdTenure
+      BUILT_IN_READINESS_RULE.coShepherdTenure,
+      flag
     ),
   };
   return { rule, fellBack };

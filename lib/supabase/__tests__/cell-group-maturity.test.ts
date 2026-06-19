@@ -40,6 +40,14 @@ function coLeader(groupId: string, assignedAt: string | null) {
   return { group_id: groupId, assigned_at: assignedAt };
 }
 
+function membership(groupId: string, status = "active") {
+  return { group_id: groupId, status };
+}
+
+function manualCount(groupId: string, count: number | null) {
+  return { group_id: groupId, manual_member_count: count };
+}
+
 function cell(
   audience: "men" | "women" | "mixed",
   categoryId: string
@@ -47,7 +55,7 @@ function cell(
   return { audience, categoryId };
 }
 
-describe("tallyCellMaturity — per-cell max group + Co-Leader tenure", () => {
+describe("tallyCellMaturity — per-cell max member count + tenures", () => {
   it("takes the MAX group tenure across the cell's groups (the oldest group wins)", () => {
     const result = tallyCellMaturity(
       [
@@ -55,10 +63,13 @@ describe("tallyCellMaturity — per-cell max group + Co-Leader tenure", () => {
         group("g2", "men", "cat-a", "2020-01-01"), // ~6 years
       ],
       [],
+      [],
+      [],
       [cell("men", "cat-a")],
       TODAY
     );
     expect(result.byCell.get(keyOf("men", "cat-a"))).toEqual({
+      memberCount: 0,
       groupTenureYears: 6,
       coShepherdTenureYears: null,
     });
@@ -71,6 +82,8 @@ describe("tallyCellMaturity — per-cell max group + Co-Leader tenure", () => {
         coLeader("g1", "2024-06-01"), // ~2 years
         coLeader("g1", "2025-06-01"), // ~1 year — earliest wins → 2 years
       ],
+      [],
+      [],
       [cell("men", "cat-a")],
       TODAY
     );
@@ -79,9 +92,54 @@ describe("tallyCellMaturity — per-cell max group + Co-Leader tenure", () => {
     ).toBe(2);
   });
 
-  it("keeps tenure null for a cell with no qualifying group (ungrounded → blocks if required)", () => {
-    const result = tallyCellMaturity([], [], [cell("men", "cat-a")], TODAY);
+  it("prefers the Julian-fed manual count over the roster, maxed across the cell (ADR 0022)", () => {
+    const result = tallyCellMaturity(
+      [
+        group("g1", "men", "cat-a", "2024-01-01"),
+        group("g2", "men", "cat-a", "2024-01-01"),
+      ],
+      [],
+      // g1 has 2 active roster members but a manual override of 14; g2 has 3
+      // roster members and no override.
+      [
+        membership("g1"),
+        membership("g1"),
+        membership("g2"),
+        membership("g2"),
+        membership("g2"),
+      ],
+      [manualCount("g1", 14)],
+      [cell("men", "cat-a")],
+      TODAY
+    );
+    // Effective: g1 = 14 (manual wins), g2 = 3 (roster) → cell max 14.
+    expect(result.byCell.get(keyOf("men", "cat-a"))?.memberCount).toBe(14);
+  });
+
+  it("falls back to the active roster count when no manual count is set", () => {
+    const result = tallyCellMaturity(
+      [group("g1", "men", "cat-a", "2024-01-01")],
+      [],
+      [membership("g1"), membership("g1"), membership("g1", "left")],
+      [],
+      [cell("men", "cat-a")],
+      TODAY
+    );
+    // Only the two ACTIVE memberships count.
+    expect(result.byCell.get(keyOf("men", "cat-a"))?.memberCount).toBe(2);
+  });
+
+  it("seeds a cell with no qualifying group at 0 members / null tenures", () => {
+    const result = tallyCellMaturity(
+      [],
+      [],
+      [],
+      [],
+      [cell("men", "cat-a")],
+      TODAY
+    );
     expect(result.byCell.get(keyOf("men", "cat-a"))).toEqual({
+      memberCount: 0,
       groupTenureYears: null,
       coShepherdTenureYears: null,
     });
@@ -91,10 +149,13 @@ describe("tallyCellMaturity — per-cell max group + Co-Leader tenure", () => {
     const result = tallyCellMaturity(
       [group("g1", "men", "cat-a", null)],
       [coLeader("g1", "2020-01-01")],
+      [],
+      [],
       [cell("men", "cat-a")],
       TODAY
     );
     expect(result.byCell.get(keyOf("men", "cat-a"))).toEqual({
+      memberCount: 0,
       groupTenureYears: null,
       coShepherdTenureYears: 6,
     });
@@ -108,10 +169,13 @@ describe("tallyCellMaturity — per-cell max group + Co-Leader tenure", () => {
         group("g3", "men", "cat-x", "2010-01-01"), // not an active cell
       ],
       [],
+      [],
+      [],
       [cell("men", "cat-a")],
       TODAY
     );
     expect(result.byCell.get(keyOf("men", "cat-a"))).toEqual({
+      memberCount: 0,
       groupTenureYears: null,
       coShepherdTenureYears: null,
     });

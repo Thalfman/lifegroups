@@ -688,6 +688,34 @@ describe("decodeReadinessRuleWithReport — corrupt vs missing vs healthy (#473)
     expect(decoded.rule).toEqual(stored);
   });
 
+  it("does NOT flag a rule that simply OMITS the new multiplication pillars (legacy default-off)", () => {
+    // A rule stored before the new pillars existed lacks their keys; that absence
+    // is the legitimate "off by default", not a corruption signal.
+    const decoded = decodeReadinessRuleWithReport({
+      interest: { required: true, min: 5 },
+      capacity: { required: false },
+      groupHealth: { required: true, min: "B" },
+      leaderHealth: { required: false, min: "D" },
+    });
+    expect(decoded.fellBack).toBe(false);
+    expect(decoded.rule.memberCount).toEqual(
+      BUILT_IN_READINESS_RULE.memberCount
+    );
+  });
+
+  it("DOES flag a present-but-malformed new pillar fragment (after an admin opted it in)", () => {
+    // memberCount is PRESENT but its `required` is a non-boolean — exactly the
+    // unreadable-trigger case the original four pillars flag, so it must flag too.
+    const decoded = decodeReadinessRuleWithReport({
+      interest: { required: true, min: 5 },
+      capacity: { required: false },
+      groupHealth: { required: true, min: "B" },
+      leaderHealth: { required: false, min: "D" },
+      memberCount: { required: "yes", min: 12 },
+    });
+    expect(decoded.fellBack).toBe(true);
+  });
+
   it("reports NO fallback for a healthy rule that happens to equal the built-in", () => {
     // Equality with the built-in default must not read as a fallback — the
     // report comes from the decode itself, not from comparing values.
