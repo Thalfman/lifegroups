@@ -36,7 +36,7 @@ export function ShepherdCareViewToggle({
   ];
   return (
     <nav
-      aria-label="Leader care view"
+      aria-label="Shepherd care view"
       className="inline-flex gap-0.5 rounded-pill border border-line bg-bg p-[3px]"
     >
       {segments.map((s) => (

@@ -34,10 +34,12 @@ vi.mock("@/app/(protected)/admin/groups/actions", () => ({
   adminCloseGroup: vi.fn(),
   adminReopenGroup: vi.fn(),
 }));
-// The Groups catalog editor's drawer hook calls useRouter(); there is no app
-// router mounted in a static render, so stub the hook.
+// The Groups catalog editor's drawer hook calls useRouter() and the Groups
+// return banner calls useSearchParams(); there is no app router mounted in a
+// static render, so stub both hooks.
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 import {
@@ -172,7 +174,7 @@ describe("SettingsShell Care tab — rubric read errors (#469)", () => {
   it("names the leader rubric's own failing read and keeps the group editor", () => {
     const html = render(withErrors({ leaderRubric: "boom" }), "care");
 
-    expect(html).toContain(`The Leader Health Rubric ${COULD_NOT_LOAD}`);
+    expect(html).toContain(`The Shepherd Health Rubric ${COULD_NOT_LOAD}`);
     expect(html).not.toContain(`The Group Health Rubric ${COULD_NOT_LOAD}`);
     expect(html).not.toContain(NOT_CONFIGURED);
     expect(count(html, RUBRIC_EDITOR)).toBe(1);

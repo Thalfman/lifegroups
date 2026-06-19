@@ -11,23 +11,25 @@ Leader Care surface is built and re-audited behind a Super-Admin switch
 
 ### People & roles
 
-**Leader**:
-A person who leads a Life Group (the `leader` role; `co_leader` → Co-Leader).
-Leaders are the people the ministry cares for. Their login surface is a
+**Shepherd**:
+A person who leads a Life Group (the `leader` role; `co_leader` → Co-Shepherd).
+Shepherds are the people the ministry cares for. Their login surface is a
 group-scoped **Care** surface — Care Notes + Prayer Requests over their own
 members, plus the group calendar (ADR 0017/0020) — built and RLS-re-audited but
 held behind the Super-Admin `leader_surface` switch until Tom flips it on and
 Julian gives the go-ahead (LDR.1; ADR 0009 verify-before-flip). Weekly check-ins
-(the source of the Health Pulse) remain separately frozen.
-_Avoid_: Shepherd (there is no "Shepherd" tier — only Leaders and the
-Over-Shepherds who oversee them), group leader.
+(the source of the Health Pulse) remain separately frozen. **Front-facing copy
+says "Shepherd" / "Co-Shepherd" (ADR 0025); the code identity stays `leader` /
+`co_leader`** — the role enum values, RPCs, routes (`/leader`), and types are
+unchanged, mirroring the existing `shepherd_care_*` / `over_shepherd` naming.
+_Avoid_: group leader; and in code identifiers, do **not** rename the `leader` /
+`co_leader` role values to "shepherd".
 
 **Over-Shepherd**:
-A coach responsible for a set of Leaders. Sits above Leaders and below
+A coach responsible for a set of Shepherds. Sits above Shepherds and below
 the Ministry Admin in the oversight ladder. Both coverage data and a login
 tier: an Over-Shepherd logs in to a coverage-scoped Care surface over the
-Leaders they cover (ADR 0017). Kept as a single atomic term even though there is
-no standalone "Shepherd".
+Shepherds they cover (ADR 0017). Kept as a single atomic term.
 _Avoid_: Coach, over shepherd, overseer.
 
 **Ministry Admin**:
@@ -45,9 +47,9 @@ _Avoid_: Owner, root, developer.
 The roles form a strict visibility ladder — each tier sees what the tier
 below sees, and more:
 
-**Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Leader**
+**Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Shepherd**
 
-The Leader tier's login surface is a group-scoped **Care** surface (Care Notes +
+The Shepherd tier's login surface is a group-scoped **Care** surface (Care Notes +
 Prayer Requests + group calendar; ADR 0017/0020), built and re-audited but gated
 off behind the Super-Admin `leader_surface` switch until Julian's go-ahead
 (LDR.1). The deliberate exceptions to "higher tiers see everything below" are the

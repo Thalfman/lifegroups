@@ -101,8 +101,8 @@ export function evaluateReadiness(
 export const CRITERION_LABEL: Record<MultiplicationCriterion, string> = {
   enough_members: "12+ members",
   established_long_enough: "3+ years",
-  co_shepherd_tenured: "Co-Leader 1+ yr",
-  shepherd_willing: "Leader willing",
+  co_shepherd_tenured: "Co-Shepherd 1+ yr",
+  shepherd_willing: "Shepherd willing",
   needs_similar_stage: "Need for similar group",
 };
 

@@ -81,16 +81,16 @@ export function GroupRosterManager({
 
       <Card>
         <div className="grid gap-2.5">
-          <div className={LABEL_TEXT}>Leaders</div>
+          <div className={LABEL_TEXT}>Shepherds</div>
           {data.leaders === null ? (
             <p role="alert" className={READ_ERROR_TEXT}>
-              Leaders couldn&apos;t be loaded right now.
+              Shepherds couldn&apos;t be loaded right now.
             </p>
           ) : (
             <>
               {data.leaders.length === 0 ? (
                 <p className={cn("m-0", BODY_TEXT)}>
-                  No leader assigned yet
+                  No shepherd assigned yet
                   {data.archived ? "." : " — assign one below."}
                 </p>
               ) : (
@@ -103,14 +103,14 @@ export function GroupRosterManager({
                       <span className={BODY_TEXT}>
                         {l.name ?? "(unknown)"}{" "}
                         <Badge tone="neutral" dot>
-                          {l.isCoLeader ? "Co-Leader" : "Leader"}
+                          {l.isCoLeader ? "Co-Shepherd" : "Shepherd"}
                         </Badge>
                       </span>
                       {!data.archived ? (
                         <ConfirmActionButton
                           action={adminUnassignLeaderFromGroup}
                           confirmMessage={removeConfirmMessage(
-                            l.name ?? "this leader",
+                            l.name ?? "this shepherd",
                             groupName
                           )}
                           hiddenFields={[
@@ -120,7 +120,7 @@ export function GroupRosterManager({
                           idleLabel="Remove"
                           pendingLabel="Removing…"
                           tone="ghost"
-                          ariaLabel={`Remove ${l.name ?? "this leader"} from ${groupName}`}
+                          ariaLabel={`Remove ${l.name ?? "this shepherd"} from ${groupName}`}
                         />
                       ) : null}
                     </li>
@@ -276,12 +276,12 @@ export function GroupRosterManager({
         eyebrow={groupName}
         title={
           addDrawer.target === "leader"
-            ? "Add a new leader to this group"
+            ? "Add a new shepherd to this group"
             : "Add a new member to this group"
         }
         description={
           addDrawer.target === "leader"
-            ? "Creates a brand-new leader and assigns them to this group in one step."
+            ? "Creates a brand-new shepherd and assigns them to this group in one step."
             : "Creates a brand-new member and assigns them to this group in one step."
         }
         closeLabel="Close add person form"
@@ -352,7 +352,7 @@ function RosterAssignRow({
 
   const noOptions = options.length === 0;
   const personField = kind === "leader" ? "profile_id" : "member_id";
-  const personLabel = kind === "leader" ? "Leader" : "Member";
+  const personLabel = kind === "leader" ? "Shepherd" : "Member";
   const selectId = `roster-assign-${kind}-${groupId}`;
 
   return (
@@ -384,8 +384,8 @@ function RosterAssignRow({
           >
             <option value="" disabled>
               {noOptions
-                ? `No ${kind === "leader" ? "leaders" : "members"} left to assign`
-                : `Pick a ${kind}…`}
+                ? `No ${kind === "leader" ? "shepherds" : "members"} left to assign`
+                : `Pick a ${kind === "leader" ? "shepherd" : "member"}…`}
             </option>
             {options.map((o) => (
               <option key={o.id} value={o.id}>
@@ -407,8 +407,8 @@ function RosterAssignRow({
               className={fieldSelectClassName}
               defaultValue="leader"
             >
-              <option value="leader">Leader</option>
-              <option value="co_leader">Co-leader</option>
+              <option value="leader">Shepherd</option>
+              <option value="co_leader">Co-shepherd</option>
             </select>
           </div>
         ) : null}
@@ -418,7 +418,7 @@ function RosterAssignRow({
             variant="ghost"
             size="sm"
             disabled={pending || noOptions}
-            aria-label={`Assign a ${kind} to ${groupName}`}
+            aria-label={`Assign a ${kind === "leader" ? "shepherd" : "member"} to ${groupName}`}
           >
             {pending ? "Assigning…" : "Assign"}
           </Button>
@@ -431,7 +431,7 @@ function RosterAssignRow({
         {noOptions ? (
           <p className="m-0 font-sans text-xs text-ink3">
             {kind === "leader"
-              ? "Every active leader and co-leader is already on this roster."
+              ? "Every active shepherd and co-shepherd is already on this roster."
               : "Every active member is already on this roster."}
           </p>
         ) : null}
@@ -441,7 +441,7 @@ function RosterAssignRow({
           className={buttonClassName("ghost", "sm")}
         >
           {kind === "leader"
-            ? "Add a new leader to this group"
+            ? "Add a new shepherd to this group"
             : "Add a new member to this group"}
         </button>
         {peopleHidden ? null : (

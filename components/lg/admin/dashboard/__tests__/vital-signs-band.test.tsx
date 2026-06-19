@@ -16,8 +16,8 @@ import {
 
 const PIVOT_TITLES = [
   "Active groups",
-  "Active leaders",
-  "Leaders needing care",
+  "Active shepherds",
+  "Shepherds needing care",
   "Prospects in funnel",
   "Cells ready to multiply",
   "Follow-ups due this week",
@@ -68,20 +68,20 @@ describe("VitalSignsBand pivot metrics (#476)", () => {
 
     // Active groups — from the derived demo summary (8 active groups).
     expect(cardSlice(html, "Active groups")).toContain(">8<");
-    // Active leaders / Leaders needing care — from the Care demo seed routed
+    // Active shepherds / Shepherds needing care — from the Care demo seed routed
     // through the live summary rule (lib/dashboard/shepherd-care-summary.ts),
     // so the expectations read the derived seed rather than pinning literals
     // that drift when the attention rules change.
     const care = ADMIN_FALLBACK.shepherdCare;
     expect(care.totalActiveShepherds).toBeGreaterThan(0);
     expect(care.needsAttention).toBeGreaterThan(0);
-    expect(cardSlice(html, "Active leaders")).toContain(
+    expect(cardSlice(html, "Active shepherds")).toContain(
       `>${care.totalActiveShepherds}<`
     );
-    const needsCare = cardSlice(html, "Leaders needing care");
+    const needsCare = cardSlice(html, "Shepherds needing care");
     expect(needsCare).toContain(`>${care.needsAttention}<`);
     expect(needsCare).toContain(
-      `of ${care.totalActiveShepherds} active leaders`
+      `of ${care.totalActiveShepherds} active shepherds`
     );
     // Prospects in funnel — the three live states (5 + 3 + 2); Joined is the
     // roll-up meta, mirroring the Interest Funnel card's partition.
@@ -164,7 +164,7 @@ describe("VitalSignsBand pivot metrics (#476)", () => {
       },
     });
 
-    for (const title of ["Active leaders", "Leaders needing care"]) {
+    for (const title of ["Active shepherds", "Shepherds needing care"]) {
       const slice = cardSlice(html, title);
       expect(slice).toContain("—");
       expect(slice).toContain("Care data unavailable");
@@ -179,8 +179,8 @@ describe("VitalSignsBand pivot metrics (#476)", () => {
 
     for (const title of [
       "Active groups",
-      "Active leaders",
-      "Leaders needing care",
+      "Active shepherds",
+      "Shepherds needing care",
       "Follow-ups due this week",
       // The frozen launch metrics degrade too rather than echoing demo data.
       "People in groups",
@@ -189,7 +189,7 @@ describe("VitalSignsBand pivot metrics (#476)", () => {
       expect(cardSlice(html, title)).toContain("—");
     }
     expect(cardSlice(html, "Active groups")).not.toContain(">8<");
-    expect(cardSlice(html, "Active leaders")).not.toContain(
+    expect(cardSlice(html, "Active shepherds")).not.toContain(
       `>${ADMIN_FALLBACK.shepherdCare.totalActiveShepherds}<`
     );
   });

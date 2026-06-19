@@ -23,7 +23,7 @@ import { readFormPayload } from "@/lib/shared/form-data";
 type ActionInput<T> = T | FormData;
 
 const NOT_ASSIGNED =
-  "Only the assigned leader or co-leader can write notes for that group.";
+  "Only the assigned shepherd or co-shepherd can write notes for that group.";
 
 function leaderCarePaths(groupId: string): string[] {
   return [`/leader/${groupId}/care`, "/leader"];

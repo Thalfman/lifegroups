@@ -320,7 +320,7 @@ export function lifecycleStatusLabel(status: GroupLifecycleStatus): string {
     case "launching_soon":
       return "Launching soon";
     case "needs_leader":
-      return "Needs leader";
+      return "Needs shepherd";
     case "at_risk":
       return "At risk";
     case "closed":

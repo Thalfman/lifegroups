@@ -101,7 +101,7 @@ export async function fetchCurrentCoverageAssignments(
   return rows.map((r) => ({
     id: r.id,
     shepherd_profile_id: r.shepherd_profile_id,
-    shepherd_name: profileName.get(r.shepherd_profile_id) ?? "Unknown leader",
+    shepherd_name: profileName.get(r.shepherd_profile_id) ?? "Unknown shepherd",
     over_shepherd_id: r.over_shepherd_id,
     over_shepherd_name:
       overName.get(r.over_shepherd_id) ?? "Unknown over-shepherd",

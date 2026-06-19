@@ -156,11 +156,11 @@ export function matchesListTab(
 const LIST_TAB_DESCRIPTIONS: Record<GroupListTab, string> = {
   all: "Every group that isn’t archived.",
   needs_setup:
-    "Groups missing a leader, meeting day/time, or a capacity to measure against.",
+    "Groups missing a shepherd, meeting day/time, or a capacity to measure against.",
   needs_health_check:
     "Groups with no Group-Health Grade yet, or missing a required rating.",
   needs_attention:
-    "Groups with a low Group-Health Grade, full or near-full capacity, an open follow-up, or a leader-care concern.",
+    "Groups with a low Group-Health Grade, full or near-full capacity, an open follow-up, or a shepherd-care concern.",
   archived: "Archived groups are kept, not deleted — restore one any time.",
 };
 

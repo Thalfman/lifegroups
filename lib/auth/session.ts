@@ -398,7 +398,7 @@ export async function requireLeaderActor(): Promise<
       label: "requireLeaderActor",
       requireLiveLeaderSurface: true,
     }),
-    "The leader surface isn't available."
+    "The shepherd surface isn't available."
   );
   if (!result.ok) return result;
   return {

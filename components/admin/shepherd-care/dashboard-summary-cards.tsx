@@ -41,16 +41,16 @@ export function ShepherdCareDashboardSummaryCards({
     return (
       <section aria-labelledby="shepherd-care-summary">
         <h2 id="shepherd-care-summary" className="sr-only">
-          Leader care summary
+          Shepherd care summary
         </h2>
         <div className="rounded-md border border-line bg-surface px-4 py-3.5">
           <div className="font-display text-lg font-medium text-ink">
             Care coverage is not active yet
           </div>
           <p className="m-0 mt-1 font-sans text-sm text-ink2">
-            There are no active leaders to care for yet, so there is nothing to
-            track. Add and assign leaders to turn on care coverage — then this
-            summary shows who needs a touch.
+            There are no active shepherds to care for yet, so there is nothing
+            to track. Add and assign shepherds to turn on care coverage — then
+            this summary shows who needs a touch.
           </p>
           <Link
             href={SETUP_CHAIN_HREF}
@@ -65,13 +65,13 @@ export function ShepherdCareDashboardSummaryCards({
 
   const totalMeta =
     summary.totalActiveShepherds === 0
-      ? "Import or mark leaders to turn on care coverage"
-      : `${summary.totalActiveShepherds} ${plural(summary.totalActiveShepherds, "leader / co-leader", "leaders + co-leaders")}`;
+      ? "Import or mark shepherds to turn on care coverage"
+      : `${summary.totalActiveShepherds} ${plural(summary.totalActiveShepherds, "shepherd / co-shepherd", "shepherds + co-shepherds")}`;
 
   const needsAttentionMeta =
     summary.needsAttention === 0
       ? "Everyone is up to date"
-      : `${plural(summary.needsAttention, "Leader needs", "Leaders need")} a touch this week`;
+      : `${plural(summary.needsAttention, "Shepherd needs", "Shepherds need")} a touch this week`;
 
   const overdueMeta =
     summary.overdueTouchpoints === 0
@@ -81,12 +81,12 @@ export function ShepherdCareDashboardSummaryCards({
   const staleMeta =
     summary.notContactedRecently === 0
       ? "All recent contact is fresh"
-      : `${plural(summary.notContactedRecently, "Leader not", "Leaders not")} contacted in 60+ days`;
+      : `${plural(summary.notContactedRecently, "Shepherd not", "Shepherds not")} contacted in 60+ days`;
 
   const noProfileMeta =
     summary.noCareProfile === 0
-      ? "Every leader has a profile"
-      : `${plural(summary.noCareProfile, "Leader has", "Leaders have")} no care profile yet`;
+      ? "Every shepherd has a profile"
+      : `${plural(summary.noCareProfile, "Shepherd has", "Shepherds have")} no care profile yet`;
 
   const followUpMeta = !followUpsAvailable
     ? "Follow-up data temporarily unavailable"
@@ -103,8 +103,8 @@ export function ShepherdCareDashboardSummaryCards({
   const unassignedMeta = !coverageAvailable
     ? "Coverage data temporarily unavailable"
     : summary.unassignedCoverage === 0
-      ? "Every active leader is covered"
-      : `${plural(summary.unassignedCoverage, "Leader has", "Leaders have")} no over-shepherd`;
+      ? "Every active shepherd is covered"
+      : `${plural(summary.unassignedCoverage, "Shepherd has", "Shepherds have")} no over-shepherd`;
   // The dashboard renders "—" instead of a misleading "0" when the coverage
   // assignments read failed, so admins can tell apart "no unassigned" from
   // "we don't know".
@@ -126,11 +126,11 @@ export function ShepherdCareDashboardSummaryCards({
   return (
     <section aria-labelledby="shepherd-care-summary">
       <h2 id="shepherd-care-summary" className="sr-only">
-        Leader care summary
+        Shepherd care summary
       </h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3.5 md:grid-cols-[repeat(auto-fit,minmax(220px,1fr))] md:gap-3.5">
         <MetricCard
-          title="Active leaders"
+          title="Active shepherds"
           value={String(summary.totalActiveShepherds)}
           meta={totalMeta}
           accent={P.sage}
@@ -138,7 +138,7 @@ export function ShepherdCareDashboardSummaryCards({
         />
         <Link
           href={needsAttentionHref}
-          aria-label="Filter the leader roster to needs attention"
+          aria-label="Filter the shepherd roster to needs attention"
           className={LINK_RESET}
         >
           <MetricCard

@@ -51,7 +51,7 @@ const TABLE_COLUMNS: {
   optional?: GroupsTableOptionalColumn;
 }[] = [
   { key: "group", label: "Group" },
-  { key: "leader", label: "Leader / co-leader", optional: "leader" },
+  { key: "leader", label: "Shepherd / co-shepherd", optional: "leader" },
   { key: "setup", label: "Setup", optional: "setup" },
   { key: "health", label: "Health grade", optional: "health" },
   { key: "capacity", label: "Capacity", numeric: true, optional: "capacity" },

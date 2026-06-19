@@ -201,13 +201,18 @@ result-returning guards (`requireAdminSession`, …) in server actions.
 
 ## Domain vocabulary (use it)
 
-Defer to [`CONTEXT.md`](./CONTEXT.md) for definitions. Must-use terms: **Leader**
-(not "Shepherd" / "group leader"), **Over-Shepherd**, **Ministry Admin**, **Care
+Defer to [`CONTEXT.md`](./CONTEXT.md) for definitions. Must-use terms:
+**Shepherd** / **Co-Shepherd** in **user-facing copy** (ADR 0025 reversed ADR
+0008 — but the **code identity stays `leader` / `co_leader`**: the role enum
+values, `leader_*` RPCs, `/leader` routes, and `Leader*` types are deliberately
+unchanged, mirroring the existing `shepherd_care_*` / `over_shepherd` naming —
+never rename them to "shepherd"), **Over-Shepherd**, **Ministry Admin**, **Care
 Note** and **Prayer Request** (distinct), **Prospect** in the **Interest Funnel**
 (not "Guest" / "Lead" / "Guests pipeline"), **Group type** (a single free-text
 label per group, chosen from the admin-managed list — the Audience × Category
 "Cell" model was retired), **Multiplication**, **Archive** (soft delete). Use
-these terms in code identifiers, UX copy, and commit messages.
+these terms in UX copy and commit messages; in code identifiers, keep
+`leader` / `co_leader`.
 
 ## Where to look (docs map)
 

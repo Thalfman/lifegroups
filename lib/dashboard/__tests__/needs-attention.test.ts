@@ -335,13 +335,15 @@ describe("buildTopNextActions", () => {
     const d = allClearData();
     d.setupGaps.counts.noLeader = 16;
     const [leaders] = buildTopNextActions(d);
-    expect(leaders.action).toBe("Assign leaders to 16 groups");
+    expect(leaders.action).toBe("Assign shepherds to 16 groups");
   });
 
   it("uses the singular for a count of one", () => {
     const d = allClearData();
     d.setupGaps.counts.noLeader = 1;
-    expect(buildTopNextActions(d)[0].action).toBe("Assign a leader to 1 group");
+    expect(buildTopNextActions(d)[0].action).toBe(
+      "Assign a shepherd to 1 group"
+    );
   });
 
   it("renders the capped follow-ups read as N+ in the imperative", () => {
@@ -394,13 +396,13 @@ describe("buildTopNextActions: why-it-matters rationale", () => {
       buildTopNextActions(d).map((a) => [a.key, a.why])
     );
     expect(why.no_leader).toBe(
-      "Import people, mark leaders, then assign them so care can start."
+      "Import people, mark shepherds, then assign them so care can start."
     );
     expect(why.setup_gaps).toBe(
       "Complete group setup so meeting rhythms and care coverage have a clear base."
     );
     expect(why.care_attention).toBe(
-      "Leaders carry more when no one is checking in."
+      "Shepherds carry more when no one is checking in."
     );
     expect(why.health).toBe(
       "Regular checks keep a group's health from drifting unseen."

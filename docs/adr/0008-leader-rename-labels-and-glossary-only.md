@@ -1,5 +1,12 @@
 # "Shepherd" → "Leader" rename: labels and glossary only
 
+> **Superseded by [ADR 0025](./0025-rename-leader-label-to-shepherd.md)
+> (2026-06).** The user-facing labels reverted to **Shepherd** / **Co-Shepherd**.
+> The decision below to keep the **code/DB identity** (`leader` / `co_leader`,
+> `shepherd_care_*`, routes) unchanged still holds — ADR 0025 only flips the
+> display copy back, so the schema↔UI mismatch this ADR documented is now the
+> _reverse_ (UI "Shepherd", code `leader`).
+
 There is no standalone "Shepherd" tier — only Leaders and the Over-Shepherds who
 oversee them (CONTEXT.md). We correct the vocabulary in user-facing labels and in
 the glossary, but **deliberately do not** rename the database (`shepherd_care_*`

@@ -94,8 +94,8 @@ export function PersonGroupAssign({
               className={fieldSelectClassName}
               defaultValue="leader"
             >
-              <option value="leader">Leader</option>
-              <option value="co_leader">Co-leader</option>
+              <option value="leader">Shepherd</option>
+              <option value="co_leader">Co-shepherd</option>
             </select>
           </div>
         ) : null}

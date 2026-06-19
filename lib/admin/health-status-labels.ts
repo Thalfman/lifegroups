@@ -18,7 +18,7 @@ export const GROUP_HEALTH_STATUS_LABEL: Record<GroupHealthStatus, string> = {
   restart_soon: "Restart soon",
   overdue_restart: "Overdue restart",
   capacity_full: "Capacity full",
-  needs_leader_support: "Needs leader support",
+  needs_leader_support: "Needs shepherd support",
 };
 
 // The statuses in display order (object key order is insertion order for

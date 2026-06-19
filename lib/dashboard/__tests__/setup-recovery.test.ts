@@ -113,7 +113,7 @@ describe("buildSetupRecoveryChecklist", () => {
         status: "needs_action",
         count: 16,
         href: "/admin/groups?tab=needs_setup&from=setup",
-        label: "Assign leaders",
+        label: "Assign shepherds",
       },
       {
         status: "needs_action",

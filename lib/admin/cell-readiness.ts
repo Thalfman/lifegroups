@@ -31,21 +31,34 @@ import type { GroupHealthLetter } from "@/types/enums";
 // vocabulary.
 export type ReadinessLetter = GroupHealthLetter;
 
-// The four readiness pillars. Capacity is a boolean issue (no threshold); the
-// other three carry a threshold in their natural unit.
+// The readiness pillars. Capacity is a boolean issue (no threshold); the others
+// carry a threshold in their natural unit. The last three (members / group
+// tenure / co-leader tenure) are Julian's per-group multiplication criteria
+// (lib/admin/multiplication.ts), folded into the configurable rule so they can
+// gate the per-cell "Ready" badge too — off by default (see BUILT_IN below).
 export type ReadinessPillarKey =
   | "interest"
   | "capacity"
   | "groupHealth"
-  | "leaderHealth";
+  | "leaderHealth"
+  | "memberCount"
+  | "groupTenure"
+  | "coShepherdTenure";
 
 // Per-pillar rule fragments, each in its NATURAL unit.
 //   * Interest: required + a minimum HEADCOUNT (interest ≥ min PEOPLE).
 //   * Capacity: required only — the derived per-cell issue either blocks or not.
 //   * Health:   required + a minimum A–F LETTER (health ≥ min).
+//   * Member count: required + a minimum HEADCOUNT (members ≥ min PEOPLE).
+//   * Group tenure / Co-Leader tenure: required + a minimum WHOLE YEARS.
 export type InterestRule = { required: boolean; min: number };
 export type CapacityRule = { required: boolean };
 export type HealthRule = { required: boolean; min: ReadinessLetter };
+// All three new pillars share the count/years threshold shape (a non-negative
+// integer minimum) — named per pillar so the rule reads explicitly.
+export type MemberCountRule = { required: boolean; min: number };
+export type GroupTenureRule = { required: boolean; min: number };
+export type CoShepherdTenureRule = { required: boolean; min: number };
 
 // The whole readiness rule: one fragment per pillar. The GLOBAL rule has this
 // exact shape; a per-cell override is a PARTIAL of it (see CellReadinessOverride).
@@ -54,6 +67,9 @@ export type ReadinessRule = {
   capacity: CapacityRule;
   groupHealth: HealthRule;
   leaderHealth: HealthRule;
+  memberCount: MemberCountRule;
+  groupTenure: GroupTenureRule;
+  coShepherdTenure: CoShepherdTenureRule;
 };
 
 // A per-cell override OVER the global rule. Any pillar PRESENT here replaces the
@@ -77,6 +93,14 @@ export type CellReadinessInputs = {
   capacityIssue: boolean;
   groupHealth: ReadinessLetter | null;
   leaderHealth: ReadinessLetter | null;
+  // The cell-aggregated values for Julian's per-group criteria — the BEST group
+  // in the cell (a cell is ready to multiply when one of its groups is). Member
+  // count is a headcount (0 when the cell has no groups); the two tenures are
+  // WHOLE YEARS, null when no group supplies one (ungrounded → blocks if required,
+  // mirroring an ungraded health letter).
+  memberCount: number;
+  groupTenureYears: number | null;
+  coShepherdTenureYears: number | null;
 };
 
 // Per-pillar outcome of evaluating the rule: whether the pillar was required and
@@ -109,6 +133,13 @@ export const BUILT_IN_READINESS_RULE: ReadinessRule = {
   capacity: { required: true },
   groupHealth: { required: false, min: "C" },
   leaderHealth: { required: false, min: "C" },
+  // Julian's three multiplication criteria, seeded with their canonical
+  // thresholds (12 members / 3 years / 1 year, lib/admin/multiplication.ts) but
+  // NOT required — they appear in the editor switched off, so no cell's badge
+  // changes until Julian opts one in.
+  memberCount: { required: false, min: 12 },
+  groupTenure: { required: false, min: 3 },
+  coShepherdTenure: { required: false, min: 1 },
 };
 
 // The pillars evaluated in their stable display/outcome order.
@@ -117,6 +148,9 @@ const READINESS_PILLARS: readonly ReadinessPillarKey[] = [
   "capacity",
   "groupHealth",
   "leaderHealth",
+  "memberCount",
+  "groupTenure",
+  "coShepherdTenure",
 ];
 
 // ---------------------------------------------------------------------------
@@ -142,6 +176,9 @@ export type ResolvedReadinessRule = {
   capacity: ResolvedReadinessPillar<CapacityRule>;
   groupHealth: ResolvedReadinessPillar<HealthRule>;
   leaderHealth: ResolvedReadinessPillar<HealthRule>;
+  memberCount: ResolvedReadinessPillar<MemberCountRule>;
+  groupTenure: ResolvedReadinessPillar<GroupTenureRule>;
+  coShepherdTenure: ResolvedReadinessPillar<CoShepherdTenureRule>;
 };
 
 // One pillar's fall-through: the cell override wins; else the per-type rule;
@@ -182,6 +219,21 @@ export function resolveReadinessRuleWithSources(
       perType.leaderHealth,
       cell.leaderHealth
     ),
+    memberCount: resolvePillar(
+      global.memberCount,
+      perType.memberCount,
+      cell.memberCount
+    ),
+    groupTenure: resolvePillar(
+      global.groupTenure,
+      perType.groupTenure,
+      cell.groupTenure
+    ),
+    coShepherdTenure: resolvePillar(
+      global.coShepherdTenure,
+      perType.coShepherdTenure,
+      cell.coShepherdTenure
+    ),
   };
 }
 
@@ -198,6 +250,9 @@ export function resolveReadinessRule(
     capacity: resolved.capacity.rule,
     groupHealth: resolved.groupHealth.rule,
     leaderHealth: resolved.leaderHealth.rule,
+    memberCount: resolved.memberCount.rule,
+    groupTenure: resolved.groupTenure.rule,
+    coShepherdTenure: resolved.coShepherdTenure.rule,
   };
 }
 
@@ -247,12 +302,28 @@ export function evaluateCellReadiness(
     leaderHealth:
       inputs.leaderHealth !== null &&
       letterAtLeast(inputs.leaderHealth, rule.leaderHealth.min),
+    // Member count clears at or above the minimum headcount (members ≥ N).
+    memberCount:
+      Number.isFinite(inputs.memberCount) &&
+      inputs.memberCount >= rule.memberCount.min,
+    // The two tenures clear at or above the minimum whole years. A null tenure
+    // (no group supplies one) NEVER clears — it blocks a required pillar until a
+    // group grounds it, mirroring an ungraded required health letter.
+    groupTenure:
+      inputs.groupTenureYears !== null &&
+      inputs.groupTenureYears >= rule.groupTenure.min,
+    coShepherdTenure:
+      inputs.coShepherdTenureYears !== null &&
+      inputs.coShepherdTenureYears >= rule.coShepherdTenure.min,
   };
   const required: Record<ReadinessPillarKey, boolean> = {
     interest: rule.interest.required,
     capacity: rule.capacity.required,
     groupHealth: rule.groupHealth.required,
     leaderHealth: rule.leaderHealth.required,
+    memberCount: rule.memberCount.required,
+    groupTenure: rule.groupTenure.required,
+    coShepherdTenure: rule.coShepherdTenure.required,
   };
 
   const outcomes: ReadinessOutcome[] = [];
@@ -346,6 +417,20 @@ function decodeInterestRule(
   };
 }
 
+// A count/years pillar that is NEW to the rule (memberCount / groupTenure /
+// coShepherdTenure): an ABSENT key takes the built-in fragment silently (the
+// legacy "off by default"), but a PRESENT key reports through `onFallback` like
+// any original pillar — so a corrupt fragment after an admin opts the pillar in
+// still raises the unreadable-trigger notice rather than silently reading as off.
+function decodeCountPillarWithReport(
+  raw: unknown,
+  fallback: InterestRule,
+  onFallback: () => void
+): InterestRule {
+  if (raw === undefined) return fallback;
+  return decodeInterestRule(raw, fallback, onFallback);
+}
+
 function decodeCapacityRule(
   raw: unknown,
   fallback: CapacityRule,
@@ -427,6 +512,28 @@ export function decodeReadinessRuleWithReport(
       BUILT_IN_READINESS_RULE.leaderHealth,
       flag
     ),
+    // The three new pillars share the count/years threshold shape, so they reuse
+    // the interest fragment decoder ({ required, min }). Their ABSENCE is NOT a
+    // fallback — every rule stored before this slice predates them, so a missing
+    // key is the legitimate "off by default", not the corruption signal. But a
+    // PRESENT-yet-malformed fragment (e.g. a non-boolean required after an admin
+    // opted the pillar in) MUST flag, exactly like the original four pillars — so
+    // pass the flag only when the key is present.
+    memberCount: decodeCountPillarWithReport(
+      raw.memberCount,
+      BUILT_IN_READINESS_RULE.memberCount,
+      flag
+    ),
+    groupTenure: decodeCountPillarWithReport(
+      raw.groupTenure,
+      BUILT_IN_READINESS_RULE.groupTenure,
+      flag
+    ),
+    coShepherdTenure: decodeCountPillarWithReport(
+      raw.coShepherdTenure,
+      BUILT_IN_READINESS_RULE.coShepherdTenure,
+      flag
+    ),
   };
   return { rule, fellBack };
 }
@@ -468,6 +575,24 @@ export function decodeCellOverride(raw: unknown): CellReadinessOverride {
     out.leaderHealth = decodeHealthRule(
       raw.leaderHealth,
       BUILT_IN_READINESS_RULE.leaderHealth
+    );
+  }
+  if (isRecord(raw.memberCount)) {
+    out.memberCount = decodeInterestRule(
+      raw.memberCount,
+      BUILT_IN_READINESS_RULE.memberCount
+    );
+  }
+  if (isRecord(raw.groupTenure)) {
+    out.groupTenure = decodeInterestRule(
+      raw.groupTenure,
+      BUILT_IN_READINESS_RULE.groupTenure
+    );
+  }
+  if (isRecord(raw.coShepherdTenure)) {
+    out.coShepherdTenure = decodeInterestRule(
+      raw.coShepherdTenure,
+      BUILT_IN_READINESS_RULE.coShepherdTenure
     );
   }
   return out;

@@ -31,7 +31,7 @@ export function CoverageAssignForm({
     >
       <div>
         <label htmlFor="coverage-leader" className={fieldLabelClassName}>
-          Leader
+          Shepherd
         </label>
         <select
           id="coverage-leader"
@@ -42,7 +42,9 @@ export function CoverageAssignForm({
           className={fieldSelectClassName}
         >
           <option value="" disabled>
-            {leaders.length === 0 ? "No assignable leaders" : "Pick a leader…"}
+            {leaders.length === 0
+              ? "No assignable shepherds"
+              : "Pick a shepherd…"}
           </option>
           {leaders.map((l) => (
             <option key={l.profile_id} value={l.profile_id}>

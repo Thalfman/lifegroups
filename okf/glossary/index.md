@@ -24,10 +24,12 @@ condensed reference; defer to `CONTEXT.md` for full definitions.
 - **Super Admin** (Tom) — platform owner; top of ladder. _Avoid:_ owner, root.
 - **Ministry Admin** (Julian) — runs the OS day to day; primary persona.
   _Avoid:_ admin (ambiguous), pastor.
-- **Over-Shepherd** — coach over a set of Leaders; both coverage data and a
+- **Over-Shepherd** — coach over a set of Shepherds; both coverage data and a
   login tier. _Avoid:_ coach, overseer.
-- **Leader / Co-Leader** — the people the ministry cares for; lead a Life Group.
-  _Avoid:_ Shepherd, group leader.
+- **Shepherd / Co-Shepherd** — the people the ministry cares for; lead a Life
+  Group. User-facing copy says "Shepherd" / "Co-Shepherd" (ADR 0025); the code
+  identity stays `leader` / `co_leader`. _Avoid:_ group leader; and renaming the
+  `leader` / `co_leader` code identifiers.
 - **member** — non-auth participant record; **never logs in**.
 
 ## Care

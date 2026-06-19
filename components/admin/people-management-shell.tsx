@@ -216,18 +216,18 @@ export function PeopleManagementShell({
         <section className="grid gap-[18px]">
           <div>
             <h3 className="m-0 font-display text-xl font-medium text-ink">
-              Leader pipeline
+              Shepherd pipeline
             </h3>
             <p className="m-0 mt-1.5 max-w-lede font-sans text-sm text-ink2">
-              Future leaders and where they stand &mdash; Identified, In
+              Future shepherds and where they stand &mdash; Identified, In
               training, Ready to lead, Launched. This is the supply side of
               multiplication: the same pipeline that answers whether upcoming
-              launches have enough ready leaders.
+              launches have enough ready shepherds.
             </p>
           </div>
           {pipeline.error ? (
             <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
-              The leader pipeline could not be loaded: {pipeline.error}
+              The shepherd pipeline could not be loaded: {pipeline.error}
             </p>
           ) : (
             <LeaderPipeline
@@ -244,7 +244,7 @@ export function PeopleManagementShell({
         onRequestClose={drawer.requestClose}
         eyebrow="People"
         title="Add a person"
-        description="A Leader signs in and shepherds a group. A Member takes part in a group — no login."
+        description="A Shepherd signs in and cares for a group. A Member takes part in a group — no login."
         closeLabel="Close add person form"
       >
         <AddPersonKindToggle value={addKind} onChange={setAddKind} />
@@ -285,8 +285,8 @@ function PeopleSetupPath({
         Setup path
       </div>
       <p className="m-0 mt-1 font-sans text-sm text-ink2">
-        Import people, mark or assign leaders, then assign group leaders. Care
-        coverage becomes available after that chain is in place.
+        Import people, mark or assign shepherds, then assign group shepherds.
+        Care coverage becomes available after that chain is in place.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2.5 font-sans text-sm">
         {isSuperAdmin ? (
@@ -310,7 +310,7 @@ function PeopleSetupPath({
           href="/admin/groups"
           className="font-semibold text-clay no-underline hover:underline"
         >
-          Assign group leaders
+          Assign group shepherds
         </Link>
         <span className="text-ink3">-&gt;</span>
         <Link
@@ -332,7 +332,7 @@ function AddPersonKindToggle({
   onChange: (next: AddPersonKind) => void;
 }) {
   const options: { key: AddPersonKind; label: string }[] = [
-    { key: "leader", label: "Leader" },
+    { key: "leader", label: "Shepherd" },
     { key: "member", label: "Member" },
   ];
   return (

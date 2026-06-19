@@ -59,7 +59,7 @@ function EmptySessionCard({ meetingWeek }: { meetingWeek: string }) {
         No check-in yet for {formatWeekLabel(meetingWeek).toLowerCase()}.
       </div>
       <p className="m-0 font-sans text-sm leading-normal text-sageDeep">
-        The leader hasn&rsquo;t submitted this group&rsquo;s check-in. The
+        The shepherd hasn&rsquo;t submitted this group&rsquo;s check-in. The
         roster below shows who would be marked.
       </p>
     </div>
@@ -141,7 +141,7 @@ export function CheckInDetailShell({
           <div className="font-sans text-base text-ink2">
             {data.leaderNames.length > 0
               ? data.leaderNames.join(" · ")
-              : "No leaders assigned"}
+              : "No shepherds assigned"}
             {meta ? ` · ${meta}` : ""}
           </div>
         </div>
@@ -184,7 +184,7 @@ export function CheckInDetailShell({
           ) : null}
           {session.leader_note ? (
             <div className="grid gap-1.5">
-              <SectionLabel>Leader note</SectionLabel>
+              <SectionLabel>Shepherd note</SectionLabel>
               <p className="m-0 whitespace-pre-wrap font-sans text-base leading-relaxed text-ink">
                 {session.leader_note}
               </p>
@@ -232,7 +232,7 @@ export function CheckInDetailShell({
           />
           {health.leader_note ? (
             <div className="grid gap-1.5">
-              <SectionLabel>Pulse · leader note</SectionLabel>
+              <SectionLabel>Pulse · shepherd note</SectionLabel>
               <p className="m-0 whitespace-pre-wrap font-sans text-base leading-relaxed text-ink">
                 {health.leader_note}
               </p>

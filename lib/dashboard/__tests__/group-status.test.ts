@@ -170,7 +170,7 @@ describe("listTabDescription", () => {
     }
     // The descriptions must name the rule's actual legs so the copy and the
     // predicates above can't drift apart unnoticed.
-    expect(listTabDescription("needs_setup")).toContain("leader");
+    expect(listTabDescription("needs_setup")).toContain("shepherd");
     expect(listTabDescription("needs_setup")).toContain("capacity");
     expect(listTabDescription("needs_health_check")).toContain(
       "Group-Health Grade"

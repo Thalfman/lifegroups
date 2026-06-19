@@ -68,7 +68,7 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
               className={fieldInputClassName}
             />
             <p className={fieldHintClassName}>
-              Days since last contact before a leader the Ministry Admin
+              Days since last contact before a shepherd the Ministry Admin
               oversees directly is flagged on the Care dashboard. 7–365.
             </p>
           </div>
@@ -91,7 +91,7 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
               className={fieldInputClassName}
             />
             <p className={fieldHintClassName}>
-              Days since last contact before a leader with an active
+              Days since last contact before a shepherd with an active
               Over-Shepherd is flagged on the Care dashboard. 7–365.
             </p>
           </div>

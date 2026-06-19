@@ -96,7 +96,7 @@ describe("the shared health-status label map (#478)", () => {
       restart_soon: "Restart soon",
       overdue_restart: "Overdue restart",
       capacity_full: "Capacity full",
-      needs_leader_support: "Needs leader support",
+      needs_leader_support: "Needs shepherd support",
     });
   });
 

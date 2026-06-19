@@ -37,7 +37,7 @@ export function OverShepherdList({
             <th className={TH}>Email</th>
             <th className={TH}>Phone</th>
             <th className={TH}>Status</th>
-            <th className={TH}>Leaders covered</th>
+            <th className={TH}>Shepherds covered</th>
             <th className={TH}>Actions</th>
           </tr>
         </thead>

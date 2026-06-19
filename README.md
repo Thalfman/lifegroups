@@ -96,31 +96,35 @@ The app is an oversight operating system for the ministry's upper tiers. Roles
 form a strict **downward-visibility ladder** — each tier sees what the tier
 below sees, and more. There are **two deliberate exceptions**: the Ministry
 Admin's own **Private Care Note** (hidden even from the Super Admin; ADR
-0002/0003) and the author-private **Care Note** (an OS's or Leader's note,
+0002/0003) and the author-private **Care Note** (an OS's or Shepherd's note,
 readable by Julian only when he grants that person's transparency toggle;
 ADR 0017):
 
-> **Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Leader**
+> **Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Shepherd**
 
-App-login roles live on `profiles.role` (the `user_role` enum):
+User-facing copy says **Shepherd** / **Co-Shepherd** (ADR 0025); the **code
+identity** below — the `leader` / `co_leader` role enum values, `leader_*` RPCs,
+and `/leader` routes — is deliberately unchanged. App-login roles live on
+`profiles.role` (the `user_role` enum):
 
 - **`super_admin`** (Tom) — platform owner. Everything a Ministry Admin sees
   **plus** platform/account administration (`/admin/super-admin`). Bootstrapped
   manually (see Sign-in setup).
 - **`ministry_admin`** (Julian) — all ministry/operational data. Lands on
   `/admin`. This is the primary persona.
-- **`over_shepherd`** — a coach scoped to **only the Leaders they cover** (via
+- **`over_shepherd`** — a coach scoped to **only the Shepherds they cover** (via
   `shepherd_coverage_assignments`). Lands on `/over-shepherd`: a focused,
   coverage-scoped care surface, not `/admin`. Logs in today and writes
-  author-private **Care Notes** + **Prayer Requests** about their Leaders
+  author-private **Care Notes** + **Prayer Requests** about their Shepherds
   (ADR 0017, slice #381).
-- **`leader` / `co_leader`** — **re-opened (ADR 0017) and live by default
-  (ADR 0024).** A Leader logs in to a care surface over their group (group-scoped
-  Care Notes + Prayer Requests + calendar, ADR 0020). The route + RLS re-audit
-  landed with the `leader_surface` **verified** marker (verify-before-flip,
-  ADR 0009, #376/#382); migration `20260701020000` seeds `enabled` on, so the
-  surface is live. The Super-Admin console can switch it back off (leaders then
-  land on `/unauthorized`); check-ins stay frozen behind their own gate.
+- **`leader` / `co_leader`** (shown to users as **Shepherd** / **Co-Shepherd**,
+  ADR 0025) — **re-opened (ADR 0017) and live by default (ADR 0024).** A Shepherd
+  logs in to a care surface over their group (group-scoped Care Notes + Prayer
+  Requests + calendar, ADR 0020). The route + RLS re-audit landed with the
+  `leader_surface` **verified** marker (verify-before-flip, ADR 0009, #376/#382);
+  migration `20260701020000` seeds `enabled` on, so the surface is live. The
+  Super-Admin console can switch it back off (Shepherds then land on
+  `/unauthorized`); check-ins stay frozen behind their own gate.
 - **`staff_viewer`** — **deprecated.** Retained in the SQL enum for backwards
   compatibility; routed to `/unauthorized`.
 

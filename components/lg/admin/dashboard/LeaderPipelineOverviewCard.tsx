@@ -26,7 +26,7 @@ export function LeaderPipelineOverviewCard({
     return (
       <StatusCard
         eyebrow="People"
-        title="Leader pipeline"
+        title="Shepherd pipeline"
         action={
           <OpenLink href="/admin/leader-pipeline" label="Review pipeline" />
         }
@@ -34,7 +34,7 @@ export function LeaderPipelineOverviewCard({
         <EmptyState
           title="Pipeline data unavailable"
           description={
-            summary.error ?? "The leader pipeline could not be loaded."
+            summary.error ?? "The shepherd pipeline could not be loaded."
           }
         />
       </StatusCard>
@@ -44,14 +44,14 @@ export function LeaderPipelineOverviewCard({
   return (
     <StatusCard
       eyebrow="People"
-      title="Leader pipeline"
+      title="Shepherd pipeline"
       action={
         <OpenLink href="/admin/leader-pipeline" label="Review pipeline" />
       }
     >
       {summary.total === 0 ? (
         <CardNote>
-          No apprentices yet — future Leaders will gather here as they are
+          No apprentices yet — future Shepherds will gather here as they are
           identified.
         </CardNote>
       ) : (

@@ -68,7 +68,7 @@ const RECOVERY_LABEL_CLASS = "font-sans text-sm font-semibold text-sageDeep";
 // Impact unit per surface — what a global reset touches.
 function impactLabel(surface: AttentionResetSurface, count: number): string {
   if (surface === "care") {
-    return `${count} leader care profile${count === 1 ? "" : "s"}`;
+    return `${count} shepherd care profile${count === 1 ? "" : "s"}`;
   }
   return `${count} active group${count === 1 ? "" : "s"}`;
 }

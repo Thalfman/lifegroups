@@ -82,8 +82,8 @@ export function LeaderProfileForm({
       ) : null}
       <p className={formNoteClassName}>
         {assignToGroup
-          ? `Creates a leader profile and assigns them to ${assignToGroup.groupName}. Track their care from the person's page.`
-          : "Creates a leader profile in the directory. Assign them to a group and track their care from the person's page."}
+          ? `Creates a shepherd profile and assigns them to ${assignToGroup.groupName}. Track their care from the person's page.`
+          : "Creates a shepherd profile in the directory. Assign them to a group and track their care from the person's page."}
       </p>
       <div className={formGridClassName}>
         <div>
@@ -143,8 +143,8 @@ export function LeaderProfileForm({
               defaultValue="leader"
               className={fieldSelectClassName}
             >
-              <option value="leader">Leader</option>
-              <option value="co_leader">Co-leader</option>
+              <option value="leader">Shepherd</option>
+              <option value="co_leader">Co-shepherd</option>
             </select>
           </div>
         ) : null}
@@ -159,8 +159,8 @@ export function LeaderProfileForm({
           {pending
             ? "Saving…"
             : assignToGroup
-              ? "Add leader to group"
-              : "Add leader"}
+              ? "Add shepherd to group"
+              : "Add shepherd"}
         </Button>
         {onCancel ? (
           <Button
@@ -176,15 +176,15 @@ export function LeaderProfileForm({
       </div>
       {!canSubmit ? (
         <p className={fieldHintClassName}>
-          Enter a full name and valid email to enable Add leader.
+          Enter a full name and valid email to enable Add shepherd.
         </p>
       ) : null}
       <FormStatus
         state={state}
         successText={
           assignToGroup
-            ? `Leader added to ${assignToGroup.groupName}.`
-            : "Leader profile added."
+            ? `Shepherd added to ${assignToGroup.groupName}.`
+            : "Shepherd profile added."
         }
       />
     </form>

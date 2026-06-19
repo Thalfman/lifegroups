@@ -6,12 +6,12 @@ export function OwnerControlsOverview() {
       <SectionHeader
         eyebrow="Owner controls"
         title="What lives here"
-        description="The owner/operator console. Everyone else &mdash; ministry admins, leaders, co-leaders &mdash; runs their day-to-day from /admin and /leader; nothing here is needed for routine ministry work."
+        description="The owner/operator console. Everyone else &mdash; ministry admins, shepherds, co-shepherds &mdash; runs their day-to-day from /admin and /leader; nothing here is needed for routine ministry work."
       />
       <div className="grid gap-2.5 rounded-lg border border-line bg-surface p-card font-sans text-base text-ink2">
         <p className="m-0">
           <strong className="text-ink">Audit log.</strong> Every admin and
-          leader write &mdash; create, assign, deactivate, close, reopen,
+          shepherd write &mdash; create, assign, deactivate, close, reopen,
           check-in, role change &mdash; is recorded here, newest first. Only the
           owner account can read it.
         </p>

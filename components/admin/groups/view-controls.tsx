@@ -115,7 +115,7 @@ export function DensityToggle({
 // hidden (the toggle helper refuses it), so it is rendered disabled to make that
 // constraint visible. The shown set persists with the other Groups view prefs.
 const COLUMN_MENU_LABELS: Record<GroupsTableOptionalColumn, string> = {
-  leader: "Leader / co-leader",
+  leader: "Shepherd / co-shepherd",
   setup: "Setup",
   health: "Health grade",
   capacity: "Capacity",

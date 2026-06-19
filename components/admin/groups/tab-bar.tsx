@@ -16,7 +16,7 @@ export const TABS: { key: ListTab; label: string }[] = [
 export const EMPTY_TAB_COPY: Record<ListTab, string> = {
   all: "No groups yet. Create your first with “New group” above.",
   needs_setup:
-    "Nothing needs setup — every group has a leader, meeting details, and a capacity.",
+    "Nothing needs setup — every group has a shepherd, meeting details, and a capacity.",
   needs_health_check:
     "Nothing to check — every group has a Group-Health Grade and its required ratings.",
   needs_attention: "Nothing needs attention right now.",

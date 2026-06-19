@@ -209,7 +209,7 @@ function GroupField({
   );
 }
 
-// The "Leader willing to multiply" checkbox.
+// The "Shepherd willing to multiply" checkbox.
 function WillingField({ state }: { state: TypeGroupState }) {
   return (
     <label className={CHECKBOX_LABEL}>
@@ -219,7 +219,7 @@ function WillingField({ state }: { state: TypeGroupState }) {
         checked={state.willing}
         onChange={(e) => state.setWilling(e.target.checked)}
       />
-      Leader willing to multiply
+      Shepherd willing to multiply
     </label>
   );
 }

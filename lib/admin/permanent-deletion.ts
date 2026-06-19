@@ -337,8 +337,8 @@ const GROUP_MEMBERSHIP: PermanentDeletionEntity = {
 
 const GROUP_LEADER: PermanentDeletionEntity = {
   entityType: "group_leader",
-  label: "Group leader assignment",
-  pluralLabel: "Group leader assignments",
+  label: "Group shepherd assignment",
+  pluralLabel: "Group shepherd assignments",
   async fetchItems(client) {
     const { data } = await client
       .from("group_leaders")
@@ -354,7 +354,7 @@ const GROUP_LEADER: PermanentDeletionEntity = {
         profiles: { full_name: string } | null;
       }) => ({
         id: r.id,
-        label: `${r.profiles?.full_name ?? "Leader"} — ${
+        label: `${r.profiles?.full_name ?? "Shepherd"} — ${
           r.groups?.name ?? "group"
         } (${str(r.role)})${r.active ? "" : " (inactive)"}`,
       })
@@ -362,7 +362,7 @@ const GROUP_LEADER: PermanentDeletionEntity = {
   },
   labelFromSnapshot(snapshot) {
     const role = str(snapshot.role);
-    return role ? `Leader assignment (${role})` : "Group leader assignment";
+    return role ? `Shepherd assignment (${role})` : "Group shepherd assignment";
   },
 };
 
@@ -628,7 +628,7 @@ const SHEPHERD_COVERAGE_ASSIGNMENT: PermanentDeletionEntity = {
         over_shepherds: { full_name: string } | null;
       }) => ({
         id: r.id,
-        label: `${r.profiles?.full_name ?? "Leader"} → ${
+        label: `${r.profiles?.full_name ?? "Shepherd"} → ${
           r.over_shepherds?.full_name ?? "over-shepherd"
         }${r.active ? "" : " (inactive)"}`,
       })

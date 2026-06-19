@@ -30,7 +30,7 @@ export function LeaderDetailTabs({
     <div className="grid gap-5">
       <div
         role="tablist"
-        aria-label="Leader care sections"
+        aria-label="Shepherd care sections"
         className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
       >
         {tabs.map((tab) => (

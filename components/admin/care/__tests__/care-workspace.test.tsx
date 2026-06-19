@@ -134,7 +134,7 @@ describe("buildCareWorkspace", () => {
 
     expect(html).toContain("Care setup path");
     expect(html).toContain(
-      "Care will turn on after people are imported, leaders are marked"
+      "Care will turn on after people are imported, shepherds are marked"
     );
   });
 
@@ -162,7 +162,7 @@ describe("buildCareWorkspace", () => {
     );
     const html = tabMarkup(workspace, "all-leaders");
 
-    expect(html).toContain("Leaders exist, but coverage is not assigned yet");
+    expect(html).toContain("Shepherds exist, but coverage is not assigned yet");
     expect(html).toContain("/admin/super-admin#coverage");
   });
 });

@@ -212,7 +212,7 @@ export function FollowUpCreateForm({
         </div>
         <div className="col-span-full">
           <label htmlFor="fu-leader_visible_note" className={FIELD_LABEL}>
-            Leader-visible note (optional, max 1000 chars)
+            Shepherd-visible note (optional, max 1000 chars)
           </label>
           <textarea
             id="fu-leader_visible_note"
@@ -220,12 +220,12 @@ export function FollowUpCreateForm({
             rows={2}
             maxLength={1000}
             className={`${FIELD_INPUT} min-h-[60px] resize-y`}
-            placeholder="Anything the assigned leader should see when they open this."
+            placeholder="Anything the assigned shepherd should see when they open this."
           />
         </div>
         <div className="col-span-full">
           <label htmlFor="fu-admin_private_note" className={FIELD_LABEL}>
-            Admin-private note (optional, max 1000 chars) — leaders never see
+            Admin-private note (optional, max 1000 chars) — shepherds never see
             this
           </label>
           <textarea

@@ -13,9 +13,9 @@ describe("LeaderProfileForm", () => {
     const html = renderToStaticMarkup(<LeaderProfileForm />);
 
     expect(html).toContain(
-      "Enter a full name and valid email to enable Add leader."
+      "Enter a full name and valid email to enable Add shepherd."
     );
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Add leader<\/button>/);
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Add shepherd<\/button>/);
   });
 
   it("does not offer an in-group role when creating a directory record", () => {
@@ -34,6 +34,6 @@ describe("LeaderProfileForm", () => {
     expect(html).toMatch(/name="kind"[^>]*value="leader"/);
     expect(html).toContain('name="role"');
     expect(html).toContain("Role in this group");
-    expect(html).toContain("Add leader to group");
+    expect(html).toContain("Add shepherd to group");
   });
 });

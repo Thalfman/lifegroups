@@ -47,9 +47,9 @@ export const ATTENTION_RESET_SURFACE_META: Record<
   { label: string; description: string }
 > = {
   care: {
-    label: "Leader care attention",
+    label: "Shepherd care attention",
     description:
-      "Reset the care clock so no leader reads as overdue right now. Clears each leader's next touchpoint and returns their status to “doing well”, then re-surfaces naturally as real time passes.",
+      "Reset the care clock so no shepherd reads as overdue right now. Clears each shepherd's next touchpoint and returns their status to “doing well”, then re-surfaces naturally as real time passes.",
   },
   health: {
     label: "Health checks",

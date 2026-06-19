@@ -53,31 +53,31 @@ export const EDITABLE_COPY_DEFINITIONS: readonly EditableCopyDefinition[] = [
   {
     key: GROUP_HEALTH_COPY_KEYS.groupQuestion,
     label: "Group-Health question 2 — relayed group question (1–5)",
-    placeholder: "Group engagement — leader-reported (1–5)",
+    placeholder: "Group engagement — shepherd-reported (1–5)",
   },
   {
     key: CARE_STATUS_COPY_KEYS.doing_well,
-    label: "Leader care status — doing well",
+    label: "Shepherd care status — doing well",
     placeholder: "Doing well",
   },
   {
     key: CARE_STATUS_COPY_KEYS.needs_encouragement,
-    label: "Leader care status — needs encouragement",
+    label: "Shepherd care status — needs encouragement",
     placeholder: "Needs encouragement",
   },
   {
     key: CARE_STATUS_COPY_KEYS.needs_follow_up,
-    label: "Leader care status — needs follow-up",
+    label: "Shepherd care status — needs follow-up",
     placeholder: "Needs follow-up",
   },
   {
     key: CARE_STATUS_COPY_KEYS.concern,
-    label: "Leader care status — concern",
+    label: "Shepherd care status — concern",
     placeholder: "Concern",
   },
   {
     key: CARE_STATUS_COPY_KEYS.inactive,
-    label: "Leader care status — inactive",
+    label: "Shepherd care status — inactive",
     placeholder: "Inactive",
   },
 ];

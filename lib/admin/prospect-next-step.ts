@@ -33,7 +33,7 @@ export const NEXT_STEP_TYPES: readonly NextStepType[] = [
 ];
 
 export const NEXT_STEP_TYPE_LABEL: Record<NextStepType, string> = {
-  connect_to_group_leader: "Connect to Group Leader",
+  connect_to_group_leader: "Connect to Group Shepherd",
   follow_up: "Follow Up",
 };
 

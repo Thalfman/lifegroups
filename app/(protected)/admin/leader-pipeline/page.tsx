@@ -12,7 +12,7 @@ export default adminPage({
   load: () => loadLeaderPipelineData(),
   header: () => ({
     eyebrow: "People",
-    title: "Leader",
+    title: "Shepherd",
     italic: "pipeline",
     lede: "Every apprentice and where they stand — Identified, In training, Ready to lead, Launched. The supply side of multiplication: who's ready to lead the next group, and which groups have no apprentice yet.",
   }),
@@ -21,7 +21,7 @@ export default adminPage({
       <div style={{ display: "grid", gap: 24 }}>
         {data.error ? (
           <p className="m-0 rounded-md bg-roseSoft px-3.5 py-2.5 font-sans text-sm text-rose">
-            The leader pipeline could not be loaded: {data.error}
+            The shepherd pipeline could not be loaded: {data.error}
           </p>
         ) : (
           <LeaderPipeline

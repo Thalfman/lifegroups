@@ -92,6 +92,10 @@ export async function buildMultiplyGridData(
   const configs = batch.results.configs.data ?? [];
   const groups = batch.results.groups.data ?? [];
 
+  // #473: decode the stored global trigger WITH a report. A missing stored rule
+  // decodes to the built-in default silently; a present-but-unreadable payload
+  // flags ruleFellBack so the Readiness tab can say so instead of presenting
+  // default-rule readiness as if it were the configured trigger.
   const decodedRule = decodeReadinessRuleWithReport(
     batch.results.readinessRule.data?.rule ?? null
   );

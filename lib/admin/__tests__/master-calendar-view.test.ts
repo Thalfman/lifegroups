@@ -273,13 +273,13 @@ describe("calendarFilterSummarySegments (#371)", () => {
     expect(segments[1]).toBe("2 groups");
   });
 
-  it('falls back to "Leader" for a stale leader id', () => {
+  it('falls back to "Shepherd" for a stale leader id', () => {
     const segments = calendarFilterSummarySegments({
       planningView: "all",
       filters: filters({ leaderFilter: "p-gone" }),
       leaderOptions: LEADERS,
     });
-    expect(segments[5]).toBe("Leader");
+    expect(segments[5]).toBe("Shepherd");
   });
 });
 
@@ -300,7 +300,7 @@ describe("calendarActiveFilterChips", () => {
       "Type",
       "Status",
       "Day",
-      "Leader",
+      "Shepherd",
     ]);
     // "OFF" exists in BOTH the type and status filters with the same label;
     // the category keeps the two chips distinguishable when labels coincide.
@@ -348,6 +348,6 @@ describe("calendarActiveFilterChips", () => {
       filters({ groupFilter: ["g-gone"], leaderFilter: "p-gone" }),
       { groups: GROUPS, leaderOptions: LEADERS }
     );
-    expect(chips.map((c) => c.label)).toEqual(["Group", "Leader"]);
+    expect(chips.map((c) => c.label)).toEqual(["Group", "Shepherd"]);
   });
 });

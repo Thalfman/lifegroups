@@ -7,6 +7,7 @@ import {
 } from "@/components/admin/settings-tabs";
 import { PBadge } from "@/components/pastoral/atoms";
 import { SetupReturnBanner } from "@/components/lg/admin/setup-return-banner";
+import { GroupsReturnBanner } from "@/components/admin/settings/groups-return-banner";
 import {
   buildOverrideRows,
   overrideSummaryChips,
@@ -286,18 +287,18 @@ function CarePanel({ model }: { model: SettingsCareModel }) {
           concept, distinct from Leader Care Status and the Health Pulse. */}
       <section className="grid gap-4">
         <SettingsSectionHeader
-          eyebrow="Leader Health Rubric"
-          title="How a leader is graded"
-          description="Distinct from a leader's Care Status."
+          eyebrow="Shepherd Health Rubric"
+          title="How a shepherd is graded"
+          description="Distinct from a shepherd's Care Status."
         />
         {model.errors.leaderRubric ? (
-          <CouldNotLoad subject="The Leader Health Rubric" />
+          <CouldNotLoad subject="The Shepherd Health Rubric" />
         ) : (
           <Card>
             <HealthRubricEditor
               criteria={model.leaderRubricCriteria}
               kind="leader"
-              subjectLabel="leader"
+              subjectLabel="shepherd"
             />
           </Card>
         )}
@@ -313,6 +314,9 @@ function CarePanel({ model }: { model: SettingsCareModel }) {
 function GroupsPanel({ model }: { model: SettingsGroupsModel }) {
   return (
     <div className="grid gap-9">
+      {/* Self-gating: only shows when arriving from the Plan form's "+ Add a
+          group type" shortcut (?from=plan), offering the path back to the funnel. */}
+      <GroupsReturnBanner />
       <section className="grid gap-4">
         <SettingsSectionHeader
           eyebrow="Group types"
@@ -343,7 +347,7 @@ function MultiplyPanel({ model }: { model: SettingsMultiplyModel }) {
         <SettingsSectionHeader
           eyebrow="Readiness rule"
           title="Ready in Multiply"
-          description="The ministry-wide readiness rule. Each pillar carries a value in its natural unit; a group type can override any pillar from Multiply. Interest is the Interest Funnel people count; Watch thresholds stay in Thresholds; Group and Leader Health are A-F letters."
+          description="The ministry-wide readiness rule. Each pillar carries a value in its natural unit; a group type can override any pillar from Multiply. Interest is the Interest Funnel people count; Watch thresholds stay in Thresholds; Group and Shepherd Health are A-F letters."
         />
         {model.readinessError ? (
           <CouldNotLoad subject="The multiplication trigger" />

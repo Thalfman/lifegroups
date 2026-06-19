@@ -132,7 +132,7 @@ function PeopleImportCard() {
       <SetupReturnBanner />
       <PanelTitle>People import</PanelTitle>
       <p className="m-0 font-sans text-sm text-ink2">
-        Upload a CSV file or paste rows to create leader profiles and member
+        Upload a CSV file or paste rows to create shepherd profiles and member
         records in one audited batch. Parsing and de-duplication run before any
         write; skipped rows are reported back. (The same importer lives in
         Settings → System.)

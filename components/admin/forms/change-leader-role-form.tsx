@@ -95,7 +95,7 @@ export function ChangeLeaderRoleForm({
     >
       <input type="hidden" name="profile_id" value={profileId} />
       <p className="m-0 font-sans text-xs text-ink2">
-        Swap {profileName}&rsquo;s role between leader and co-leader. Group
+        Swap {profileName}&rsquo;s role between shepherd and co-shepherd. Group
         assignments stay as they are.
       </p>
       <div>

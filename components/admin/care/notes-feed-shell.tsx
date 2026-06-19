@@ -256,8 +256,8 @@ export function NotesFeedShell({
         <div className="mb-4 mt-3 grid grid-cols-1 items-end gap-3.5 md:grid-cols-3">
           <FilterSelect
             id="notes-feed-leader"
-            label="Leader"
-            allLabel="All leaders"
+            label="Shepherd"
+            allLabel="All shepherds"
             value={leaderId}
             options={leaderOptions}
             onChange={setLeaderId}

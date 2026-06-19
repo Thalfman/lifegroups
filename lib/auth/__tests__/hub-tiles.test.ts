@@ -51,7 +51,7 @@ describe("hubTilesForRole", () => {
   it("gives over_shepherd a focused My Leaders tile, not the admin-OS set", () => {
     const tiles = hubTilesForRole("over_shepherd");
     expect(tiles.map((t) => [t.label, t.href])).toEqual([
-      ["My Leaders", "/over-shepherd"],
+      ["My Shepherds", "/over-shepherd"],
     ]);
   });
 

@@ -18,11 +18,12 @@ import type {
 } from "@/lib/admin/cell-readiness";
 
 // Settings › Multiply readiness editor. Edits the single GLOBAL readiness rule —
-// the four pillars (Interest headcount, Capacity, Group Health, Leader Health),
-// each required-or-not with its threshold. A group type can override any pillar
-// from the Multiply surface; with no override it inherits this rule. Save posts
-// the rule as a JSON object string (`rule`) plus the `ministry_year`; the audited
-// admin_set_readiness_rule RPC stays the authoritative gate.
+// the seven pillars (Interest headcount, Capacity, Group Health, Shepherd Health,
+// Members, Years as a group, Co-Shepherd tenure), each required-or-not with its
+// threshold. A group type can override any pillar from the Multiply surface; with
+// no override it inherits this rule. Save posts the rule as a JSON object string
+// (`rule`) plus the `ministry_year`; the audited admin_set_readiness_rule RPC
+// stays the authoritative gate.
 
 const LETTERS: ReadinessLetter[] = ["A", "B", "C", "D", "F"];
 
@@ -62,6 +63,27 @@ export function MultiplyTriggerEditor({
   const [leaderHealthMin, setLeaderHealthMin] = useState<ReadinessLetter>(
     globalRule.leaderHealth.min
   );
+  // Julian's three per-group multiplication criteria, folded into the rule as
+  // count/years pillars (members ≥ N, group tenure ≥ N years, Co-Shepherd tenure
+  // ≥ N years). Off by default; opting one in gates the per-type "Ready" badge.
+  const [memberCountRequired, setMemberCountRequired] = useState(
+    globalRule.memberCount.required
+  );
+  const [memberCountMin, setMemberCountMin] = useState(
+    String(globalRule.memberCount.min)
+  );
+  const [groupTenureRequired, setGroupTenureRequired] = useState(
+    globalRule.groupTenure.required
+  );
+  const [groupTenureMin, setGroupTenureMin] = useState(
+    String(globalRule.groupTenure.min)
+  );
+  const [coShepherdTenureRequired, setCoShepherdTenureRequired] = useState(
+    globalRule.coShepherdTenure.required
+  );
+  const [coShepherdTenureMin, setCoShepherdTenureMin] = useState(
+    String(globalRule.coShepherdTenure.min)
+  );
 
   const idBase = useId();
 
@@ -76,6 +98,18 @@ export function MultiplyTriggerEditor({
     capacity: { required: capacityRequired },
     groupHealth: { required: groupHealthRequired, min: groupHealthMin },
     leaderHealth: { required: leaderHealthRequired, min: leaderHealthMin },
+    memberCount: {
+      required: memberCountRequired,
+      min: Number.parseInt(memberCountMin, 10) || 0,
+    },
+    groupTenure: {
+      required: groupTenureRequired,
+      min: Number.parseInt(groupTenureMin, 10) || 0,
+    },
+    coShepherdTenure: {
+      required: coShepherdTenureRequired,
+      min: Number.parseInt(coShepherdTenureMin, 10) || 0,
+    },
   };
 
   return (
@@ -148,7 +182,7 @@ export function MultiplyTriggerEditor({
 
       <PillarRow
         idBase={`${idBase}-leader-health`}
-        title="Leader Health"
+        title="Shepherd Health"
         required={leaderHealthRequired}
         onRequiredChange={setLeaderHealthRequired}
       >
@@ -156,7 +190,52 @@ export function MultiplyTriggerEditor({
           value={leaderHealthMin}
           onChange={setLeaderHealthMin}
           disabled={!leaderHealthRequired}
-          label="Minimum leader health letter"
+          label="Minimum Shepherd health letter"
+        />
+      </PillarRow>
+
+      <PillarRow
+        idBase={`${idBase}-member-count`}
+        title="Members"
+        required={memberCountRequired}
+        onRequiredChange={setMemberCountRequired}
+      >
+        <CountField
+          value={memberCountMin}
+          onChange={setMemberCountMin}
+          disabled={!memberCountRequired}
+          unit="members"
+          label="Minimum members"
+        />
+      </PillarRow>
+
+      <PillarRow
+        idBase={`${idBase}-group-tenure`}
+        title="Years as a group"
+        required={groupTenureRequired}
+        onRequiredChange={setGroupTenureRequired}
+      >
+        <CountField
+          value={groupTenureMin}
+          onChange={setGroupTenureMin}
+          disabled={!groupTenureRequired}
+          unit="years"
+          label="Minimum years as a group"
+        />
+      </PillarRow>
+
+      <PillarRow
+        idBase={`${idBase}-co-shepherd-tenure`}
+        title="Co-Shepherd tenure"
+        required={coShepherdTenureRequired}
+        onRequiredChange={setCoShepherdTenureRequired}
+      >
+        <CountField
+          value={coShepherdTenureMin}
+          onChange={setCoShepherdTenureMin}
+          disabled={!coShepherdTenureRequired}
+          unit="years"
+          label="Minimum Co-Shepherd years"
         />
       </PillarRow>
 
@@ -226,6 +305,41 @@ function LetterField({
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+// A numeric threshold field shared by the three count/years pillars (members,
+// group tenure, Co-Shepherd tenure) — mirrors the interest min field with its
+// own unit label.
+function CountField({
+  value,
+  onChange,
+  disabled,
+  unit,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+  unit: string;
+  label: string;
+}) {
+  return (
+    <label className={THRESHOLD_NOTE}>
+      at least{" "}
+      <input
+        type="number"
+        min={0}
+        max={500}
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className={`${fieldInputClassName} inline-block w-20`}
+        aria-label={label}
+      />{" "}
+      {unit}
     </label>
   );
 }
