@@ -31,7 +31,7 @@ export function CoverageAssignForm({
     >
       <div>
         <label htmlFor="coverage-leader" className={fieldLabelClassName}>
-          Leader
+          Shepherd
         </label>
         <select
           id="coverage-leader"

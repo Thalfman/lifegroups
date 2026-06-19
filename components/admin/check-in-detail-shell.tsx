@@ -59,7 +59,7 @@ function EmptySessionCard({ meetingWeek }: { meetingWeek: string }) {
         No check-in yet for {formatWeekLabel(meetingWeek).toLowerCase()}.
       </div>
       <p className="m-0 font-sans text-sm leading-normal text-sageDeep">
-        The leader hasn&rsquo;t submitted this group&rsquo;s check-in. The
+        The shepherd hasn&rsquo;t submitted this group&rsquo;s check-in. The
         roster below shows who would be marked.
       </p>
     </div>

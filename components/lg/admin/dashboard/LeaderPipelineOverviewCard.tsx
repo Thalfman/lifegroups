@@ -51,7 +51,7 @@ export function LeaderPipelineOverviewCard({
     >
       {summary.total === 0 ? (
         <CardNote>
-          No apprentices yet — future Leaders will gather here as they are
+          No apprentices yet — future Shepherds will gather here as they are
           identified.
         </CardNote>
       ) : (

@@ -111,7 +111,7 @@ export default async function OverShepherdShepherdPage({
             href="/over-shepherd"
             className="font-sans text-sm text-ink2 underline hover:text-ink"
           >
-            ← My Leaders
+            ← My Shepherds
           </Link>
         }
       />

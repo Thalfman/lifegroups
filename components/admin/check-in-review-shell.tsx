@@ -142,7 +142,7 @@ function ReviewCard({
             </div>
           ) : (
             <div className="mt-1 font-sans text-sm italic text-ink3">
-              No leaders assigned
+              No shepherds assigned
             </div>
           )}
           {meta ? (

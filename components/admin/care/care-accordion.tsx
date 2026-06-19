@@ -82,7 +82,7 @@ function CarePane({
         {pane.isUnassigned && pane.leaders.length > 0 ? (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-lineSoft bg-bg/70 px-3 py-2.5">
             <p className="m-0 font-sans text-sm text-ink2">
-              These leaders need over-shepherd coverage.
+              These shepherds need over-shepherd coverage.
             </p>
             {isSuperAdmin ? (
               <Link
@@ -147,14 +147,14 @@ export function CareAccordion({
   return (
     <div className="grid gap-4">
       <p className="m-0 font-sans text-sm text-ink2">
-        Leaders grouped by their over-shepherd.
+        Shepherds grouped by their over-shepherd.
       </p>
 
       <div className="grid gap-3">
         {!hasAnyLeaders ? (
           <div className="grid justify-items-start gap-3 rounded-md border border-dashed border-line bg-surface px-4 py-4">
             <p className="m-0 font-sans text-sm text-ink2">
-              No active leaders are available for care coverage yet.
+              No active shepherds are available for care coverage yet.
             </p>
             <Link
               href={PEOPLE_IMPORT_HREF}

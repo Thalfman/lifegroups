@@ -130,8 +130,8 @@ export function LogTouchForm({
       />
       <input type="hidden" name="interaction_type" value={interactionType} />
       <p className={FORM_NOTE}>
-        Record a {touchLabel} with this leader. Admin-only — it never appears on
-        leader or member surfaces.
+        Record a {touchLabel} with this shepherd. Admin-only — it never appears
+        on leader or member surfaces.
       </p>
       <div>
         <label htmlFor="cta-interaction_at" className={FIELD_LABEL}>
@@ -216,7 +216,7 @@ export function CareProfileFieldForm({
         <>
           <input type="hidden" name="set_current_status" value="true" />
           <p className={FORM_NOTE}>
-            How is this leader doing, from your pastoral view? Admin-only.
+            How is this shepherd doing, from your pastoral view? Admin-only.
           </p>
           <div>
             <label htmlFor="cta-current_status" className={FIELD_LABEL}>
@@ -242,7 +242,7 @@ export function CareProfileFieldForm({
         <>
           <input type="hidden" name="set_next_touchpoint_due" value="true" />
           <p className={FORM_NOTE}>
-            When should you next reach out to this leader? Admin-only.
+            When should you next reach out to this shepherd? Admin-only.
           </p>
           <div>
             <label htmlFor="cta-next_touchpoint_due" className={FIELD_LABEL}>
@@ -268,8 +268,8 @@ export function CareProfileFieldForm({
         <>
           <input type="hidden" name="set_admin_summary" value="true" />
           <p className={FORM_NOTE}>
-            A high-level read on how this leader is doing. Admin-only — it never
-            appears on leader or member surfaces.
+            A high-level read on how this shepherd is doing. Admin-only — it
+            never appears on leader or member surfaces.
           </p>
           <div>
             <label htmlFor="cta-admin_summary" className={FIELD_LABEL}>

@@ -71,7 +71,7 @@ export default async function AdminOverShepherdsPage() {
               href="/admin/shepherd-care"
               className="font-sans text-sm text-ink2 underline hover:text-ink"
             >
-              ← Back to leader care
+              ← Back to shepherd care
             </Link>
           </div>
 

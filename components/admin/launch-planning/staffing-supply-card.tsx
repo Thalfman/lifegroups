@@ -85,7 +85,7 @@ export function StaffingSupplyCard({
           }}
         >
           No launches planned yet. Set a planned launch count and target season
-          on a scenario to see the leader gap.
+          on a scenario to see the shepherd gap.
         </p>
       ) : (
         <>

@@ -40,7 +40,7 @@ const STATE_DOT: Record<string, { dot: string; label: string }> = {
 // Friendly nouns for the table names that show up in raw Edge Function
 // lookup errors (e.g. "group_leaders lookup failed: …").
 const LOOKUP_SUBJECT_LABELS: Record<string, string> = {
-  group_leaders: "group leader",
+  group_leaders: "group shepherd",
   profiles: "profile",
   groups: "group",
   members: "member",

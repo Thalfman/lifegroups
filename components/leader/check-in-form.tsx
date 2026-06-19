@@ -350,7 +350,7 @@ export function CheckInForm({
           {members.length === 0 ? (
             <div className="rounded-md border border-dashed border-line bg-bg px-5 py-4 text-center font-sans text-sm italic text-ink2">
               {groupName} has no active members on the roster yet. You can still
-              submit a leader note below, or use the &ldquo;no &mdash; we
+              submit a shepherd note below, or use the &ldquo;no &mdash; we
               didn&rsquo;t meet&rdquo; option above.
             </div>
           ) : (

@@ -165,7 +165,7 @@ function AssumptionFields({
             htmlFor={fieldId("leaders_per_new_group")}
             style={fieldLabelStyle}
           >
-            Leaders per new group
+            Shepherds per new group
           </label>
           <input
             id={fieldId("leaders_per_new_group")}
@@ -199,7 +199,7 @@ function AssumptionFields({
             style={fieldInputStyle}
           />
           <p style={hintStyle}>
-            New groups to launch in this scenario (drives the leader gap).
+            New groups to launch in this scenario (drives the shepherd gap).
           </p>
         </div>
 

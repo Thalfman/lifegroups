@@ -121,7 +121,7 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
     // outcome-naming action link — never a bare "Open".
     await expect(home.getByText("Care triage")).toBeVisible();
     await expect(
-      home.getByRole("link", { name: /Contact leaders/ })
+      home.getByRole("link", { name: /Contact shepherds/ })
     ).toBeVisible();
     await expect(home.getByText("Health pulse")).toBeVisible();
     await expect(
@@ -188,7 +188,7 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
       "/admin/settings?tab=system&from=setup#people-import"
     );
     await expect(
-      checklist.getByRole("link", { name: /Assign leaders/ })
+      checklist.getByRole("link", { name: /Assign shepherds/ })
     ).toHaveAttribute("href", "/admin/groups?tab=needs_setup&from=setup");
     await expect(
       checklist.getByRole("link", { name: /Assess health/ })

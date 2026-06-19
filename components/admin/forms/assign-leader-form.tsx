@@ -45,7 +45,7 @@ export function AssignLeaderForm({
             htmlFor={`assign-leader-${groupId}`}
             className={fieldLabelClassName}
           >
-            Leader
+            Shepherd
           </label>
           <select
             id={`assign-leader-${groupId}`}
@@ -97,7 +97,7 @@ export function AssignLeaderForm({
       </div>
       {noOptions ? (
         <p className="m-0 font-sans text-xs text-ink3">
-          Add a leader profile above before assigning one to this group.
+          Add a shepherd profile above before assigning one to this group.
         </p>
       ) : null}
       <FormStatus state={state} successText="Shepherd assigned." />

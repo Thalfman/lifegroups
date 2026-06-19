@@ -349,7 +349,7 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
 
         {type === "connect_to_group_leader" ? (
           <p className="m-0 mt-0.5 font-sans text-xs text-ink3">
-            Back-office only — nothing is shown to the group leader.
+            Back-office only — nothing is shown to the group shepherd.
           </p>
         ) : null}
 

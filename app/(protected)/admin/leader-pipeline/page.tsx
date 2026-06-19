@@ -21,7 +21,7 @@ export default adminPage({
       <div style={{ display: "grid", gap: 24 }}>
         {data.error ? (
           <p className="m-0 rounded-md bg-roseSoft px-3.5 py-2.5 font-sans text-sm text-rose">
-            The leader pipeline could not be loaded: {data.error}
+            The shepherd pipeline could not be loaded: {data.error}
           </p>
         ) : (
           <LeaderPipeline

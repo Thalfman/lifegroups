@@ -104,8 +104,8 @@ export default function PrivacyPolicyPage() {
           <p className="mt-3 font-sans text-base text-ink2">
             We do <strong>not</strong> ask for health, biometric, financial,
             precise-location, or advertising data. The only sensitive content is
-            what a leader chooses to write into a free-text Care Note or Prayer
-            Request, by intent.
+            what a shepherd chooses to write into a free-text Care Note or
+            Prayer Request, by intent.
           </p>
         </section>
 

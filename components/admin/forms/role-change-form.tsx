@@ -111,8 +111,8 @@ export function RoleChangeForm({
       </div>
       {noOptions ? (
         <p className="m-0 font-sans text-xs text-ink3">
-          No active non-super-admin profiles exist yet. Add a leader or ministry
-          admin via Manage People first.
+          No active non-super-admin profiles exist yet. Add a shepherd or
+          ministry admin via Manage People first.
         </p>
       ) : null}
       <FormStatus state={state} successText="Role updated." />

@@ -267,7 +267,7 @@ function CarePanel({ person }: { person: PersonDetail }) {
             href={person.careHref}
             className="font-sans text-sm font-semibold text-clay no-underline hover:underline"
           >
-            Open this leader&rsquo;s care history →
+            Open this shepherd&rsquo;s care history →
           </Link>
         </p>
       ) : null}
@@ -314,7 +314,7 @@ function ActivityPanel({ person }: { person: PersonDetail }) {
             href={person.careHref}
             className="font-sans text-sm font-semibold text-clay no-underline hover:underline"
           >
-            Care touchpoints live in this leader&rsquo;s care history →
+            Care touchpoints live in this shepherd&rsquo;s care history →
           </Link>
         </p>
       ) : null}

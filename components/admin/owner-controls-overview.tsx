@@ -11,7 +11,7 @@ export function OwnerControlsOverview() {
       <div className="grid gap-2.5 rounded-lg border border-line bg-surface p-card font-sans text-base text-ink2">
         <p className="m-0">
           <strong className="text-ink">Audit log.</strong> Every admin and
-          leader write &mdash; create, assign, deactivate, close, reopen,
+          shepherd write &mdash; create, assign, deactivate, close, reopen,
           check-in, role change &mdash; is recorded here, newest first. Only the
           owner account can read it.
         </p>

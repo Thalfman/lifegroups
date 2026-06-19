@@ -43,7 +43,7 @@ test.describe("admin People tabs", () => {
 
     // The add-person forms live in the drawer, not the page.
     expect(
-      await surface.getByRole("button", { name: "Add leader" }).count()
+      await surface.getByRole("button", { name: "Add shepherd" }).count()
     ).toBe(0);
     expect(
       await surface.getByRole("button", { name: "Add member" }).count()
@@ -122,11 +122,11 @@ test.describe("admin People tabs", () => {
 
     // The directory reports no matches.
     await expect(
-      surface.getByText(/No leaders or oversight roles match/)
+      surface.getByText(/No shepherds or oversight roles match/)
     ).toBeVisible();
     // The add forms are still not on the page.
     expect(
-      await surface.getByRole("button", { name: "Add leader" }).count()
+      await surface.getByRole("button", { name: "Add shepherd" }).count()
     ).toBe(0);
   });
 
@@ -211,7 +211,7 @@ test.describe("admin People tabs", () => {
 
     // Leader is the default kind; the kind toggle switches to the member form.
     await expect(
-      dialog.getByRole("button", { name: "Add leader" })
+      dialog.getByRole("button", { name: "Add shepherd" })
     ).toBeVisible();
     await dialog.getByRole("radio", { name: "Member" }).click();
     await expect(
