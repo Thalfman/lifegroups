@@ -125,6 +125,30 @@ describe("loginAction", () => {
     expect(mockLogUsage).toHaveBeenCalled();
   });
 
+  it.each([
+    ["super_admin", "/admin"],
+    ["ministry_admin", "/admin"],
+    ["over_shepherd", "/over-shepherd"],
+    ["leader", "/leader"],
+    ["co_leader", "/leader"],
+  ])("sets the %s landing-path hint to %s", async (role, hint) => {
+    const { client } = makeClient({ profile: { role, status: "active" } });
+    mockCreateClient.mockResolvedValue(client);
+
+    // leader/co_leader land on /leader; the rest on their own surfaces. We only
+    // assert the hint cookie, so swallow whichever redirect fires.
+    await loginAction(
+      {},
+      form({ email: "person@example.com", password: "secretpass" })
+    ).catch(() => {});
+
+    expect(mockCookieSet).toHaveBeenCalledWith(
+      "lg_landing_path",
+      hint,
+      expect.objectContaining({ path: "/", sameSite: "lax" })
+    );
+  });
+
   it("sends an inactive profile to /unauthorized", async () => {
     const { client } = makeClient({
       profile: { role: "leader", status: "inactive" },

@@ -10,6 +10,10 @@ import {
   PW_SETUP_COOKIE,
   passwordSetupCookieClearOptions,
 } from "@/lib/auth/password-setup";
+import {
+  LANDING_HINT_COOKIE,
+  landingHintCookieClearOptions,
+} from "@/lib/auth/landing-hint";
 
 export type DeletionRequestState = { error?: string };
 
@@ -88,6 +92,7 @@ export async function requestAccountDeletionAction(
   await client.auth.signOut({ scope: "local" });
   const cookieStore = await cookies();
   cookieStore.set(PW_SETUP_COOKIE, "", passwordSetupCookieClearOptions());
+  cookieStore.set(LANDING_HINT_COOKIE, "", landingHintCookieClearOptions());
 
   redirect("/account-deletion?status=requested");
 }

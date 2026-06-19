@@ -5,6 +5,7 @@ import { namePendingRedirectTarget } from "@/lib/auth/name-pending";
 import { UsageBeacon } from "@/components/usage/usage-beacon";
 import { OfflineBanner } from "@/components/lg/OfflineBanner";
 import { InstallNudge } from "@/components/pwa/install-nudge";
+import { LandingHintRefresher } from "@/components/auth/landing-hint-refresher";
 
 export default async function ProtectedLayout({
   children,
@@ -34,6 +35,10 @@ export default async function ProtectedLayout({
           <OfflineBanner />
           <InstallNudge />
           <UsageBeacon />
+          {/* Re-pin the role's landing-path hint so a later bare-domain launch
+              redirects straight to this surface from middleware, skipping the
+              dynamic `/` render. Non-authoritative — guards still gate access. */}
+          <LandingHintRefresher role={session.profile.role} />
           {children}
         </>
       );
