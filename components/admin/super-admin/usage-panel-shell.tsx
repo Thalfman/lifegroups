@@ -46,8 +46,10 @@ export function UsagePanelShell({
   // When everything is selected (the default) treat it as "no filter" so the
   // full window — including anonymous, null-actor events — shows. Only a strict
   // subset narrows the tallies. "Select all" therefore returns to the full view.
-  const allSelected =
-    people.length > 0 && people.every((p) => selected.includes(p.id));
+  // An empty people list (a window of only anonymous events) likewise counts as
+  // unfiltered — `[].every` is true — so that activity stays visible rather than
+  // being filtered out by an empty selection.
+  const allSelected = people.every((p) => selected.includes(p.id));
   const selectedActorIds = allSelected ? null : selected;
 
   const usage = buildUsagePanelModel({
