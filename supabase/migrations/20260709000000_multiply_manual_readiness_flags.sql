@@ -316,7 +316,7 @@ drop function if exists public.admin_create_multiplication_candidate(
 );
 drop function if exists public.admin_update_multiplication_candidate(
   uuid, integer, public.multiplication_candidate_status, boolean, boolean, text,
-  text, public.multiplication_meeting_time, uuid, integer
+  text, public.multiplication_meeting_time, uuid, integer, uuid
 );
 
 revoke all on function public.admin_create_multiplication_candidate(
@@ -330,11 +330,11 @@ grant execute on function public.admin_create_multiplication_candidate(
 
 revoke all on function public.admin_update_multiplication_candidate(
   uuid, integer, public.multiplication_candidate_status, boolean, boolean, text,
-  text, public.multiplication_meeting_time, uuid, integer, boolean, boolean, boolean
+  text, public.multiplication_meeting_time, uuid, integer, uuid, boolean, boolean, boolean
 ) from public, anon, authenticated;
 grant execute on function public.admin_update_multiplication_candidate(
   uuid, integer, public.multiplication_candidate_status, boolean, boolean, text,
-  text, public.multiplication_meeting_time, uuid, integer, boolean, boolean, boolean
+  text, public.multiplication_meeting_time, uuid, integer, uuid, boolean, boolean, boolean
 ) to authenticated;
 
 comment on function public.admin_create_multiplication_candidate(
@@ -343,5 +343,5 @@ comment on function public.admin_create_multiplication_candidate(
 ) is 'ADR 0029 admin write: adds a multiplication candidate (one active per group), including the three manually-ticked readiness flags. Writes a paired audit_events row.';
 comment on function public.admin_update_multiplication_candidate(
   uuid, integer, public.multiplication_candidate_status, boolean, boolean, text,
-  text, public.multiplication_meeting_time, uuid, integer, boolean, boolean, boolean
+  text, public.multiplication_meeting_time, uuid, integer, uuid, boolean, boolean, boolean
 ) is 'ADR 0029 admin write: updates a multiplication candidate, including the three manually-ticked readiness flags. Writes a paired audit_events row.';

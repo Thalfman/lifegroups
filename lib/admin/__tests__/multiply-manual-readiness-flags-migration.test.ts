@@ -29,12 +29,23 @@ const FLAGS = [
   "co_shepherd_tenured",
 ] as const;
 
-// The new 13-arg signature (…, uuid, integer, boolean, boolean, boolean) the app
-// now calls.
-const ARGS_13 =
+// The new signatures the app now calls. The update RPC carries an extra trailing
+// `p_group_id uuid` (it can re-attach the multiplying group), so it is 14-arg
+// where create is 13-arg.
+const BASE_ARGS =
   "uuid, integer, public.multiplication_candidate_status, boolean, boolean, " +
-  "text, text, public.multiplication_meeting_time, uuid, integer, boolean, " +
-  "boolean, boolean";
+  "text, text, public.multiplication_meeting_time, uuid, integer";
+const NEW_ARGS = {
+  admin_create_multiplication_candidate: `${BASE_ARGS}, boolean, boolean, boolean`,
+  admin_update_multiplication_candidate: `${BASE_ARGS}, uuid, boolean, boolean, boolean`,
+} as const;
+
+// The prior signatures dropped in favour of the new shape: create was 10-arg,
+// update 11-arg (its trailing p_group_id).
+const PRIOR_ARGS = {
+  admin_create_multiplication_candidate: BASE_ARGS,
+  admin_update_multiplication_candidate: `${BASE_ARGS}, uuid`,
+} as const;
 
 let sql: MigrationSql;
 
@@ -94,18 +105,23 @@ describe("manual readiness flags migration — audited write path", () => {
     }
   });
 
-  it("drops the prior 10-arg signatures so callers must use the 13-arg shape", () => {
+  it("drops the prior signatures so callers must use the new shape", () => {
     for (const fn of RPCS) {
+      const priorArgs = PRIOR_ARGS[fn]
+        .toLowerCase()
+        .split(",")
+        .map((arg) => arg.trim().replace(/[.\\]/g, (m) => `\\${m}`))
+        .join(",\\s*");
       expect(sql.lower).toMatch(
         new RegExp(
-          `drop function if exists public\\.${fn}\\(\\s*uuid, integer, public\\.multiplication_candidate_status, boolean, boolean, text,\\s*text, public\\.multiplication_meeting_time, uuid, integer\\s*\\)`
+          `drop function if exists public\\.${fn}\\(\\s*${priorArgs}\\s*\\)`
         )
       );
     }
   });
 
-  it("locks EXECUTE on the new 13-arg RPCs down to authenticated only", () => {
-    for (const fn of RPCS) assertExecuteLockdown(sql, fn, ARGS_13);
+  it("locks EXECUTE on the new RPCs down to authenticated only", () => {
+    for (const fn of RPCS) assertExecuteLockdown(sql, fn, NEW_ARGS[fn]);
   });
 
   it("does not service-role write or hard-delete", () => {
