@@ -273,27 +273,29 @@ describe("buildCapacityBoardModel (orchestrator)", () => {
     const g1 = model.rows.find((r) => r.groupId === "g1")!;
     expect(g1.readyToMultiply).toBe(true);
     expect(model.suggestions.map((s) => s.groupId)).toContain("g1");
-    // 14 members, 6+ years, co-shepherd tenured, willing, needs similar = 5/5.
+    // ADR 0029: the three formerly-computed criteria are now manual flags with
+    // nothing stored for a pre-candidate group, so they count false here; only
+    // the willing + needs-similar candidate flags contribute = 2/5. (The whole
+    // annotation is removed in wave-3 #744.)
     const s = model.suggestions.find((x) => x.groupId === "g1")!;
-    expect(s.metCount).toBe(5);
+    expect(s.metCount).toBe(2);
   });
 });
 
 describe("buildReadinessByGroup", () => {
-  it("computes metCount per group from bare inputs", () => {
-    const map = buildReadinessByGroup(
-      [
-        {
-          groupId: "g",
-          launchedOn: "2020-01-01",
-          activeMemberCount: 14,
-          coShepherdSince: "2022-01-01",
-          shepherdWilling: true,
-          needsSimilarStage: false,
-        },
-      ],
-      TODAY
-    );
-    expect(map.get("g")!.metCount).toBe(4);
+  it("counts only the two candidate flags — the three computed criteria are now manual (ADR 0029)", () => {
+    const map = buildReadinessByGroup([
+      {
+        groupId: "g",
+        launchedOn: "2020-01-01",
+        activeMemberCount: 14,
+        coShepherdSince: "2022-01-01",
+        shepherdWilling: true,
+        needsSimilarStage: false,
+      },
+    ]);
+    // enough_members / established_long_enough / co_shepherd_tenured are passed
+    // false for pre-candidate groups; only shepherdWilling (true) ticks = 1/5.
+    expect(map.get("g")!.metCount).toBe(1);
   });
 });

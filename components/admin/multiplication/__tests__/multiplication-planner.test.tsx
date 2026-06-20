@@ -28,6 +28,28 @@ describe("MultiplicationPlanner", () => {
     );
   });
 
+  it("renders the three manual readiness checkboxes on the add form (ADR 0029)", () => {
+    const html = renderToStaticMarkup(
+      <MultiplicationPlanner
+        segments={[]}
+        suggestions={[]}
+        groupOptions={[
+          { id: "g1", name: "Wednesday Westside", groupType: "Men's" },
+        ]}
+        apprenticesByGroup={{}}
+      />
+    );
+
+    // The three formerly-computed criteria are now plain checkboxes Julian ticks,
+    // with the "12+ / 3+ / 1+" numbers as advisory label text.
+    expect(html).toContain('name="enough_members"');
+    expect(html).toContain('name="established_long_enough"');
+    expect(html).toContain('name="co_shepherd_tenured"');
+    expect(html).toContain("12+ members");
+    expect(html).toContain("3+ years as a group");
+    expect(html).toContain("Co-Shepherd 1+ year");
+  });
+
   it("shows an empty-state when no groups are available to add", () => {
     const html = renderToStaticMarkup(
       <MultiplicationPlanner

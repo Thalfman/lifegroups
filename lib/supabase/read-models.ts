@@ -1069,6 +1069,7 @@ export async function fetchChurchAttendanceSnapshots(
 const MULTIPLICATION_CANDIDATE_COLUMNS =
   "id, group_id, target_year, status, " +
   "shepherd_willing, needs_similar_stage, " +
+  "enough_members, established_long_enough, co_shepherd_tenured, " +
   "notes, successor_designate, meeting_time, leader_pipeline_id, " +
   "manual_member_count, archived_at, " +
   "created_by, updated_by, created_at, updated_at";
@@ -1090,8 +1091,6 @@ export type MultiplicationCandidateEntry = {
   candidate: MultiplicationCandidatesRow;
   group: MultiplicationCandidateGroup | null;
   activeMemberCount: number;
-  // Earliest active co_leader assignment date (YYYY-MM-DD), or null.
-  coShepherdSince: string | null;
   // The linked leader_pipeline apprentice, or null when unlinked.
   linkedApprentice: MultiplicationCandidateApprentice | null;
 };
@@ -1151,23 +1150,11 @@ function indexCandidateGroups(
   return m;
 }
 
-function earliestCoShepherdByGroup(
-  rows: ReadonlyArray<{ group_id: string; assigned_at: string }>
-): Map<string, string> {
-  const m = new Map<string, string>();
-  for (const l of rows) {
-    const current = m.get(l.group_id);
-    if (current === undefined || l.assigned_at < current) {
-      m.set(l.group_id, l.assigned_at);
-    }
-  }
-  return m;
-}
-
 // Julian P4: active (non-archived) multiplication candidates enriched with the
-// group facts the readiness helper needs (member count, launch date,
-// co-shepherd tenure). Admin-only via RLS. Batches the group/membership/leader
-// reads by the candidates' group ids to avoid N+1.
+// group facts the planner surfaces (member count, group identity). Readiness is
+// now a manual checklist read straight off the candidate row (ADR 0029).
+// Admin-only via RLS. Batches the group/membership/apprentice reads by the
+// candidates' group ids to avoid N+1.
 export async function fetchMultiplicationCandidatesForAdmin(
   client: ReadClient
 ): Promise<ReadResult<MultiplicationCandidateEntry[]>> {
@@ -1208,36 +1195,27 @@ export async function fetchMultiplicationCandidatesForAdmin(
   // the group-keyed reads (an empty `.in("id", [])` is the edge other read paths
   // here avoid) so a valid all-type-only pipeline still renders.
   const noGroups = groupIds.length === 0;
-  const [groupsRes, membershipsRes, leadersRes, apprenticesRes] =
-    await Promise.all([
-      noGroups
-        ? Promise.resolve({ data: [], error: null })
-        : client
-            .from("groups")
-            .select("id, name, group_type, launched_on, lifecycle_status")
-            .in("id", groupIds),
-      noGroups
-        ? Promise.resolve({ data: [], error: null })
-        : client
-            .from("group_memberships")
-            .select("group_id, status")
-            .in("group_id", groupIds)
-            .eq("status", "active"),
-      noGroups
-        ? Promise.resolve({ data: [], error: null })
-        : client
-            .from("group_leaders")
-            .select("group_id, assigned_at, role, active")
-            .in("group_id", groupIds)
-            .eq("role", "co_leader")
-            .eq("active", true),
-      apprenticeIds.length > 0
-        ? client
-            .from("leader_pipeline")
-            .select("id, display_name, readiness_stage")
-            .in("id", apprenticeIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
+  const [groupsRes, membershipsRes, apprenticesRes] = await Promise.all([
+    noGroups
+      ? Promise.resolve({ data: [], error: null })
+      : client
+          .from("groups")
+          .select("id, name, group_type, launched_on, lifecycle_status")
+          .in("id", groupIds),
+    noGroups
+      ? Promise.resolve({ data: [], error: null })
+      : client
+          .from("group_memberships")
+          .select("group_id, status")
+          .in("group_id", groupIds)
+          .eq("status", "active"),
+    apprenticeIds.length > 0
+      ? client
+          .from("leader_pipeline")
+          .select("id, display_name, readiness_stage")
+          .in("id", apprenticeIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
   const batchError = firstReadError([
     {
       scope: "fetchMultiplicationCandidatesForAdmin/groups",
@@ -1246,10 +1224,6 @@ export async function fetchMultiplicationCandidatesForAdmin(
     {
       scope: "fetchMultiplicationCandidatesForAdmin/memberships",
       error: membershipsRes.error,
-    },
-    {
-      scope: "fetchMultiplicationCandidatesForAdmin/leaders",
-      error: leadersRes.error,
     },
     {
       scope: "fetchMultiplicationCandidatesForAdmin/apprentices",
@@ -1276,24 +1250,17 @@ export async function fetchMultiplicationCandidatesForAdmin(
       status: string | null;
     }[]
   );
-  const coShepherdSinceByGroup = earliestCoShepherdByGroup(
-    (leadersRes.data ?? []) as { group_id: string; assigned_at: string }[]
-  );
-
   const entries: MultiplicationCandidateEntry[] = candidates.map(
     (candidate) => ({
       candidate,
-      // Type-only candidates carry no group → group/member/co-shepherd facts are
-      // absent (group: null, 0 members, no co-shepherd date).
+      // Type-only candidates carry no group → group/member facts are absent
+      // (group: null, 0 members).
       group: candidate.group_id
         ? (groupById.get(candidate.group_id) ?? null)
         : null,
       activeMemberCount: candidate.group_id
         ? (memberCountByGroup.get(candidate.group_id) ?? 0)
         : 0,
-      coShepherdSince: candidate.group_id
-        ? (coShepherdSinceByGroup.get(candidate.group_id) ?? null)
-        : null,
       linkedApprentice: candidate.leader_pipeline_id
         ? (apprenticeById.get(candidate.leader_pipeline_id) ?? null)
         : null,

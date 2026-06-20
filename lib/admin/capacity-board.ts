@@ -191,24 +191,26 @@ export type GroupReadinessInput = {
 // Compute the 5-criterion readiness for each active group so it can annotate
 // (never gate) suggestions. Pure wrapper over evaluateReadiness so the read
 // model can hand it bare inputs.
+//
+// ADR 0029: the three formerly-computed criteria are now manual flags stored on
+// a candidate; the Capacity Board's suggestions are pre-candidate groups with
+// nothing stored, so we pass `false` for those three here. The "meets X/5"
+// annotation this feeds is removed entirely in wave-3 (#744) along with this
+// whole plumbing — this is a transient placeholder until then.
 export function buildReadinessByGroup(
-  inputs: readonly GroupReadinessInput[],
-  todayIso: string
+  inputs: readonly GroupReadinessInput[]
 ): Map<string, ReadinessResult> {
   const map = new Map<string, ReadinessResult>();
   for (const i of inputs) {
     map.set(
       i.groupId,
-      evaluateReadiness(
-        {
-          activeMemberCount: i.activeMemberCount,
-          launchedOn: i.launchedOn,
-          coShepherdSince: i.coShepherdSince,
-          shepherdWilling: i.shepherdWilling,
-          needsSimilarStage: i.needsSimilarStage,
-        },
-        todayIso
-      )
+      evaluateReadiness({
+        enoughMembers: false,
+        establishedLongEnough: false,
+        coShepherdTenured: false,
+        shepherdWilling: i.shepherdWilling,
+        needsSimilarStage: i.needsSimilarStage,
+      })
     );
   }
   return map;
@@ -327,10 +329,7 @@ export function buildCapacityBoardModel(args: {
       needsSimilarStage: flags?.needsSimilarStage ?? false,
     };
   });
-  const readinessByGroup = buildReadinessByGroup(
-    readinessInputs,
-    args.todayIso
-  );
+  const readinessByGroup = buildReadinessByGroup(readinessInputs);
 
   const suggestions = buildMultiplicationSuggestions(
     rows,

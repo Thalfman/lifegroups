@@ -109,7 +109,6 @@ describe("buildLaunchPlanningData", () => {
 // turns the active groups into `groupOptions`, excluding groups already used by
 // a candidate, and carrying each group's group_type through (null = Untyped).
 describe("buildMultiplicationView", () => {
-  const TODAY = "2026-06-08";
   const GROUPS = [
     {
       id: "g1",
@@ -148,6 +147,9 @@ describe("buildMultiplicationView", () => {
         status: "watching",
         shepherd_willing: false,
         needs_similar_stage: false,
+        enough_members: false,
+        established_long_enough: false,
+        co_shepherd_tenured: false,
         notes: null,
         successor_designate: null,
         meeting_time: null,
@@ -161,13 +163,12 @@ describe("buildMultiplicationView", () => {
       },
       group: null,
       activeMemberCount: 0,
-      coShepherdSince: null,
       linkedApprentice: null,
     };
   }
 
   it("offers only active groups, each carrying its group_type (null = Untyped)", () => {
-    const view = buildMultiplicationView([], GROUPS, [], TODAY);
+    const view = buildMultiplicationView([], GROUPS, []);
     expect(view.groupOptions).toEqual([
       { id: "g1", name: "Alpha", groupType: "Men 20-30s" },
       { id: "g2", name: "Beta", groupType: "Men 20-30s" },
@@ -177,12 +178,12 @@ describe("buildMultiplicationView", () => {
   });
 
   it("excludes a group already attached to a candidate", () => {
-    const view = buildMultiplicationView([candidate("g1")], GROUPS, [], TODAY);
+    const view = buildMultiplicationView([candidate("g1")], GROUPS, []);
     expect(view.groupOptions.map((g) => g.name)).toEqual(["Beta", "Delta"]);
   });
 
   it("a candidate with no group removes no group from the options", () => {
-    const view = buildMultiplicationView([candidate(null)], GROUPS, [], TODAY);
+    const view = buildMultiplicationView([candidate(null)], GROUPS, []);
     expect(view.groupOptions.map((g) => g.name)).toEqual([
       "Alpha",
       "Beta",

@@ -399,6 +399,56 @@ function NeedsSimilarStageField({
   );
 }
 
+// ADR 0029: the three formerly-computed readiness criteria, now manual
+// checkboxes Julian ticks. The "12+ / 3+ / 1+" numbers are advisory label text
+// only — nothing is computed or compared against data.
+function EnoughMembersField({ defaultChecked }: { defaultChecked?: boolean }) {
+  return (
+    <label className={CHECKBOX_LABEL}>
+      <input
+        type="checkbox"
+        name="enough_members"
+        defaultChecked={defaultChecked}
+      />
+      12+ members
+    </label>
+  );
+}
+
+function EstablishedLongEnoughField({
+  defaultChecked,
+}: {
+  defaultChecked?: boolean;
+}) {
+  return (
+    <label className={CHECKBOX_LABEL}>
+      <input
+        type="checkbox"
+        name="established_long_enough"
+        defaultChecked={defaultChecked}
+      />
+      3+ years as a group
+    </label>
+  );
+}
+
+function CoShepherdTenuredField({
+  defaultChecked,
+}: {
+  defaultChecked?: boolean;
+}) {
+  return (
+    <label className={CHECKBOX_LABEL}>
+      <input
+        type="checkbox"
+        name="co_shepherd_tenured"
+        defaultChecked={defaultChecked}
+      />
+      Co-Shepherd 1+ year
+    </label>
+  );
+}
+
 function NotesField({
   idPrefix,
   defaultValue,
@@ -508,6 +558,9 @@ function CandidateEditForm({
           </p>
         </div>
         <NeedsSimilarStageField defaultChecked={c.needsSimilarStage} />
+        <EnoughMembersField defaultChecked={c.enoughMembers} />
+        <EstablishedLongEnoughField defaultChecked={c.establishedLongEnough} />
+        <CoShepherdTenuredField defaultChecked={c.coShepherdTenured} />
         <NotesField idPrefix={idPrefix} defaultValue={c.notes} />
         <div className="flex items-center gap-2.5">
           <PButton type="submit" tone="terra" size="sm" disabled={pending}>
@@ -619,6 +672,9 @@ function AddCandidateForm({
       />
       <WillingField state={typeGroup} />
       <NeedsSimilarStageField />
+      <EnoughMembersField />
+      <EstablishedLongEnoughField />
+      <CoShepherdTenuredField />
       <NotesField idPrefix="mc-add" />
       <div className="flex items-center gap-2.5">
         <PButton
