@@ -9,11 +9,16 @@ import { STAGE_LABEL, type MatchedShepherd } from "@/lib/admin/leader-pipeline";
 // seam ships rendering the empty state.
 export function PipelineMatchedShepherds({
   shepherds,
+  anchorId,
 }: {
   shepherds: readonly MatchedShepherd[];
+  // #759: stable DOM anchor so a Readiness cell can deep-link straight to this
+  // type's supply side. scroll-mt-24 keeps the block off the viewport top after
+  // the hash scroll, matching PipelineTypeSection.
+  anchorId?: string;
 }) {
   return (
-    <div className="grid gap-1">
+    <div id={anchorId} className="grid scroll-mt-24 gap-1">
       <p className="m-0 font-sans text-xs font-semibold uppercase tracking-wide text-ink3">
         Matched shepherds
       </p>
