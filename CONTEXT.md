@@ -287,9 +287,34 @@ him.
 _Avoid_: Alert, threshold (when you mean the whole configured rule); overflow;
 per-pillar letter grade for Interest (it is a count).
 
+**Multiplication Pipeline** (the Multiply **Pipeline** tab):
+The working list of **group types** the Ministry Admin intends to multiply. Adding
+a type to the Pipeline is an **intentful act** — a type can sit in the Pipeline
+with **no candidate groups and no matched shepherds yet**; nothing about its
+readiness or merge state blocks it. The Pipeline is an **action-view** over the
+per-type **Target & Coverage** ("how many of this type we want" stays the single
+source of truth — the Pipeline does not introduce a second target). Under each
+pipelined type sit its **Multiplication Candidates**; the **Readiness** tab is the
+linker that ties a type to its candidates and its shepherds.
+_Avoid_: Plan (the top-level Interest-Funnel area, and the tab's old name); a
+second per-type target count (Coverage already owns that).
+
+**Multiplication Candidate** (Potential vs Locked-in):
+An **existing group** that can/is willing to multiply, shown under its **group
+type** in the Pipeline. Only ever an existing group — never a type (a type can't
+be "willing"; a group's shepherd can). Two states: a **Potential candidate** is
+auto-listed — every active group of a pipelined type simply appears beneath it,
+with no saved record. A **Locked-in candidate** is one the admin has deliberately
+**assessed and committed**: selecting it opens its Readiness Checklist, and saving
+locks it in (creating the candidate record). Lock-in is a **deliberate
+assessment, never a gate** — a group can be locked in with any number of checklist
+boxes ticked, even zero ("a group does not need to meet each").
+_Avoid_: Candidate type (candidates are groups, not types); requiring all criteria
+to lock in.
+
 **Multiplication Readiness Checklist**:
-The per-**group** list of five guideline boxes on the Multiply **Plan** tab that
-Julian ticks by hand for a multiplication candidate — **12+ members**, **3+
+The per-**group** list of five guideline boxes on the Multiply **Pipeline** tab
+that Julian ticks by hand for a multiplication candidate — **12+ members**, **3+
 years as a group**, **Co-Shepherd 1+ year**, **Shepherd willing**, **Need for a
 similar group**. Purely his judgment, stored on the candidate (ADR 0029); the
 numbers are advisory labels, not computed comparisons. Distinct from the
