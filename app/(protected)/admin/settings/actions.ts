@@ -4,27 +4,15 @@ import {
   validateGroupMetricSettingsPayload,
   validateMetricDefaultsPayload,
   validateHealthRubricPayload,
-  validateCreateGroupCategoryPayload,
-  validateRenameGroupCategoryPayload,
-  validateArchiveGroupCategoryPayload,
-  validateSetCategoryTypeCellPayload,
-  validateSetCategoryTypeTargetCountPayload,
-  validateSetGroupCategoryPayload,
   validateReadinessRulePayload,
-  validateAudienceReadinessRulePayload,
-  validateCellTriggerOverridePayload,
+  validateSetGroupTypesPayload,
+  validateSetGroupTypeConfigPayload,
   type GroupMetricSettingsPayload,
   type HealthRubricPayload,
   type MetricDefaultsPayload,
-  type CreateGroupCategoryPayload,
-  type RenameGroupCategoryPayload,
-  type ArchiveGroupCategoryPayload,
-  type SetCategoryTypeCellPayload,
-  type SetCategoryTypeTargetCountPayload,
-  type SetGroupCategoryPayload,
   type ReadinessRulePayload,
-  type AudienceReadinessRulePayload,
-  type CellTriggerOverridePayload,
+  type SetGroupTypesPayload,
+  type SetGroupTypeConfigPayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -34,7 +22,10 @@ import {
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
 import { updateTag } from "next/cache";
-import { METRIC_DEFAULTS_CACHE_TAG } from "@/lib/supabase/cached-config";
+import {
+  METRIC_DEFAULTS_CACHE_TAG,
+  GROUP_TYPES_CACHE_TAG,
+} from "@/lib/supabase/cached-config";
 
 // Settings writes fan out to every surface that reads thresholds.
 const SETTINGS_REVALIDATE_PATHS = [
@@ -284,201 +275,85 @@ export async function adminSetHealthRubric(
   return runAdminWriteAction(SET_HEALTH_RUBRIC_SPEC, prev, input);
 }
 
-// adminSetMultiplicationConfig was deleted in #472: it was an orphan export
-// (retired by ADR 0019/#401, imported nowhere). The admin_set_multiplication_config
-// RPC and the multiplication_config table stay frozen in place — see
-// docs/architecture/DATABASE_SCHEMA.md.
-
-// ----- Group Category catalog + cell matrix (#396) ------------------------
-// The Settings > Groups editor posts free-form catalog CRUD (create / rename /
-// archive) and the (top type × category) cell apply/unapply. Each is a separate
-// audited RPC; the validators keep malformed input off the wire and the RPCs
-// stay the authoritative gate (duplicate-label / missing-category re-checked
-// there). Ministry-Admin-owned, so the default requireAdminSession path applies.
-// Revalidates Settings; the matrix feeds the Multiply grid in a later slice.
-const GROUP_CATEGORY_REVALIDATE_PATHS = [
+// ----- Group types list (Settings > Groups) -------------------------------
+// The Settings > Groups editor posts the canonical free-text type-name list as a
+// newline-separated blob (one name per line). The validator trims, dedupes
+// (case-insensitive), and bounds the list; the audited admin_set_group_types RPC
+// replaces the app_settings `group_types` row and stays the authoritative gate.
+// Ministry-Admin-owned, so the default requireAdminSession path applies.
+// Revalidates every surface that reads the list (Settings, Groups, Multiply, the
+// admin home).
+const GROUP_TYPES_REVALIDATE_PATHS = [
   "/admin/settings",
+  "/admin",
   "/admin/multiply",
+  "/admin/groups",
 ] as const;
 
-const CREATE_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
-  CreateGroupCategoryPayload,
+const SET_GROUP_TYPES_SPEC: AdminWriteActionSpec<
+  SetGroupTypesPayload,
   { id: string }
 > = {
-  name: "admin.settings.create_group_category",
-  keys: ["label"],
-  validate: validateCreateGroupCategoryPayload,
+  name: "admin.settings.set_group_types",
+  keys: ["types", "types_text"],
+  validate: validateSetGroupTypesPayload,
+  fields: (_actor, value) => ({ type_count: value.types.length }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_group_category", { p_label: value.label }),
-  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
-  noDataError: "The category was not created. Please try again.",
+    adminRpc(client, "admin_set_group_types", { p_types: value.types }),
+  revalidate: () => GROUP_TYPES_REVALIDATE_PATHS,
+  noDataError: "The group types were not saved. Please try again.",
 };
 
-export async function adminCreateGroupCategory(
+export async function adminSetGroupTypes(
   prev: ActionResult<{ id: string }> | undefined,
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(CREATE_GROUP_CATEGORY_SPEC, prev, input);
+  const result = await runAdminWriteAction(SET_GROUP_TYPES_SPEC, prev, input);
+  // group_types is cached cross-request (lib/supabase/cached-config.ts); bust
+  // the tag so the new list is reflected on the next read.
+  if (result.ok) updateTag(GROUP_TYPES_CACHE_TAG);
+  return result;
 }
 
-const RENAME_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
-  RenameGroupCategoryPayload,
+// ----- Per-type config (Multiply) -----------------------------------------
+// Multiply posts one group type's config: a target group count plus an optional
+// readiness-rule override (null/empty = inherit the single global rule). The
+// validator decodes the override through the pure trust-boundary decoder; the
+// audited admin_set_group_type_config RPC upserts the row keyed on the free-text
+// type name and stays the authoritative gate.
+const SET_GROUP_TYPE_CONFIG_SPEC: AdminWriteActionSpec<
+  SetGroupTypeConfigPayload,
   { id: string }
 > = {
-  name: "admin.settings.rename_group_category",
-  keys: ["category_id", "label"],
-  validate: validateRenameGroupCategoryPayload,
-  fields: (_actor, value) => ({ target_category_id: value.categoryId }),
-  rpc: (client, value) =>
-    adminRpc(client, "admin_rename_group_category", {
-      p_category_id: value.categoryId,
-      p_label: value.label,
-    }),
-  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
-  noDataError: "The category was not renamed. Please try again.",
-};
-
-export async function adminRenameGroupCategory(
-  prev: ActionResult<{ id: string }> | undefined,
-  input: unknown
-): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(RENAME_GROUP_CATEGORY_SPEC, prev, input);
-}
-
-const ARCHIVE_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
-  ArchiveGroupCategoryPayload,
-  { id: string }
-> = {
-  name: "admin.settings.archive_group_category",
-  keys: ["category_id"],
-  validate: validateArchiveGroupCategoryPayload,
-  fields: (_actor, value) => ({ target_category_id: value.categoryId }),
-  rpc: (client, value) =>
-    adminRpc(client, "admin_archive_group_category", {
-      p_category_id: value.categoryId,
-    }),
-  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
-  noDataError: "The category was not removed. Please try again.",
-};
-
-export async function adminArchiveGroupCategory(
-  prev: ActionResult<{ id: string }> | undefined,
-  input: unknown
-): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(ARCHIVE_GROUP_CATEGORY_SPEC, prev, input);
-}
-
-const SET_CATEGORY_TYPE_CELL_SPEC: AdminWriteActionSpec<
-  SetCategoryTypeCellPayload,
-  { id: string }
-> = {
-  name: "admin.settings.set_category_type_cell",
-  keys: ["category_id", "audience_category", "active"],
-  validate: validateSetCategoryTypeCellPayload,
+  name: "admin.settings.set_group_type_config",
+  keys: ["group_type", "target_count", "readiness_rule"],
+  validate: validateSetGroupTypeConfigPayload,
   fields: (_actor, value) => ({
-    target_category_id: value.categoryId,
-    audience_category: value.audienceCategory,
-    active: value.active,
+    group_type: value.groupType,
+    target_count: value.targetCount,
   }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_set_category_type_cell", {
-      p_category_id: value.categoryId,
-      p_audience_category: value.audienceCategory,
-      p_active: value.active,
+    adminRpc(client, "admin_set_group_type_config", {
+      p_group_type: value.groupType,
+      p_target_count: value.targetCount,
+      p_readiness_rule: value.readinessRule as Record<string, unknown> | null,
     }),
-  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
-  noDataError: "The change was not saved. Please try again.",
+  revalidate: () => GROUP_TYPES_REVALIDATE_PATHS,
+  noDataError: "The type config was not saved. Please try again.",
 };
 
-export async function adminSetCategoryTypeCell(
+export async function adminSetGroupTypeConfig(
   prev: ActionResult<{ id: string }> | undefined,
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(SET_CATEGORY_TYPE_CELL_SPEC, prev, input);
+  return runAdminWriteAction(SET_GROUP_TYPE_CONFIG_SPEC, prev, input);
 }
 
-// #400 / PRD §2.3: set a cell's target group count (the "have X of Y" Y). Same
-// audited-RPC pattern as the cell apply; tracking only, so it shares the Groups
-// revalidate paths but feeds no trigger.
-const SET_CATEGORY_TYPE_TARGET_COUNT_SPEC: AdminWriteActionSpec<
-  SetCategoryTypeTargetCountPayload,
-  { id: string }
-> = {
-  name: "admin.settings.set_category_type_target_count",
-  keys: ["category_id", "audience_category", "target_count"],
-  validate: validateSetCategoryTypeTargetCountPayload,
-  fields: (_actor, value) => ({
-    target_category_id: value.categoryId,
-    audience_category: value.audienceCategory,
-    target_count: value.count,
-  }),
-  rpc: (client, value) =>
-    adminRpc(client, "admin_set_category_type_target_count", {
-      p_category_id: value.categoryId,
-      p_audience_category: value.audienceCategory,
-      p_count: value.count,
-    }),
-  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
-  noDataError: "The target was not saved. Please try again.",
-};
-
-export async function adminSetCategoryTypeTargetCount(
-  prev: ActionResult<{ id: string }> | undefined,
-  input: unknown
-): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(SET_CATEGORY_TYPE_TARGET_COUNT_SPEC, prev, input);
-}
-
-// Settings › Groups "+ Add existing group": tag an existing group into a cell
-// (audience × category) straight from the group-type list. Delegates to the
-// focused admin_set_group_category RPC, which updates ONLY the group's cell
-// (audience_category + category_id) under a row lock — so a concurrent edit to
-// the group's other fields is never clobbered — and is the authoritative gate:
-// it rejects closed groups and inactive/archived cells and writes the paired
-// audit row. Revalidates the Groups tab + Groups page + Multiply (all read this
-// coverage).
-const SET_GROUP_CATEGORY_REVALIDATE_PATHS = [
-  ...SETTINGS_REVALIDATE_PATHS,
-  "/admin/multiply",
-] as const;
-
-const SET_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
-  SetGroupCategoryPayload,
-  { id: string }
-> = {
-  name: "admin.settings.set_group_category",
-  keys: ["group_id", "audience_category", "category_id"],
-  validate: validateSetGroupCategoryPayload,
-  fields: (_actor, value) => ({
-    target_group_id: value.group_id,
-    audience_category: value.audience_category,
-    target_category_id: value.category_id,
-  }),
-  rpc: (client, value) =>
-    adminRpc(client, "admin_set_group_category", {
-      p_group_id: value.group_id,
-      p_audience_category: value.audience_category,
-      p_category_id: value.category_id,
-    }),
-  revalidate: () => SET_GROUP_CATEGORY_REVALIDATE_PATHS,
-  noDataError: "The group was not added. Please try again.",
-};
-
-export async function adminSetGroupCategory(
-  prev: ActionResult<{ id: string }> | undefined,
-  input: unknown
-): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(SET_GROUP_CATEGORY_SPEC, prev, input);
-}
-
-// ----- Per-cell readiness rule (#402 / PRD §2.4) --------------------------
-// The Settings > Groups readiness editor posts the GLOBAL rule (ministry_year +
-// the rule JSON) and, per active cell, that cell's overrides (a partial of the
-// rule). Each is its own audited RPC; the validators decode through the pure
-// trust-boundary decoders and the RPCs stay the authoritative gate. Ministry-
-// Admin-owned, so the default requireAdminSession path applies. Revalidates the
-// Multiply boards as well as Settings (the readiness model feeds the Multiply
-// grid in a later slice, #403).
+// ----- Global readiness rule ----------------------------------------------
+// The single GLOBAL readiness rule (ministry_year + the rule JSON). Each type
+// can override it via its per-type config above; with no override a type inherits
+// this rule. Ministry-Admin-owned, so the default requireAdminSession path
+// applies. Revalidates the Multiply boards as well as Settings.
 const READINESS_REVALIDATE_PATHS = [
   "/admin/settings",
   "/admin/multiply",
@@ -506,63 +381,4 @@ export async function adminSetReadinessRule(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(SET_READINESS_RULE_SPEC, prev, input);
-}
-
-// The MIDDLE tier of the cascade (#410 / ADR 0021): the per-type (Audience) rule,
-// a partial of the global rule keyed by ministry_year × audience_category. Same
-// audited-RPC pattern as the global rule; an empty `{}` clears it back to global.
-const SET_AUDIENCE_READINESS_RULE_SPEC: AdminWriteActionSpec<
-  AudienceReadinessRulePayload,
-  { id: string }
-> = {
-  name: "admin.settings.set_audience_readiness_rule",
-  keys: ["ministry_year", "audience_category", "rule"],
-  validate: validateAudienceReadinessRulePayload,
-  fields: (_actor, value) => ({
-    ministry_year: value.ministryYear,
-    audience_category: value.audienceCategory,
-  }),
-  rpc: (client, value) =>
-    adminRpc(client, "admin_set_audience_readiness_rule", {
-      p_ministry_year: value.ministryYear,
-      p_audience_category: value.audienceCategory,
-      p_rule: value.rule as unknown as Record<string, unknown>,
-    }),
-  revalidate: () => READINESS_REVALIDATE_PATHS,
-  noDataError: "The per-type readiness rule was not saved. Please try again.",
-};
-
-export async function adminSetAudienceReadinessRule(
-  prev: ActionResult<{ id: string }> | undefined,
-  input: unknown
-): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(SET_AUDIENCE_READINESS_RULE_SPEC, prev, input);
-}
-
-const SET_CELL_TRIGGER_OVERRIDES_SPEC: AdminWriteActionSpec<
-  CellTriggerOverridePayload,
-  { id: string }
-> = {
-  name: "admin.settings.set_cell_trigger_overrides",
-  keys: ["category_id", "audience_category", "overrides"],
-  validate: validateCellTriggerOverridePayload,
-  fields: (_actor, value) => ({
-    target_category_id: value.categoryId,
-    audience_category: value.audienceCategory,
-  }),
-  rpc: (client, value) =>
-    adminRpc(client, "admin_set_cell_trigger_overrides", {
-      p_category_id: value.categoryId,
-      p_audience_category: value.audienceCategory,
-      p_overrides: value.overrides as unknown as Record<string, unknown>,
-    }),
-  revalidate: () => READINESS_REVALIDATE_PATHS,
-  noDataError: "The cell overrides were not saved. Please try again.",
-};
-
-export async function adminSetCellTriggerOverrides(
-  prev: ActionResult<{ id: string }> | undefined,
-  input: unknown
-): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(SET_CELL_TRIGGER_OVERRIDES_SPEC, prev, input);
 }

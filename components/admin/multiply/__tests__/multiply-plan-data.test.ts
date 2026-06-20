@@ -24,7 +24,6 @@ function emptyReads(
     fetchMultiplicationCandidates: async () => ok([]),
     fetchGroupRefs: async () => ok([]),
     fetchApprenticeRefs: async () => ok([]),
-    fetchCategoriesForAudience: async () => ok([]),
     ...overrides,
   };
 }
@@ -33,8 +32,7 @@ const GROUP = {
   id: "g1",
   name: "Alpha",
   lifecycle_status: "active",
-  audience_category: "men",
-  category_id: "c1",
+  group_type: "Men 20-30s",
 } as never;
 
 describe("buildMultiplyPlanData", () => {
@@ -42,19 +40,15 @@ describe("buildMultiplyPlanData", () => {
     const data = await buildMultiplyPlanData(
       emptyReads({
         fetchGroupRefs: async () => ok([GROUP]),
-        fetchCategoriesForAudience: async (audience) =>
-          audience === "men"
-            ? ok([{ id: "c1", label: "20-30s", created_at: "2026-06-06" }])
-            : ok([]),
       })
     );
 
     expect(data.error).toBeNull();
-    expect(data.typeOptions).toEqual([
-      { audienceCategory: "men", categoryId: "c1", label: "20-30s" },
+    // The active group feeds the "willing to multiply" picker, carrying its
+    // free-text group_type.
+    expect(data.groupOptions).toEqual([
+      { id: "g1", name: "Alpha", groupType: "Men 20-30s" },
     ]);
-    // The active, typed group feeds the "willing to multiply" picker.
-    expect(data.groupsByType["men:c1"]).toEqual([{ id: "g1", name: "Alpha" }]);
   });
 
   it("blocks the planner on the first-precedence read (candidates) with the documented empty view", async () => {
@@ -94,21 +88,5 @@ describe("buildMultiplyPlanData", () => {
     );
 
     expect(data.error).toBe("candidates boom");
-  });
-
-  it("degrades the type picker without blocking the planner on a category read failure", async () => {
-    const data = await buildMultiplyPlanData(
-      emptyReads({
-        fetchGroupRefs: async () => ok([GROUP]),
-        fetchCategoriesForAudience: async () => fail("categories boom"),
-      })
-    );
-
-    // The category reads carry no blocking precedence: the edit form preserves
-    // a candidate's existing type, so the planner still renders…
-    expect(data.error).toBeNull();
-    expect(data.typeOptions).toEqual([]);
-    // …with the other sections still populated.
-    expect(data.groupsByType["men:c1"]).toEqual([{ id: "g1", name: "Alpha" }]);
   });
 });

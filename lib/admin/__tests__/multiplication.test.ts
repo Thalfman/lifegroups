@@ -5,7 +5,7 @@ import {
   filterSegmentsByYear,
   segmentLabel,
   summarizeTargetYears,
-  UNCATEGORIZED_SEGMENT,
+  UNTYPED_SEGMENT,
   wholeYearsBetween,
 } from "@/lib/admin/multiplication";
 import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
@@ -13,21 +13,16 @@ import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
 const TODAY = "2026-05-28";
 
 // Build a candidate entry as the read model returns it, overriding only the
-// fields a given test cares about.
+// fields a given test cares about. Segmentation now derives from the anchoring
+// group's free-text group_type (null = Untyped); the cell model is retired.
 function entry(over: {
   id: string;
   groupName?: string;
-  audience?: "men" | "women" | "mixed" | null;
-  // #398: the group's category label (resolved from category_id), or null =
-  // Uncategorized. Replaces the old life_stage axis.
-  categoryLabel?: string | null;
-  // Type-first: the candidate's OWN cell. Defaulting these to null exercises the
-  // legacy fallback (segment by the attached group). Set them (with groupId:
-  // null) for a type-only watch.
-  candidateAudience?: "men" | "women" | "mixed" | null;
-  candidateCategoryId?: string | null;
-  candidateCategoryLabel?: string | null;
-  // The multiplying group id; default `g-<id>`. Pass null for a type-only watch.
+  // The anchoring group's free-text type (null = Untyped). Ignored when the
+  // candidate has no group (groupId: null).
+  groupType?: string | null;
+  // The multiplying group id; default `g-<id>`. Pass null for a type-only watch
+  // (no attached group).
   groupId?: string | null;
   targetYear?: number | null;
   activeMemberCount?: number;
@@ -44,8 +39,6 @@ function entry(over: {
     candidate: {
       id: over.id,
       group_id: groupId,
-      audience_category: over.candidateAudience ?? null,
-      category_id: over.candidateCategoryId ?? null,
       target_year: over.targetYear ?? null,
       status: "watching",
       shepherd_willing: over.shepherdWilling ?? false,
@@ -62,20 +55,15 @@ function entry(over: {
       updated_at: "2026-01-01T00:00:00Z",
     },
     group:
-      over.audience === null || groupId === null
+      groupId === null
         ? null
         : {
             id: groupId,
             name: over.groupName ?? `Group ${over.id}`,
-            audience_category: over.audience ?? "men",
-            category_label:
-              over.categoryLabel === undefined
-                ? "Young families"
-                : over.categoryLabel,
+            group_type: over.groupType === undefined ? "Men's" : over.groupType,
             launched_on: over.launchedOn ?? null,
             lifecycle_status: "active",
           },
-    candidateCategoryLabel: over.candidateCategoryLabel ?? null,
     activeMemberCount: over.activeMemberCount ?? 0,
     coShepherdSince: over.coShepherdSince ?? null,
     linkedApprentice: null,
@@ -152,47 +140,44 @@ describe("evaluateReadiness (Julian P4 answer 10 criteria)", () => {
   });
 });
 
-describe("segmentLabel (#398: audience × category label)", () => {
-  it("combines audience and the free-form category label", () => {
-    expect(segmentLabel("mixed", "Retirement")).toBe("Mixed · Retirement");
-    // A group with an audience but NO category has no cell, so it buckets under
-    // Uncategorized rather than masquerading as an audience-only segment.
-    expect(segmentLabel("men", null)).toBe("Uncategorized");
-    // No audience and no category → the visible Uncategorized bucket.
-    expect(segmentLabel(null, null)).toBe("Uncategorized");
-    // A category but no audience still reads its label under Uncategorized.
-    expect(segmentLabel(null, "20-30s")).toBe("Uncategorized · 20-30s");
+describe("segmentLabel (free-text group_type)", () => {
+  it("returns the trimmed type name as the segment", () => {
+    expect(segmentLabel("Men's")).toBe("Men's");
+    expect(segmentLabel("  Retirement  ")).toBe("Retirement");
+  });
+
+  it("resolves a null or blank type to the visible Untyped bucket", () => {
+    expect(segmentLabel(null)).toBe("Untyped");
+    expect(segmentLabel("   ")).toBe("Untyped");
+    expect(segmentLabel(null)).toBe(UNTYPED_SEGMENT);
   });
 });
 
 // Julian #145 / #398: the dedicated multiplication surface groups candidates by
-// cell — audience × category label — with readiness computed against today.
-// buildPlannerSegments is the pure read model the surface renders.
+// the anchoring group's free-text group_type, with readiness computed against
+// today. buildPlannerSegments is the pure read model the surface renders.
 describe("buildPlannerSegments", () => {
-  it("groups candidates by audience × category segment, sorted by segment", () => {
+  it("groups candidates by group_type segment, sorted by segment", () => {
     const segments = buildPlannerSegments(
       [
-        entry({ id: "1", audience: "women", categoryLabel: "Retirement" }),
-        entry({ id: "2", audience: "men", categoryLabel: "Young families" }),
-        entry({ id: "3", audience: "men", categoryLabel: "Young families" }),
+        entry({ id: "1", groupType: "Women's" }),
+        entry({ id: "2", groupType: "Men's" }),
+        entry({ id: "3", groupType: "Men's" }),
       ],
       TODAY
     );
 
-    expect(segments.map((s) => s.segment)).toEqual([
-      "Men · Young families",
-      "Women · Retirement",
-    ]);
-    const men = segments.find((s) => s.segment === "Men · Young families");
+    expect(segments.map((s) => s.segment)).toEqual(["Men's", "Women's"]);
+    const men = segments.find((s) => s.segment === "Men's");
     expect(men!.candidates.map((c) => c.candidateId)).toEqual(["2", "3"]);
   });
 
-  it("buckets a tagged group into the '20-30s × <type>' cell (#398)", () => {
+  it("buckets a tagged group under its free-text type", () => {
     const segments = buildPlannerSegments(
-      [entry({ id: "1", audience: "men", categoryLabel: "20-30s" })],
+      [entry({ id: "1", groupType: "20-30s" })],
       TODAY
     );
-    expect(segments[0].segment).toBe("Men · 20-30s");
+    expect(segments[0].segment).toBe("20-30s");
   });
 
   it("computes readiness against today for each candidate", () => {
@@ -221,80 +206,32 @@ describe("buildPlannerSegments", () => {
     expect(segment.candidates[0].successorDesignate).toBe("Tony L.");
   });
 
-  it("buckets groups with missing segmentation under Uncategorized (#398)", () => {
+  it("carries the group_type through to the candidate view", () => {
+    const [segment] = buildPlannerSegments(
+      [entry({ id: "1", groupType: "Retirement" })],
+      TODAY
+    );
+    expect(segment.candidates[0].groupType).toBe("Retirement");
+  });
+
+  it("buckets a type-only watch (no group) under Untyped", () => {
     const segments = buildPlannerSegments(
-      [entry({ id: "1", audience: null })],
+      [entry({ id: "1", groupId: null })],
       TODAY
     );
-    expect(segments[0].segment).toBe("Uncategorized");
-    expect(segments[0].candidates[0].groupName).toBe("Unknown group");
+    expect(segments[0].segment).toBe("Untyped");
+    expect(segments[0].candidates[0].groupName).toBe("(no group)");
   });
 
-  it("buckets a group with an audience but no category under Uncategorized", () => {
+  it("buckets a group with no type (null group_type) under Untyped", () => {
     const segments = buildPlannerSegments(
-      [entry({ id: "1", audience: "men", categoryLabel: null })],
+      [entry({ id: "1", groupType: null })],
       TODAY
     );
-    // No category means no cell, so it collects in the visible Uncategorized
-    // bucket admins use to find groups still needing a tag — not a "Men" segment.
-    expect(segments[0].segment).toBe(UNCATEGORIZED_SEGMENT);
-  });
-});
-
-// Type-first (group-types-multiplication): a candidate is anchored to its own
-// cell. A type-only watch has no group; segmentation reads the candidate's own
-// audience + category label, falling back to the attached group's for legacy
-// rows whose type columns weren't backfilled.
-describe("buildPlannerSegments — type-first candidates", () => {
-  it("segments a type-only candidate by its OWN cell, with a no-group title", () => {
-    const [segment] = buildPlannerSegments(
-      [
-        entry({
-          id: "t1",
-          groupId: null,
-          candidateAudience: "women",
-          candidateCategoryId: "c-1",
-          candidateCategoryLabel: "20-30s",
-        }),
-      ],
-      TODAY
-    );
-    expect(segment.segment).toBe("Women · 20-30s");
-    const c = segment.candidates[0];
-    expect(c.groupId).toBeNull();
-    expect(c.groupName).toBe("(type only — no group yet)");
-    expect(c.audience).toBe("women");
-    expect(c.categoryId).toBe("c-1");
-    // No group → group-derived criteria can't be met.
-    expect(c.readiness.criteria.established_long_enough).toBe(false);
-    expect(c.readiness.criteria.co_shepherd_tenured).toBe(false);
-  });
-
-  it("prefers the candidate's own cell over the attached group's", () => {
-    const [segment] = buildPlannerSegments(
-      [
-        entry({
-          id: "t2",
-          // The attached group is a Men · Young families group…
-          audience: "men",
-          categoryLabel: "Young families",
-          // …but the candidate's own cell wins.
-          candidateAudience: "women",
-          candidateCategoryLabel: "Retirement",
-        }),
-      ],
-      TODAY
-    );
-    expect(segment.segment).toBe("Women · Retirement");
-  });
-
-  it("falls back to the attached group's cell when the candidate has no type", () => {
-    const [segment] = buildPlannerSegments(
-      [entry({ id: "t3", audience: "men", categoryLabel: "20-30s" })],
-      TODAY
-    );
-    // candidateAudience / candidateCategoryLabel default to null → group fallback.
-    expect(segment.segment).toBe("Men · 20-30s");
+    // A null group_type collects in the visible Untyped bucket admins use to
+    // find groups still needing a tag.
+    expect(segments[0].segment).toBe(UNTYPED_SEGMENT);
+    expect(segments[0].candidates[0].groupType).toBeNull();
   });
 });
 
@@ -381,24 +318,9 @@ describe("filterSegmentsByYear", () => {
   const segments = () =>
     buildPlannerSegments(
       [
-        entry({
-          id: "1",
-          audience: "men",
-          categoryLabel: "Young families",
-          targetYear: 2026,
-        }),
-        entry({
-          id: "2",
-          audience: "men",
-          categoryLabel: "Young families",
-          targetYear: 2027,
-        }),
-        entry({
-          id: "3",
-          audience: "women",
-          categoryLabel: "Retirement",
-          targetYear: null,
-        }),
+        entry({ id: "1", groupType: "Men's", targetYear: 2026 }),
+        entry({ id: "2", groupType: "Men's", targetYear: 2027 }),
+        entry({ id: "3", groupType: "Women's", targetYear: null }),
       ],
       TODAY
     );
@@ -409,13 +331,13 @@ describe("filterSegmentsByYear", () => {
 
   it("keeps only candidates matching a given year and drops emptied segments", () => {
     const filtered = filterSegmentsByYear(segments(), 2026);
-    expect(filtered.map((s) => s.segment)).toEqual(["Men · Young families"]);
+    expect(filtered.map((s) => s.segment)).toEqual(["Men's"]);
     expect(filtered[0].candidates.map((c) => c.candidateId)).toEqual(["1"]);
   });
 
   it("keeps only undecided candidates when filtering on null", () => {
     const filtered = filterSegmentsByYear(segments(), null);
-    expect(filtered.map((s) => s.segment)).toEqual(["Women · Retirement"]);
+    expect(filtered.map((s) => s.segment)).toEqual(["Women's"]);
     expect(filtered[0].candidates.map((c) => c.candidateId)).toEqual(["3"]);
   });
 });

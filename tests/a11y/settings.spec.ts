@@ -318,7 +318,7 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     ).toBeVisible();
   });
 
-  test("the Groups tab marks target counts as tracking only (issue 478)", async ({
+  test("the Groups tab hosts the free-text group-type list (issue 478)", async ({
     page,
   }) => {
     await page
@@ -326,85 +326,54 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
       .click();
     const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
 
-    // Expand the audience board, then the first group-type row, to reveal its
-    // target control and the tracking-only helper.
-    await panel.locator("summary", { hasText: "Men's" }).first().click();
-    await panel.locator("summary", { hasText: "20-30s" }).first().click();
-    const targetInput = panel.getByLabel("Target for Men's 20-30s", {
-      exact: true,
-    });
-    await expect(targetInput).toBeVisible();
-
-    // The helper is visible AND programmatically tied to the input.
+    // The retired Audience × Category cell board is gone: the Groups tab is now a
+    // single free-text type list. The textarea is labelled and the save action
+    // carries the surface in its name. Per-type targets live in Multiply.
+    const list = panel.getByLabel("Group types", { exact: true });
+    await expect(list).toBeVisible();
+    await expect(list).toHaveJSProperty("tagName", "TEXTAREA");
     await expect(
-      panel
-        .getByText("Tracking only — never feeds the multiplication trigger.")
-        .first()
+      panel.getByRole("button", { name: "Save group types" })
     ).toBeVisible();
-    await expect(targetInput).toHaveAccessibleDescription(
-      "Tracking only — never feeds the multiplication trigger."
-    );
   });
 
-  test("the Multiply trigger uses grouped searchable readiness scopes (issue 478)", async ({
+  test("the Multiply tab edits the single global 7-pillar readiness rule (issue 478)", async ({
     page,
   }) => {
     await page
       .locator(`${SETTINGS} [role="tab"]`, { hasText: "Multiply" })
       .click();
     const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
-    const level = panel.locator("#multiply-trigger-level");
-    await expect(level).toBeVisible();
 
-    // The cascade tiers use the admin-facing terms from CONTEXT.md and avoid
-    // the old undifferentiated long select.
+    // The free-text model retired the Audience/cell scope cascade: there is no
+    // scope picker — Settings edits only the one global rule (per-type overrides
+    // live on the Multiply surface).
+    await expect(panel.locator("#multiply-trigger-level")).toHaveCount(0);
     await expect(
-      level.getByText("Global default", { exact: true }).first()
+      panel.getByRole("button", { name: "Save readiness rule" })
     ).toBeVisible();
-    await expect(level.getByText("Audience rules")).toBeVisible();
-    await expect(level.getByText("Group type overrides")).toBeVisible();
-    await expect(panel.getByLabel("Search scopes")).toBeVisible();
-    await expect(level.locator('optgroup[label="By type"]')).toHaveCount(0);
-    await expect(panel.getByText("Current state")).toBeVisible();
-    await panel
-      .locator("summary", { hasText: "Edit this readiness rule" })
-      .click();
 
-    // Interest is a people-count, never a letter: the pillar says so and the
-    // threshold control is a number input named in people.
-    await expect(
-      panel.getByText("Interest Funnel people count").first()
-    ).toBeVisible();
-    const interestMin = panel.getByLabel("Interest minimum people", {
+    // Interest is a people-count, never a letter: its threshold is a number input.
+    const interestMin = panel.getByLabel("Minimum interested people", {
       exact: true,
     });
     await expect(interestMin).toBeVisible();
     await expect(interestMin).toHaveAttribute("type", "number");
 
-    // Search filters by Audience/category labels, the filtered option is a real
-    // selected radio, and the compact chips expose inherited/overridden state.
-    await panel.getByLabel("Search scopes").fill("Women");
+    // All seven pillars are editable, including main's three multiplication
+    // pillars and the Shepherd-health rename.
     await expect(
-      level.getByRole("radio", { name: /^Women's 20-30s/i })
+      panel.getByLabel("Minimum Shepherd health letter", { exact: true })
     ).toBeVisible();
     await expect(
-      level.getByRole("radio", { name: /^Men's 20-30s/i })
-    ).toHaveCount(0);
-
-    const womenCell = level.getByRole("radio", {
-      name: /^Women's 20-30s/i,
-    });
-    await womenCell.check();
-    await expect(womenCell).toBeChecked();
-    await expect(level.getByText("Inherits from Global").first()).toBeVisible();
-
-    await panel.getByLabel("Search scopes").fill("Men's audience");
-    const menAudience = level.getByRole("radio", {
-      name: /^Men's audience rule/i,
-    });
-    await menAudience.check();
-    await expect(menAudience).toBeChecked();
-    await expect(level.getByText("Overrides here").first()).toBeVisible();
+      panel.getByLabel("Minimum members", { exact: true })
+    ).toBeVisible();
+    await expect(
+      panel.getByLabel("Minimum years as a group", { exact: true })
+    ).toBeVisible();
+    await expect(
+      panel.getByLabel("Minimum Co-Shepherd years", { exact: true })
+    ).toBeVisible();
   });
 
   test("axe finds no critical or serious violations on Multiply settings", async ({
@@ -413,7 +382,9 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     await page
       .locator(`${SETTINGS} [role="tab"]`, { hasText: "Multiply" })
       .click();
-    await expect(page.locator("#multiply-trigger-level")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Save readiness rule" })
+    ).toBeVisible();
 
     const results = await new AxeBuilder({ page }).include(SETTINGS).analyze();
     expectNoBlockingAxeViolations(results);

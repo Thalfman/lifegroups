@@ -95,8 +95,7 @@ async function loadMultiplyTabs(): Promise<{ tabs: MultiplyTab[] }> {
       ) : (
         <MultiplicationPlanner
           segments={plan.segments}
-          typeOptions={plan.typeOptions}
-          groupsByType={plan.groupsByType}
+          groupOptions={plan.groupOptions}
           apprenticesByGroup={plan.apprenticesByGroup}
           // Suggestions are derived from the (frozen) capacity board; the Plan
           // tab doesn't load it, so none are surfaced here for now (ADR 0022).
@@ -121,7 +120,7 @@ async function loadMultiplyTabs(): Promise<{ tabs: MultiplyTab[] }> {
                   "Settings will overwrite what's stored."
               )
             : null}
-          <MultiplyGridView grid={grid.grid} ministryYear={grid.ministryYear} />
+          <MultiplyGridView rows={grid.rows} ministryYear={grid.ministryYear} />
         </div>
       ),
     },

@@ -26,8 +26,7 @@ const GROUP_KEYS = [
   "location_area",
   "address_optional",
   "capacity",
-  "audience_category",
-  "category_id",
+  "group_type",
   "launched_on",
 ] as const;
 
@@ -42,8 +41,7 @@ function payloadToRpcArgs(payload: GroupWritablePayload): GroupRpcArgs {
     p_capacity: payload.capacity ?? null,
     p_meeting_frequency: payload.meeting_frequency,
     p_meeting_week_parity: payload.meeting_week_parity,
-    p_audience_category: payload.audience_category ?? null,
-    p_category_id: payload.category_id ?? null,
+    p_group_type: payload.group_type ?? null,
     p_launched_on: payload.launched_on ?? null,
   };
 }

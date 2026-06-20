@@ -54,7 +54,6 @@ export type FollowUpStatus = "open" | "in_progress" | "done" | "snoozed";
 export type FollowUpPriority = "low" | "normal" | "high";
 export type MeetingFrequency = "weekly" | "biweekly" | "monthly";
 export type MeetingWeekParity = "odd" | "even";
-export type GroupAudienceCategory = "men" | "women" | "mixed";
 export type GroupLifeStage =
   | "young_professionals"
   | "young_families"

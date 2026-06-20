@@ -3,14 +3,13 @@ import { GroupCreateForm } from "@/components/admin/forms/group-create-form";
 import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { fieldLabelTextClassName } from "@/components/admin/forms/field-styles";
-import type { CategoriesByAudience } from "@/components/admin/forms/group-category-options";
 import type { GroupsRow } from "@/types/database";
 import type { GroupEditorState } from "./types";
 
 export function GroupEditorDrawer({
   editor,
   defaultCapacity,
-  categoriesByAudience,
+  groupTypes,
   onDirty,
   onPendingChange,
   onRequestClose,
@@ -18,7 +17,7 @@ export function GroupEditorDrawer({
 }: {
   editor: GroupEditorState | null;
   defaultCapacity: number | null;
-  categoriesByAudience: CategoriesByAudience;
+  groupTypes: readonly string[];
   onDirty: () => void;
   onPendingChange: (pending: boolean) => void;
   onRequestClose: () => void;
@@ -45,7 +44,7 @@ export function GroupEditorDrawer({
         <div className="grid gap-4" key={editor.group.id}>
           <GroupEditForm
             group={editor.group}
-            categoriesByAudience={categoriesByAudience}
+            groupTypes={groupTypes}
             onCancel={onRequestClose}
             onDirty={onDirty}
             onPendingChange={onPendingChange}
@@ -60,7 +59,7 @@ export function GroupEditorDrawer({
       ) : editor?.mode === "create" ? (
         <GroupCreateForm
           defaultCapacity={defaultCapacity}
-          categoriesByAudience={categoriesByAudience}
+          groupTypes={groupTypes}
           onCancel={onRequestClose}
           onDirty={onDirty}
           onPendingChange={onPendingChange}

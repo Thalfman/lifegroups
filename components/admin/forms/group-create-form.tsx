@@ -18,13 +18,8 @@ import {
   MEETING_FREQUENCY_OPTIONS,
   MEETING_PARITY_OPTIONS,
 } from "./meeting-schedule-options";
-import type { GroupAudienceCategory, MeetingFrequency } from "@/types/enums";
+import type { MeetingFrequency } from "@/types/enums";
 import { useActionForm, FormStatus } from "./action-form";
-import {
-  EMPTY_CATEGORIES_BY_AUDIENCE,
-  optionsForAudience,
-  type CategoriesByAudience,
-} from "./group-category-options";
 
 export function GroupCreateForm({
   // G3 (#222): a new group's capacity defaults to the ministry-wide
@@ -41,16 +36,16 @@ export function GroupCreateForm({
   onDirty,
   onCancel,
   onPendingChange,
-  // #398: the category-picker options grouped by top type. The picker filters to
-  // the categories applied to the group's selected audience (its cell).
-  categoriesByAudience = EMPTY_CATEGORIES_BY_AUDIENCE,
+  // The admin-managed free-text group-type list. The picker offers these plus an
+  // empty "Untyped" option; any value is accepted server-side (free text).
+  groupTypes = [],
 }: {
   defaultCapacity: number | null;
   onSaved?: () => void;
   onDirty?: () => void;
   onCancel?: () => void;
   onPendingChange?: (pending: boolean) => void;
-  categoriesByAudience?: CategoriesByAudience;
+  groupTypes?: readonly string[];
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateGroup,
@@ -59,9 +54,6 @@ export function GroupCreateForm({
   const [frequency, setFrequency] = useState<MeetingFrequency>("weekly");
   const [showMore, setShowMore] = useState(false);
   const [groupName, setGroupName] = useState("");
-  // #398: the live audience selection drives which categories the picker offers
-  // (only those with an active cell under that top type). "" = unset.
-  const [audience, setAudience] = useState<GroupAudienceCategory | "">("");
 
   // useActionForm resets the <form> element on success; the local UI state
   // (frequency select, expanded "More details") lives in React, so reset it too.
@@ -73,7 +65,6 @@ export function GroupCreateForm({
     setFrequency("weekly");
     setShowMore(false);
     setGroupName("");
-    setAudience("");
   });
 
   // onSaved is a parent notification (drawer close + refresh), so it stays in a
@@ -277,53 +268,25 @@ export function GroupCreateForm({
           </p>
         </div>
         <div>
-          <label
-            htmlFor="group-audience_category"
-            className={fieldLabelClassName}
-          >
-            Audience (optional)
+          <label htmlFor="group-group_type" className={fieldLabelClassName}>
+            Group type (optional)
           </label>
           <select
-            id="group-audience_category"
-            name="audience_category"
-            value={audience}
-            onChange={(e) =>
-              setAudience(e.target.value as GroupAudienceCategory | "")
-            }
-            className={fieldSelectClassName}
-          >
-            <option value="">Unset</option>
-            <option value="men">Men</option>
-            <option value="women">Women</option>
-            <option value="mixed">Mixed</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="group-category_id" className={fieldLabelClassName}>
-            Category (optional)
-          </label>
-          <select
-            id="group-category_id"
-            name="category_id"
-            // Keyed by audience so the selection resets when the top type
-            // changes (a category from the old type wouldn't apply to the new
-            // one). "" = Uncategorized.
-            key={audience}
+            id="group-group_type"
+            name="group_type"
             defaultValue=""
-            disabled={!audience}
             className={fieldSelectClassName}
           >
-            <option value="">Uncategorized</option>
-            {optionsForAudience(categoriesByAudience, audience).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
+            <option value="">Untyped</option>
+            {groupTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
               </option>
             ))}
           </select>
           <p className={fieldHintClassName}>
-            {audience
-              ? "Categories applied to this audience. Leave Uncategorized to tag it later."
-              : "Pick an audience first to choose a category. Until then the group is Uncategorized."}
+            Choose a type from the admin-managed list, or leave Untyped to tag
+            it later.
           </p>
         </div>
         <div>

@@ -6,6 +6,7 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchAllGroupMetricSettings,
   fetchAllGroups,
+  fetchGroupTypes,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import {
@@ -17,38 +18,12 @@ import {
   decodeRubricCriteria,
   DEFAULT_GROUP_RUBRIC_CRITERIA,
 } from "@/lib/admin/health-rubric";
-import {
-  fetchAudienceReadinessRules,
-  fetchReadinessRule,
-  type AudienceReadinessRuleRow,
-} from "@/lib/supabase/readiness-reads";
+import { fetchReadinessRule } from "@/lib/supabase/readiness-reads";
 import {
   BUILT_IN_READINESS_RULE,
-  decodeCellOverride,
-  decodePerTypeRule,
   decodeReadinessRuleWithReport,
-  type PerTypeReadinessRule,
 } from "@/lib/admin/cell-readiness";
-import type { ReadinessCellSeed } from "@/components/admin/settings/multiply-trigger-editor";
 import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
-import type { GroupAudienceCategory } from "@/types/enums";
-import {
-  fetchCategoriesForAudience,
-  fetchCategoryTypeTargetCells,
-  fetchGroupCategories,
-  fetchGroupCellLifecycleRows,
-  type CategoryTypeTargetRow,
-  type GroupCellLifecycleRow,
-} from "@/lib/supabase/group-categories-reads";
-import {
-  EMPTY_CATEGORIES_BY_AUDIENCE,
-  type CategoriesByAudience,
-} from "@/components/admin/forms/group-category-options";
-import {
-  buildCellCoverage,
-  sortByLargestShortfall,
-  type CellCoverage,
-} from "@/lib/admin/cell-coverage";
 
 // The Settings surface's data, as a function of the reads seam (ADR 0015). The
 // build function takes `isSuperAdmin` only to record it on the shell data (the
@@ -59,36 +34,17 @@ export type SettingsReads = {
   fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
   fetchAllGroups: OmitClient<typeof fetchAllGroups>;
   fetchAllGroupMetricSettings: OmitClient<typeof fetchAllGroupMetricSettings>;
-  // #374 Health Rubric: the current group rubric (Ministry-Admin-owned). Bound
-  // to the "group" kind here so the seam exposes a zero-arg read like the rest.
+  // The current group rubric (Ministry-Admin-owned). Bound to the "group" kind
+  // here so the seam exposes a zero-arg read like the rest.
   fetchGroupHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
-  // #402 Settings > Multiply: the GLOBAL readiness rule for the current ministry
-  // year. Bound to the year so the seam stays zero-arg; the per-cell overrides come
-  // from fetchCategoryTypeTargetCells (which reads trigger_overrides).
+  // The single GLOBAL readiness rule for the current ministry year. Bound to the
+  // year so the seam stays zero-arg.
   fetchReadinessRule: () => ReturnType<typeof fetchReadinessRule>;
-  // #410 / #411 Settings > Multiply: the per-type (Audience) rules — the MIDDLE
-  // tier of the cascade — for the current ministry year. Bound to the year so the
-  // seam stays zero-arg.
-  fetchAudienceReadinessRules: () => ReturnType<
-    typeof fetchAudienceReadinessRules
-  >;
-  // #378 Leader-Health Rubric: the symmetric per-leader rubric, bound to the
-  // "leader" kind. Same shared reader, filtered to the other rubric row.
+  // The symmetric per-leader rubric, bound to the "leader" kind. Same shared
+  // reader, filtered to the other rubric row.
   fetchLeaderHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
-  // #396 / #412 Settings > Groups: the live category catalog. The group-type list
-  // is built from the per-cell target reads below; the catalog feeds the create
-  // flow's shared-label dedupe (the same label under a second Audience reuses one
-  // category).
-  fetchGroupCategories: OmitClient<typeof fetchGroupCategories>;
-  // #400 Settings > Groups: per-cell coverage ("have X of Y"). The cell rows WITH
-  // their target_count (Y) and every non-closed group's cell + lifecycle (X) feed
-  // the pure buildCellCoverage resolver.
-  fetchCategoryTypeTargetCells: OmitClient<typeof fetchCategoryTypeTargetCells>;
-  fetchGroupCellLifecycleRows: OmitClient<typeof fetchGroupCellLifecycleRows>;
-  // Settings > Groups: the category-picker options per top type, for the inline
-  // edit drawer the group-type list now opens. Same per-audience read the Groups
-  // page uses (group-management-data); a failed read just narrows the picker.
-  fetchCategoriesForAudience: OmitClient<typeof fetchCategoriesForAudience>;
+  // Settings > Groups: the admin-managed free-text group-type list.
+  fetchGroupTypes: OmitClient<typeof fetchGroupTypes>;
 };
 
 export function supabaseSettingsReads(
@@ -99,88 +55,13 @@ export function supabaseSettingsReads(
       fetchMetricDefaults: fetchMetricDefaultsCached,
       fetchAllGroups,
       fetchAllGroupMetricSettings,
-      fetchGroupCategories,
-      fetchCategoryTypeTargetCells,
-      fetchGroupCellLifecycleRows,
-      fetchCategoriesForAudience,
+      fetchGroupTypes,
     }),
     fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
     fetchReadinessRule: () =>
       fetchReadinessRule(client, currentMinistryYear(new Date())),
-    fetchAudienceReadinessRules: () =>
-      fetchAudienceReadinessRules(client, currentMinistryYear(new Date())),
     fetchLeaderHealthRubric: () => fetchHealthRubric(client, "leader"),
   };
-}
-
-// #410 / #411 / ADR 0021: index the per-type (Audience) rules — the MIDDLE tier of
-// the cascade — by Audience, decoding each stored jsonb into a typed partial. A type
-// with no row is simply absent (it inherits the global rule for every pillar — the
-// additive default until a per-type rule is set), so the map only carries seeded
-// types. The Multiply trigger editor lays each over the global rule.
-function buildPerTypeRules(
-  rows: AudienceReadinessRuleRow[]
-): Partial<Record<GroupAudienceCategory, PerTypeReadinessRule>> {
-  const out: Partial<Record<GroupAudienceCategory, PerTypeReadinessRule>> = {};
-  for (const row of rows) {
-    out[row.audience_category] = decodePerTypeRule(row.rule);
-  }
-  return out;
-}
-
-// #400 / #412: assemble the per-active-cell coverage rows ("have X of Y") — the
-// rows of the Groups group-type list. Resolves each cell's label from the live
-// catalog and drops cells whose category isn't live (an archived category's stale
-// cell never surfaces), then defers the active-cell filter + count to the pure
-// buildCellCoverage resolver. (The list re-orders these by label/Audience; the
-// shortfall sort is left as a stable, meaningful default.)
-function buildSettingsCellCoverage(
-  categories: { id: string; label: string }[],
-  targetCells: CategoryTypeTargetRow[],
-  groupRows: GroupCellLifecycleRow[]
-): CellCoverage[] {
-  const labelById = new Map(categories.map((c) => [c.id, c.label]));
-  const cells = targetCells
-    .filter((cell) => labelById.has(cell.category_id))
-    .map((cell) => ({
-      audienceCategory: cell.audience_category,
-      categoryId: cell.category_id,
-      label: labelById.get(cell.category_id) ?? "",
-      active: cell.active,
-      target: cell.target_count,
-    }));
-  const groups = groupRows.map((row) => ({
-    audienceCategory: row.audience_category,
-    categoryId: row.category_id,
-    lifecycleStatus: row.lifecycle_status,
-  }));
-  return sortByLargestShortfall(buildCellCoverage(cells, groups));
-}
-
-// #402 / PRD §2.4: assemble the per-cell override seeds for the readiness editor.
-// Every ACTIVE cell whose category is live becomes a row, its label resolved from
-// the catalog and its stored trigger_overrides jsonb decoded to a typed override
-// (empty = inherits the global rule). Mirrors buildSettingsCellCoverage's
-// active-cell + live-category filter so the readiness rows and the coverage rows
-// agree on which cells are live.
-function buildReadinessCells(
-  categories: { id: string; label: string }[],
-  targetCells: CategoryTypeTargetRow[]
-): ReadinessCellSeed[] {
-  const labelById = new Map(categories.map((c) => [c.id, c.label]));
-  return targetCells
-    .filter((cell) => cell.active && labelById.has(cell.category_id))
-    .map((cell) => ({
-      audienceCategory: cell.audience_category,
-      categoryId: cell.category_id,
-      label: labelById.get(cell.category_id) ?? "",
-      override: decodeCellOverride(cell.trigger_overrides),
-    }))
-    .sort(
-      (a, b) =>
-        a.label.localeCompare(b.label) ||
-        a.audienceCategory.localeCompare(b.audienceCategory)
-    );
 }
 
 export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
@@ -192,15 +73,11 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     groupRubricCriteria: DEFAULT_GROUP_RUBRIC_CRITERIA,
     hasSavedGroupRubric: false,
     leaderRubricCriteria: [],
-    groupCategories: [],
-    categoriesByAudience: EMPTY_CATEGORIES_BY_AUDIENCE,
-    cellCoverage: [],
+    groupTypes: [],
     readiness: {
       ministryYear: currentMinistryYear(new Date()),
       rule: BUILT_IN_READINESS_RULE,
       ruleFellBack: false,
-      perType: {},
-      cells: [],
     },
     isSuperAdmin,
     errors: {
@@ -209,7 +86,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
       overrides: "The database is not configured in this environment.",
       groupRubric: "The database is not configured in this environment.",
       leaderRubric: "The database is not configured in this environment.",
-      groupCategories: "The database is not configured in this environment.",
+      groupTypes: "The database is not configured in this environment.",
       readiness: "The database is not configured in this environment.",
     },
   };
@@ -230,14 +107,8 @@ export async function buildSettingsData(
     overrides: () => reads.fetchAllGroupMetricSettings(),
     groupRubric: () => reads.fetchGroupHealthRubric(),
     leaderRubric: () => reads.fetchLeaderHealthRubric(),
-    categories: () => reads.fetchGroupCategories(),
-    targetCells: () => reads.fetchCategoryTypeTargetCells(),
-    groupLifecycle: () => reads.fetchGroupCellLifecycleRows(),
+    groupTypes: () => reads.fetchGroupTypes(),
     readinessRule: () => reads.fetchReadinessRule(),
-    audienceReadiness: () => reads.fetchAudienceReadinessRules(),
-    menCats: () => reads.fetchCategoriesForAudience("men"),
-    womenCats: () => reads.fetchCategoriesForAudience("women"),
-    mixedCats: () => reads.fetchCategoriesForAudience("mixed"),
   });
 
   const {
@@ -246,54 +117,31 @@ export async function buildSettingsData(
     overrides: settingsResult,
     groupRubric: rubricResult,
     leaderRubric: leaderRubricResult,
-    categories: categoriesResult,
-    targetCells: targetCellsResult,
-    groupLifecycle: groupCellLifecycleResult,
+    groupTypes: groupTypesResult,
     readinessRule: readinessResult,
-    audienceReadiness: audienceReadinessResult,
-    menCats: menCatsResult,
-    womenCats: womenCatsResult,
-    mixedCats: mixedCatsResult,
   } = batch.results;
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
 
-  // #473: decode the stored global trigger WITH a report. A missing stored rule
-  // (fresh ministry) decodes to the built-in default with no flag; a present-but-
-  // unreadable payload flags ruleFellBack so the Multiply editor can warn that
-  // the stored trigger couldn't be read (and that saving will overwrite it)
+  // Decode the stored global trigger WITH a report. A missing stored rule
+  // (fresh ministry) decodes to the built-in default with no flag; a present-
+  // but-unreadable payload flags ruleFellBack so the Multiply editor can warn
+  // that the stored trigger couldn't be read (and that saving will overwrite it)
   // instead of silently showing default values.
   const decodedRule = decodeReadinessRuleWithReport(
     readinessResult.data?.rule ?? null
   );
-
-  // The category-picker options for the Groups tab's inline edit drawer, grouped
-  // by top type. A failed per-type read just drops to no options for that type
-  // (the picker then only offers "Uncategorized") rather than failing the tab —
-  // same silent fallback the Groups page uses.
-  const categoriesByAudience: CategoriesByAudience = {
-    men: (menCatsResult.data ?? []).map((c) => ({ id: c.id, label: c.label })),
-    women: (womenCatsResult.data ?? []).map((c) => ({
-      id: c.id,
-      label: c.label,
-    })),
-    mixed: (mixedCatsResult.data ?? []).map((c) => ({
-      id: c.id,
-      label: c.label,
-    })),
-  };
 
   return {
     defaults: decoded,
     defaultsSource: defaultsResult.data ? "live" : "fallback",
     groups: groupsResult.data ?? [],
     groupMetricSettings: settingsResult.data ?? [],
-    // #642: when no health_rubrics row exists (and the read didn't fail), seed
-    // the editor with the working in-code default (40/40/20) instead of an
+    // When no health_rubrics row exists (and the read didn't fail), seed the
+    // editor with the working in-code default (40/40/20) instead of an
     // empty/zeroed form, and flag it so the editor shows the "starting defaults"
     // note. A FAILED read keeps `[]` so it surfaces as "couldn't load" rather
     // than fabricating a rubric an admin could save over real-but-unread data.
-    // Nothing is persisted until the admin's first save.
     groupRubricCriteria: rubricResult.data
       ? decodeRubricCriteria(rubricResult.data.criteria)
       : batch.errors.groupRubric
@@ -303,37 +151,14 @@ export async function buildSettingsData(
     leaderRubricCriteria: decodeRubricCriteria(
       leaderRubricResult.data?.criteria ?? null
     ),
-    // #412: the live catalog (id + label) the Groups create flow dedupes a typed
-    // label against, so the same label under a second Audience reuses one shared
-    // category. Empty for a fresh ministry; the Groups tab softens to a "not set
-    // up yet" placeholder if the read fails (errors.groupCategories).
-    groupCategories: (categoriesResult.data ?? []).map((c) => ({
-      id: c.id,
-      label: c.label,
-    })),
-    categoriesByAudience,
-    // #400 / #412: per-active-cell coverage ("have X of Y") — one entry per row of
-    // the Groups group-type list. A pure function of the catalog, the target cells,
-    // and the group lifecycle rows.
-    cellCoverage: buildSettingsCellCoverage(
-      categoriesResult.data ?? [],
-      targetCellsResult.data ?? [],
-      groupCellLifecycleResult.data ?? []
-    ),
-    // #402 / #410 / #411 / ADR 0021: the three-tier readiness trigger the Multiply
-    // sub-tab edits — the GLOBAL rule (decoded, built-in fallback), the per-type
-    // (Audience) rules (the middle tier), and one row per active, live-category cell
-    // (its per-cell overrides). A pure function of the rule reads + the catalog +
-    // the target cells (which carry trigger_overrides).
+    // The admin-managed free-text group-type list, edited in the Groups tab.
+    groupTypes: groupTypesResult.data ?? [],
+    // The single GLOBAL readiness rule the Multiply sub-tab edits (decoded, with
+    // a built-in fallback).
     readiness: {
       ministryYear: currentMinistryYear(new Date()),
       rule: decodedRule.rule,
       ruleFellBack: decodedRule.fellBack,
-      perType: buildPerTypeRules(audienceReadinessResult.data ?? []),
-      cells: buildReadinessCells(
-        categoriesResult.data ?? [],
-        targetCellsResult.data ?? []
-      ),
     },
     isSuperAdmin,
     // Per-tab error precedence, declared as data over the batch's per-key
@@ -344,22 +169,8 @@ export async function buildSettingsData(
       overrides: batch.errors.overrides,
       groupRubric: batch.errors.groupRubric,
       leaderRubric: batch.errors.leaderRubric,
-      // #400 / #412 fold the catalog + coverage reads into one Groups-tab error
-      // key: a failed catalog, target, or lifecycle read softens the whole tab to
-      // the placeholder.
-      groupCategories:
-        batch.errors.categories ??
-        batch.errors.targetCells ??
-        batch.errors.groupLifecycle,
-      // #402 / #410: a readiness read failure surfaces on its own key so the editor
-      // softens to a placeholder rather than letting an admin save over a rule that
-      // merely failed to load. Both the global rule and the per-type tier fold in
-      // here (either failing softens the Multiply editor); the per-cell override rows
-      // depend on the catalog + target reads, so those failures fold into
-      // groupCategories above. The per-audience category-picker reads (menCats /
-      // womenCats / mixedCats) carry NO error key — a failure narrows the picker
-      // silently, same as the Groups page.
-      readiness: batch.errors.readinessRule ?? batch.errors.audienceReadiness,
+      groupTypes: batch.errors.groupTypes,
+      readiness: batch.errors.readinessRule,
     },
   };
 }

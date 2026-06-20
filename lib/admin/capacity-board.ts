@@ -31,10 +31,7 @@ import type {
   GroupMetricSettingsRow,
   GroupsRow,
 } from "@/types/database";
-import type {
-  GroupAudienceCategory,
-  LeaderReadinessStage,
-} from "@/types/enums";
+import type { LeaderReadinessStage } from "@/types/enums";
 
 // Julian's words for the status ladder (R2). `unknown`/`excluded` keep their
 // internal names since they aren't part of the four-rung ladder.
@@ -56,10 +53,8 @@ export type CapacityBoardApprentice = {
 export type CapacityBoardRow = {
   groupId: string;
   groupName: string;
-  audience: GroupAudienceCategory | null;
-  // #398: the group's resolved category label (from category_id), or null =
-  // Uncategorized. Replaces the retired life_stage field.
-  categoryLabel: string | null;
+  // The group's free-text type (null = Untyped); the segment is the type name.
+  groupType: string | null;
   segment: string;
   activeMemberCount: number;
   effectiveTarget: number | null;
@@ -79,13 +74,7 @@ export type CapacityBoardRow = {
 
 type GroupInput = Pick<
   GroupsRow,
-  | "id"
-  | "name"
-  | "capacity"
-  | "lifecycle_status"
-  | "audience_category"
-  | "category_id"
-  | "launched_on"
+  "id" | "name" | "capacity" | "lifecycle_status" | "group_type" | "launched_on"
 >;
 
 type OverrideInput = GroupMetricSettingsRow;
@@ -108,9 +97,6 @@ export function buildCapacityBoard(args: {
   membershipCounts: ReadonlyMap<string, number>;
   metricDefaults: MetricDefaults;
   apprenticesByGroup: ReadonlyMap<string, CapacityBoardApprentice[]>;
-  // #398: group id → resolved category label, so the board's segment is
-  // audience × category label. A missing entry = Uncategorized.
-  categoryLabelByGroup?: ReadonlyMap<string, string | null>;
 }): CapacityBoardRow[] {
   const rows: CapacityBoardRow[] = [];
   for (const g of args.groups) {
@@ -139,13 +125,11 @@ export function buildCapacityBoard(args: {
       args.apprenticesByGroup.get(g.id)
     );
 
-    const categoryLabel = args.categoryLabelByGroup?.get(g.id) ?? null;
     rows.push({
       groupId: g.id,
       groupName: g.name,
-      audience: g.audience_category,
-      categoryLabel,
-      segment: segmentLabel(g.audience_category, categoryLabel),
+      groupType: g.group_type,
+      segment: segmentLabel(g.group_type),
       activeMemberCount: members,
       effectiveTarget: target,
       status,
@@ -307,9 +291,6 @@ export function buildCapacityBoardModel(args: {
   >;
   candidateGroupIds: readonly string[];
   todayIso: string;
-  // #398: group id → resolved category label, for the board's audience ×
-  // category-label segment. Absent map = every group reads as Uncategorized.
-  categoryLabelByGroup?: ReadonlyMap<string, string | null>;
 }): CapacityBoardModel {
   const overridesByGroup = indexOverridesByGroup(args.overrides);
   const membershipCounts = countActiveMembersByGroup(args.memberships);
@@ -331,7 +312,6 @@ export function buildCapacityBoardModel(args: {
     membershipCounts,
     metricDefaults: args.metricDefaults,
     apprenticesByGroup,
-    categoryLabelByGroup: args.categoryLabelByGroup,
   });
 
   const readinessInputs: GroupReadinessInput[] = rows.map((r) => {

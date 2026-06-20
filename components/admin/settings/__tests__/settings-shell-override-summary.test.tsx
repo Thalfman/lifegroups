@@ -15,15 +15,8 @@ vi.mock("@/app/(protected)/admin/settings/actions", () => ({
   adminUpsertGroupMetricSettings: vi.fn(),
   adminResetMetricDefaults: vi.fn(),
   adminSetHealthRubric: vi.fn(),
-  adminCreateGroupCategory: vi.fn(),
-  adminRenameGroupCategory: vi.fn(),
-  adminArchiveGroupCategory: vi.fn(),
-  adminSetCategoryTypeCell: vi.fn(),
-  adminSetCategoryTypeTargetCount: vi.fn(),
-  adminSetGroupCategory: vi.fn(),
+  adminSetGroupTypes: vi.fn(),
   adminSetReadinessRule: vi.fn(),
-  adminSetAudienceReadinessRule: vi.fn(),
-  adminSetCellTriggerOverrides: vi.fn(),
 }));
 vi.mock("@/app/(protected)/admin/groups/actions", () => ({
   adminCreateGroup: vi.fn(),
@@ -43,7 +36,6 @@ import {
 } from "@/components/admin/settings-shell";
 import { BUILT_IN_METRIC_DEFAULTS } from "@/lib/admin/metrics";
 import { BUILT_IN_READINESS_RULE } from "@/lib/admin/cell-readiness";
-import { EMPTY_CATEGORIES_BY_AUDIENCE } from "@/components/admin/forms/group-category-options";
 import { group, settings } from "@/lib/dashboard/group-fixtures";
 import {
   GROUP_HEALTH_STATUS_LABEL,
@@ -64,15 +56,11 @@ function shellData(): SettingsShellData {
     groupRubricCriteria: [],
     hasSavedGroupRubric: true,
     leaderRubricCriteria: [],
-    groupCategories: [],
-    categoriesByAudience: EMPTY_CATEGORIES_BY_AUDIENCE,
-    cellCoverage: [],
+    groupTypes: [],
     readiness: {
       ministryYear: 2026,
       rule: BUILT_IN_READINESS_RULE,
       ruleFellBack: false,
-      perType: {},
-      cells: [],
     },
     isSuperAdmin: false,
     errors: {
@@ -81,7 +69,7 @@ function shellData(): SettingsShellData {
       overrides: null,
       groupRubric: null,
       leaderRubric: null,
-      groupCategories: null,
+      groupTypes: null,
       readiness: null,
     },
   };

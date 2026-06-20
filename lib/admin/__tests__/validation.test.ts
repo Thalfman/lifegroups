@@ -1409,22 +1409,20 @@ describe("validateRecordChurchAttendancePayload (Julian P2)", () => {
   });
 });
 
-describe("multiplication candidate payloads (Julian P4 / type-first)", () => {
-  // Type-first: every candidate is anchored to a cell (audience × category).
-  // UUID_B doubles as the category id here; the multiplying group is optional.
-  const TYPE = { audience_category: "men", category_id: UUID_B } as const;
+describe("multiplication candidate payloads (Julian P4 / group-anchored)", () => {
+  // The free-text group_type refactor retired the cell (audience × category):
+  // every candidate now anchors to a multiplying group, and group_id is required.
+  // The candidate's type is the group's group_type (type-only watches are gone).
+  const TYPE = { group_id: UUID_A } as const;
 
-  it("accepts a valid create payload (type + group) and defaults status", () => {
+  it("accepts a valid create payload and defaults status", () => {
     const r = validateCreateMultiplicationCandidatePayload({
       ...TYPE,
-      group_id: UUID_A,
       target_year: "2027",
       shepherd_willing: "on",
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.value.audience_category).toBe("men");
-      expect(r.value.category_id).toBe(UUID_B);
       expect(r.value.group_id).toBe(UUID_A);
       expect(r.value.target_year).toBe(2027);
       expect(r.value.status).toBe("watching");
@@ -1433,54 +1431,11 @@ describe("multiplication candidate payloads (Julian P4 / type-first)", () => {
     }
   });
 
-  it("accepts a type-only candidate with no group", () => {
-    const r = validateCreateMultiplicationCandidatePayload({ ...TYPE });
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.value.group_id).toBeNull();
-      expect(r.value.category_id).toBe(UUID_B);
-    }
-  });
-
-  it("accepts a group-attached candidate with no explicit type (derived from group)", () => {
-    // A legacy/uncategorized or retagged candidate posts a group but a blank
-    // cell; the RPC derives the cell from the group, so validation must allow it.
-    const r = validateCreateMultiplicationCandidatePayload({
-      group_id: UUID_A,
-    });
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.value.group_id).toBe(UUID_A);
-      expect(r.value.audience_category).toBeNull();
-      expect(r.value.category_id).toBeNull();
-    }
-  });
-
-  it("requires the group type (audience + category)", () => {
+  it("requires a group_id (type-only watches were retired)", () => {
     expect(validateCreateMultiplicationCandidatePayload({}).ok).toBe(false);
     expect(
       validateCreateMultiplicationCandidatePayload({
-        category_id: UUID_B,
-      }).ok
-    ).toBe(false);
-    expect(
-      validateCreateMultiplicationCandidatePayload({
-        audience_category: "men",
-      }).ok
-    ).toBe(false);
-  });
-
-  it("rejects an invalid audience and a non-uuid category", () => {
-    expect(
-      validateCreateMultiplicationCandidatePayload({
-        audience_category: "everyone",
-        category_id: UUID_B,
-      }).ok
-    ).toBe(false);
-    expect(
-      validateCreateMultiplicationCandidatePayload({
-        audience_category: "men",
-        category_id: "nope",
+        target_year: "2027",
       }).ok
     ).toBe(false);
   });
@@ -1488,7 +1443,6 @@ describe("multiplication candidate payloads (Julian P4 / type-first)", () => {
   it("rejects a bad group id and out-of-range year", () => {
     expect(
       validateCreateMultiplicationCandidatePayload({
-        ...TYPE,
         group_id: "nope",
       }).ok
     ).toBe(false);
@@ -1500,12 +1454,13 @@ describe("multiplication candidate payloads (Julian P4 / type-first)", () => {
     ).toBe(false);
   });
 
-  it("rejects linking an apprentice without a group", () => {
+  it("accepts linking an apprentice (the group is always present now)", () => {
     const r = validateCreateMultiplicationCandidatePayload({
       ...TYPE,
-      leader_pipeline_id: UUID_A,
+      leader_pipeline_id: UUID_B,
     });
-    expect(r.ok).toBe(false);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.leader_pipeline_id).toBe(UUID_B);
   });
 
   it("rejects an invalid status", () => {
@@ -1529,7 +1484,7 @@ describe("multiplication candidate payloads (Julian P4 / type-first)", () => {
     if (r.ok) {
       expect(r.value.status).toBe("planned");
       expect(r.value.candidate_id).toBe(UUID_A);
-      expect(r.value.audience_category).toBe("men");
+      expect(r.value.group_id).toBe(UUID_A);
     }
   });
 
@@ -1582,7 +1537,6 @@ describe("multiplication candidate payloads (Julian P4 / type-first)", () => {
   it("round-trips a leader_pipeline_id, defaulting to null when absent or blank", () => {
     const present = validateCreateMultiplicationCandidatePayload({
       ...TYPE,
-      group_id: UUID_A,
       leader_pipeline_id: UUID_B,
     });
     expect(present.ok).toBe(true);
@@ -1590,7 +1544,6 @@ describe("multiplication candidate payloads (Julian P4 / type-first)", () => {
 
     const absent = validateCreateMultiplicationCandidatePayload({
       ...TYPE,
-      group_id: UUID_A,
     });
     expect(absent.ok).toBe(true);
     if (absent.ok) expect(absent.value.leader_pipeline_id).toBeNull();
@@ -1600,7 +1553,6 @@ describe("multiplication candidate payloads (Julian P4 / type-first)", () => {
     const r = validateUpdateMultiplicationCandidatePayload({
       ...TYPE,
       candidate_id: UUID_A,
-      group_id: UUID_A,
       leader_pipeline_id: "not-a-uuid",
     });
     expect(r.ok).toBe(false);

@@ -9,11 +9,6 @@ import {
   fetchProspects,
   type ProspectBoard,
 } from "@/lib/supabase/prospect-reads";
-import {
-  EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE,
-  fetchActiveCategoryOptionsByAudience,
-  type CategoryOptionsByAudience,
-} from "@/lib/supabase/group-categories-reads";
 import { type DueFollowUp } from "@/lib/admin/prospect-next-step";
 import { churchTodayIso } from "@/lib/shared/church-time";
 
@@ -35,17 +30,9 @@ export type PlanData = {
   // #379: armed follow-ups that have come due (soonest-due first), surfaced as
   // a "due tasks" list above the board.
   dueTasks: DueFollowUp[];
-  // #399: the intake form's "interested in" category options, per top type — only
-  // categories with an ACTIVE cell for that type. The category select filters to
-  // the chosen top type's list.
-  categoryOptionsByAudience: CategoryOptionsByAudience;
   errors: {
     prospects: string | null;
     groups: string | null;
-    // #399 review: the intake category-option read. Surfaced (not silently
-    // emptied) so an admin sees when the picker has degraded to no cells rather
-    // than unknowingly adding prospects with no desired cell.
-    categoryOptions: string | null;
   };
 };
 
@@ -54,11 +41,9 @@ export const EMPTY_PLAN_DATA: PlanData = {
   activeGroups: [],
   groupNamesById: {},
   dueTasks: [],
-  categoryOptionsByAudience: EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE,
   errors: {
     prospects: "The database is not configured in this environment.",
     groups: "The database is not configured in this environment.",
-    categoryOptions: "The database is not configured in this environment.",
   },
 };
 
@@ -68,9 +53,6 @@ export type PlanReads = {
   fetchProspects: OmitClient<typeof fetchProspects>;
   fetchPlanGroupOptions: OmitClient<typeof fetchPlanGroupOptions>;
   fetchDueFollowUps: OmitClient<typeof fetchDueFollowUps>;
-  fetchActiveCategoryOptionsByAudience: OmitClient<
-    typeof fetchActiveCategoryOptionsByAudience
-  >;
 };
 
 // Production adapter: binds the live Supabase client to every read this surface
@@ -80,7 +62,6 @@ export function supabasePlanReads(client: AppSupabaseClient): PlanReads {
     fetchProspects,
     fetchPlanGroupOptions,
     fetchDueFollowUps,
-    fetchActiveCategoryOptionsByAudience,
   });
 }
 
@@ -100,7 +81,6 @@ export async function buildPlanData(
     prospects: () => reads.fetchProspects(),
     groups: () => reads.fetchPlanGroupOptions(),
     dueTasks: () => reads.fetchDueFollowUps(options.todayIso),
-    categoryOptions: () => reads.fetchActiveCategoryOptionsByAudience(),
   });
 
   const prospects = batch.results.prospects.data ?? [];
@@ -124,17 +104,11 @@ export async function buildPlanData(
     activeGroups,
     groupNamesById,
     dueTasks,
-    // A category-options read failure softens to no options rather than blocking
-    // the funnel — the prospect can still be added without naming a cell — but
-    // the error is surfaced below so the degradation isn't silent.
-    categoryOptionsByAudience:
-      batch.results.categoryOptions.data ?? EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE,
     // Per-section error precedence as data: the due-tasks read folds into the
     // prospects key (both feed the board column), the rest map one-to-one.
     errors: {
       prospects: batch.errors.prospects ?? batch.errors.dueTasks,
       groups: batch.errors.groups,
-      categoryOptions: batch.errors.categoryOptions,
     },
   };
 }

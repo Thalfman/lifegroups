@@ -21,20 +21,13 @@ import type { RubricCriterion } from "@/lib/admin/health-rubric";
 // Tabs primitive mounts only the active panel). See settings/lazy-editors.
 import {
   HealthRubricEditor,
-  GroupsCatalogEditor,
+  GroupTypesEditor,
   MultiplyTriggerEditor,
   MetricDefaultsForm,
   GroupMetricOverridesForm,
   PeopleImportForm,
 } from "@/components/admin/settings/lazy-editors";
-import type { ReadinessCellSeed } from "@/components/admin/settings/multiply-trigger-editor";
-import type { CellCoverage } from "@/lib/admin/cell-coverage";
-import type {
-  PerTypeReadinessRule,
-  ReadinessRule,
-} from "@/lib/admin/cell-readiness";
-import type { CategoriesByAudience } from "@/components/admin/forms/group-category-options";
-import type { GroupAudienceCategory } from "@/types/enums";
+import type { ReadinessRule } from "@/lib/admin/cell-readiness";
 
 export type SettingsShellData = {
   defaults: MetricDefaults;
@@ -54,34 +47,20 @@ export type SettingsShellData = {
   // per-leader rubric, same editor parameterized to the "leader" kind. Empty
   // until Julian builds it.
   leaderRubricCriteria: RubricCriterion[];
-  // #412 Settings > Groups: the live category catalog (id + label). Feeds the
-  // create flow's shared-label dedupe — the same label under a second Audience
-  // reuses one category. Empty for a fresh ministry or when the read failed (see
-  // errors.groupCategories).
-  groupCategories: { id: string; label: string }[];
-  // Settings > Groups: the category-picker options per top type, feeding the
-  // inline edit drawer the group-type list now opens for an individual group.
-  // Empty for a fresh ministry or when the per-type catalog reads failed.
-  categoriesByAudience: CategoriesByAudience;
-  // #400 / #412 Settings > Groups: per-active-cell coverage ("have X of Y"). Each
-  // entry is a row in the group-type list, carrying its label, target, and live
-  // count. Empty when no cell is active or the reads failed (see
-  // errors.groupCategories).
-  cellCoverage: CellCoverage[];
-  // #402 / #410 / #411 / ADR 0021: the three-tier multiplication trigger the
-  // Multiply sub-tab edits — the GLOBAL rule (each pillar in its natural unit), the
-  // per-type (Audience) rules (the middle tier), and one row per active cell (its
-  // per-cell overrides). Optional so the shell tolerates a build that hasn't wired
-  // these reads yet; softens to a placeholder on errors.readiness.
+  // Settings > Groups: the admin-managed free-text group-type list (one name per
+  // line in the editor). Empty for a fresh ministry or when the read failed (see
+  // errors.groupTypes).
+  groupTypes: string[];
+  // The single GLOBAL multiplication readiness rule the Multiply sub-tab edits
+  // (each pillar in its natural unit). Optional so the shell tolerates a build
+  // that hasn't wired this read yet; softens to a placeholder on errors.readiness.
   readiness?: {
     ministryYear: number;
     rule: ReadinessRule;
-    // #473: true when a STORED global rule was present but couldn't be read, so
-    // `rule` is the built-in fallback. The editor warns that saving overwrites
-    // the stored trigger. A MISSING stored rule is not a fallback (no warning).
+    // True when a STORED global rule was present but couldn't be read, so `rule`
+    // is the built-in fallback. The editor warns that saving overwrites the
+    // stored trigger. A MISSING stored rule is not a fallback (no warning).
     ruleFellBack: boolean;
-    perType: Partial<Record<GroupAudienceCategory, PerTypeReadinessRule>>;
-    cells: ReadinessCellSeed[];
   };
   // Issue #304: whether the viewer is the super_admin. Settings is a
   // ministry-admin surface. Bulk people import is now an ordinary admin
@@ -101,11 +80,11 @@ export type SettingsShellData = {
     // page-wide error banner.
     groupRubric: string | null;
     leaderRubric: string | null;
-    // #396: a single transient-read failure key for the Groups tab's catalog +
-    // cell reads, so an unmigrated environment softens to a placeholder.
-    groupCategories: string | null;
-    // #402: a readiness-rule read failure key, so the readiness editor softens to
-    // a placeholder rather than saving over a rule that merely failed to load.
+    // A transient-read failure key for the Groups tab's group-type list, so an
+    // unmigrated environment softens to a placeholder.
+    groupTypes: string | null;
+    // A readiness-rule read failure key, so the readiness editor softens to a
+    // placeholder rather than saving over a rule that merely failed to load.
     readiness: string | null;
   };
 };
@@ -118,19 +97,13 @@ export type SettingsCareModel = {
 };
 
 export type SettingsGroupsModel = {
-  cells: CellCoverage[];
-  categories: { id: string; label: string }[];
-  categoryIdsWithGroups: ReadonlySet<string>;
-  groups: GroupsRow[];
-  categoriesByAudience: CategoriesByAudience;
-  groupReferencesKnown: boolean;
+  groupTypes: string[];
   error: string | null;
 };
 
 export type SettingsMultiplyModel = {
   readiness: SettingsShellData["readiness"];
   readinessError: string | null;
-  groupCategoriesError: string | null;
 };
 
 export type SettingsThresholdsModel = {
@@ -156,11 +129,6 @@ export function buildSettingsWorkspace(
     data.groupMetricSettings.map((s) => [s.group_id, s])
   );
   const overrideRows = buildOverrideRows(data.groups, data.groupMetricSettings);
-  const categoryIdsWithGroups = new Set(
-    data.groups
-      .map((g) => g.category_id)
-      .filter((id): id is string => id !== null)
-  );
 
   return {
     defaultsSource: data.defaultsSource,
@@ -174,18 +142,12 @@ export function buildSettingsWorkspace(
       },
     },
     groups: {
-      cells: data.cellCoverage,
-      categories: data.groupCategories,
-      categoryIdsWithGroups,
-      groups: data.groups,
-      categoriesByAudience: data.categoriesByAudience,
-      groupReferencesKnown: data.errors.groups === null,
-      error: data.errors.groupCategories,
+      groupTypes: data.groupTypes,
+      error: data.errors.groupTypes,
     },
     multiply: {
       readiness: data.readiness,
       readinessError: data.errors.readiness,
-      groupCategoriesError: data.errors.groupCategories,
     },
     thresholds: {
       defaults: data.defaults,
@@ -345,14 +307,10 @@ function CarePanel({ model }: { model: SettingsCareModel }) {
   );
 }
 
-// Groups tab (#412 / ADR 0021): where the admin creates the group types. Reworked
-// from the old category×type matrix into a LIST of group types (cells) with a "+"
-// create flow — pick an Audience, type a free-text category, save, and the
-// (Audience × category) cell is created in one step. Each row carries its target,
-// its coverage ("have X of Y"), a rename, and a remove. The trigger editor moved
-// to the Multiply sub-tab (#411); this tab is just the types. Softens to a
-// "couldn't load" notice when its reads fail (#469) — saved group types are
-// intact, they just couldn't be read.
+// Groups tab: the admin-managed free-text group-type list. A single text box
+// (one type name per line); a group's type is then chosen from this list (or
+// left Untyped). Per-type coverage + config lives in Multiply. Softens to a
+// "couldn't load" notice when the read fails (#469) — saved types are intact.
 function GroupsPanel({ model }: { model: SettingsGroupsModel }) {
   return (
     <div className="grid gap-9">
@@ -362,23 +320,14 @@ function GroupsPanel({ model }: { model: SettingsGroupsModel }) {
       <section className="grid gap-4">
         <SettingsSectionHeader
           eyebrow="Group types"
-          title="Group types (Audience + Category)"
-          description="Each group type pairs an Audience with a Category. Add one with the + button, set its tracking target, then rename or remove it. Expand a type to see its groups (have X of Y counts active and launching) and edit one in place."
+          title="Group types"
+          description="The free-text type names a group can be tagged with. Enter one per line. A group picks its type from this list, or stays Untyped. Per-type targets and readiness live in Multiply."
         />
         {model.error ? (
           <CouldNotLoad subject="Your group types" />
         ) : (
           <Card>
-            <GroupsCatalogEditor
-              cells={model.cells}
-              categories={model.categories}
-              categoryIdsWithGroups={model.categoryIdsWithGroups}
-              groups={model.groups}
-              categoriesByAudience={model.categoriesByAudience}
-              // A failed groups read makes the reference set empty for the wrong
-              // reason, so the editor must not offer deletion in that case.
-              groupReferencesKnown={model.groupReferencesKnown}
-            />
+            <GroupTypesEditor groupTypes={model.groupTypes} />
           </Card>
         )}
       </section>
@@ -386,17 +335,11 @@ function GroupsPanel({ model }: { model: SettingsGroupsModel }) {
   );
 }
 
-// Multiply tab (#411 / ADR 0021): the multiplication trigger, configured through ONE
-// tiered control over the three-tier cascade — Global default → per-type
-// (Audience) → per-cell. A grouped radio/search picker chooses which level
-// you're configuring; the four pillars then show, each either carrying its own
-// value or inheriting its parent (labelled by source) behind an Override toggle.
-// Interest is a count at every level
-// (never a letter). Each level saves only itself via its matching audited RPC. The
-// per-cell rows are built from the catalog + target reads, so a failure there
-// (errors.groupCategories) softens this editor too — otherwise it would render with
-// the global rule but its cell rows silently dropped. The Multiply grid
-// (/admin/multiply) reads the resolved rule; here we own the editing.
+// Multiply tab: the single GLOBAL multiplication readiness rule. Each pillar
+// carries a value in its natural unit. A group type can override this rule from
+// the Multiply surface's per-type config; with no override it inherits this
+// rule. Softens to a "couldn't load" notice on a failed read (#469) so an admin
+// save can't overwrite a rule that merely failed to load.
 function MultiplyPanel({ model }: { model: SettingsMultiplyModel }) {
   return (
     <div className="grid gap-9">
@@ -404,17 +347,10 @@ function MultiplyPanel({ model }: { model: SettingsMultiplyModel }) {
         <SettingsSectionHeader
           eyebrow="Readiness rule"
           title="Ready in Multiply"
-          description="Configure the readiness rule across the cascade: the ministry-wide default, an Audience rule, or a single group type. Each pillar inherits the level above unless you override it; set only what differs. Interest is the Interest Funnel people count; Watch thresholds stay in Thresholds; Capacity is a derived per-group-type issue; Group and Shepherd Health are A-F letters."
+          description="The ministry-wide readiness rule. Each pillar carries a value in its natural unit; a group type can override any pillar from Multiply. Interest is the Interest Funnel people count; Watch thresholds stay in Thresholds; Group and Shepherd Health are A-F letters."
         />
-        {/* #469: each failing read names itself — a failed trigger read and a
-            failed group-types read (which feeds the per-cell rows) soften this
-            editor with distinct copy, so this tab never blames the wrong read.
-            Only a genuinely absent readiness shape (a build that hasn't wired
-            these reads) is "not set up yet". */}
         {model.readinessError ? (
           <CouldNotLoad subject="The multiplication trigger" />
-        ) : model.groupCategoriesError ? (
-          <CouldNotLoad subject="The group types this trigger depends on" />
         ) : !model.readiness ? (
           <NotConfigured subject="The multiplication trigger" />
         ) : (
@@ -423,8 +359,6 @@ function MultiplyPanel({ model }: { model: SettingsMultiplyModel }) {
               ministryYear={model.readiness.ministryYear}
               globalRule={model.readiness.rule}
               storedRuleFellBack={model.readiness.ruleFellBack}
-              perType={model.readiness.perType}
-              cells={model.readiness.cells}
             />
           </Card>
         )}

@@ -11,7 +11,7 @@ import {
   fetchProspectStateCounts,
 } from "@/lib/supabase/prospect-reads";
 import { loadMultiplyGridData } from "@/components/admin/multiply/multiply-grid-data";
-import { buildMultiplyHomeSummary } from "@/lib/admin/multiply-grid";
+import { buildMultiplyHomeSummary } from "@/lib/admin/group-type-coverage";
 import {
   INTEREST_FUNNEL_FALLBACK,
   MULTIPLY_READINESS_FALLBACK,
@@ -174,7 +174,7 @@ async function AdminHomeData({
             error: multiplyGridData.error,
           }
         : {
-            ...buildMultiplyHomeSummary(multiplyGridData.grid),
+            ...buildMultiplyHomeSummary(multiplyGridData.rows),
             available: true,
             error: null,
           };

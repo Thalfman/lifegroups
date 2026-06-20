@@ -36,54 +36,50 @@
 -- unwrapped file is safe to feed to runners that already open their own
 -- transaction (e.g. psql -1 / a db-push harness) without committing it early.
 
--- 1. Category catalog -------------------------------------------------------
-insert into public.group_categories (label)
-select v.label
-from (values ('20s-30s'), ('Young families'), ('50s+')) as v(label)
-where not exists (
-  select 1
-    from public.group_categories gc
-   where lower(btrim(gc.label)) = lower(btrim(v.label))
-     and gc.archived_at is null
-);
+-- 1. Group-type list --------------------------------------------------------
+-- The free-text group_type catalog lives in the app_settings `group_types` row
+-- (`{ types: string[] }`). The collapse migration pre-seeds it to an empty list,
+-- so DO NOTHING would leave the demo catalog empty and the demo groups' types
+-- unpickable in Settings/Groups. Replace the value so the demo list is populated.
+insert into public.app_settings (setting_key, setting_value)
+values (
+  'group_types',
+  '{"types": ["Men''s", "Women''s", "Young families", "50s+"]}'::jsonb
+)
+on conflict (setting_key) do update
+  set setting_value = excluded.setting_value;
 
--- 2. Cells (audience x category) --------------------------------------------
-insert into public.category_type_targets (audience_category, category_id, active, target_count)
-select v.audience, gc.id, true, v.target
+-- 2. Per-type config (target group counts) ----------------------------------
+-- Conflict target is the NORMALIZED unique index (lower(btrim(group_type))).
+insert into public.group_type_configs (group_type, target_count)
+select v.group_type, v.target
 from (values
-  ('men', '20s-30s', 2),
-  ('women', '20s-30s', 2),
-  ('mixed', 'Young families', 1),
-  ('men', '50s+', 1),
-  ('women', 'Young families', 1)
-) as v(audience, label, target)
-join public.group_categories gc
-  on lower(btrim(gc.label)) = lower(btrim(v.label))
- and gc.archived_at is null
-on conflict (audience_category, category_id) do nothing;
+  ('Men''s', 2),
+  ('Women''s', 2),
+  ('Young families', 1),
+  ('50s+', 1)
+) as v(group_type, target)
+on conflict (lower(btrim(group_type))) do update
+  set target_count = excluded.target_count;
 
 -- 3. Groups -----------------------------------------------------------------
 insert into public.groups (
   name, description, meeting_day, meeting_time, location_area, capacity,
-  lifecycle_status, health_status, audience_category, category_id, admin_notes
+  lifecycle_status, health_status, group_type, admin_notes
 )
 select
   v.name, v.description, v.day, v.mtime::time, v.area, v.cap,
   v.lifecycle::public.group_lifecycle_status,
   v.health::public.group_health_status,
-  v.audience::public.group_audience_category,
-  gc.id,
+  v.group_type,
   'Synthetic reviewer demo data (#572).'
 from (values
-  ('FVC Demo - Tuesday Men', 'Demo discipleship group', 'Tuesday', '19:00', 'North', 16, 'active', 'healthy', 'men', '20s-30s'),
-  ('FVC Demo - Wednesday Women', 'Demo discipleship group', 'Wednesday', '18:30', 'West', 18, 'active', 'watch', 'women', '20s-30s'),
-  ('FVC Demo - Thursday Mixed', 'Demo family group', 'Thursday', '18:00', 'Central', 20, 'active', 'healthy', 'mixed', 'Young families'),
-  ('FVC Demo - Sunday Men', 'Demo group', 'Sunday', '17:00', 'East', 14, 'active', 'needs_follow_up', 'men', '50s+'),
-  ('FVC Demo - Friday Women', 'Demo group', 'Friday', '10:00', 'South', 16, 'active', 'healthy', 'women', 'Young families')
-) as v(name, description, day, mtime, area, cap, lifecycle, health, audience, label)
-left join public.group_categories gc
-  on lower(btrim(gc.label)) = lower(btrim(v.label))
- and gc.archived_at is null
+  ('FVC Demo - Tuesday Men', 'Demo discipleship group', 'Tuesday', '19:00', 'North', 16, 'active', 'healthy', 'Men''s'),
+  ('FVC Demo - Wednesday Women', 'Demo discipleship group', 'Wednesday', '18:30', 'West', 18, 'active', 'watch', 'Women''s'),
+  ('FVC Demo - Thursday Mixed', 'Demo family group', 'Thursday', '18:00', 'Central', 20, 'active', 'healthy', 'Young families'),
+  ('FVC Demo - Sunday Men', 'Demo group', 'Sunday', '17:00', 'East', 14, 'active', 'needs_follow_up', '50s+'),
+  ('FVC Demo - Friday Women', 'Demo group', 'Friday', '10:00', 'South', 16, 'active', 'healthy', 'Women''s')
+) as v(name, description, day, mtime, area, cap, lifecycle, health, group_type)
 where not exists (
   select 1 from public.groups g where g.name = v.name
 );
