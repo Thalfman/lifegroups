@@ -21,7 +21,11 @@ import type {
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
 } from "@/types/enums";
-import type { MatchedShepherd } from "@/lib/admin/leader-pipeline";
+import {
+  matchShepherdsToType,
+  type MatchedShepherd,
+  type ShepherdMatchInput,
+} from "@/lib/admin/leader-pipeline";
 import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
 
 export type MultiplicationCriterion =
@@ -272,7 +276,11 @@ export function buildPipelineView(
   potentialGroups: readonly SegmentableGroup[],
   // The saved candidates as the planner views them (one per group), across all
   // types — partitioned here onto their pipelined type.
-  lockedInCandidates: readonly CandidateView[]
+  lockedInCandidates: readonly CandidateView[],
+  // ADR 0030 (#758): every active apprentice with their home-group type, so the
+  // supply side ("who could lead a new group of type T") can be matched per type.
+  // Defaults to none so existing callers and the empty-pipeline case never block.
+  apprentices: readonly ShepherdMatchInput[] = []
 ): PipelineTypeView[] {
   const potentialByKey = new Map<string, PipelinePotentialCandidate[]>();
   for (const g of potentialGroups) {
@@ -316,10 +324,9 @@ export function buildPipelineView(
       anchorId: segmentAnchorId(label),
       potentialCandidates,
       lockedInCandidates,
-      // #758 populates this via matchShepherdsToType (apprentices threaded in
-      // through a new input arg); the seam ships empty so the supply-side UI
-      // renders cleanly with nothing matched yet.
-      matchedShepherds: [],
+      // ADR 0030 (#758): the apprentices whose home group is this type, Ready-to-
+      // lead first. Empty (never blocked) when no apprentice's group matches.
+      matchedShepherds: matchShepherdsToType(apprentices, label),
     });
   }
 

@@ -165,6 +165,81 @@ describe("buildMultiplyPlanData", () => {
     expect(data.pipeline[0].lockedInCandidates).toEqual([]);
   });
 
+  // ADR 0030 (#758): the supply side. Each apprentice's home-group type is
+  // joined from the group refs, then matched to the pipelined type — Ready-to-
+  // lead first. No extra read: the picker refs already carry readiness_stage.
+  it("matches shepherds to their type under each pipelined type, Ready-to-lead first", async () => {
+    const data = await buildMultiplyPlanData(
+      emptyReads({
+        fetchGroupRefs: async () =>
+          ok([
+            {
+              id: "g-yf",
+              name: "Smiths",
+              lifecycle_status: "active",
+              group_type: "Young Families",
+            },
+            {
+              id: "g-men",
+              name: "Men's AM",
+              lifecycle_status: "active",
+              group_type: "Men 20-30s",
+            },
+          ] as never),
+        fetchApprenticeRefs: async () =>
+          ok([
+            {
+              apprentice: {
+                id: "a1",
+                group_id: "g-yf",
+                display_name: "Zara",
+                readiness_stage: "in_training",
+              },
+            },
+            {
+              apprentice: {
+                id: "a2",
+                group_id: "g-yf",
+                display_name: "Bob",
+                readiness_stage: "ready_to_lead",
+              },
+            },
+            {
+              apprentice: {
+                id: "a3",
+                group_id: "g-men",
+                display_name: "Carl",
+                readiness_stage: "ready_to_lead",
+              },
+            },
+          ] as never),
+        fetchGroupTypeConfigs: async () => ok([config("Young Families", true)]),
+        fetchGroupTypes: async () => ok(["Young Families", "Men 20-30s"]),
+      })
+    );
+
+    expect(data.error).toBeNull();
+    expect(data.pipeline.map((t) => t.type)).toEqual(["Young Families"]);
+    // The two Young-Families apprentices match (Ready-to-lead first); the Men's
+    // apprentice is excluded.
+    expect(data.pipeline[0].matchedShepherds).toEqual([
+      {
+        id: "a2",
+        displayName: "Bob",
+        groupName: "Smiths",
+        stage: "ready_to_lead",
+        readyToLead: true,
+      },
+      {
+        id: "a1",
+        displayName: "Zara",
+        groupName: "Smiths",
+        stage: "in_training",
+        readyToLead: false,
+      },
+    ]);
+  });
+
   it("degrades the pipeline section to empty when the configs/types reads fail, without blocking the planner", async () => {
     const data = await buildMultiplyPlanData(
       emptyReads({

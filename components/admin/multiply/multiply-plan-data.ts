@@ -17,6 +17,7 @@ import {
   buildPipelineView,
   type PipelineTypeView,
 } from "@/lib/admin/multiplication";
+import type { ShepherdMatchInput } from "@/lib/admin/leader-pipeline";
 
 // The Multiply area's Plan tab (ADR 0022): Julian's per-group multiplication
 // plan — the seeded candidate pipeline (ADR 0006), grouped by free-text group
@@ -123,14 +124,37 @@ export async function buildMultiplyPlanData(
     batch.results.groupRefs.data ?? [],
     batch.results.apprenticeRefs.data ?? []
   );
+  // ADR 0030 (#758): the supply side. Each active apprentice's home-group type is
+  // joined from the already-loaded group refs (the picker refs carry id /
+  // group_id / display_name / readiness_stage; the group refs carry name +
+  // group_type), so matchShepherdsToType can match an apprentice to a pipelined
+  // type by their group's type — no extra read needed. A missing group join
+  // leaves the apprentice Untyped, which never matches a concrete type.
+  const groupById = new Map(
+    (batch.results.groupRefs.data ?? []).map((g) => [g.id, g])
+  );
+  const apprenticeMatchInputs: ShepherdMatchInput[] = (
+    batch.results.apprenticeRefs.data ?? []
+  ).map((entry) => {
+    const group = groupById.get(entry.apprentice.group_id);
+    return {
+      id: entry.apprentice.id,
+      displayName: entry.apprentice.display_name,
+      groupName: group?.name ?? "Unknown group",
+      groupType: group?.group_type ?? null,
+      stage: entry.apprentice.readiness_stage,
+    };
+  });
   // The potential-candidate pool is the active groups not already anchored to a
   // candidate (groupOptions); the locked-in candidates are the saved candidates
-  // flattened out of their segments. buildPipelineView partitions both onto the
+  // flattened out of their segments. buildPipelineView partitions all three —
+  // potential candidates, locked-in candidates, and matched shepherds — onto the
   // pipelined types.
   const pipeline = buildPipelineView(
     pipelinedTypes,
     view.groupOptions,
-    view.segments.flatMap((s) => s.candidates)
+    view.segments.flatMap((s) => s.candidates),
+    apprenticeMatchInputs
   );
   return { ...view, error: null, pipelinedTypes, groupTypes, pipeline };
 }
