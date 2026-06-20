@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  APPRENTICE_NAME_FALLBACK,
   LEADER_READINESS_STAGES,
   apprenticeReadyBy,
   buildPipelineRollup,
   nextStage,
+  resolveApprenticeNameSource,
   stageIndex,
   type ApprenticeView,
 } from "@/lib/admin/leader-pipeline";
@@ -21,6 +23,48 @@ function apprentice(over: Partial<ApprenticeView>): ApprenticeView {
     notes: over.notes ?? null,
   };
 }
+
+// #754: the add-apprentice form's dropdown-vs-fallback branching. Picking a
+// member derives the name from the member record (no name field); the explicit
+// fallback reveals a free-text input; nothing selected is "none".
+describe("resolveApprenticeNameSource", () => {
+  const members = [
+    { id: "m1", name: "Tony L." },
+    { id: "m2", name: "Bo R." },
+  ];
+
+  it("derives the name from the member record when a member is picked", () => {
+    expect(resolveApprenticeNameSource("m1", members)).toEqual({
+      mode: "member",
+      memberId: "m1",
+      displayName: "Tony L.",
+    });
+  });
+
+  it("reveals the free-text input on the explicit fallback choice", () => {
+    expect(
+      resolveApprenticeNameSource(APPRENTICE_NAME_FALLBACK, members)
+    ).toEqual({ mode: "fallback" });
+  });
+
+  it("is 'none' when nothing is selected yet", () => {
+    expect(resolveApprenticeNameSource("", members)).toEqual({ mode: "none" });
+  });
+
+  it("offers the fallback even when the group roster is empty (never blocks)", () => {
+    // No members to pick — the fallback path is still available.
+    expect(resolveApprenticeNameSource(APPRENTICE_NAME_FALLBACK, [])).toEqual({
+      mode: "fallback",
+    });
+    expect(resolveApprenticeNameSource("", [])).toEqual({ mode: "none" });
+  });
+
+  it("treats an unknown id (stale selection) as 'none', not a member", () => {
+    expect(resolveApprenticeNameSource("gone", members)).toEqual({
+      mode: "none",
+    });
+  });
+});
 
 describe("stage ladder helpers", () => {
   it("orders the four stages canonically", () => {

@@ -76,12 +76,10 @@ export async function buildMultiplyPlanData(
 
   if (error) return { ...EMPTY_MULTIPLY_PLAN_VIEW, error };
 
-  const todayIso = new Date().toISOString().slice(0, 10);
   const view = buildMultiplicationView(
     batch.results.candidates.data ?? [],
     batch.results.groupRefs.data ?? [],
-    batch.results.apprenticeRefs.data ?? [],
-    todayIso
+    batch.results.apprenticeRefs.data ?? []
   );
   return { ...view, error: null };
 }

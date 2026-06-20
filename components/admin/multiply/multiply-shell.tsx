@@ -15,17 +15,19 @@ import {
   type MultiplyTabKey,
 } from "@/components/admin/multiply/multiply-data";
 
-// The Multiply area's tabs (ADR 0022). Multiply unifies the three faces of the
-// church's multiplication tracking into one surface:
-//   • Plan      — the per-group multiplication plan (Julian's Doc, ADR 0006):
-//                 named groups by Audience × category, with target year,
-//                 successor/apprentice, meeting time, and readiness chips. The
-//                 working view, so it is the default tab.
+// The Multiply area's tabs (ADR 0022 / 0030). Multiply unifies the three faces of
+// the church's multiplication tracking into one surface:
 //   • Readiness — the per-cell category × top-type grid (ADR 0019/0021): the
-//                 at-a-glance "which cells are ready to multiply" signal.
-//   • Leaders   — the apprentice pipeline: who is ready to lead the next group.
-// The Plan and Leaders panels were previously reachable only behind the frozen
-// Planning tab / off-nav routes; this shell re-homes them into the visible
+//                 at-a-glance "which cells are ready to multiply" signal. The
+//                 default tab.
+//   • Pipeline  — the per-group multiplication plan (Julian's Doc, ADR 0006):
+//                 named groups by group type, with target year, successor/
+//                 apprentice, and readiness chips. Renamed from "Plan" (ADR 0030)
+//                 to avoid colliding with the top-level Plan area.
+//   • Shepherds — the apprentice pipeline: who is ready to lead the next group
+//                 (the "leaders" key keeps the ADR 0025 code identity).
+// The Pipeline and Shepherds panels were previously reachable only behind the
+// frozen Planning tab / off-nav routes; this shell re-homes them into the visible
 // Multiply area (an intentional partial reversal of ADR 0016's hiding — the data
 // was always retained; only the surface moves).
 export type { MultiplyTabKey };
@@ -46,12 +48,13 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
   // newly selected tab (the roving-tabindex half of the WAI-ARIA tabs pattern).
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // The active tab is driven by the URL's `?tab=` param (default "plan"), so a
-  // deep-link from a Readiness-grid cell (`?tab=plan#seg-…`) always opens the
-  // Plan panel — even after the admin has manually switched tabs. Tab buttons
-  // sync the URL through the History API, which Next integrates with
-  // useSearchParams, so switching tabs updates the URL (and makes the deep-link
-  // a real change) WITHOUT a server round-trip.
+  // The active tab is driven by the URL's `?tab=` param (default "readiness"),
+  // so a deep-link from a Readiness-grid cell (`?tab=pipeline#seg-…`, or the
+  // legacy `?tab=plan` alias) always opens the intended panel — even after the
+  // admin has manually switched tabs. Tab buttons sync the URL through the
+  // History API, which Next integrates with useSearchParams, so switching tabs
+  // updates the URL (and makes the deep-link a real change) WITHOUT a server
+  // round-trip.
   const active = resolveMultiplyInitialTab(
     searchParams.get("tab") ?? undefined
   );
@@ -59,8 +62,9 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
   // Lazy-mount the panels: render a tab's panel only once it has been the
   // active tab, then keep it mounted so switching back is instant and preserves
   // its in-panel state (filters, expanded rows). On first load only the active
-  // tab (default "plan") is mounted, so the heavy Readiness grid and Leaders
-  // pipeline aren't server-rendered or hydrated until they're opened — a real
+  // tab (default "readiness") is mounted, so the heavier Pipeline planner and
+  // Shepherds pipeline aren't server-rendered or hydrated until they're opened
+  // — a real
   // saving on the common path, where the page already loads all three tabs'
   // data server-side. The panel wrappers below stay in the DOM regardless so
   // every tab's `aria-controls` target always resolves. (This is the
@@ -74,12 +78,12 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
     setMounted((prev) => new Set(prev).add(active));
   }
 
-  // A Readiness-grid cell deep-links to /admin/multiply?tab=plan#seg-…, but the
-  // Plan panel is dynamically imported (ssr:false) and only mounts once its tab
-  // is active, so the seg- anchor is absent when the browser performs its hash
-  // scroll. Re-run the scroll once the target exists — on mount (cold load),
-  // whenever the active tab changes (a client-side "View plan" click mounts the
-  // Plan panel after the hash has already changed), and on any later hashchange
+  // A Readiness-grid cell deep-links to /admin/multiply?tab=pipeline#seg-…, but
+  // the Pipeline panel is dynamically imported (ssr:false) and only mounts once
+  // its tab is active, so the seg- anchor is absent when the browser performs its
+  // hash scroll. Re-run the scroll once the target exists — on mount (cold load),
+  // whenever the active tab changes (a client-side "View pipeline" click mounts
+  // the Pipeline panel after the hash has already changed), and on any hashchange
   // (jumping between segments on the same tab). scrollToHashTarget polls until
   // the element appears, so it tolerates the chunk still loading.
   useEffect(() => {

@@ -112,6 +112,41 @@ export function buildPipelineRollup(
   };
 }
 
+// ADR 0030 (#754): the add-apprentice form's member dropdown is the primary
+// path. A sentinel option lets the admin fall back to a free-text name when the
+// person isn't a member record yet, so an incomplete roster never blocks adding
+// an apprentice. Kept off any real member id.
+export const APPRENTICE_NAME_FALLBACK = "__not_listed__";
+
+// How the add-apprentice form should source the apprentice's name from the
+// member-dropdown selection:
+//   • "member"   — a real group member is picked; the name DERIVES from the
+//                  member record (no name field shown), and the link carries the
+//                  member id.
+//   • "fallback" — the admin explicitly chose "not listed"; a free-text name
+//                  input is shown and no member is linked.
+//   • "none"     — nothing chosen yet; neither a name nor a link is ready.
+export type ApprenticeNameSource =
+  | { mode: "member"; memberId: string; displayName: string }
+  | { mode: "fallback" }
+  | { mode: "none" };
+
+// Decide, from the member-dropdown value, how the form sources the apprentice's
+// name. Pure so the branching is unit-testable without the DOM. A value that
+// matches a member yields the member's name; the fallback sentinel reveals the
+// free-text input; anything else (the empty placeholder) is "none".
+export function resolveApprenticeNameSource(
+  selectedValue: string,
+  members: readonly { id: string; name: string }[]
+): ApprenticeNameSource {
+  if (selectedValue === APPRENTICE_NAME_FALLBACK) return { mode: "fallback" };
+  const member = members.find((m) => m.id === selectedValue);
+  if (member) {
+    return { mode: "member", memberId: member.id, displayName: member.name };
+  }
+  return { mode: "none" };
+}
+
 // Staffing-supply predicate (PRD §3.4 / R10, used by the forecast in #186): an
 // apprentice counts toward supply for a launch at `targetIso` when they are
 // Ready to lead today, or are *projected* to be ready by the target date via

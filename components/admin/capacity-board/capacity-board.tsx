@@ -191,9 +191,9 @@ function SuggestionRow({ s }: { s: SuggestedMultiplicationGroup }) {
         <strong style={{ fontFamily: fontBody, fontSize: 14, color: P.ink }}>
           {s.groupName}
         </strong>
-        <span style={{ fontFamily: fontBody, fontSize: 12, color: "#3e4f29" }}>
-          meets {s.metCount}/{s.totalCount}
-        </span>
+        {/* ADR 0029 decision 3: no "meets X/5" — a pre-candidate group has no
+            stored readiness flags to assess, so the annotation is suppressed
+            rather than reporting a false zero. */}
       </div>
       <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
         {s.segment} · {s.activeMemberCount}/{s.effectiveTarget ?? "—"} ·{" "}

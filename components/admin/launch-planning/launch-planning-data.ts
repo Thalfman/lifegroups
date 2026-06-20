@@ -159,10 +159,9 @@ export function buildMultiplicationView(
     lifecycle_status: string;
     group_type: string | null;
   }[],
-  pipeline: readonly { apprentice: ApprenticePickerRef }[],
-  todayIso: string
+  pipeline: readonly { apprentice: ApprenticePickerRef }[]
 ): MultiplicationView {
-  const segments = buildPlannerSegments(candidates, todayIso);
+  const segments = buildPlannerSegments(candidates);
   // A group already attached to a candidate can't be picked again (one active
   // candidate per group).
   const usedGroupIds = new Set(
@@ -333,10 +332,7 @@ export async function buildLaunchPlanningData(
         memberships: inputsBundle.memberships,
         metricDefaults,
         apprentices: boardExtras.apprentices,
-        coShepherdSinceByGroup: boardExtras.coShepherdSinceByGroup,
-        candidateFlagsByGroup: boardExtras.candidateFlagsByGroup,
         candidateGroupIds: boardExtras.candidateGroupIds,
-        todayIso,
       });
 
   // --- Multiplication planner. The pipeline drives apprenticesByGroup; a
@@ -358,8 +354,7 @@ export async function buildLaunchPlanningData(
     : buildMultiplicationView(
         candidatesRes.data ?? [],
         inputsBundle.groups,
-        pipelineRes.data ?? [],
-        todayIso
+        pipelineRes.data ?? []
       );
 
   return {

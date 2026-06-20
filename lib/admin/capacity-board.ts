@@ -3,8 +3,10 @@
 // pipeline (R1–R4, R9). Pure functions; no I/O. Reuses effectiveCapacity(),
 // capacityStatus(), and the threshold constants from lib/admin/metrics.ts so
 // the Board can never drift from the rest of the admin dashboard's capacity
-// view, and evaluateReadiness() from lib/admin/multiplication.ts so the 5
-// criteria are shown as *context* (metCount), never a gate.
+// view. ADR 0029 decision 3: the Board no longer computes the 5 readiness
+// criteria — the three formerly-computed ones are now manual candidate flags, so
+// pre-candidate suggestions have nothing to assess. The "meets X/5" annotation
+// is suppressed rather than reporting a false zero on every suggestion.
 
 import {
   allowsOverCapacity,
@@ -16,11 +18,7 @@ import {
   type CapacityStatus,
   type MetricDefaults,
 } from "@/lib/admin/metrics";
-import {
-  evaluateReadiness,
-  segmentLabel,
-  type ReadinessResult,
-} from "@/lib/admin/multiplication";
+import { segmentLabel } from "@/lib/admin/multiplication";
 import { isReadyToLead } from "@/lib/admin/leader-pipeline";
 import {
   countActiveMembersByGroup,
@@ -176,43 +174,8 @@ export function filterBoard(
 }
 
 // ---------------------------------------------------------------------------
-// Readiness map + system-suggested candidates (R9)
+// System-suggested candidates (R9)
 // ---------------------------------------------------------------------------
-
-export type GroupReadinessInput = {
-  groupId: string;
-  launchedOn: string | null;
-  activeMemberCount: number;
-  coShepherdSince: string | null;
-  shepherdWilling: boolean;
-  needsSimilarStage: boolean;
-};
-
-// Compute the 5-criterion readiness for each active group so it can annotate
-// (never gate) suggestions. Pure wrapper over evaluateReadiness so the read
-// model can hand it bare inputs.
-export function buildReadinessByGroup(
-  inputs: readonly GroupReadinessInput[],
-  todayIso: string
-): Map<string, ReadinessResult> {
-  const map = new Map<string, ReadinessResult>();
-  for (const i of inputs) {
-    map.set(
-      i.groupId,
-      evaluateReadiness(
-        {
-          activeMemberCount: i.activeMemberCount,
-          launchedOn: i.launchedOn,
-          coShepherdSince: i.coShepherdSince,
-          shepherdWilling: i.shepherdWilling,
-          needsSimilarStage: i.needsSimilarStage,
-        },
-        todayIso
-      )
-    );
-  }
-  return map;
-}
 
 export type SuggestedMultiplicationGroup = {
   groupId: string;
@@ -222,27 +185,22 @@ export type SuggestedMultiplicationGroup = {
   effectiveTarget: number | null;
   status: CapacityStatus;
   readyApprentice: CapacityBoardApprentice;
-  // 5-criterion readiness shown as context ("meets 4/5"), not a gate.
-  metCount: number;
-  totalCount: number;
   // Whether the group already has an active multiplication candidate.
   alreadyCandidate: boolean;
 };
 
 // R9: surface a group as a system-suggested candidate when it is at/over target
-// AND has a Ready-to-lead apprentice — exactly the badge predicate. The
-// 5-criterion readiness ranks/annotates (metCount) rather than includes or
-// excludes, per Julian's "a group does not need to meet each." Sorted by
-// metCount desc (best-supported first), then group name.
+// AND has a Ready-to-lead apprentice — exactly the badge predicate. ADR 0029
+// decision 3: the 5-criterion readiness annotation is suppressed (a
+// pre-candidate group has no stored flags to assess, and "meets 0/5" would be a
+// false zero), so suggestions sort by group name alone.
 export function buildMultiplicationSuggestions(
   rows: readonly CapacityBoardRow[],
-  readinessByGroup: ReadonlyMap<string, ReadinessResult>,
   candidateGroupIds: ReadonlySet<string>
 ): SuggestedMultiplicationGroup[] {
   const suggestions: SuggestedMultiplicationGroup[] = [];
   for (const r of rows) {
     if (!r.readyToMultiply || !r.readyApprentice) continue;
-    const readiness = readinessByGroup.get(r.groupId);
     suggestions.push({
       groupId: r.groupId,
       groupName: r.groupName,
@@ -251,15 +209,10 @@ export function buildMultiplicationSuggestions(
       effectiveTarget: r.effectiveTarget,
       status: r.status,
       readyApprentice: r.readyApprentice,
-      metCount: readiness?.metCount ?? 0,
-      totalCount: readiness?.totalCount ?? 5,
       alreadyCandidate: candidateGroupIds.has(r.groupId),
     });
   }
-  return suggestions.sort((a, b) => {
-    if (b.metCount !== a.metCount) return b.metCount - a.metCount;
-    return a.groupName.localeCompare(b.groupName);
-  });
+  return suggestions.sort((a, b) => a.groupName.localeCompare(b.groupName));
 }
 
 // ---------------------------------------------------------------------------
@@ -285,12 +238,7 @@ export function buildCapacityBoardModel(args: {
     display_name: string;
     readiness_stage: LeaderReadinessStage;
   }[];
-  coShepherdSinceByGroup: Readonly<Record<string, string>>;
-  candidateFlagsByGroup: Readonly<
-    Record<string, { shepherdWilling: boolean; needsSimilarStage: boolean }>
-  >;
   candidateGroupIds: readonly string[];
-  todayIso: string;
 }): CapacityBoardModel {
   const overridesByGroup = indexOverridesByGroup(args.overrides);
   const membershipCounts = countActiveMembersByGroup(args.memberships);
@@ -314,27 +262,8 @@ export function buildCapacityBoardModel(args: {
     apprenticesByGroup,
   });
 
-  const readinessInputs: GroupReadinessInput[] = rows.map((r) => {
-    const flags = args.candidateFlagsByGroup[r.groupId];
-    const launchedOn =
-      args.groups.find((g) => g.id === r.groupId)?.launched_on ?? null;
-    return {
-      groupId: r.groupId,
-      launchedOn,
-      activeMemberCount: r.activeMemberCount,
-      coShepherdSince: args.coShepherdSinceByGroup[r.groupId] ?? null,
-      shepherdWilling: flags?.shepherdWilling ?? false,
-      needsSimilarStage: flags?.needsSimilarStage ?? false,
-    };
-  });
-  const readinessByGroup = buildReadinessByGroup(
-    readinessInputs,
-    args.todayIso
-  );
-
   const suggestions = buildMultiplicationSuggestions(
     rows,
-    readinessByGroup,
     new Set(args.candidateGroupIds)
   );
 
