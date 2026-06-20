@@ -271,6 +271,17 @@ him.
 _Avoid_: Alert, threshold (when you mean the whole configured rule); overflow;
 per-pillar letter grade for Interest (it is a count).
 
+**Multiplication Readiness Checklist**:
+The per-**group** list of five guideline boxes on the Multiply **Plan** tab that
+Julian ticks by hand for a multiplication candidate — **12+ members**, **3+
+years as a group**, **Co-Shepherd 1+ year**, **Shepherd willing**, **Need for a
+similar group**. Purely his judgment, stored on the candidate (ADR 0029); the
+numbers are advisory labels, not computed comparisons. Distinct from the
+computed, per-cell **Multiplication Pillars / Trigger** — same "12 / 3 / 1"
+numbers, different concept and surface. "A group does not need to meet each."
+_Avoid_: Pillar, Trigger (those are the computed per-cell signal); criteria-as-
+gate (the checklist annotates, it never blocks).
+
 ### Surfaces
 
 **Home Hub**:
