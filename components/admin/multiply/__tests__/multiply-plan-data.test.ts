@@ -77,6 +77,7 @@ describe("buildMultiplyPlanData", () => {
       error: "candidates boom",
       pipelinedTypes: [],
       groupTypes: [],
+      pipeline: [],
     });
   });
 
@@ -93,6 +94,7 @@ describe("buildMultiplyPlanData", () => {
       error: "refs boom",
       pipelinedTypes: [],
       groupTypes: [],
+      pipeline: [],
     });
   });
 
@@ -128,6 +130,41 @@ describe("buildMultiplyPlanData", () => {
     expect(data.groupTypes).toEqual(["Young Families", "Men 20-30s", "Women"]);
   });
 
+  // ADR 0030 Module 3 (#756): the assembled pipeline partitions each pipelined
+  // type into its auto-listed potential candidates (active groups of the type
+  // with no saved candidate row) and any locked-in candidates.
+  it("assembles the type-first pipeline: potential candidates auto-listed per pipelined type", async () => {
+    const data = await buildMultiplyPlanData(
+      emptyReads({
+        fetchGroupRefs: async () =>
+          ok([
+            {
+              id: "g-yf",
+              name: "Smiths",
+              lifecycle_status: "active",
+              group_type: "Young Families",
+            },
+            {
+              id: "g-men",
+              name: "Men's AM",
+              lifecycle_status: "active",
+              group_type: "Men 20-30s",
+            },
+          ] as never),
+        fetchGroupTypeConfigs: async () => ok([config("Young Families", true)]),
+        fetchGroupTypes: async () => ok(["Young Families", "Men 20-30s"]),
+      })
+    );
+
+    expect(data.error).toBeNull();
+    // Only the pipelined type renders; the Men's group is excluded.
+    expect(data.pipeline.map((t) => t.type)).toEqual(["Young Families"]);
+    expect(
+      data.pipeline[0].potentialCandidates.map((p) => p.groupName)
+    ).toEqual(["Smiths"]);
+    expect(data.pipeline[0].lockedInCandidates).toEqual([]);
+  });
+
   it("degrades the pipeline section to empty when the configs/types reads fail, without blocking the planner", async () => {
     const data = await buildMultiplyPlanData(
       emptyReads({
@@ -143,5 +180,6 @@ describe("buildMultiplyPlanData", () => {
     // …and the failed additive reads simply yield an empty pipeline section.
     expect(data.pipelinedTypes).toEqual([]);
     expect(data.groupTypes).toEqual([]);
+    expect(data.pipeline).toEqual([]);
   });
 });

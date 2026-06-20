@@ -213,6 +213,115 @@ export function buildPlannerSegments(
   );
 }
 
+// --- ADR 0030 Module 3: the type-first Pipeline view ---------------------
+//
+// The Pipeline tab is built type-first: the admin records the intent to launch
+// another group of a *type* (the `in_pipeline` flag on group_type_configs),
+// and the existing groups of that type appear beneath it. `buildPipelineView`
+// is the pure core: given the pipelined types, the active groups available to
+// multiply (those with no saved candidate row), and the saved candidates, it
+// partitions each pipelined type into:
+//   • potential candidates — active groups of that type with no candidate row;
+//   • locked-in candidates — the saved candidates of that type (with readiness).
+// Matched shepherds attach in a later slice (#758); the per-type view is shaped
+// so that supply side slots in without reshaping this partition.
+//
+// Never blocks on emptiness: a pipelined type with zero groups and zero
+// candidates still renders (an intentful empty arm). Non-pipelined types are
+// excluded. Types sort by label with Untyped last, mirroring
+// bucketGroupsBySegment so the Pipeline and the group buckets read the same.
+
+// A read-only potential candidate: an active group of a pipelined type that has
+// no saved candidate row yet. Locking it in (ticking its readiness) is #757.
+export type PipelinePotentialCandidate = {
+  groupId: string;
+  groupName: string;
+  groupType: string | null;
+};
+
+export type PipelineTypeView = {
+  // The pipelined group type's display label (free text, never Untyped in
+  // practice — a pipelined type is a concrete group type).
+  type: string;
+  // Stable DOM anchor so the Readiness grid can deep-link a cell to this type's
+  // section in the Pipeline tab (#759). Agrees with segmentAnchorId.
+  anchorId: string;
+  potentialCandidates: PipelinePotentialCandidate[];
+  lockedInCandidates: CandidateView[];
+};
+
+// A case-insensitive, trim-normalized match key for a free-text group type, so
+// a pipelined type matches its groups/candidates even if casing drifts (the
+// canonical group_types list keeps them aligned, but the Pipeline intent set is
+// compared case-insensitively, so mirror that here). Untyped collapses to a
+// stable sentinel key.
+function typeMatchKey(groupType: string | null): string {
+  return segmentLabel(groupType).toLowerCase();
+}
+
+export function buildPipelineView(
+  pipelinedTypes: readonly string[],
+  // Active groups with no saved candidate row — the potential-candidate pool
+  // across all types (already filtered by the read layer).
+  potentialGroups: readonly SegmentableGroup[],
+  // The saved candidates as the planner views them (one per group), across all
+  // types — partitioned here onto their pipelined type.
+  lockedInCandidates: readonly CandidateView[]
+): PipelineTypeView[] {
+  const potentialByKey = new Map<string, PipelinePotentialCandidate[]>();
+  for (const g of potentialGroups) {
+    const key = typeMatchKey(g.groupType);
+    const list = potentialByKey.get(key);
+    const view: PipelinePotentialCandidate = {
+      groupId: g.id,
+      groupName: g.name,
+      groupType: g.groupType,
+    };
+    if (list) list.push(view);
+    else potentialByKey.set(key, [view]);
+  }
+
+  const lockedByKey = new Map<string, CandidateView[]>();
+  for (const c of lockedInCandidates) {
+    const key = c.segment.toLowerCase();
+    const list = lockedByKey.get(key);
+    if (list) list.push(c);
+    else lockedByKey.set(key, [c]);
+  }
+
+  const seen = new Set<string>();
+  const views: PipelineTypeView[] = [];
+  for (const rawType of pipelinedTypes) {
+    const label = rawType.trim();
+    // A pipelined type is a concrete group type; skip blanks defensively so a
+    // stray empty config row never renders an Untyped arm.
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const potentialCandidates = (potentialByKey.get(key) ?? [])
+      .slice()
+      .sort((a, b) => a.groupName.localeCompare(b.groupName));
+    const lockedInCandidates = (lockedByKey.get(key) ?? [])
+      .slice()
+      .sort((a, b) => a.groupName.localeCompare(b.groupName));
+    views.push({
+      type: label,
+      anchorId: segmentAnchorId(label),
+      potentialCandidates,
+      lockedInCandidates,
+    });
+  }
+
+  // Untyped last (defensive — a pipelined type is concrete), else by label, so
+  // the Pipeline reads the same order as bucketGroupsBySegment.
+  return views.sort((a, b) => {
+    if (a.type === UNTYPED_SEGMENT) return 1;
+    if (b.type === UNTYPED_SEGMENT) return -1;
+    return a.type.localeCompare(b.type);
+  });
+}
+
 // The active year filter: "all" shows every cohort; a number shows that
 // target year; null shows the candidates whose year is not yet decided.
 export type TargetYearFilter = number | null | "all";
