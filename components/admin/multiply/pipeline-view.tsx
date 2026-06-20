@@ -3,17 +3,15 @@
 import { useState, useTransition } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminSetGroupTypeInPipeline } from "@/app/(protected)/admin/multiply/actions";
-import {
-  CANDIDATE_STATUS_LABEL,
-  CRITERION_LABEL,
-  type MultiplicationCriterion,
-  type PipelineTypeView,
-} from "@/lib/admin/multiplication";
+import { type PipelineTypeView } from "@/lib/admin/multiplication";
 import {
   fieldLabelClassName as LABEL,
   fieldInputBaseClassName as INPUT,
   errorTextClassName as ERROR,
 } from "@/components/admin/forms/field-styles";
+import { PipelinePotentialCandidates } from "@/components/admin/multiply/pipeline-potential-candidates";
+import { PipelineLockedInCandidates } from "@/components/admin/multiply/pipeline-locked-in-candidates";
+import { PipelineMatchedShepherds } from "@/components/admin/multiply/pipeline-matched-shepherds";
 
 // Multiply Pipeline (ADR 0030, slices #755 + #756): the type-first Pipeline. The
 // admin pipelines a group type — recording the intent to launch another of it —
@@ -140,9 +138,14 @@ export function PipelineView({
   );
 }
 
-// One pipelined type: its potential candidates (auto-listed active groups with
-// no saved candidate, read-only) and its locked-in candidates (saved candidates
-// with status / target year / readiness chips).
+// One pipelined type, composed from three sub-sections that each live in their
+// own file so the wave-4 slices stay out of each other's way:
+//   • PipelinePotentialCandidates / PipelineLockedInCandidates — the candidate
+//     lifecycle (#757 wires lock-in + remove there).
+//   • PipelineMatchedShepherds — the supply side (#758 fills it via
+//     matchShepherdsToType).
+// Each arm tolerates an empty list, so a freshly pipelined type with nothing
+// under it still renders (never block).
 //
 // The canonical `seg-<type>` deep-link anchor (`type.anchorId`) is still owned
 // by the legacy MultiplicationPlanner rendered below on this tab, so we do NOT
@@ -177,86 +180,9 @@ function PipelineTypeSection({
         </PButton>
       </div>
 
-      <div className="grid gap-1">
-        <p className="m-0 font-sans text-xs font-semibold uppercase tracking-wide text-ink3">
-          Potential candidates
-        </p>
-        {type.potentialCandidates.length === 0 ? (
-          <p className="m-0 font-sans text-sm text-ink3">
-            No active groups of this type yet.
-          </p>
-        ) : (
-          <ul className="m-0 grid list-none gap-1 p-0">
-            {type.potentialCandidates.map((g) => (
-              <li
-                key={g.groupId}
-                className="rounded-sm border border-line bg-bg px-2.5 py-1.5 font-sans text-sm text-ink"
-              >
-                {g.groupName}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="grid gap-1">
-        <p className="m-0 font-sans text-xs font-semibold uppercase tracking-wide text-ink3">
-          Locked-in candidates
-        </p>
-        {type.lockedInCandidates.length === 0 ? (
-          <p className="m-0 font-sans text-sm text-ink3">None locked in yet.</p>
-        ) : (
-          <ul className="m-0 grid list-none gap-1.5 p-0">
-            {type.lockedInCandidates.map((c) => (
-              <li
-                key={c.candidateId}
-                className="grid gap-1 rounded-sm border border-line bg-bg px-2.5 py-1.5"
-              >
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="font-sans text-sm font-medium text-ink">
-                    {c.groupName}
-                  </span>
-                  <span className="rounded-sm bg-surface px-1.5 py-0.5 font-sans text-xs text-ink2">
-                    {CANDIDATE_STATUS_LABEL[c.status]}
-                  </span>
-                  {/* target_year is nullable (TBD is a valid state) — show it
-                      explicitly so a candidate with no year set still reads as a
-                      tracked fact, not a missing field. */}
-                  <span className="rounded-sm bg-surface px-1.5 py-0.5 font-sans text-xs text-ink2">
-                    {c.targetYear != null ? c.targetYear : "Year TBD"}
-                  </span>
-                  <span className="font-sans text-xs text-ink3">
-                    {c.readiness.metCount}/{c.readiness.totalCount} ready
-                  </span>
-                </div>
-                {/* Render all five criteria with met / unmet styling (not just
-                    the ticked ones) so the summary carries the full readiness
-                    state — a 0/5 candidate still shows which boxes are unchecked.
-                    The ✓ / ○ prefix is a non-colour cue for the met/unmet split. */}
-                <ul className="m-0 flex flex-wrap list-none gap-1 p-0">
-                  {(
-                    Object.entries(c.readiness.criteria) as [
-                      MultiplicationCriterion,
-                      boolean,
-                    ][]
-                  ).map(([criterion, met]) => (
-                    <li
-                      key={criterion}
-                      className={
-                        met
-                          ? "rounded-sm bg-tealSoft px-1.5 py-0.5 font-sans text-xs text-ink2"
-                          : "rounded-sm bg-surface px-1.5 py-0.5 font-sans text-xs text-ink3"
-                      }
-                    >
-                      {met ? "✓" : "○"} {CRITERION_LABEL[criterion]}
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <PipelinePotentialCandidates candidates={type.potentialCandidates} />
+      <PipelineLockedInCandidates candidates={type.lockedInCandidates} />
+      <PipelineMatchedShepherds shepherds={type.matchedShepherds} />
     </li>
   );
 }

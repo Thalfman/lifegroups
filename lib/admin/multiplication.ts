@@ -21,6 +21,7 @@ import type {
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
 } from "@/types/enums";
+import type { MatchedShepherd } from "@/lib/admin/leader-pipeline";
 import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
 
 export type MultiplicationCriterion =
@@ -248,6 +249,11 @@ export type PipelineTypeView = {
   anchorId: string;
   potentialCandidates: PipelinePotentialCandidate[];
   lockedInCandidates: CandidateView[];
+  // ADR 0030 (#758): the apprentices whose group is this type — the supply side
+  // shown under the type, Ready-to-lead first. A pipelined type with no matched
+  // shepherd is still valid (never block), so this can be empty. Populated by
+  // matchShepherdsToType in #758; the seam ships empty here.
+  matchedShepherds: MatchedShepherd[];
 };
 
 // A case-insensitive, trim-normalized match key for a free-text group type, so
@@ -310,6 +316,10 @@ export function buildPipelineView(
       anchorId: segmentAnchorId(label),
       potentialCandidates,
       lockedInCandidates,
+      // #758 populates this via matchShepherdsToType (apprentices threaded in
+      // through a new input arg); the seam ships empty so the supply-side UI
+      // renders cleanly with nothing matched yet.
+      matchedShepherds: [],
     });
   }
 

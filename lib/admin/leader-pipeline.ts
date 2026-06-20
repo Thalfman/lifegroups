@@ -163,3 +163,18 @@ export function apprenticeReadyBy(
   // Lexicographic compare is correct for YYYY-MM-DD ISO dates.
   return expected <= targetIso;
 }
+
+// ADR 0030 (#758): a shepherd (apprentice) matched to a pipelined group type
+// as the supply side under that type — "who could lead the new group of type T."
+// `readyToLead` mirrors isReadyToLead so the UI can surface Ready-to-lead first
+// without re-deriving from the stage. The matcher itself (matchShepherdsToType)
+// is built in #758; this is the shared shape buildPipelineView hangs under each
+// pipelined type.
+export type MatchedShepherd = {
+  id: string;
+  displayName: string;
+  // The apprentice's home group (where they will lead) — shown for context.
+  groupName: string;
+  stage: LeaderReadinessStage;
+  readyToLead: boolean;
+};
