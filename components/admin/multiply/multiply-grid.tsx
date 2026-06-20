@@ -82,7 +82,13 @@ function TypeConfigForm({ row }: { row: MultiplyTypeRow }) {
         </div>
       </div>
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="sm" disabled={pending}>
+        <PButton
+          type="submit"
+          tone="terra"
+          size="sm"
+          disabled={pending}
+          aria-label={`Save ${row.label} configuration`}
+        >
           {pending ? "Saving…" : "Save"}
         </PButton>
         <FormStatus state={state} successText="Saved." />
