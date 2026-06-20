@@ -12,6 +12,10 @@ import {
   fieldInputClassName,
   fieldLabelClassName,
 } from "@/components/admin/forms/field-styles";
+import {
+  segmentAnchorId,
+  segmentShepherdsAnchorId,
+} from "@/lib/admin/multiplication";
 import type { MultiplyTypeRow } from "@/components/admin/multiply/multiply-grid-data";
 
 // Presentational Multiply BY-TYPE list. The old per-cell (Audience × Category)
@@ -147,6 +151,32 @@ export function MultiplyGridView({
                 {row.label}
               </h3>
               <CoverageBadge have={row.have} target={row.target} />
+            </div>
+            {/* #759: deep-link this type down to its Pipeline candidates and its
+                matched shepherds, so the type, the groups multiplying into it,
+                and the people who could lead the new group connect into one
+                story. Both land on the Pipeline tab (where #758 placed the
+                matched shepherds); the shell switches tabs from `?tab=` and the
+                `#seg-…` hash scrolls to the section. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <PLinkButton
+                href={`/admin/multiply?tab=pipeline#${segmentAnchorId(
+                  row.groupType
+                )}`}
+                tone="ghost"
+                size="sm"
+              >
+                View candidates →
+              </PLinkButton>
+              <PLinkButton
+                href={`/admin/multiply?tab=pipeline#${segmentShepherdsAnchorId(
+                  row.groupType
+                )}`}
+                tone="ghost"
+                size="sm"
+              >
+                View shepherds →
+              </PLinkButton>
             </div>
             <TypeConfigForm row={row} />
           </li>

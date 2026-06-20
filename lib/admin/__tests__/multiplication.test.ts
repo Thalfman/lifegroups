@@ -5,6 +5,7 @@ import {
   evaluateReadiness,
   filterSegmentsByYear,
   segmentLabel,
+  segmentShepherdsAnchorId,
   summarizeTargetYears,
   UNTYPED_SEGMENT,
 } from "@/lib/admin/multiplication";
@@ -498,6 +499,20 @@ describe("buildPipelineView (ADR 0030 — type-first Pipeline)", () => {
   it("derives a stable anchor id from the type label (deep-link seam)", () => {
     const [yf] = buildPipelineView(["Young Families"], [], []);
     expect(yf.anchorId).toBe("seg-young-families");
+  });
+
+  // #759: the Readiness cell's shepherds deep-link targets the matched-shepherds
+  // block within the same Pipeline type section. The block's id composes off the
+  // section anchor with a `-shepherds` suffix so the grid link and the block
+  // agree without sharing state.
+  it("derives the shepherds sub-anchor off the section anchor (#759)", () => {
+    const [yf] = buildPipelineView(["Young Families"], [], []);
+    expect(segmentShepherdsAnchorId("Young Families")).toBe(
+      "seg-young-families-shepherds"
+    );
+    expect(segmentShepherdsAnchorId("Young Families")).toBe(
+      `${yf.anchorId}-shepherds`
+    );
   });
 
   // ADR 0030 (#758): the supply side. buildPipelineView feeds the apprentices

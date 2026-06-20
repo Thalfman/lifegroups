@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminSetGroupTypeInPipeline } from "@/app/(protected)/admin/multiply/actions";
 import {
+  segmentShepherdsAnchorId,
   type CandidateView,
   type PipelineTypeView,
 } from "@/lib/admin/multiplication";
@@ -199,7 +200,10 @@ function PipelineTypeSection({
 
       <PipelinePotentialCandidates candidates={type.potentialCandidates} />
       <PipelineLockedInCandidates candidates={type.lockedInCandidates} />
-      <PipelineMatchedShepherds shepherds={type.matchedShepherds} />
+      <PipelineMatchedShepherds
+        shepherds={type.matchedShepherds}
+        anchorId={segmentShepherdsAnchorId(type.type)}
+      />
     </li>
   );
 }

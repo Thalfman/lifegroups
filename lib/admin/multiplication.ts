@@ -112,6 +112,15 @@ export function segmentAnchorId(segment: string): string {
   return `seg-${slug || "uncategorized"}`;
 }
 
+// #759: the matched-shepherds block's anchor within a type's Pipeline section,
+// so a Readiness cell can deep-link straight to the supply side (the apprentices
+// who could lead the new group), not just the candidate groups. Composed off
+// segmentAnchorId so the grid link and the Pipeline block agree on the same id
+// without sharing state.
+export function segmentShepherdsAnchorId(segment: string): string {
+  return `${segmentAnchorId(segment)}-shepherds`;
+}
+
 // The per-candidate facts the planner surface renders: the group identity, the
 // editable planning fields, and the derived readiness. Computed once on the
 // server so the client component stays presentational.
