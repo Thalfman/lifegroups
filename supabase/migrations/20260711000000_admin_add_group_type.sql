@@ -70,6 +70,12 @@ begin
     ) into v_exists;
     if not v_exists then
       v_types := v_types || to_jsonb(v_type);
+      -- Hold the same canonical bound as admin_set_group_types (≤100): a new
+      -- entry that would overflow the list is rejected, so inline adds can't
+      -- create a 101-entry state the Settings editor could never save back.
+      if jsonb_array_length(v_types) > 100 then
+        raise exception 'invalid_input';
+      end if;
       update public.app_settings
          set setting_value = jsonb_build_object('types', v_types)
        where id = v_row_id;

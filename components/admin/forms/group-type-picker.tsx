@@ -94,13 +94,16 @@ export function GroupTypePicker({
       setError(result.errors.join(" "));
       return;
     }
-    // Append to the local option list (case-insensitive) and select it.
-    setOptions((prev) =>
-      prev.some((t) => t.toLowerCase() === trimmed.toLowerCase())
-        ? prev
-        : [...prev, trimmed]
+    // Select the canonical spelling. When the typed name only differs by case
+    // from an existing type, the RPC no-ops and the list is unchanged — so we
+    // must select the EXISTING option (e.g. "Men's"), not the typed casing
+    // ("men's"), or the select reads blank and the hidden field submits an
+    // off-list value. Only a genuinely new name is appended.
+    const existing = options.find(
+      (t) => t.toLowerCase() === trimmed.toLowerCase()
     );
-    setSelected(trimmed);
+    if (!existing) setOptions((prev) => [...prev, trimmed]);
+    setSelected(existing ?? trimmed);
     setAdding(false);
     setNewType("");
   }
@@ -141,6 +144,16 @@ export function GroupTypePicker({
               onChange={(e) => {
                 setNewType(e.target.value);
                 if (error) setError(undefined);
+              }}
+              onKeyDown={(e) => {
+                // This input lives inside the enclosing prospect <form>; without
+                // this, Enter would submit that form (creating the prospect with
+                // the old desired type) instead of adding the new type. Intercept
+                // Enter to run the add instead.
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void onAdd();
+                }
               }}
               className={INPUT}
               placeholder="e.g. Mixed – Young Families"

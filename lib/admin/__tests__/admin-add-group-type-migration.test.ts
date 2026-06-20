@@ -67,6 +67,11 @@ describe("admin_add_group_type migration", () => {
     expect(body).toContain("v_types || to_jsonb(v_type)");
   });
 
+  it("enforces the canonical ≤100-type cap before appending", () => {
+    const body = functionBody(sql, "admin_add_group_type");
+    expect(body).toContain("jsonb_array_length(v_types) > 100");
+  });
+
   it("records the type name (a catalog label) but no PII in the audit row", () => {
     assertAuditContentFree(sql, {
       forbidden: ["p_full_name", "email", "phone"],

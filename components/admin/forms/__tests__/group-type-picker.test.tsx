@@ -115,6 +115,49 @@ describe("GroupTypePicker (#747)", () => {
     expect(screen.queryByLabelText("New group type")).toBeNull();
   });
 
+  it("adds via Enter in the text box (without submitting the parent form)", async () => {
+    const user = userEvent.setup();
+    renderPicker();
+
+    await user.selectOptions(
+      screen.getByLabelText("Desired group type (optional)"),
+      "__lg_add_new_type__"
+    );
+    await user.type(screen.getByLabelText("New group type"), "Seniors{Enter}");
+
+    await waitFor(() => expect(adminAddGroupType).toHaveBeenCalledTimes(1));
+    const fd = adminAddGroupType.mock.calls[0][1] as FormData;
+    expect(fd.get("group_type")).toBe("Seniors");
+  });
+
+  it("selects the canonical existing option on a case-only duplicate add", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPicker();
+
+    await user.selectOptions(
+      screen.getByLabelText("Desired group type (optional)"),
+      "__lg_add_new_type__"
+    );
+    // "men's" differs only by case from the existing "Men's": the RPC no-ops and
+    // the option list must stay unchanged, with the canonical spelling selected.
+    await user.type(screen.getByLabelText("New group type"), "men's");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    const hidden = container.querySelector(
+      'input[type="hidden"][name="desired_group_type"]'
+    ) as HTMLInputElement;
+    await waitFor(() => expect(hidden.value).toBe("Men's"));
+
+    // No duplicate "men's" option was appended.
+    const select = screen.getByLabelText(
+      "Desired group type (optional)"
+    ) as HTMLSelectElement;
+    const options = within(select)
+      .queryAllByRole("option")
+      .map((o) => o.textContent);
+    expect(options).toEqual(["—", "Men's", "Women's", "＋ Add new type…"]);
+  });
+
   it("rejects a blank new type without calling the RPC", async () => {
     const user = userEvent.setup();
     renderPicker();
