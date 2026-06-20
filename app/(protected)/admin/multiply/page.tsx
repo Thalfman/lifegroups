@@ -130,7 +130,11 @@ async function loadMultiplyTabs(): Promise<{ tabs: MultiplyTab[] }> {
               retired from this tab — the lock-in form replaces it. (The planner
               component is kept; the frozen /admin/planning host still renders
               it.) Matched shepherds under each type arrive in #758. */}
-          <PipelineView pipeline={plan.pipeline} groupTypes={plan.groupTypes} />
+          <PipelineView
+            pipeline={plan.pipeline}
+            groupTypes={plan.groupTypes}
+            unpipelinedCandidates={plan.unpipelinedCandidates}
+          />
         </div>
       ),
     },

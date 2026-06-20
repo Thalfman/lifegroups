@@ -39,7 +39,11 @@ export function PipelineLockedInCandidates({
   );
 }
 
-function LockedInCandidateRow({ candidate: c }: { candidate: CandidateView }) {
+export function LockedInCandidateRow({
+  candidate: c,
+}: {
+  candidate: CandidateView;
+}) {
   const [error, setError] = useState<string | undefined>(undefined);
   const [pending, startTransition] = useTransition();
 
@@ -74,6 +78,13 @@ function LockedInCandidateRow({ candidate: c }: { candidate: CandidateView }) {
             tracked fact, not a missing field. */}
         <span className="rounded-sm bg-surface px-1.5 py-0.5 font-sans text-xs text-ink2">
           {c.targetYear != null ? c.targetYear : "Year TBD"}
+        </span>
+        {/* ADR 0030 keeps the roster count visible on the candidate summary
+            after the member-count input was dropped from the form. "(entered)"
+            marks a manually-entered headcount vs. the live roster count. */}
+        <span className="font-sans text-xs text-ink3">
+          {c.memberCount} members
+          {c.manualMemberCount != null ? " (entered)" : ""}
         </span>
         <span className="font-sans text-xs text-ink3">
           {c.readiness.metCount}/{c.readiness.totalCount} ready

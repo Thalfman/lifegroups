@@ -15,7 +15,7 @@ import {
 } from "@/components/admin/launch-planning/launch-planning-data";
 import {
   buildPipelineView,
-  UNTYPED_SEGMENT,
+  type CandidateView,
   type PipelineTypeView,
 } from "@/lib/admin/multiplication";
 import type { ShepherdMatchInput } from "@/lib/admin/leader-pipeline";
@@ -42,6 +42,12 @@ export type MultiplyPlanData = MultiplicationView & {
   // saved candidate) and its locked-in candidates. Empty when nothing is
   // pipelined or a blocking read failed.
   pipeline: PipelineTypeView[];
+  // Saved (locked-in) candidates whose type is NOT explicitly pipelined —
+  // including Untyped. The type-first Pipeline only renders pipelined types, and
+  // the legacy planner that used to surface every saved candidate is retired, so
+  // these are shown in a dedicated fallback section to keep them visible without
+  // treating "has a candidate" as deliberate pipeline intent.
+  unpipelinedCandidates: CandidateView[];
 };
 
 export type MultiplyPlanReads = {
@@ -106,8 +112,11 @@ export async function buildMultiplyPlanData(
   const error = batch.errors.candidates ?? batch.errors.groupRefs ?? null;
 
   // The pipeline section degrades gracefully (empty) independent of the blocking
-  // reads — suppress a derived value rather than report a false state.
-  const configPipelinedTypes = (batch.results.configs.data ?? [])
+  // reads — suppress a derived value rather than report a false state. A
+  // pipelined type is an EXPLICIT intent (the in_pipeline flag), never inferred
+  // from a candidate's presence — so the Add picker, Remove, and potential
+  // auto-listing all track deliberate intent only.
+  const pipelinedTypes = (batch.results.configs.data ?? [])
     .filter((c) => c.in_pipeline)
     .map((c) => c.group_type);
   const groupTypes = batch.results.types.data ?? [];
@@ -116,9 +125,10 @@ export async function buildMultiplyPlanData(
     return {
       ...EMPTY_MULTIPLY_PLAN_VIEW,
       error,
-      pipelinedTypes: configPipelinedTypes,
+      pipelinedTypes,
       groupTypes,
       pipeline: [],
+      unpipelinedCandidates: [],
     };
 
   const view = buildMultiplicationView(
@@ -126,26 +136,6 @@ export async function buildMultiplyPlanData(
     batch.results.groupRefs.data ?? [],
     batch.results.apprenticeRefs.data ?? []
   );
-
-  // A type that already has a saved (locked-in) candidate must stay visible even
-  // when its `group_type_configs.in_pipeline` flag is still false/default: the
-  // flag defaults false and is not backfilled from existing candidates, and the
-  // legacy planner that used to surface every saved candidate is now retired from
-  // this tab. So union the explicitly-pipelined types with the types of active
-  // candidates, deduped case-insensitively (buildPipelineView also dedupes, but
-  // we keep the returned list clean). Untyped is excluded — a pipelined type is
-  // always concrete.
-  const candidateTypes = view.segments
-    .filter((s) => s.segment !== UNTYPED_SEGMENT && s.candidates.length > 0)
-    .map((s) => s.segment);
-  const seenTypeKeys = new Set<string>();
-  const pipelinedTypes: string[] = [];
-  for (const type of [...configPipelinedTypes, ...candidateTypes]) {
-    const key = type.trim().toLowerCase();
-    if (!key || seenTypeKeys.has(key)) continue;
-    seenTypeKeys.add(key);
-    pipelinedTypes.push(type);
-  }
   // ADR 0030 (#758): the supply side. Each active apprentice's home-group type is
   // joined from the already-loaded group refs (the picker refs carry id /
   // group_id / display_name / readiness_stage; the group refs carry name +
@@ -172,13 +162,32 @@ export async function buildMultiplyPlanData(
   // flattened out of their segments. buildPipelineView partitions all three —
   // potential candidates, locked-in candidates, and matched shepherds — onto the
   // pipelined types.
+  const lockedInCandidates = view.segments.flatMap((s) => s.candidates);
   const pipeline = buildPipelineView(
     pipelinedTypes,
     view.groupOptions,
-    view.segments.flatMap((s) => s.candidates),
+    lockedInCandidates,
     apprenticeMatchInputs
   );
-  return { ...view, error: null, pipelinedTypes, groupTypes, pipeline };
+  // The fallback list: saved candidates whose type isn't explicitly pipelined
+  // (including Untyped) have no type section above, so surface them separately so
+  // no locked-in plan disappears now that the planner is gone. Matching the same
+  // case-insensitive type key buildPipelineView uses; Untyped candidates never
+  // match a pipelined (always concrete) type, so they always land here.
+  const pipelinedKeys = new Set(
+    pipelinedTypes.map((t) => t.trim().toLowerCase())
+  );
+  const unpipelinedCandidates = lockedInCandidates.filter(
+    (c) => !pipelinedKeys.has((c.segment ?? "").trim().toLowerCase())
+  );
+  return {
+    ...view,
+    error: null,
+    pipelinedTypes,
+    groupTypes,
+    pipeline,
+    unpipelinedCandidates,
+  };
 }
 
 export async function loadMultiplyPlanData(): Promise<MultiplyPlanData> {
@@ -190,6 +199,7 @@ export async function loadMultiplyPlanData(): Promise<MultiplyPlanData> {
       pipelinedTypes: [],
       groupTypes: [],
       pipeline: [],
+      unpipelinedCandidates: [],
     };
   }
   return buildMultiplyPlanData(supabaseMultiplyPlanReads(client));

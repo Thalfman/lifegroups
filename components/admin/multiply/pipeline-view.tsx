@@ -3,7 +3,10 @@
 import { useState, useTransition } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminSetGroupTypeInPipeline } from "@/app/(protected)/admin/multiply/actions";
-import { type PipelineTypeView } from "@/lib/admin/multiplication";
+import {
+  type CandidateView,
+  type PipelineTypeView,
+} from "@/lib/admin/multiplication";
 import {
   fieldLabelClassName as LABEL,
   fieldInputBaseClassName as INPUT,
@@ -12,6 +15,7 @@ import {
 import { PipelinePotentialCandidates } from "@/components/admin/multiply/pipeline-potential-candidates";
 import { PipelineLockedInCandidates } from "@/components/admin/multiply/pipeline-locked-in-candidates";
 import { PipelineMatchedShepherds } from "@/components/admin/multiply/pipeline-matched-shepherds";
+import { PipelineUnpipelinedCandidates } from "@/components/admin/multiply/pipeline-unpipelined-candidates";
 
 // Multiply Pipeline (ADR 0030, slices #755 + #756): the type-first Pipeline. The
 // admin pipelines a group type — recording the intent to launch another of it —
@@ -27,9 +31,13 @@ import { PipelineMatchedShepherds } from "@/components/admin/multiply/pipeline-m
 export function PipelineView({
   pipeline,
   groupTypes,
+  unpipelinedCandidates = [],
 }: {
   pipeline: readonly PipelineTypeView[];
   groupTypes: readonly string[];
+  // Saved candidates whose type isn't pipelined (incl. Untyped) — shown in a
+  // fallback section so retiring the planner never hides a saved plan.
+  unpipelinedCandidates?: readonly CandidateView[];
 }) {
   const [selected, setSelected] = useState("");
   const [error, setError] = useState<string | undefined>(undefined);
@@ -58,83 +66,87 @@ export function PipelineView({
   }
 
   return (
-    <section
-      aria-labelledby="pipeline-intent-heading"
-      className="grid gap-3 rounded-md border border-line bg-bg p-4"
-    >
-      <div className="grid gap-1">
-        <h3
-          id="pipeline-intent-heading"
-          className="m-0 font-sans text-sm font-semibold text-ink"
-        >
-          Pipelined types
-        </h3>
-        <p className="m-0 font-sans text-sm text-ink2">
-          Record the intent to launch another group of a type — even before a
-          specific group is the one multiplying. The active groups of that type
-          appear below as potential candidates.
-        </p>
-      </div>
-
-      {pipeline.length === 0 ? (
-        <p className="m-0 font-sans text-sm text-ink3">
-          No types are in the pipeline yet. Add one below to start planning by
-          type.
-        </p>
-      ) : (
-        <ul className="m-0 grid list-none gap-3 p-0">
-          {pipeline.map((type) => (
-            <PipelineTypeSection
-              key={type.type}
-              type={type}
-              pending={pending}
-              onRemove={() => setInPipeline(type.type, false)}
-            />
-          ))}
-        </ul>
-      )}
-
-      <div className="grid gap-1.5">
-        <label htmlFor="pipeline-add-type" className={LABEL}>
-          Add a type to the pipeline
-        </label>
-        <div className="flex items-start gap-2">
-          <select
-            id="pipeline-add-type"
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-            className={INPUT}
-            disabled={available.length === 0}
+    <div className="grid gap-4">
+      <section
+        aria-labelledby="pipeline-intent-heading"
+        className="grid gap-3 rounded-md border border-line bg-bg p-4"
+      >
+        <div className="grid gap-1">
+          <h3
+            id="pipeline-intent-heading"
+            className="m-0 font-sans text-sm font-semibold text-ink"
           >
-            <option value="">
-              {available.length === 0
-                ? "All types are pipelined"
-                : "Select a type…"}
-            </option>
-            {available.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-          <PButton
-            type="button"
-            tone="terra"
-            size="md"
-            onClick={() => selected && setInPipeline(selected, true)}
-            disabled={pending || selected.length === 0}
-          >
-            {pending ? "Saving…" : "Add"}
-          </PButton>
+            Pipelined types
+          </h3>
+          <p className="m-0 font-sans text-sm text-ink2">
+            Record the intent to launch another group of a type — even before a
+            specific group is the one multiplying. The active groups of that
+            type appear below as potential candidates.
+          </p>
         </div>
-      </div>
 
-      {error ? (
-        <p role="alert" className={ERROR}>
-          {error}
-        </p>
-      ) : null}
-    </section>
+        {pipeline.length === 0 ? (
+          <p className="m-0 font-sans text-sm text-ink3">
+            No types are in the pipeline yet. Add one below to start planning by
+            type.
+          </p>
+        ) : (
+          <ul className="m-0 grid list-none gap-3 p-0">
+            {pipeline.map((type) => (
+              <PipelineTypeSection
+                key={type.type}
+                type={type}
+                pending={pending}
+                onRemove={() => setInPipeline(type.type, false)}
+              />
+            ))}
+          </ul>
+        )}
+
+        <div className="grid gap-1.5">
+          <label htmlFor="pipeline-add-type" className={LABEL}>
+            Add a type to the pipeline
+          </label>
+          <div className="flex items-start gap-2">
+            <select
+              id="pipeline-add-type"
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              className={INPUT}
+              disabled={available.length === 0}
+            >
+              <option value="">
+                {available.length === 0
+                  ? "All types are pipelined"
+                  : "Select a type…"}
+              </option>
+              {available.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+            <PButton
+              type="button"
+              tone="terra"
+              size="md"
+              onClick={() => selected && setInPipeline(selected, true)}
+              disabled={pending || selected.length === 0}
+            >
+              {pending ? "Saving…" : "Add"}
+            </PButton>
+          </div>
+        </div>
+
+        {error ? (
+          <p role="alert" className={ERROR}>
+            {error}
+          </p>
+        ) : null}
+      </section>
+
+      <PipelineUnpipelinedCandidates candidates={unpipelinedCandidates} />
+    </div>
   );
 }
 

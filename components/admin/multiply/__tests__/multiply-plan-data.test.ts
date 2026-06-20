@@ -102,6 +102,7 @@ describe("buildMultiplyPlanData", () => {
       pipelinedTypes: [],
       groupTypes: [],
       pipeline: [],
+      unpipelinedCandidates: [],
     });
   });
 
@@ -118,6 +119,7 @@ describe("buildMultiplyPlanData", () => {
       pipelinedTypes: [],
       groupTypes: [],
       pipeline: [],
+      unpipelinedCandidates: [],
     });
   });
 
@@ -166,10 +168,11 @@ describe("buildMultiplyPlanData", () => {
 
   // Regression guard (Codex P1): the in_pipeline flag defaults false and is not
   // backfilled, and the planner that used to show every saved candidate is
-  // retired from this tab. A type with an existing locked-in candidate must stay
-  // visible even when it is not explicitly pipelined — otherwise saved data
-  // silently disappears from the Multiply tab.
-  it("keeps a type with saved candidates visible even when it is not explicitly pipelined", async () => {
+  // retired from this tab. A saved candidate whose type is NOT explicitly
+  // pipelined must stay visible — in the fallback list, NOT by inferring pipeline
+  // intent from the candidate (which would auto-list the type's other groups and
+  // hide it from the Add picker).
+  it("surfaces a saved candidate of a non-pipelined type in the fallback list, not as pipeline intent", async () => {
     const data = await buildMultiplyPlanData(
       emptyReads({
         fetchMultiplicationCandidates: async () =>
@@ -190,12 +193,71 @@ describe("buildMultiplyPlanData", () => {
     );
 
     expect(data.error).toBeNull();
-    // "Women" surfaces purely because it has a saved candidate.
-    expect(data.pipelinedTypes).toContain("Women");
-    expect(data.pipeline.map((t) => t.type)).toEqual(["Women"]);
-    expect(data.pipeline[0].lockedInCandidates.map((c) => c.groupName)).toEqual(
-      ["Hope Circle"]
+    // "Women" is NOT treated as a pipeline intent…
+    expect(data.pipelinedTypes).toEqual([]);
+    expect(data.pipeline).toEqual([]);
+    // …but its saved candidate is still visible in the fallback list.
+    expect(data.unpipelinedCandidates.map((c) => c.groupName)).toEqual([
+      "Hope Circle",
+    ]);
+  });
+
+  // Codex P1 (Untyped): a saved candidate on a group with no type can never be a
+  // pipelined (always-concrete) type, so it would vanish entirely once the
+  // planner is gone — the fallback list keeps it visible.
+  it("keeps an Untyped saved candidate visible in the fallback list", async () => {
+    const data = await buildMultiplyPlanData(
+      emptyReads({
+        fetchMultiplicationCandidates: async () =>
+          ok([candidateEntry(null as never, "Mystery Group")]),
+        fetchGroupRefs: async () =>
+          ok([
+            {
+              id: "gc1",
+              name: "Mystery Group",
+              lifecycle_status: "active",
+              group_type: null,
+            },
+          ] as never),
+        fetchGroupTypeConfigs: async () => ok([]),
+        fetchGroupTypes: async () => ok([]),
+      })
     );
+
+    expect(data.error).toBeNull();
+    expect(data.pipeline).toEqual([]);
+    expect(data.unpipelinedCandidates.map((c) => c.groupName)).toEqual([
+      "Mystery Group",
+    ]);
+  });
+
+  // A candidate whose type IS pipelined renders in that type's section and must
+  // NOT also appear in the fallback list (no double-render).
+  it("does not duplicate a pipelined type's candidate into the fallback list", async () => {
+    const data = await buildMultiplyPlanData(
+      emptyReads({
+        fetchMultiplicationCandidates: async () =>
+          ok([candidateEntry("Young Families", "Smiths")]),
+        fetchGroupRefs: async () =>
+          ok([
+            {
+              id: "gc1",
+              name: "Smiths",
+              lifecycle_status: "active",
+              group_type: "Young Families",
+            },
+          ] as never),
+        fetchGroupTypeConfigs: async () => ok([config("Young Families", true)]),
+        fetchGroupTypes: async () => ok(["Young Families"]),
+      })
+    );
+
+    expect(data.error).toBeNull();
+    expect(data.pipeline.map((t) => t.type)).toEqual(["Young Families"]);
+    expect(data.pipeline[0].lockedInCandidates.map((c) => c.groupName)).toEqual(
+      ["Smiths"]
+    );
+    expect(data.unpipelinedCandidates).toEqual([]);
   });
 
   // ADR 0030 Pipeline (minimal): the in_pipeline configs surface as
