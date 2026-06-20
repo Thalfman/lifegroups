@@ -21,6 +21,7 @@ function emptyReads(overrides: Partial<PlanReads> = {}): PlanReads {
     fetchProspects: async () => ok([]),
     fetchPlanGroupOptions: async () => ok([]),
     fetchDueFollowUps: async () => ok([]),
+    fetchGroupTypes: async () => ok([]),
     ...overrides,
   };
 }
@@ -38,8 +39,7 @@ const PROSPECT = {
   created_at: "2026-06-01T00:00:00Z",
   next_step: null,
   additional_note: null,
-  desired_audience_category: null,
-  desired_category_id: null,
+  desired_group_type: "Men's",
 } as never;
 
 const GROUPS = [
@@ -79,6 +79,36 @@ describe("buildPlanData", () => {
     expect(data.groupNamesById.g3).toBe("Closed");
     // The due read is filtered in the DB against the provided church-today.
     expect(calls).toEqual(["2026-06-09"]);
+    // #746: the prospect's desired type flows through the board read.
+    expect(interested?.prospects[0]?.desired_group_type).toBe("Men's");
+  });
+
+  // #746: the admin-managed group_types list loads into the page data so the
+  // create form's desired-type dropdown has options.
+  it("loads the group_types list into the page data", async () => {
+    const data = await buildPlanData(
+      emptyReads({
+        fetchGroupTypes: async () => ok(["Men's", "Women's", "Mixed"]),
+      }),
+      TODAY
+    );
+    expect(data.groupTypes).toEqual(["Men's", "Women's", "Mixed"]);
+  });
+
+  it("degrades the group_types list to empty on a failed read, without blocking the board", async () => {
+    const data = await buildPlanData(
+      emptyReads({
+        fetchProspects: async () => ok([PROSPECT]),
+        fetchGroupTypes: async () => fail("types boom"),
+      }),
+      TODAY
+    );
+    // The picker just offers no options; the board still renders and the
+    // section errors (prospects / groups) are unaffected by the types failure.
+    expect(data.groupTypes).toEqual([]);
+    expect(data.errors.prospects).toBeNull();
+    expect(data.errors.groups).toBeNull();
+    expect(data.board.columns[0].prospects).toHaveLength(1);
   });
 
   it("degrades the board to empty columns when the prospects read fails, keeping groups", async () => {

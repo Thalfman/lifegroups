@@ -84,6 +84,13 @@ export function ProspectCard({
             Group: {groupName}
           </div>
         ) : null}
+        {/* #746: the optional desired Group type. Unset renders nothing (the
+            card reads as not-set rather than a wrong value). */}
+        {prospect.desired_group_type ? (
+          <div className="mt-0.5 font-sans text-sm text-ink3">
+            Wants: {prospect.desired_group_type}
+          </div>
+        ) : null}
       </div>
 
       {legalTargets.length > 0 ? (

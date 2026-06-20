@@ -37,7 +37,7 @@ export default adminPage({
       <PageBody>
         <div className="grid gap-6">
           <section className="rounded-lg border border-line bg-surface p-card">
-            <ProspectCreateForm />
+            <ProspectCreateForm groupTypes={data.groupTypes} />
           </section>
 
           {error ? (

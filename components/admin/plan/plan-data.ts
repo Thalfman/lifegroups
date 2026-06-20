@@ -9,6 +9,7 @@ import {
   fetchProspects,
   type ProspectBoard,
 } from "@/lib/supabase/prospect-reads";
+import { fetchGroupTypesCached } from "@/lib/supabase/cached-config";
 import { type DueFollowUp } from "@/lib/admin/prospect-next-step";
 import { churchTodayIso } from "@/lib/shared/church-time";
 
@@ -30,6 +31,10 @@ export type PlanData = {
   // #379: armed follow-ups that have come due (soonest-due first), surfaced as
   // a "due tasks" list above the board.
   dueTasks: DueFollowUp[];
+  // #746: the admin-managed group_types list, for the create form's desired-type
+  // dropdown. Degrades to [] on a failed read — the picker just offers no options,
+  // it never blocks the board.
+  groupTypes: string[];
   errors: {
     prospects: string | null;
     groups: string | null;
@@ -41,6 +46,7 @@ export const EMPTY_PLAN_DATA: PlanData = {
   activeGroups: [],
   groupNamesById: {},
   dueTasks: [],
+  groupTypes: [],
   errors: {
     prospects: "The database is not configured in this environment.",
     groups: "The database is not configured in this environment.",
@@ -53,6 +59,7 @@ export type PlanReads = {
   fetchProspects: OmitClient<typeof fetchProspects>;
   fetchPlanGroupOptions: OmitClient<typeof fetchPlanGroupOptions>;
   fetchDueFollowUps: OmitClient<typeof fetchDueFollowUps>;
+  fetchGroupTypes: OmitClient<typeof fetchGroupTypesCached>;
 };
 
 // Production adapter: binds the live Supabase client to every read this surface
@@ -62,6 +69,7 @@ export function supabasePlanReads(client: AppSupabaseClient): PlanReads {
     fetchProspects,
     fetchPlanGroupOptions,
     fetchDueFollowUps,
+    fetchGroupTypes: fetchGroupTypesCached,
   });
 }
 
@@ -81,10 +89,13 @@ export async function buildPlanData(
     prospects: () => reads.fetchProspects(),
     groups: () => reads.fetchPlanGroupOptions(),
     dueTasks: () => reads.fetchDueFollowUps(options.todayIso),
+    groupTypes: () => reads.fetchGroupTypes(),
   });
 
   const prospects = batch.results.prospects.data ?? [];
   const groups = batch.results.groups.data ?? [];
+  // #746: a failed types read degrades to no options (never blocks the board).
+  const groupTypes = batch.results.groupTypes.data ?? [];
 
   const groupNamesById: Record<string, string> = {};
   for (const g of groups) groupNamesById[g.id] = g.name;
@@ -104,6 +115,7 @@ export async function buildPlanData(
     activeGroups,
     groupNamesById,
     dueTasks,
+    groupTypes,
     // Per-section error precedence as data: the due-tasks read folds into the
     // prospects key (both feed the board column), the rest map one-to-one.
     errors: {

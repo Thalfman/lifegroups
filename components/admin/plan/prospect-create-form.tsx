@@ -16,7 +16,14 @@ import {
 
 // Add a Prospect to the funnel (acceptance #2). A new Prospect always lands in
 // Interested with no group — the state machine moves them onward from there.
-export function ProspectCreateForm() {
+// `groupTypes` is the admin-managed list backing the optional desired-type
+// dropdown (#746); an empty list (e.g. a degraded types read) just renders the
+// "—" no-selection option alone.
+export function ProspectCreateForm({
+  groupTypes = [],
+}: {
+  groupTypes?: readonly string[];
+}) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateProspect,
     { resetOnSuccess: true }
@@ -40,15 +47,11 @@ export function ProspectCreateForm() {
   // by the board's revalidation.
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // useActionForm resets the <form> element on success, but these two selects
-  // are controlled by React state, so reset them too. Otherwise the next
-  // prospect (entered with only a name) would resubmit the previous prospect's
-  // desired cell and be miscounted into it. Depends on `state` (a fresh object
-  // each submit) so a back-to-back success clears again, mirroring the group
-  // forms' reset effect.
-  // Reset the controlled selects and raise the success flag on a fresh
-  // successful create. Derived during render rather than in an effect to avoid
-  // the cascading-render smell.
+  // useActionForm resets the <form> element on success; the desired-type select
+  // is uncontrolled, so the native reset clears it. Only the controlled Full name
+  // field needs explicit clearing here. Derived during render via useValueChange
+  // (a fresh `state` object each submit) rather than in an effect to avoid the
+  // cascading-render smell; this also raises the success flag.
   useValueChange(state, (next) => {
     if (!next?.ok) return;
     setFullName("");
@@ -138,6 +141,26 @@ export function ProspectCreateForm() {
             className={INPUT}
             placeholder="(555) 555-0100"
           />
+        </div>
+        <div>
+          <label htmlFor="prospect-desired_group_type" className={LABEL}>
+            Desired group type (optional)
+          </label>
+          {/* Uncontrolled: the native form reset clears it on a successful add.
+              The list is the admin-managed group_types; "—" is no selection. */}
+          <select
+            id="prospect-desired_group_type"
+            name="desired_group_type"
+            defaultValue=""
+            className={INPUT}
+          >
+            <option value="">—</option>
+            {groupTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <PButton
