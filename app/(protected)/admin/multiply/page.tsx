@@ -16,6 +16,7 @@ import {
   MultiplyShell,
   type MultiplyTab,
 } from "@/components/admin/multiply/multiply-shell";
+import { PipelineIntent } from "@/components/admin/multiply/pipeline-intent";
 
 // Multiply area (ADR 0016 / 0019 / 0022 / 0030). One tabbed surface that unifies
 // the church's three faces of multiplication tracking, mirroring the Care tab
@@ -121,15 +122,24 @@ async function loadMultiplyTabs(): Promise<{ tabs: MultiplyTab[] }> {
       panel: plan.error ? (
         errorNote(`The multiplication plan could not be loaded: ${plan.error}`)
       ) : (
-        <MultiplicationPlanner
-          segments={plan.segments}
-          groupOptions={plan.groupOptions}
-          apprenticesByGroup={plan.apprenticesByGroup}
-          // Suggestions are derived from the (frozen) capacity board; the
-          // Pipeline tab doesn't load it, so none are surfaced here for now
-          // (ADR 0022).
-          suggestions={[]}
-        />
+        <div className="grid gap-4">
+          {/* ADR 0030: the type-level Pipeline intent (add/remove/list). The
+              candidates that nest under each pipelined type are later slices;
+              today's per-group planner renders below it. */}
+          <PipelineIntent
+            pipelinedTypes={plan.pipelinedTypes}
+            groupTypes={plan.groupTypes}
+          />
+          <MultiplicationPlanner
+            segments={plan.segments}
+            groupOptions={plan.groupOptions}
+            apprenticesByGroup={plan.apprenticesByGroup}
+            // Suggestions are derived from the (frozen) capacity board; the
+            // Pipeline tab doesn't load it, so none are surfaced here for now
+            // (ADR 0022).
+            suggestions={[]}
+          />
+        </div>
       ),
     },
     {

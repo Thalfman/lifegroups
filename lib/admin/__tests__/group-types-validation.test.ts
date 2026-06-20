@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   validateSetGroupTypesPayload,
   validateSetGroupTypeConfigPayload,
+  validateAddGroupTypePayload,
+  validateSetGroupTypeInPipelinePayload,
 } from "@/lib/admin/validation/group-types";
 
 // The Settings group-type list + the Multiply per-type config validators. Both
@@ -79,5 +81,69 @@ describe("validateSetGroupTypeConfigPayload", () => {
     const result = validateSetGroupTypeConfigPayload({ group_type: "A" });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value.targetCount).toBe(0);
+  });
+});
+
+describe("validateAddGroupTypePayload (#747)", () => {
+  it("trims and accepts a single type name", () => {
+    const result = validateAddGroupTypePayload({
+      group_type: "  Young Families ",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.groupType).toBe("Young Families");
+  });
+
+  it("rejects a blank / whitespace-only name", () => {
+    expect(validateAddGroupTypePayload({ group_type: "   " }).ok).toBe(false);
+    expect(validateAddGroupTypePayload({ group_type: "" }).ok).toBe(false);
+    expect(validateAddGroupTypePayload({}).ok).toBe(false);
+  });
+
+  it("rejects a name longer than 80 chars", () => {
+    expect(validateAddGroupTypePayload({ group_type: "x".repeat(81) }).ok).toBe(
+      false
+    );
+  });
+});
+
+describe("validateSetGroupTypeInPipelinePayload (#755)", () => {
+  it("accepts a known type with a true/false flag (string-tolerant)", () => {
+    const on = validateSetGroupTypeInPipelinePayload({
+      group_type: " Women ",
+      in_pipeline: "true",
+    });
+    expect(on.ok).toBe(true);
+    if (on.ok) {
+      expect(on.value.groupType).toBe("Women");
+      expect(on.value.inPipeline).toBe(true);
+    }
+
+    const off = validateSetGroupTypeInPipelinePayload({
+      group_type: "Women",
+      in_pipeline: "false",
+    });
+    expect(off.ok).toBe(true);
+    if (off.ok) expect(off.value.inPipeline).toBe(false);
+  });
+
+  it("defaults a missing flag to false", () => {
+    const result = validateSetGroupTypeInPipelinePayload({ group_type: "Men" });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.inPipeline).toBe(false);
+  });
+
+  it("rejects an empty/over-long group type", () => {
+    expect(
+      validateSetGroupTypeInPipelinePayload({
+        group_type: "",
+        in_pipeline: "true",
+      }).ok
+    ).toBe(false);
+    expect(
+      validateSetGroupTypeInPipelinePayload({
+        group_type: "x".repeat(81),
+        in_pipeline: "true",
+      }).ok
+    ).toBe(false);
   });
 });

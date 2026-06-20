@@ -674,6 +674,9 @@ export type AdminUuidRpcArgs = {
   // Settings > Group types: replace the canonical free-text type-name list
   // (app_settings keyed row). p_types is the validated, trimmed, deduped list.
   admin_set_group_types: { p_types: unknown[] };
+  // Intake forms (e.g. the Prospect desired-type picker): idempotently append a
+  // single new free-text type to the canonical list, preserving order.
+  admin_add_group_type: { p_group_type: string };
   // Multiply: upsert one group type's config (target group count + an optional
   // readiness-rule override; null/empty rule = inherit the global rule), keyed
   // on the free-text type name.
@@ -681,6 +684,12 @@ export type AdminUuidRpcArgs = {
     p_group_type: string;
     p_target_count: number;
     p_readiness_rule: Record<string, unknown> | null;
+  };
+  // Multiply Pipeline (ADR 0030): set/clear one group type's pipeline intent,
+  // keyed on the free-text type name (upserts the config row if absent).
+  admin_set_group_type_in_pipeline: {
+    p_group_type: string;
+    p_in_pipeline: boolean;
   };
 };
 

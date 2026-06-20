@@ -5,6 +5,8 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchApprenticePickerRefs,
   fetchGroupRefs,
+  fetchGroupTypes,
+  fetchGroupTypeConfigs,
   fetchMultiplicationCandidatesForAdmin,
 } from "@/lib/supabase/read-models";
 import {
@@ -22,7 +24,14 @@ import {
 // candidate write actions still live in the (off-nav) launch-planning route and
 // resolve by direct import; they revalidate /admin/multiply so this tab refreshes.
 
-export type MultiplyPlanData = MultiplicationView & { error: string | null };
+export type MultiplyPlanData = MultiplicationView & {
+  error: string | null;
+  // ADR 0030 Pipeline (minimal): the group types the admin has pipelined
+  // (in_pipeline=true), and the full master list (for the "add to pipeline"
+  // control). Both degrade to [] on a failed read without blocking the planner.
+  pipelinedTypes: string[];
+  groupTypes: string[];
+};
 
 export type MultiplyPlanReads = {
   fetchMultiplicationCandidates: OmitClient<
@@ -34,6 +43,10 @@ export type MultiplyPlanReads = {
   // (group admin_notes, apprentice notes) into this always-on read path.
   fetchGroupRefs: OmitClient<typeof fetchGroupRefs>;
   fetchApprenticeRefs: OmitClient<typeof fetchApprenticePickerRefs>;
+  // Pipeline intent (additive, non-blocking): the per-type configs carry the
+  // in_pipeline flag; the master list feeds the add-to-pipeline picker.
+  fetchGroupTypeConfigs: OmitClient<typeof fetchGroupTypeConfigs>;
+  fetchGroupTypes: OmitClient<typeof fetchGroupTypes>;
 };
 
 export function supabaseMultiplyPlanReads(
@@ -43,6 +56,8 @@ export function supabaseMultiplyPlanReads(
     fetchMultiplicationCandidates: fetchMultiplicationCandidatesForAdmin,
     fetchGroupRefs,
     fetchApprenticeRefs: fetchApprenticePickerRefs,
+    fetchGroupTypeConfigs,
+    fetchGroupTypes,
   });
 }
 
@@ -65,6 +80,10 @@ export async function buildMultiplyPlanData(
     candidates: () => reads.fetchMultiplicationCandidates(),
     groupRefs: () => reads.fetchGroupRefs(),
     apprenticeRefs: () => reads.fetchApprenticeRefs(),
+    // Additive Pipeline reads: a failure degrades to an empty pipeline section,
+    // never blocks the planner (so they are excluded from `error` precedence).
+    configs: () => reads.fetchGroupTypeConfigs(),
+    types: () => reads.fetchGroupTypes(),
   });
 
   // Error precedence as data: the three source reads block the planner in order.
@@ -74,14 +93,22 @@ export async function buildMultiplyPlanData(
     batch.errors.apprenticeRefs ??
     null;
 
-  if (error) return { ...EMPTY_MULTIPLY_PLAN_VIEW, error };
+  // The pipeline section degrades gracefully (empty) independent of the blocking
+  // reads — suppress a derived value rather than report a false state.
+  const pipelinedTypes = (batch.results.configs.data ?? [])
+    .filter((c) => c.in_pipeline)
+    .map((c) => c.group_type);
+  const groupTypes = batch.results.types.data ?? [];
+
+  if (error)
+    return { ...EMPTY_MULTIPLY_PLAN_VIEW, error, pipelinedTypes, groupTypes };
 
   const view = buildMultiplicationView(
     batch.results.candidates.data ?? [],
     batch.results.groupRefs.data ?? [],
     batch.results.apprenticeRefs.data ?? []
   );
-  return { ...view, error: null };
+  return { ...view, error: null, pipelinedTypes, groupTypes };
 }
 
 export async function loadMultiplyPlanData(): Promise<MultiplyPlanData> {
@@ -90,6 +117,8 @@ export async function loadMultiplyPlanData(): Promise<MultiplyPlanData> {
     return {
       ...EMPTY_MULTIPLY_PLAN_VIEW,
       error: "Database is not configured in this environment.",
+      pipelinedTypes: [],
+      groupTypes: [],
     };
   }
   return buildMultiplyPlanData(supabaseMultiplyPlanReads(client));

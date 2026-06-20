@@ -713,6 +713,10 @@ export interface GroupTypeConfigsRow {
   target_count: number;
   // null = inherit the global multiplication_readiness_rule.
   readiness_rule: Record<string, unknown> | null;
+  // ADR 0030: the type-level Multiply Pipeline intent. true = the admin has
+  // pipelined this group type (intends to launch another of it). Additive,
+  // defaults false; flipped via admin_set_group_type_in_pipeline.
+  in_pipeline: boolean;
   created_by: UUID | null;
   updated_by: UUID | null;
   created_at: Timestamp;
@@ -1201,6 +1205,7 @@ export interface Database {
           | "id"
           | "target_count"
           | "readiness_rule"
+          | "in_pipeline"
           | "created_by"
           | "updated_by"
           | "created_at"

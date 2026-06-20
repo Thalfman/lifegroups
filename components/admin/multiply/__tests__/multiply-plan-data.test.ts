@@ -24,9 +24,19 @@ function emptyReads(
     fetchMultiplicationCandidates: async () => ok([]),
     fetchGroupRefs: async () => ok([]),
     fetchApprenticeRefs: async () => ok([]),
+    fetchGroupTypeConfigs: async () => ok([]),
+    fetchGroupTypes: async () => ok([]),
     ...overrides,
   };
 }
+
+const config = (group_type: string, in_pipeline: boolean) =>
+  ({
+    group_type,
+    target_count: 0,
+    readiness_rule: null,
+    in_pipeline,
+  }) as never;
 
 const GROUP = {
   id: "g1",
@@ -65,6 +75,8 @@ describe("buildMultiplyPlanData", () => {
     expect(data).toEqual({
       ...EMPTY_MULTIPLY_PLAN_VIEW,
       error: "candidates boom",
+      pipelinedTypes: [],
+      groupTypes: [],
     });
   });
 
@@ -76,7 +88,12 @@ describe("buildMultiplyPlanData", () => {
       })
     );
 
-    expect(data).toEqual({ ...EMPTY_MULTIPLY_PLAN_VIEW, error: "refs boom" });
+    expect(data).toEqual({
+      ...EMPTY_MULTIPLY_PLAN_VIEW,
+      error: "refs boom",
+      pipelinedTypes: [],
+      groupTypes: [],
+    });
   });
 
   it("orders the blocking precedence as data: candidates before apprentice refs", async () => {
@@ -88,5 +105,43 @@ describe("buildMultiplyPlanData", () => {
     );
 
     expect(data.error).toBe("candidates boom");
+  });
+
+  // ADR 0030 Pipeline (minimal): the in_pipeline configs surface as
+  // pipelinedTypes, the master list as groupTypes — both additive.
+  it("surfaces only in_pipeline=true configs as pipelinedTypes, with the master list", async () => {
+    const data = await buildMultiplyPlanData(
+      emptyReads({
+        fetchGroupTypeConfigs: async () =>
+          ok([
+            config("Young Families", true),
+            config("Men 20-30s", false),
+            config("Women", true),
+          ]),
+        fetchGroupTypes: async () =>
+          ok(["Young Families", "Men 20-30s", "Women"]),
+      })
+    );
+
+    expect(data.error).toBeNull();
+    expect(data.pipelinedTypes).toEqual(["Young Families", "Women"]);
+    expect(data.groupTypes).toEqual(["Young Families", "Men 20-30s", "Women"]);
+  });
+
+  it("degrades the pipeline section to empty when the configs/types reads fail, without blocking the planner", async () => {
+    const data = await buildMultiplyPlanData(
+      emptyReads({
+        fetchGroupRefs: async () => ok([GROUP]),
+        fetchGroupTypeConfigs: async () => fail("configs boom"),
+        fetchGroupTypes: async () => fail("types boom"),
+      })
+    );
+
+    // The blocking reads succeeded, so the planner still renders…
+    expect(data.error).toBeNull();
+    expect(data.groupOptions).toHaveLength(1);
+    // …and the failed additive reads simply yield an empty pipeline section.
+    expect(data.pipelinedTypes).toEqual([]);
+    expect(data.groupTypes).toEqual([]);
   });
 });

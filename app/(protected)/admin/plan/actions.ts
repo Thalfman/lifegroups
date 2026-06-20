@@ -6,11 +6,13 @@ import {
   validateSetProspectNextStepPayload,
   validateUpdateProspectPayload,
   validateArchiveProspectPayload,
+  validateAddGroupTypePayload,
   type CreateProspectPayload,
   type TransitionProspectPayload,
   type SetProspectNextStepPayload,
   type UpdateProspectPayload,
   type ArchiveProspectPayload,
+  type AddGroupTypePayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -19,6 +21,8 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
+import { updateTag } from "next/cache";
+import { GROUP_TYPES_CACHE_TAG } from "@/lib/supabase/cached-config";
 
 // The Interest Funnel board reads from /admin/plan; the home dashboard also
 // surfaces funnel counts, so it is revalidated too. /admin/multiply's Interest
@@ -204,4 +208,36 @@ export async function adminArchiveProspect(
   input: ActionInput<ArchiveProspectPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ARCHIVE_PROSPECT_SPEC, prev, input);
+}
+
+// ----- adminAddGroupType (#747) -------------------------------------------
+// Inline "add new type" from the Prospect desired-type picker: idempotently
+// append one new free-text type to the canonical group_types list, so Julian is
+// never blocked when the type he wants isn't in the dropdown yet. The list is
+// global config read on many surfaces (Settings, group editor, Multiply), so a
+// successful add busts the cross-request cache tag — mirroring adminSetGroupTypes
+// in the settings actions.
+const ADD_GROUP_TYPE_SPEC: AdminWriteActionSpec<
+  AddGroupTypePayload,
+  { id: string }
+> = {
+  name: "admin.plan.add_group_type",
+  keys: ["group_type"],
+  validate: validateAddGroupTypePayload,
+  rpc: (client, value) =>
+    adminRpc(client, "admin_add_group_type", { p_group_type: value.groupType }),
+  // The new type shows up across surfaces that list the canonical types.
+  revalidate: () => REVALIDATE_PATHS,
+  noDataError: "The group type wasn't added. Please try again.",
+};
+
+export async function adminAddGroupType(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<AddGroupTypePayload>
+): Promise<ActionResult<{ id: string }>> {
+  const result = await runAdminWriteAction(ADD_GROUP_TYPE_SPEC, prev, input);
+  // group_types is cached cross-request (lib/supabase/cached-config.ts); bust the
+  // tag so the appended type is reflected on the next read everywhere.
+  if (result.ok) updateTag(GROUP_TYPES_CACHE_TAG);
+  return result;
 }
