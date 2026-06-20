@@ -142,8 +142,15 @@ export function PipelineView({
 
 // One pipelined type: its potential candidates (auto-listed active groups with
 // no saved candidate, read-only) and its locked-in candidates (saved candidates
-// with status / target year / readiness chips). The section's id is the stable
-// anchor the Readiness grid deep-links to (#759).
+// with status / target year / readiness chips).
+//
+// The canonical `seg-<type>` deep-link anchor (`type.anchorId`) is still owned
+// by the legacy MultiplicationPlanner rendered below on this tab, so we do NOT
+// emit it here too — a pipelined type that also has saved candidates would
+// otherwise duplicate the planner's segment id and make `#seg-…` ambiguous.
+// `buildPipelineView` keeps `anchorId` as the data seam; #757 retires the
+// planner and #759 wires the Readiness deep-link to this type-first section as
+// its sole owner.
 function PipelineTypeSection({
   type,
   pending,
@@ -154,10 +161,7 @@ function PipelineTypeSection({
   onRemove: () => void;
 }) {
   return (
-    <li
-      id={type.anchorId}
-      className="grid scroll-mt-24 gap-3 rounded-sm border border-line bg-surface p-3"
-    >
+    <li className="grid gap-3 rounded-sm border border-line bg-surface p-3">
       <div className="flex items-center justify-between gap-3">
         <h4 className="m-0 font-sans text-sm font-semibold text-ink">
           {type.type}
@@ -215,31 +219,38 @@ function PipelineTypeSection({
                   <span className="rounded-sm bg-surface px-1.5 py-0.5 font-sans text-xs text-ink2">
                     {CANDIDATE_STATUS_LABEL[c.status]}
                   </span>
-                  {c.targetYear != null ? (
-                    <span className="rounded-sm bg-surface px-1.5 py-0.5 font-sans text-xs text-ink2">
-                      {c.targetYear}
-                    </span>
-                  ) : null}
+                  {/* target_year is nullable (TBD is a valid state) — show it
+                      explicitly so a candidate with no year set still reads as a
+                      tracked fact, not a missing field. */}
+                  <span className="rounded-sm bg-surface px-1.5 py-0.5 font-sans text-xs text-ink2">
+                    {c.targetYear != null ? c.targetYear : "Year TBD"}
+                  </span>
                   <span className="font-sans text-xs text-ink3">
                     {c.readiness.metCount}/{c.readiness.totalCount} ready
                   </span>
                 </div>
+                {/* Render all five criteria with met / unmet styling (not just
+                    the ticked ones) so the summary carries the full readiness
+                    state — a 0/5 candidate still shows which boxes are unchecked.
+                    The ✓ / ○ prefix is a non-colour cue for the met/unmet split. */}
                 <ul className="m-0 flex flex-wrap list-none gap-1 p-0">
                   {(
                     Object.entries(c.readiness.criteria) as [
                       MultiplicationCriterion,
                       boolean,
                     ][]
-                  )
-                    .filter(([, met]) => met)
-                    .map(([criterion]) => (
-                      <li
-                        key={criterion}
-                        className="rounded-sm bg-tealSoft px-1.5 py-0.5 font-sans text-xs text-ink2"
-                      >
-                        {CRITERION_LABEL[criterion]}
-                      </li>
-                    ))}
+                  ).map(([criterion, met]) => (
+                    <li
+                      key={criterion}
+                      className={
+                        met
+                          ? "rounded-sm bg-tealSoft px-1.5 py-0.5 font-sans text-xs text-ink2"
+                          : "rounded-sm bg-surface px-1.5 py-0.5 font-sans text-xs text-ink3"
+                      }
+                    >
+                      {met ? "✓" : "○"} {CRITERION_LABEL[criterion]}
+                    </li>
+                  ))}
                 </ul>
               </li>
             ))}
