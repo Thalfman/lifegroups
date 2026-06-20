@@ -17,19 +17,23 @@ import {
   type MultiplyTab,
 } from "@/components/admin/multiply/multiply-shell";
 
-// Multiply area (ADR 0016 / 0019 / 0022). One tabbed surface that unifies the
-// church's three faces of multiplication tracking, mirroring the Care tab shell:
-//   • Plan (default) — the per-group multiplication plan seeded from Julian's Doc
-//     (ADR 0006): named groups by Audience × category, with target year,
-//     successor/apprentice, meeting time, and readiness chips. Re-homed here from
-//     the frozen Planning tab.
-//   • Readiness — the per-cell category × top-type grid (#403): the at-a-glance
-//     "which cells are ready to multiply" signal. Setup lives in Settings.
-//   • Leaders — the apprentice pipeline (who's ready to lead the next group),
+// Multiply area (ADR 0016 / 0019 / 0022 / 0030). One tabbed surface that unifies
+// the church's three faces of multiplication tracking, mirroring the Care tab
+// shell:
+//   • Readiness (default) — the per-cell category × top-type grid (#403): the
+//     at-a-glance "which cells are ready to multiply" signal. Setup lives in
+//     Settings.
+//   • Pipeline — the per-group multiplication plan seeded from Julian's Doc
+//     (ADR 0006): named groups by group type, with target year, successor/
+//     apprentice, and readiness chips. Re-homed here from the frozen Planning
+//     tab; renamed from "Plan" (ADR 0030) to avoid colliding with the top-level
+//     Plan area.
+//   • Shepherds — the apprentice pipeline (who's ready to lead the next group),
 //     re-homed from the off-nav /admin/leader-pipeline route.
-// The Plan + Leaders data/tables/routes are unchanged and still resolve by direct
-// URL; this re-homing surfaces them in the visible Multiply area (ADR 0022). The
-// active tab is driven by the URL's `?tab=` param inside MultiplyShell.
+// The Pipeline + Shepherds data/tables/routes are unchanged and still resolve by
+// direct URL; this re-homing surfaces them in the visible Multiply area (ADR
+// 0022). The active tab is driven by the URL's `?tab=` param inside MultiplyShell
+// (legacy `?tab=plan` resolves to Pipeline).
 //
 // Wired through the admin page runner (ADR 0028): the guard + header + body are
 // the runner's; the load assembles the three tabs.
@@ -85,24 +89,10 @@ async function loadMultiplyTabs(): Promise<{ tabs: MultiplyTab[] }> {
     0
   );
 
+  // ADR 0030: Readiness leads (the at-a-glance signal), then Pipeline (the
+  // former "Plan" tab, renamed to avoid colliding with the top-level Plan area),
+  // then Shepherds (the apprentice pipeline).
   const tabs: MultiplyTab[] = [
-    {
-      key: "plan",
-      label: "Plan",
-      count: planCount,
-      panel: plan.error ? (
-        errorNote(`The multiplication plan could not be loaded: ${plan.error}`)
-      ) : (
-        <MultiplicationPlanner
-          segments={plan.segments}
-          groupOptions={plan.groupOptions}
-          apprenticesByGroup={plan.apprenticesByGroup}
-          // Suggestions are derived from the (frozen) capacity board; the Plan
-          // tab doesn't load it, so none are surfaced here for now (ADR 0022).
-          suggestions={[]}
-        />
-      ),
-    },
     {
       key: "readiness",
       label: "Readiness",
@@ -122,6 +112,24 @@ async function loadMultiplyTabs(): Promise<{ tabs: MultiplyTab[] }> {
             : null}
           <MultiplyGridView rows={grid.rows} ministryYear={grid.ministryYear} />
         </div>
+      ),
+    },
+    {
+      key: "pipeline",
+      label: "Pipeline",
+      count: planCount,
+      panel: plan.error ? (
+        errorNote(`The multiplication plan could not be loaded: ${plan.error}`)
+      ) : (
+        <MultiplicationPlanner
+          segments={plan.segments}
+          groupOptions={plan.groupOptions}
+          apprenticesByGroup={plan.apprenticesByGroup}
+          // Suggestions are derived from the (frozen) capacity board; the
+          // Pipeline tab doesn't load it, so none are surfaced here for now
+          // (ADR 0022).
+          suggestions={[]}
+        />
       ),
     },
     {

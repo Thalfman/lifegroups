@@ -34,9 +34,10 @@ function RiskPill({ label, tone }: { label: string; tone: string }) {
 
 // Executive overview of capacity & launch outlook, with a compact
 // multiplication-candidate line. The "View launch plan" action opens the
-// visible Multiply Plan tab (/admin/multiply?tab=plan) — ADR 0022 re-homed the
-// planner there; the frozen /admin/launch-planning shell still resolves by
-// direct URL but is no longer a link target. Reuses the dashboard's launch
+// visible Multiply Pipeline tab (/admin/multiply?tab=pipeline) — ADR 0022
+// re-homed the planner there and ADR 0030 renamed the tab from "Plan"; the
+// frozen /admin/launch-planning shell still resolves by direct URL but is no
+// longer a link target. Reuses the dashboard's launch
 // snapshot so it matches the deep page. Replaces the former near-white
 // LaunchPlanningSnapshotCard.
 export function LaunchPlanningOverviewCard({
@@ -52,7 +53,10 @@ export function LaunchPlanningOverviewCard({
         eyebrow="Launch planning"
         title="Capacity & launch"
         action={
-          <OpenLink href="/admin/multiply?tab=plan" label="View launch plan" />
+          <OpenLink
+            href="/admin/multiply?tab=pipeline"
+            label="View launch plan"
+          />
         }
       >
         <EmptyState
