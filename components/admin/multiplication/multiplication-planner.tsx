@@ -41,6 +41,7 @@ import {
   fieldLabelClassName as LABEL,
   fieldInputBaseClassName as INPUT,
 } from "@/components/admin/forms/field-styles";
+import { ReadinessChecklist } from "@/components/admin/multiply/readiness-checklist";
 
 // Capacity & Multiplication #184: a same-group apprentice the candidate can be
 // linked to. `label` already includes the readiness stage for the picker.
@@ -53,7 +54,6 @@ export type ApprenticeOption = { id: string; label: string };
 // that, so notes use a multi-line, vertically resizable variant of INPUT.
 const TEXTAREA = `${INPUT} min-h-[4.5rem] resize-y leading-normal`;
 const HINT = "m-0 mt-1 font-sans text-xs text-ink3";
-const CHECKBOX_LABEL = "flex items-center gap-2 font-sans text-sm text-ink";
 
 export type { CandidateView, SegmentGroup };
 
@@ -200,45 +200,10 @@ function GroupField({
   );
 }
 
-// ADR 0029: the Multiplication Readiness Checklist — all five criteria as a
-// contiguous block of plain checkboxes. The three formerly-computed criteria
-// (12+ members, 3+ years, Co-Shepherd 1+ yr) are now Julian-ticked manual flags
-// like the existing two; the thresholds in the labels are advisory text. Each
-// box posts by presence (checkbox name = absent → false in the action's
-// `input.has(...)` read). Uncontrolled (defaultChecked), seeded on edit.
-const READINESS_CHECKLIST_FIELDS: {
-  name: string;
-  criterion: MultiplicationCriterion;
-}[] = CRITERIA_ORDER.map((criterion) => ({ name: criterion, criterion }));
-
-function ReadinessChecklist({
-  idPrefix,
-  defaults,
-}: {
-  idPrefix: string;
-  defaults?: Partial<Record<MultiplicationCriterion, boolean>>;
-}) {
-  return (
-    <fieldset className="m-0 grid gap-2 border-0 p-0">
-      <legend className={LABEL}>Readiness checklist</legend>
-      {READINESS_CHECKLIST_FIELDS.map((f) => (
-        <label
-          key={f.name}
-          htmlFor={fieldId(idPrefix, f.name)}
-          className={CHECKBOX_LABEL}
-        >
-          <input
-            id={fieldId(idPrefix, f.name)}
-            type="checkbox"
-            name={f.name}
-            defaultChecked={defaults?.[f.criterion] ?? false}
-          />
-          {CRITERION_LABEL[f.criterion]}
-        </label>
-      ))}
-    </fieldset>
-  );
-}
+// ADR 0029 / 0030: the Multiplication Readiness Checklist now lives in the
+// shared `@/components/admin/multiply/readiness-checklist` module (imported
+// above), so both this legacy planner and the Pipeline lock-in form (#757)
+// render the same five-checkbox block.
 
 // Scope a field's element id to the form it renders in. The inline-edit form
 // passes a per-candidate prefix so several edit forms can render at once without

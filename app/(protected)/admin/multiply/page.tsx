@@ -8,7 +8,6 @@ import { loadLeaderPipelineData } from "@/components/admin/leader-pipeline/leade
 // The three tab panels are loaded lazily (ssr:false) so their code lands in
 // post-hydration chunks instead of this route's First Load JS (see lazy-panels).
 import {
-  MultiplicationPlanner,
   MultiplyGridView,
   LeaderPipeline,
 } from "@/components/admin/multiply/lazy-panels";
@@ -125,18 +124,16 @@ async function loadMultiplyTabs(): Promise<{ tabs: MultiplyTab[] }> {
         <div className="grid gap-4">
           {/* ADR 0030: the type-first Pipeline. Each pipelined type lists its
               auto-listed potential candidates (active groups of the type with no
-              saved candidate) and any locked-in candidates. Locking in (#757)
-              and matched shepherds (#758) are later slices; today's per-group
-              planner renders below it for editing. */}
-          <PipelineView pipeline={plan.pipeline} groupTypes={plan.groupTypes} />
-          <MultiplicationPlanner
-            segments={plan.segments}
-            groupOptions={plan.groupOptions}
-            apprenticesByGroup={plan.apprenticesByGroup}
-            // Suggestions are derived from the (frozen) capacity board; the
-            // Pipeline tab doesn't load it, so none are surfaced here for now
-            // (ADR 0022).
-            suggestions={[]}
+              saved candidate) and any locked-in candidates. #757 wires the
+              potential → locked-in lock-in flow (and Remove) directly into these
+              sub-sections, so the legacy per-group MultiplicationPlanner is
+              retired from this tab — the lock-in form replaces it. (The planner
+              component is kept; the frozen /admin/planning host still renders
+              it.) Matched shepherds under each type arrive in #758. */}
+          <PipelineView
+            pipeline={plan.pipeline}
+            groupTypes={plan.groupTypes}
+            unpipelinedCandidates={plan.unpipelinedCandidates}
           />
         </div>
       ),

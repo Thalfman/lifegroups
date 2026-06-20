@@ -1216,6 +1216,13 @@ export async function fetchMultiplicationCandidatesForAdmin(
           .in("id", apprenticeIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
+  // The group + membership reads back the candidate's identity and member count,
+  // so a failure there blanks the read. The linked-apprentice enrichment is
+  // non-critical (the planner shows the name; the Multiply locked-in rows don't
+  // render it at all), so a transient leader_pipeline read failure degrades
+  // linkedApprentice to null (empty index below) rather than blanking every
+  // candidate — reads degrade gracefully: a failed read suppresses derived
+  // output, not the whole surface.
   const batchError = firstReadError([
     {
       scope: "fetchMultiplicationCandidatesForAdmin/groups",
@@ -1224,10 +1231,6 @@ export async function fetchMultiplicationCandidatesForAdmin(
     {
       scope: "fetchMultiplicationCandidatesForAdmin/memberships",
       error: membershipsRes.error,
-    },
-    {
-      scope: "fetchMultiplicationCandidatesForAdmin/apprentices",
-      error: apprenticesRes.error,
     },
   ]);
   if (batchError) return { data: null, error: batchError };

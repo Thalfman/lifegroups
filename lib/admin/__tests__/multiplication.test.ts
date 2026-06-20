@@ -9,6 +9,7 @@ import {
   UNTYPED_SEGMENT,
 } from "@/lib/admin/multiplication";
 import type { SegmentableGroup } from "@/lib/admin/multiplication";
+import type { ShepherdMatchInput } from "@/lib/admin/leader-pipeline";
 import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
 
 // Build a candidate entry as the read model returns it, overriding only the
@@ -497,5 +498,55 @@ describe("buildPipelineView (ADR 0030 — type-first Pipeline)", () => {
   it("derives a stable anchor id from the type label (deep-link seam)", () => {
     const [yf] = buildPipelineView(["Young Families"], [], []);
     expect(yf.anchorId).toBe("seg-young-families");
+  });
+
+  // ADR 0030 (#758): the supply side. buildPipelineView feeds the apprentices
+  // through matchShepherdsToType so each pipelined type carries the matched
+  // shepherds (Ready-to-lead first), and an unmatched type stays empty.
+  function shepherd(over: Partial<ShepherdMatchInput>): ShepherdMatchInput {
+    return {
+      id: over.id ?? "a1",
+      displayName: over.displayName ?? "Tony L.",
+      groupName: over.groupName ?? "Group One",
+      groupType: over.groupType ?? "Young Families",
+      stage: over.stage ?? "identified",
+    };
+  }
+
+  it("attaches matched shepherds under their type, Ready-to-lead first", () => {
+    const [yf] = buildPipelineView(
+      ["Young Families"],
+      [],
+      [],
+      [
+        shepherd({ id: "a1", displayName: "Zara", stage: "in_training" }),
+        shepherd({ id: "a2", displayName: "Bob", stage: "ready_to_lead" }),
+        // A Men's apprentice never matches the Young Families type.
+        shepherd({ id: "a3", displayName: "Carl", groupType: "Men's" }),
+      ]
+    );
+    expect(yf.matchedShepherds.map((m) => m.displayName)).toEqual([
+      "Bob",
+      "Zara",
+    ]);
+    expect(yf.matchedShepherds.map((m) => m.readyToLead)).toEqual([
+      true,
+      false,
+    ]);
+  });
+
+  it("leaves matchedShepherds empty when no apprentice's group matches", () => {
+    const [yf] = buildPipelineView(
+      ["Young Families"],
+      [],
+      [],
+      [shepherd({ groupType: "Men's" })]
+    );
+    expect(yf.matchedShepherds).toEqual([]);
+  });
+
+  it("defaults matchedShepherds to empty when no apprentices are passed", () => {
+    const [yf] = buildPipelineView(["Young Families"], [], []);
+    expect(yf.matchedShepherds).toEqual([]);
   });
 });

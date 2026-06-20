@@ -5,10 +5,12 @@ import {
   LEADER_READINESS_STAGES,
   apprenticeReadyBy,
   buildPipelineRollup,
+  matchShepherdsToType,
   nextStage,
   resolveApprenticeNameSource,
   stageIndex,
   type ApprenticeView,
+  type ShepherdMatchInput,
 } from "@/lib/admin/leader-pipeline";
 
 function apprentice(over: Partial<ApprenticeView>): ApprenticeView {
@@ -196,5 +198,135 @@ describe("apprenticeReadyBy (staffing-supply predicate)", () => {
         target
       )
     ).toBe(false);
+  });
+});
+
+// ADR 0030 (#758): a shepherd (apprentice) matches a type when THEIR group's
+// type is that type. Ready-to-lead first, then stable by display name; an
+// unmatched type returns empty (never blocks).
+function shepherdInput(over: Partial<ShepherdMatchInput>): ShepherdMatchInput {
+  return {
+    id: over.id ?? "a1",
+    displayName: over.displayName ?? "Tony L.",
+    groupName: over.groupName ?? "Group One",
+    groupType: over.groupType ?? "Young Families",
+    stage: over.stage ?? "identified",
+  };
+}
+
+describe("matchShepherdsToType (ADR 0030 — supply side per type)", () => {
+  it("matches apprentices whose group's type is the target type", () => {
+    const matched = matchShepherdsToType(
+      [
+        shepherdInput({ id: "a1", groupType: "Young Families" }),
+        shepherdInput({ id: "a2", groupType: "Men's" }),
+        shepherdInput({ id: "a3", groupType: "Young Families" }),
+      ],
+      "Young Families"
+    );
+    expect(matched.map((m) => m.id)).toEqual(["a1", "a3"]);
+  });
+
+  it("matches case-insensitively and trims whitespace", () => {
+    const matched = matchShepherdsToType(
+      [
+        shepherdInput({ id: "a1", groupType: "  young families " }),
+        shepherdInput({ id: "a2", groupType: "YOUNG FAMILIES" }),
+        shepherdInput({ id: "a3", groupType: "Men's" }),
+      ],
+      "Young Families"
+    );
+    expect(matched.map((m) => m.id)).toEqual(["a1", "a2"]);
+  });
+
+  it("orders Ready-to-lead first, then stable by display name", () => {
+    const matched = matchShepherdsToType(
+      [
+        shepherdInput({
+          id: "a1",
+          displayName: "Zara",
+          stage: "in_training",
+        }),
+        shepherdInput({
+          id: "a2",
+          displayName: "Bob",
+          stage: "ready_to_lead",
+        }),
+        shepherdInput({
+          id: "a3",
+          displayName: "Amy",
+          stage: "ready_to_lead",
+        }),
+        shepherdInput({
+          id: "a4",
+          displayName: "Carl",
+          stage: "identified",
+        }),
+      ],
+      "Young Families"
+    );
+    // Ready-to-lead (Amy, Bob — alpha) lead; the rest follow by display name.
+    expect(matched.map((m) => m.displayName)).toEqual([
+      "Amy",
+      "Bob",
+      "Carl",
+      "Zara",
+    ]);
+    expect(matched.map((m) => m.readyToLead)).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  it("sets readyToLead from the stage and carries the group name", () => {
+    const [m] = matchShepherdsToType(
+      [
+        shepherdInput({
+          id: "a1",
+          groupName: "Harbor Group",
+          stage: "ready_to_lead",
+        }),
+      ],
+      "Young Families"
+    );
+    expect(m).toEqual({
+      id: "a1",
+      displayName: "Tony L.",
+      groupName: "Harbor Group",
+      stage: "ready_to_lead",
+      readyToLead: true,
+    });
+  });
+
+  it("excludes launched apprentices — they already lead a group", () => {
+    const matched = matchShepherdsToType(
+      [
+        shepherdInput({ id: "a1", displayName: "Amy", stage: "launched" }),
+        shepherdInput({ id: "a2", displayName: "Bob", stage: "ready_to_lead" }),
+        shepherdInput({ id: "a3", displayName: "Cal", stage: "in_training" }),
+      ],
+      "Young Families"
+    );
+    // The launched apprentice (Amy) is dropped from the supply side entirely.
+    expect(matched.map((m) => m.id)).toEqual(["a2", "a3"]);
+  });
+
+  it("returns empty (no error, no block) when no apprentice matches", () => {
+    expect(
+      matchShepherdsToType(
+        [shepherdInput({ groupType: "Men's" })],
+        "Young Families"
+      )
+    ).toEqual([]);
+    // No apprentices at all is also a clean empty.
+    expect(matchShepherdsToType([], "Young Families")).toEqual([]);
+  });
+
+  it("never matches an Untyped apprentice to a blank target", () => {
+    expect(
+      matchShepherdsToType([shepherdInput({ groupType: null })], "  ")
+    ).toEqual([]);
   });
 });

@@ -163,3 +163,76 @@ export function apprenticeReadyBy(
   // Lexicographic compare is correct for YYYY-MM-DD ISO dates.
   return expected <= targetIso;
 }
+
+// ADR 0030 (#758): a shepherd (apprentice) matched to a pipelined group type
+// as the supply side under that type — "who could lead the new group of type T."
+// `readyToLead` mirrors isReadyToLead so the UI can surface Ready-to-lead first
+// without re-deriving from the stage. The matcher itself (matchShepherdsToType)
+// is built in #758; this is the shared shape buildPipelineView hangs under each
+// pipelined type.
+export type MatchedShepherd = {
+  id: string;
+  displayName: string;
+  // The apprentice's home group (where they will lead) — shown for context.
+  groupName: string;
+  stage: LeaderReadinessStage;
+  readyToLead: boolean;
+};
+
+// The per-apprentice facts matchShepherdsToType matches against. `groupType` is
+// the apprentice's home-group type (null = Untyped), joined upstream from the
+// group the apprentice belongs to. Lean so the matcher stays pure and testable
+// with bare objects.
+export type ShepherdMatchInput = {
+  id: string;
+  displayName: string;
+  groupName: string;
+  groupType: string | null;
+  stage: LeaderReadinessStage;
+};
+
+// A case-insensitive, trim-normalized match key for a free-text group type. Kept
+// consistent with `typeMatchKey` / `segmentLabel` in lib/admin/multiplication.ts
+// (lowercased, trimmed) so a target type matches an apprentice's group type even
+// if casing drifts. A null / empty type yields the empty string, which never
+// matches a concrete pipelined type.
+function shepherdTypeMatchKey(groupType: string | null): string {
+  return (groupType ?? "").trim().toLowerCase();
+}
+
+// ADR 0030 (#758): match apprentices to a target group type — the supply side
+// under a pipelined type. An apprentice is a candidate to lead a new group of
+// type T when THEIR group's type is T (case-insensitive / trimmed). A `launched`
+// apprentice already leads a group, so they are no longer available supply and
+// are excluded (mirroring `apprenticeReadyBy`). Ready-to-lead apprentices
+// (stage === "ready_to_lead") order first; within that, ties break by display
+// name so the list is stable. Returns an empty array when nothing matches — a
+// pipelined type never blocks on having a matched shepherd. Pure, no I/O.
+export function matchShepherdsToType(
+  apprentices: readonly ShepherdMatchInput[],
+  targetType: string
+): MatchedShepherd[] {
+  const targetKey = shepherdTypeMatchKey(targetType);
+  // A blank target can't match a concrete type; return empty rather than
+  // collapsing every Untyped apprentice into it.
+  if (!targetKey) return [];
+
+  return apprentices
+    .filter(
+      (a) =>
+        a.stage !== "launched" &&
+        shepherdTypeMatchKey(a.groupType) === targetKey
+    )
+    .map((a) => ({
+      id: a.id,
+      displayName: a.displayName,
+      groupName: a.groupName,
+      stage: a.stage,
+      readyToLead: isReadyToLead(a.stage),
+    }))
+    .sort((a, b) => {
+      // Ready-to-lead first, then stable by display name.
+      if (a.readyToLead !== b.readyToLead) return a.readyToLead ? -1 : 1;
+      return a.displayName.localeCompare(b.displayName);
+    });
+}
