@@ -1,5 +1,5 @@
 import type { ValidationResult } from "./shared";
-import { isRecord } from "./shared";
+import { isRecord, readBooleanFlag } from "./shared";
 import {
   decodeCellOverride,
   type CellReadinessOverride,
@@ -68,6 +68,64 @@ export function validateSetGroupTypesPayload(
   if (errors.length > 0) return { ok: false, errors };
 
   return { ok: true, value: { types } };
+}
+
+// Intake-form inline "add new type" (#747): a single free-text name validated
+// with the SAME rules as each entry in the whole-list replace (trim, non-blank,
+// ≤80). The idempotent admin_add_group_type RPC stays the authoritative gate.
+export type AddGroupTypePayload = { groupType: string };
+
+export function validateAddGroupTypePayload(
+  input: unknown
+): ValidationResult<AddGroupTypePayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+
+  const groupType =
+    typeof input.group_type === "string" ? input.group_type.trim() : "";
+  if (groupType.length === 0)
+    return { ok: false, errors: ["A group type is required."] };
+  if (groupType.length > MAX_TYPE_NAME_LENGTH)
+    return {
+      ok: false,
+      errors: [
+        `Each group type must be ${MAX_TYPE_NAME_LENGTH} characters or fewer.`,
+      ],
+    };
+
+  return { ok: true, value: { groupType } };
+}
+
+// Multiply Pipeline (ADR 0030): set/clear a type's pipeline intent. The group
+// type is validated like the per-type config (present, ≤80); in_pipeline is a
+// boolean, tolerant of the "true"/"on"/"1" forms a checkbox/hidden field posts.
+export type SetGroupTypeInPipelinePayload = {
+  groupType: string;
+  inPipeline: boolean;
+};
+
+export function validateSetGroupTypeInPipelinePayload(
+  input: unknown
+): ValidationResult<SetGroupTypeInPipelinePayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+
+  const errors: string[] = [];
+
+  const groupType =
+    typeof input.group_type === "string" ? input.group_type.trim() : "";
+  if (groupType.length === 0) errors.push("A group type is required.");
+  if (groupType.length > MAX_TYPE_NAME_LENGTH)
+    errors.push(
+      `Group type is too long (max ${MAX_TYPE_NAME_LENGTH} characters).`
+    );
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: { groupType, inPipeline: readBooleanFlag(input.in_pipeline) },
+  };
 }
 
 export type SetGroupTypeConfigPayload = {

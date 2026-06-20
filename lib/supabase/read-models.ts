@@ -942,11 +942,11 @@ export async function fetchGroupTypes(
 // override) keyed on the free-text group_type name. A type with no row inherits
 // target 0 + the single global readiness rule. Admin-only via RLS.
 const GROUP_TYPE_CONFIG_COLUMNS =
-  "group_type, target_count, readiness_rule" as const;
+  "group_type, target_count, readiness_rule, in_pipeline" as const;
 
 export type GroupTypeConfigEntry = Pick<
   GroupTypeConfigsRow,
-  "group_type" | "target_count" | "readiness_rule"
+  "group_type" | "target_count" | "readiness_rule" | "in_pipeline"
 >;
 
 export async function fetchGroupTypeConfigs(

@@ -9,6 +9,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import { FULL_NAME_REQUIRED_MESSAGE } from "@/lib/admin/validation/prospect-form-client";
+import { GroupTypePicker } from "@/components/admin/forms/group-type-picker";
 import {
   fieldLabelClassName as LABEL,
   fieldInputBaseClassName as INPUT,
@@ -142,26 +143,10 @@ export function ProspectCreateForm({
             placeholder="(555) 555-0100"
           />
         </div>
-        <div>
-          <label htmlFor="prospect-desired_group_type" className={LABEL}>
-            Desired group type (optional)
-          </label>
-          {/* Uncontrolled: the native form reset clears it on a successful add.
-              The list is the admin-managed group_types; "—" is no selection. */}
-          <select
-            id="prospect-desired_group_type"
-            name="desired_group_type"
-            defaultValue=""
-            className={INPUT}
-          >
-            <option value="">—</option>
-            {groupTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* #747: the picker is the existing-types dropdown plus an inline
+            "＋ Add new type…" affordance; it posts via name="desired_group_type"
+            and clears itself on the form's success reset. */}
+        <GroupTypePicker groupTypes={groupTypes} />
         <div>
           <PButton
             type="submit"
