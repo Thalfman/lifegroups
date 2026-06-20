@@ -106,6 +106,11 @@ function readCandidateForm(input: unknown): Record<string, unknown> {
     // Checkboxes: presence = true, absence = false.
     shepherd_willing: input.has("shepherd_willing"),
     needs_similar_stage: input.has("needs_similar_stage"),
+    // ADR 0029: the three manually-ticked readiness flags (no UI yet — wired
+    // through the write path so a later slice only adds the checkboxes).
+    enough_members: input.has("enough_members"),
+    established_long_enough: input.has("established_long_enough"),
+    co_shepherd_tenured: input.has("co_shepherd_tenured"),
     notes: input.get("notes") ?? undefined,
     successor_designate: input.get("successor_designate") ?? undefined,
     meeting_time: input.get("meeting_time") ?? undefined,
@@ -230,6 +235,9 @@ const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_meeting_time: value.meeting_time,
       p_leader_pipeline_id: value.leader_pipeline_id,
       p_manual_member_count: value.manual_member_count,
+      p_enough_members: value.enough_members,
+      p_established_long_enough: value.established_long_enough,
+      p_co_shepherd_tenured: value.co_shepherd_tenured,
     }),
   revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",
@@ -262,6 +270,9 @@ const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_leader_pipeline_id: value.leader_pipeline_id,
       p_manual_member_count: value.manual_member_count,
       p_group_id: value.group_id,
+      p_enough_members: value.enough_members,
+      p_established_long_enough: value.established_long_enough,
+      p_co_shepherd_tenured: value.co_shepherd_tenured,
     }),
   revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",

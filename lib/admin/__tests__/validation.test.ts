@@ -1488,6 +1488,45 @@ describe("multiplication candidate payloads (Julian P4 / group-anchored)", () =>
     }
   });
 
+  // ADR 0029: the three manually-ticked readiness flags parse like the existing
+  // shepherd_willing / needs_similar_stage checkboxes (present = true, absent =
+  // false).
+  it("round-trips the three readiness flags, defaulting each to false when absent", () => {
+    const present = validateCreateMultiplicationCandidatePayload({
+      ...TYPE,
+      enough_members: "on",
+      established_long_enough: "on",
+      co_shepherd_tenured: "on",
+    });
+    expect(present.ok).toBe(true);
+    if (present.ok) {
+      expect(present.value.enough_members).toBe(true);
+      expect(present.value.established_long_enough).toBe(true);
+      expect(present.value.co_shepherd_tenured).toBe(true);
+    }
+
+    const absent = validateCreateMultiplicationCandidatePayload({ ...TYPE });
+    expect(absent.ok).toBe(true);
+    if (absent.ok) {
+      expect(absent.value.enough_members).toBe(false);
+      expect(absent.value.established_long_enough).toBe(false);
+      expect(absent.value.co_shepherd_tenured).toBe(false);
+    }
+
+    // The flags thread through the update payload too.
+    const update = validateUpdateMultiplicationCandidatePayload({
+      ...TYPE,
+      candidate_id: UUID_A,
+      enough_members: true,
+    });
+    expect(update.ok).toBe(true);
+    if (update.ok) {
+      expect(update.value.enough_members).toBe(true);
+      expect(update.value.established_long_enough).toBe(false);
+      expect(update.value.co_shepherd_tenured).toBe(false);
+    }
+  });
+
   // Julian #143: successor/leader-designate + meeting-time fields.
   it("round-trips a successor/leader-designate, defaulting it to null when absent", () => {
     const present = validateCreateMultiplicationCandidatePayload({

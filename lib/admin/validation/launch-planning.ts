@@ -453,6 +453,11 @@ type MultiplicationCandidateFields = {
   leader_pipeline_id: string | null;
   // ADR 0022: Julian-fed headcount. Null = use the in-app roster count instead.
   manual_member_count: number | null;
+  // ADR 0029: the three manually-ticked readiness flags, parsed like
+  // shepherd_willing / needs_similar_stage (present = true, absent = false).
+  enough_members: boolean;
+  established_long_enough: boolean;
+  co_shepherd_tenured: boolean;
 };
 
 function validateMultiplicationCandidateFields(
@@ -552,6 +557,9 @@ function validateMultiplicationCandidateFields(
     meeting_time: meetingTime,
     leader_pipeline_id: leaderPipelineId,
     manual_member_count: manualMemberCount,
+    enough_members: readBooleanFlag(input.enough_members),
+    established_long_enough: readBooleanFlag(input.established_long_enough),
+    co_shepherd_tenured: readBooleanFlag(input.co_shepherd_tenured),
   };
 }
 
