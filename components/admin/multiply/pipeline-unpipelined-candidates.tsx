@@ -1,6 +1,9 @@
 "use client";
 
-import type { CandidateView } from "@/lib/admin/multiplication";
+import {
+  segmentAnchorId,
+  type CandidateView,
+} from "@/lib/admin/multiplication";
 import { LockedInCandidateRow } from "@/components/admin/multiply/pipeline-locked-in-candidates";
 
 // ADR 0030 fallback: saved (locked-in) candidates whose type is NOT explicitly
@@ -12,6 +15,40 @@ import { LockedInCandidateRow } from "@/components/admin/multiply/pipeline-locke
 // the in-pipeline locked-in rows) so no saved plan is lost; pipelining the
 // candidate's type moves it up into that type's section. Renders nothing when
 // there are none.
+//
+// Candidates are grouped by their type segment so each type owns its
+// `seg-<type>` deep-link anchor (the Readiness grid links to
+// /admin/multiply?tab=pipeline#seg-<type>; a non-pipelined type with a saved
+// candidate resolves here instead of the type-first section). No anchor collides
+// with a pipelined type's PipelineTypeSection — by definition these segments are
+// the ones that aren't pipelined. scroll-mt-24 keeps the anchored group off the
+// viewport top after the hash scroll, matching the pipelined sections.
+type FallbackGroup = {
+  segment: string;
+  anchorId: string;
+  items: CandidateView[];
+};
+
+function groupBySegment(candidates: readonly CandidateView[]): FallbackGroup[] {
+  const groups: FallbackGroup[] = [];
+  const byKey = new Map<string, FallbackGroup>();
+  for (const c of candidates) {
+    const key = c.segment.toLowerCase();
+    let group = byKey.get(key);
+    if (!group) {
+      group = {
+        segment: c.segment,
+        anchorId: segmentAnchorId(c.segment),
+        items: [],
+      };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.items.push(c);
+  }
+  return groups;
+}
+
 export function PipelineUnpipelinedCandidates({
   candidates,
 }: {
@@ -19,10 +56,12 @@ export function PipelineUnpipelinedCandidates({
 }) {
   if (candidates.length === 0) return null;
 
+  const groups = groupBySegment(candidates);
+
   return (
     <section
       aria-labelledby="pipeline-unpipelined-heading"
-      className="grid gap-2 rounded-md border border-line bg-bg p-4"
+      className="grid gap-3 rounded-md border border-line bg-bg p-4"
     >
       <div className="grid gap-1">
         <h3
@@ -38,11 +77,22 @@ export function PipelineUnpipelinedCandidates({
           pursuing.
         </p>
       </div>
-      <ul className="m-0 grid list-none gap-1.5 p-0">
-        {candidates.map((c) => (
-          <LockedInCandidateRow key={c.candidateId} candidate={c} />
-        ))}
-      </ul>
+      {groups.map((group) => (
+        <div
+          key={group.segment}
+          id={group.anchorId}
+          className="grid scroll-mt-24 gap-1"
+        >
+          <p className="m-0 font-sans text-xs font-semibold uppercase tracking-wide text-ink3">
+            {group.segment}
+          </p>
+          <ul className="m-0 grid list-none gap-1.5 p-0">
+            {group.items.map((c) => (
+              <LockedInCandidateRow key={c.candidateId} candidate={c} />
+            ))}
+          </ul>
+        </div>
+      ))}
     </section>
   );
 }
