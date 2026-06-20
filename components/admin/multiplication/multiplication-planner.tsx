@@ -389,6 +389,18 @@ function CandidateEditForm({
     <div className="mt-2.5 grid gap-2.5">
       <form action={formAction} className="grid gap-2.5">
         <input type="hidden" name="candidate_id" value={c.candidateId} />
+        {/* ADR 0030: the Meeting time and Members-entered controls left the
+            form, but their columns stay (dormant — no data deletion). The
+            update RPC writes both unconditionally, so without these the next
+            edit-save would null out a candidate's existing values. Re-post them
+            unchanged (matching the old form's round-trip: a set value is
+            preserved, an unset one stays null). */}
+        <input type="hidden" name="meeting_time" value={c.meetingTime ?? ""} />
+        <input
+          type="hidden"
+          name="manual_member_count"
+          value={c.manualMemberCount ?? ""}
+        />
         <GroupField idPrefix={idPrefix} state={typeGroup} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
           <TargetYearField idPrefix={idPrefix} defaultValue={c.targetYear} />
