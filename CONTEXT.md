@@ -123,6 +123,8 @@ config (a target group count + an optional readiness-rule override) lives in
 `group_type_configs`, keyed on the type name; Multiply lists groups by type and
 shows each type's **coverage** ("have X of Y") plus that config. A group with no
 type reads as **Untyped** — a visible bucket so untyped groups are never lost.
+A Prospect can also name one as a **Desired group type** (an interest, not a
+fact) from the same list.
 _Avoid_: Cell, Audience, Category, segment (as user-facing labels), life stage.
 
 **Segment**:
@@ -145,6 +147,20 @@ A person interested in joining a Life Group, tracked in the Interest Funnel.
 Named distinctly from the **Interested** state so the person and their status
 don't share a word.
 _Avoid_: Guest, lead, inquirer, interested person.
+
+**Desired group type**:
+The kind of group a Prospect wants to join — an **optional, free-text Group
+type** captured on the Prospect, drawn from the same admin-managed `group_types`
+list as a group's own type (e.g. "Men's", "Women's", "Mixed – Young Families").
+It is the same single segmentation source as a group's type, just expressed as a
+_want_ rather than a fact; men's/women's stay multi-generational while mixed
+types carry the life-stage granularity the ministry authors into the list. When
+the Ministry Admin names a type that isn't on the list yet, it is **added to the
+master list** so it's reusable everywhere. The desired type is **informational**
+(captured and displayed) — it does **not** feed counts or the multiplication
+readiness trigger. (Re-introduces, as flat free text, the intent the retired
+`desired_audience_category` × `desired_category_id` "desired cell" once carried.)
+_Avoid_: Desired cell, desired audience, desired category, preferred segment.
 
 **Prospect state**:
 The four colour-coded states a Prospect moves through:
