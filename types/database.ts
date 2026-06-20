@@ -406,6 +406,12 @@ export interface MultiplicationCandidatesRow {
   status: E.MultiplicationCandidateStatus;
   shepherd_willing: boolean;
   needs_similar_stage: boolean;
+  // ADR 0029: the three formerly-computed readiness criteria, now Julian-ticked
+  // manual flags like shepherd_willing / needs_similar_stage. NOT NULL DEFAULT
+  // false (no backfill — a ticked box always means he set it deliberately).
+  enough_members: boolean;
+  established_long_enough: boolean;
+  co_shepherd_tenured: boolean;
   notes: string | null;
   successor_designate: string | null;
   meeting_time: E.MultiplicationMeetingTime | null;
@@ -983,6 +989,9 @@ export interface Database {
           | "meeting_time"
           | "leader_pipeline_id"
           | "manual_member_count"
+          | "enough_members"
+          | "established_long_enough"
+          | "co_shepherd_tenured"
         >;
         Update: Partial<MultiplicationCandidatesRow>;
         Relationships: [];

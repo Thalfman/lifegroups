@@ -1069,6 +1069,7 @@ export async function fetchChurchAttendanceSnapshots(
 const MULTIPLICATION_CANDIDATE_COLUMNS =
   "id, group_id, target_year, status, " +
   "shepherd_willing, needs_similar_stage, " +
+  "enough_members, established_long_enough, co_shepherd_tenured, " +
   "notes, successor_designate, meeting_time, leader_pipeline_id, " +
   "manual_member_count, archived_at, " +
   "created_by, updated_by, created_at, updated_at";
@@ -1090,8 +1091,6 @@ export type MultiplicationCandidateEntry = {
   candidate: MultiplicationCandidatesRow;
   group: MultiplicationCandidateGroup | null;
   activeMemberCount: number;
-  // Earliest active co_leader assignment date (YYYY-MM-DD), or null.
-  coShepherdSince: string | null;
   // The linked leader_pipeline apprentice, or null when unlinked.
   linkedApprentice: MultiplicationCandidateApprentice | null;
 };
@@ -1151,23 +1150,11 @@ function indexCandidateGroups(
   return m;
 }
 
-function earliestCoShepherdByGroup(
-  rows: ReadonlyArray<{ group_id: string; assigned_at: string }>
-): Map<string, string> {
-  const m = new Map<string, string>();
-  for (const l of rows) {
-    const current = m.get(l.group_id);
-    if (current === undefined || l.assigned_at < current) {
-      m.set(l.group_id, l.assigned_at);
-    }
-  }
-  return m;
-}
-
 // Julian P4: active (non-archived) multiplication candidates enriched with the
-// group facts the readiness helper needs (member count, launch date,
-// co-shepherd tenure). Admin-only via RLS. Batches the group/membership/leader
-// reads by the candidates' group ids to avoid N+1.
+// group facts the planner surface needs (member count for the summary line).
+// ADR 0029: readiness is now read from the candidate's stored flags, so no
+// launch date / co-shepherd tenure is fetched. Admin-only via RLS. Batches the
+// group/membership reads by the candidates' group ids to avoid N+1.
 export async function fetchMultiplicationCandidatesForAdmin(
   client: ReadClient
 ): Promise<ReadResult<MultiplicationCandidateEntry[]>> {
@@ -1208,36 +1195,27 @@ export async function fetchMultiplicationCandidatesForAdmin(
   // the group-keyed reads (an empty `.in("id", [])` is the edge other read paths
   // here avoid) so a valid all-type-only pipeline still renders.
   const noGroups = groupIds.length === 0;
-  const [groupsRes, membershipsRes, leadersRes, apprenticesRes] =
-    await Promise.all([
-      noGroups
-        ? Promise.resolve({ data: [], error: null })
-        : client
-            .from("groups")
-            .select("id, name, group_type, launched_on, lifecycle_status")
-            .in("id", groupIds),
-      noGroups
-        ? Promise.resolve({ data: [], error: null })
-        : client
-            .from("group_memberships")
-            .select("group_id, status")
-            .in("group_id", groupIds)
-            .eq("status", "active"),
-      noGroups
-        ? Promise.resolve({ data: [], error: null })
-        : client
-            .from("group_leaders")
-            .select("group_id, assigned_at, role, active")
-            .in("group_id", groupIds)
-            .eq("role", "co_leader")
-            .eq("active", true),
-      apprenticeIds.length > 0
-        ? client
-            .from("leader_pipeline")
-            .select("id, display_name, readiness_stage")
-            .in("id", apprenticeIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
+  const [groupsRes, membershipsRes, apprenticesRes] = await Promise.all([
+    noGroups
+      ? Promise.resolve({ data: [], error: null })
+      : client
+          .from("groups")
+          .select("id, name, group_type, launched_on, lifecycle_status")
+          .in("id", groupIds),
+    noGroups
+      ? Promise.resolve({ data: [], error: null })
+      : client
+          .from("group_memberships")
+          .select("group_id, status")
+          .in("group_id", groupIds)
+          .eq("status", "active"),
+    apprenticeIds.length > 0
+      ? client
+          .from("leader_pipeline")
+          .select("id, display_name, readiness_stage")
+          .in("id", apprenticeIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
   const batchError = firstReadError([
     {
       scope: "fetchMultiplicationCandidatesForAdmin/groups",
@@ -1246,10 +1224,6 @@ export async function fetchMultiplicationCandidatesForAdmin(
     {
       scope: "fetchMultiplicationCandidatesForAdmin/memberships",
       error: membershipsRes.error,
-    },
-    {
-      scope: "fetchMultiplicationCandidatesForAdmin/leaders",
-      error: leadersRes.error,
     },
     {
       scope: "fetchMultiplicationCandidatesForAdmin/apprentices",
@@ -1276,24 +1250,18 @@ export async function fetchMultiplicationCandidatesForAdmin(
       status: string | null;
     }[]
   );
-  const coShepherdSinceByGroup = earliestCoShepherdByGroup(
-    (leadersRes.data ?? []) as { group_id: string; assigned_at: string }[]
-  );
 
   const entries: MultiplicationCandidateEntry[] = candidates.map(
     (candidate) => ({
       candidate,
-      // Type-only candidates carry no group → group/member/co-shepherd facts are
-      // absent (group: null, 0 members, no co-shepherd date).
+      // Type-only candidates carry no group → group/member facts are absent
+      // (group: null, 0 members).
       group: candidate.group_id
         ? (groupById.get(candidate.group_id) ?? null)
         : null,
       activeMemberCount: candidate.group_id
         ? (memberCountByGroup.get(candidate.group_id) ?? 0)
         : 0,
-      coShepherdSince: candidate.group_id
-        ? (coShepherdSinceByGroup.get(candidate.group_id) ?? null)
-        : null,
       linkedApprentice: candidate.leader_pipeline_id
         ? (apprenticeById.get(candidate.leader_pipeline_id) ?? null)
         : null,
@@ -1387,10 +1355,11 @@ export async function fetchApprenticePickerRefs(
 
 // Capacity & Multiplication #185: everything the Capacity Board + system
 // suggestions need beyond the launch-planning inputs bundle — the apprentices
-// per group (for the ready-to-multiply badge), the co-shepherd tenure for every
-// group (for the readiness annotation), and the candidate flags/ids (so
-// suggestions can be annotated and de-duped). Group/override/membership/default
-// data is fetched separately via fetchLaunchPlanningInputsForAdmin.
+// per group (for the ready-to-multiply badge) and the candidate group ids (so
+// suggestions can be de-duped against groups already in the plan). ADR 0029
+// decision 3: the Board no longer annotates readiness, so co-shepherd tenure and
+// the candidate readiness flags are no longer fetched. Group/override/membership/
+// default data is fetched separately via fetchLaunchPlanningInputsForAdmin.
 export type CapacityBoardExtras = {
   apprentices: {
     id: string;
@@ -1398,11 +1367,6 @@ export type CapacityBoardExtras = {
     display_name: string;
     readiness_stage: LeaderReadinessStage;
   }[];
-  coShepherdSinceByGroup: Record<string, string>;
-  candidateFlagsByGroup: Record<
-    string,
-    { shepherdWilling: boolean; needsSimilarStage: boolean }
-  >;
   candidateGroupIds: string[];
   // group id → free-text group_type, so the board's segment is the type name.
   // A group with no type is simply absent (= Untyped).
@@ -1415,38 +1379,27 @@ export async function fetchCapacityBoardExtras(
 ): Promise<CapacityBoardExtras> {
   const empty: CapacityBoardExtras = {
     apprentices: [],
-    coShepherdSinceByGroup: {},
-    candidateFlagsByGroup: {},
     candidateGroupIds: [],
     groupTypeByGroup: {},
     error: null,
   };
 
-  const [apprenticesRes, leadersRes, candidatesRes, groupsRes] =
-    await Promise.all([
-      client
-        .from("leader_pipeline")
-        .select("id, group_id, display_name, readiness_stage")
-        .is("archived_at", null),
-      client
-        .from("group_leaders")
-        .select("group_id, assigned_at, role, active")
-        .eq("role", "co_leader")
-        .eq("active", true),
-      client
-        .from("multiplication_candidates")
-        .select("group_id, shepherd_willing, needs_similar_stage")
-        .is("archived_at", null),
-      // Each group's free-text type, for the board's segment label.
-      client.from("groups").select("id, group_type"),
-    ]);
+  const [apprenticesRes, candidatesRes, groupsRes] = await Promise.all([
+    client
+      .from("leader_pipeline")
+      .select("id, group_id, display_name, readiness_stage")
+      .is("archived_at", null),
+    client
+      .from("multiplication_candidates")
+      .select("group_id")
+      .is("archived_at", null),
+    // Each group's free-text type, for the board's segment label.
+    client.from("groups").select("id, group_type"),
+  ]);
 
   const error =
     (apprenticesRes.error &&
       wrapError("fetchCapacityBoardExtras/apprentices", apprenticesRes.error)
-        .message) ||
-    (leadersRes.error &&
-      wrapError("fetchCapacityBoardExtras/leaders", leadersRes.error)
         .message) ||
     (candidatesRes.error &&
       wrapError("fetchCapacityBoardExtras/candidates", candidatesRes.error)
@@ -1468,42 +1421,19 @@ export async function fetchCapacityBoardExtras(
     if (type) groupTypeByGroup[g.id] = type;
   }
 
-  const coShepherdSinceByGroup: Record<string, string> = {};
-  for (const l of (leadersRes.data ?? []) as {
-    group_id: string;
-    assigned_at: string;
-  }[]) {
-    const cur = coShepherdSinceByGroup[l.group_id];
-    if (cur === undefined || l.assigned_at < cur) {
-      coShepherdSinceByGroup[l.group_id] = l.assigned_at;
-    }
-  }
-
-  const candidateFlagsByGroup: Record<
-    string,
-    { shepherdWilling: boolean; needsSimilarStage: boolean }
-  > = {};
   const candidateGroupIds: string[] = [];
   for (const c of (candidatesRes.data ?? []) as {
     group_id: string | null;
-    shepherd_willing: boolean;
-    needs_similar_stage: boolean;
   }[]) {
-    // Type-only candidates carry no group, so they neither flag a group nor
-    // count as "already a candidate" on the capacity board.
+    // Type-only candidates carry no group, so they don't count as "already a
+    // candidate" on the capacity board.
     if (c.group_id == null) continue;
     candidateGroupIds.push(c.group_id);
-    candidateFlagsByGroup[c.group_id] = {
-      shepherdWilling: c.shepherd_willing,
-      needsSimilarStage: c.needs_similar_stage,
-    };
   }
 
   return {
     apprentices: (apprenticesRes.data ??
       []) as CapacityBoardExtras["apprentices"],
-    coShepherdSinceByGroup,
-    candidateFlagsByGroup,
     candidateGroupIds,
     groupTypeByGroup,
     error: null,

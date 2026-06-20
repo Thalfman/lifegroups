@@ -33,8 +33,6 @@ describe("multiplication candidate field labels", () => {
       "target_year",
       "status",
       "successor_designate",
-      "meeting_time",
-      "manual_member_count",
       "leader_pipeline_id",
       "notes",
     ]) {

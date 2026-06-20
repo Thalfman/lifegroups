@@ -4,7 +4,6 @@ import {
   buildCapacityBoard,
   buildCapacityBoardModel,
   buildMultiplicationSuggestions,
-  buildReadinessByGroup,
   filterBoard,
   sortBoardByFullness,
   type CapacityBoardRow,
@@ -12,8 +11,6 @@ import {
 import { BUILT_IN_METRIC_DEFAULTS } from "@/lib/admin/metrics";
 import type { GroupsRow, GroupMetricSettingsRow } from "@/types/database";
 import type { LeaderReadinessStage } from "@/types/enums";
-
-const TODAY = "2026-05-28";
 
 function group(over: Partial<GroupsRow> & { id: string }): GroupsRow {
   return {
@@ -189,23 +186,12 @@ describe("filterBoard", () => {
   });
 });
 
+// ADR 0029 decision 3: suggestions are no longer annotated with a "meets X/5"
+// readiness figure (a pre-candidate group has no stored flags to assess), so
+// they sort by group name alone.
 describe("buildMultiplicationSuggestions (R9 — context, not a gate)", () => {
-  it("suggests at/over-target groups with a Ready apprentice, annotated by metCount and sorted best-first", () => {
+  it("suggests at/over-target groups with a Ready apprentice, sorted by name", () => {
     const rows = [
-      {
-        groupId: "g1",
-        groupName: "Low",
-        segment: "Men",
-        activeMemberCount: 12,
-        effectiveTarget: 12,
-        status: "full",
-        readyToMultiply: true,
-        readyApprentice: {
-          id: "a1",
-          displayName: "Al",
-          stage: "ready_to_lead",
-        },
-      },
       {
         groupId: "g2",
         groupName: "High",
@@ -221,24 +207,29 @@ describe("buildMultiplicationSuggestions (R9 — context, not a gate)", () => {
         },
       },
       {
+        groupId: "g1",
+        groupName: "Low",
+        segment: "Men",
+        activeMemberCount: 12,
+        effectiveTarget: 12,
+        status: "full",
+        readyToMultiply: true,
+        readyApprentice: {
+          id: "a1",
+          displayName: "Al",
+          stage: "ready_to_lead",
+        },
+      },
+      {
         groupId: "g3",
         groupName: "NoBadge",
         readyToMultiply: false,
         readyApprentice: null,
       },
     ] as CapacityBoardRow[];
-    const readiness = new Map([
-      ["g1", { criteria: {}, metCount: 2, totalCount: 5 } as never],
-      ["g2", { criteria: {}, metCount: 4, totalCount: 5 } as never],
-    ]);
-    const suggestions = buildMultiplicationSuggestions(
-      rows,
-      readiness,
-      new Set(["g1"])
-    );
-    // Only the two badged groups; sorted by metCount desc (g2 then g1).
+    const suggestions = buildMultiplicationSuggestions(rows, new Set(["g1"]));
+    // Only the two badged groups; sorted by group name ("High" then "Low").
     expect(suggestions.map((s) => s.groupId)).toEqual(["g2", "g1"]);
-    expect(suggestions[0].metCount).toBe(4);
     expect(suggestions.find((s) => s.groupId === "g1")!.alreadyCandidate).toBe(
       true
     );
@@ -263,37 +254,10 @@ describe("buildCapacityBoardModel (orchestrator)", () => {
       ],
       metricDefaults: BUILT_IN_METRIC_DEFAULTS,
       apprentices: [readAp("g1", "ready_to_lead")],
-      coShepherdSinceByGroup: { g1: "2020-01-01" },
-      candidateFlagsByGroup: {
-        g1: { shepherdWilling: true, needsSimilarStage: true },
-      },
       candidateGroupIds: [],
-      todayIso: TODAY,
     });
     const g1 = model.rows.find((r) => r.groupId === "g1")!;
     expect(g1.readyToMultiply).toBe(true);
     expect(model.suggestions.map((s) => s.groupId)).toContain("g1");
-    // 14 members, 6+ years, co-shepherd tenured, willing, needs similar = 5/5.
-    const s = model.suggestions.find((x) => x.groupId === "g1")!;
-    expect(s.metCount).toBe(5);
-  });
-});
-
-describe("buildReadinessByGroup", () => {
-  it("computes metCount per group from bare inputs", () => {
-    const map = buildReadinessByGroup(
-      [
-        {
-          groupId: "g",
-          launchedOn: "2020-01-01",
-          activeMemberCount: 14,
-          coShepherdSince: "2022-01-01",
-          shepherdWilling: true,
-          needsSimilarStage: false,
-        },
-      ],
-      TODAY
-    );
-    expect(map.get("g")!.metCount).toBe(4);
   });
 });

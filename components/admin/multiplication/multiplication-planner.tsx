@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveMultiplicationCandidate,
@@ -64,11 +64,6 @@ const STATUS_OPTIONS: MultiplicationCandidateStatus[] = [
   "deferred",
 ];
 
-const MEETING_TIME_OPTIONS: MultiplicationMeetingTime[] = [
-  "during_the_day",
-  "evening",
-];
-
 const MEETING_TIME_LABEL: Record<MultiplicationMeetingTime, string> = {
   during_the_day: "During the day",
   evening: "Evening",
@@ -117,9 +112,7 @@ function useCandidateTypeGroup(opts: {
   initialGroupName?: string | null;
   initialGroupType?: string | null;
   initialLeaderPipelineId?: string | null;
-  initialWilling?: boolean;
 }) {
-  const [willing, setWilling] = useState(opts.initialWilling ?? false);
   const [groupId, setGroupId] = useState(opts.initialGroupId ?? "");
   const [leaderPipelineId, setLeaderPipelineId] = useState(
     opts.initialLeaderPipelineId ?? ""
@@ -162,8 +155,6 @@ function useCandidateTypeGroup(opts: {
     : "";
 
   return {
-    willing,
-    setWilling,
     groupId: effectiveGroupId,
     setGroupId,
     leaderPipelineId: effectiveLeaderPipelineId,
@@ -209,18 +200,43 @@ function GroupField({
   );
 }
 
-// The "Shepherd willing to multiply" checkbox.
-function WillingField({ state }: { state: TypeGroupState }) {
+// ADR 0029: the Multiplication Readiness Checklist — all five criteria as a
+// contiguous block of plain checkboxes. The three formerly-computed criteria
+// (12+ members, 3+ years, Co-Shepherd 1+ yr) are now Julian-ticked manual flags
+// like the existing two; the thresholds in the labels are advisory text. Each
+// box posts by presence (checkbox name = absent → false in the action's
+// `input.has(...)` read). Uncontrolled (defaultChecked), seeded on edit.
+const READINESS_CHECKLIST_FIELDS: {
+  name: string;
+  criterion: MultiplicationCriterion;
+}[] = CRITERIA_ORDER.map((criterion) => ({ name: criterion, criterion }));
+
+function ReadinessChecklist({
+  idPrefix,
+  defaults,
+}: {
+  idPrefix: string;
+  defaults?: Partial<Record<MultiplicationCriterion, boolean>>;
+}) {
   return (
-    <label className={CHECKBOX_LABEL}>
-      <input
-        type="checkbox"
-        name="shepherd_willing"
-        checked={state.willing}
-        onChange={(e) => state.setWilling(e.target.checked)}
-      />
-      Shepherd willing to multiply
-    </label>
+    <fieldset className="m-0 grid gap-2 border-0 p-0">
+      <legend className={LABEL}>Readiness checklist</legend>
+      {READINESS_CHECKLIST_FIELDS.map((f) => (
+        <label
+          key={f.name}
+          htmlFor={fieldId(idPrefix, f.name)}
+          className={CHECKBOX_LABEL}
+        >
+          <input
+            id={fieldId(idPrefix, f.name)}
+            type="checkbox"
+            name={f.name}
+            defaultChecked={defaults?.[f.criterion] ?? false}
+          />
+          {CRITERION_LABEL[f.criterion]}
+        </label>
+      ))}
+    </fieldset>
   );
 }
 
@@ -319,86 +335,6 @@ function SuccessorField({
   );
 }
 
-function MeetingTimeField({
-  idPrefix,
-  defaultValue,
-}: {
-  idPrefix: string;
-  defaultValue?: MultiplicationMeetingTime | null;
-}) {
-  const id = fieldId(idPrefix, "meeting_time");
-  return (
-    <div>
-      <label htmlFor={id} className={LABEL}>
-        Meeting time
-      </label>
-      <select
-        id={id}
-        name="meeting_time"
-        defaultValue={defaultValue ?? ""}
-        className={INPUT}
-      >
-        <option value="">Unset</option>
-        {MEETING_TIME_OPTIONS.map((m) => (
-          <option key={m} value={m}>
-            {MEETING_TIME_LABEL[m]}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function MemberCountField({
-  idPrefix,
-  defaultValue,
-  placeholder,
-  hint,
-}: {
-  idPrefix: string;
-  defaultValue?: number | null;
-  placeholder?: string;
-  hint: ReactNode;
-}) {
-  const id = fieldId(idPrefix, "manual_member_count");
-  return (
-    <div>
-      <label htmlFor={id} className={LABEL}>
-        Members (entered)
-      </label>
-      <input
-        id={id}
-        name="manual_member_count"
-        type="number"
-        min={0}
-        max={1000}
-        inputMode="numeric"
-        defaultValue={defaultValue ?? ""}
-        placeholder={placeholder}
-        className={INPUT}
-      />
-      <p className={HINT}>{hint}</p>
-    </div>
-  );
-}
-
-function NeedsSimilarStageField({
-  defaultChecked,
-}: {
-  defaultChecked?: boolean;
-}) {
-  return (
-    <label className={CHECKBOX_LABEL}>
-      <input
-        type="checkbox"
-        name="needs_similar_stage"
-        defaultChecked={defaultChecked}
-      />
-      Need for a similar-stage group
-    </label>
-  );
-}
-
 function NotesField({
   idPrefix,
   defaultValue,
@@ -435,7 +371,6 @@ function CandidateEditForm({
   const typeGroup = useCandidateTypeGroup({
     groupOptions,
     apprenticesByGroup,
-    initialWilling: c.shepherdWilling,
     initialGroupId: c.groupId,
     initialGroupName: c.groupName,
     initialGroupType: c.groupType,
@@ -459,26 +394,10 @@ function CandidateEditForm({
           <TargetYearField idPrefix={idPrefix} defaultValue={c.targetYear} />
           <StatusField idPrefix={idPrefix} defaultValue={c.status} />
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
-          <SuccessorField
-            idPrefix={idPrefix}
-            defaultValue={c.successorDesignate}
-          />
-          <MeetingTimeField idPrefix={idPrefix} defaultValue={c.meetingTime} />
-        </div>
-        <MemberCountField
+        <SuccessorField
           idPrefix={idPrefix}
-          defaultValue={c.manualMemberCount}
-          placeholder={String(c.activeMemberCount)}
-          hint={
-            <>
-              Julian&rsquo;s headcount for this group, used for the &ldquo;12+
-              members&rdquo; signal. Leave blank to use the in-app roster count
-              ({c.activeMemberCount}).
-            </>
-          }
+          defaultValue={c.successorDesignate}
         />
-        <WillingField state={typeGroup} />
         <div>
           <label
             htmlFor={fieldId(idPrefix, "leader_pipeline_id")}
@@ -507,8 +426,17 @@ function CandidateEditForm({
               : "Pick the multiplying group above to link one of its apprentices."}
           </p>
         </div>
-        <NeedsSimilarStageField defaultChecked={c.needsSimilarStage} />
         <NotesField idPrefix={idPrefix} defaultValue={c.notes} />
+        <ReadinessChecklist
+          idPrefix={idPrefix}
+          defaults={{
+            enough_members: c.enoughMembers,
+            established_long_enough: c.establishedLongEnough,
+            co_shepherd_tenured: c.coShepherdTenured,
+            shepherd_willing: c.shepherdWilling,
+            needs_similar_stage: c.needsSimilarStage,
+          }}
+        />
         <div className="flex items-center gap-2.5">
           <PButton type="submit" tone="terra" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save"}
@@ -608,18 +536,9 @@ function AddCandidateForm({
         <TargetYearField idPrefix="mc-add" />
         <StatusField idPrefix="mc-add" defaultValue="watching" />
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
-        <SuccessorField idPrefix="mc-add" />
-        <MeetingTimeField idPrefix="mc-add" />
-      </div>
-      <MemberCountField
-        idPrefix="mc-add"
-        placeholder="e.g. 12"
-        hint="Julian’s headcount for the multiplying group. Leave blank to use the in-app roster count."
-      />
-      <WillingField state={typeGroup} />
-      <NeedsSimilarStageField />
+      <SuccessorField idPrefix="mc-add" />
       <NotesField idPrefix="mc-add" />
+      <ReadinessChecklist idPrefix="mc-add" />
       <div className="flex items-center gap-2.5">
         <PButton
           type="submit"
@@ -705,14 +624,14 @@ function SuggestionsPanel({
           Suggested candidates
         </span>
         <p className="m-0 mt-1.5 font-sans text-sm leading-normal text-ink3">
-          Groups at or over target with an apprentice ready to lead. Readiness
-          is shown as context (&ldquo;meets N/5&rdquo;), not a gate &mdash; a
+          Groups at or over target with an apprentice ready to lead. Lock one in
+          on the Pipeline below to assess its readiness checklist &mdash; a
           group does not need to meet each criterion.
         </p>
       </header>
       {suggestions.map((s) => (
-        // Tone (well/ready) rides a leading sage dot and the sageDeep "meets
-        // N/N" figure — the card itself stays neutral (no tinted surface).
+        // Tone (well/ready) rides a leading sage dot — the card itself stays
+        // neutral (no tinted surface).
         <div
           key={s.groupId}
           className="grid gap-1 rounded-sm border border-line bg-surface px-3.5 py-2.5"
@@ -725,9 +644,6 @@ function SuggestionsPanel({
               />
               {s.groupName}
             </strong>
-            <span className="font-sans text-sm font-medium tabular-nums text-sageDeep">
-              meets {s.metCount}/{s.totalCount}
-            </span>
           </div>
           <span className="font-sans text-sm text-ink2">
             {s.segment} · {s.activeMemberCount}/{s.effectiveTarget ?? "—"} ·{" "}

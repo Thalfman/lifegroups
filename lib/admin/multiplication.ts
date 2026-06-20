@@ -5,12 +5,16 @@
 // Readiness criteria are Julian's, from LG_MULTIPLICATION_PLAN_2026.md and
 // systems-conversation answer 10:
 //   * 12+ members in the group
-//   * 3+ years meeting as a group (from groups.launched_on)
-//   * a co-shepherd serving 1+ year (from group_leaders.assigned_at)
-//   * the shepherd is willing to multiply (manual flag)
-//   * there is a need for a similar-stage group (manual flag)
-// "A group does not need to meet each of these criteria" — so we report each
-// one independently plus a met-count, rather than a single pass/fail.
+//   * 3+ years meeting as a group
+//   * a co-shepherd serving 1+ year
+//   * the shepherd is willing to multiply
+//   * there is a need for a similar-stage group
+// ADR 0029 made all five purely manual, candidate-stored boolean flags Julian
+// ticks himself — a judgment checklist, not a derived signal. The thresholds in
+// the labels ("12+", "3+ yr", "1+ yr") are advisory text now; no date math or
+// roster count is read for readiness. "A group does not need to meet each of
+// these criteria" — so we report each one independently plus a met-count,
+// rather than a single pass/fail.
 
 import type {
   LeaderReadinessStage,
@@ -19,10 +23,6 @@ import type {
 } from "@/types/enums";
 import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
 
-export const MULTIPLICATION_MIN_MEMBERS = 12;
-export const MULTIPLICATION_MIN_YEARS_ACTIVE = 3;
-export const MULTIPLICATION_MIN_CO_SHEPHERD_YEARS = 1;
-
 export type MultiplicationCriterion =
   | "enough_members"
   | "established_long_enough"
@@ -30,13 +30,13 @@ export type MultiplicationCriterion =
   | "shepherd_willing"
   | "needs_similar_stage";
 
+// ADR 0029: the five stored booleans, exactly as Julian ticked them. No
+// data-derived inputs (launched_on, co-shepherd tenure, roster count) — those
+// were dropped when the three formerly-computed criteria became manual flags.
 export type ReadinessInput = {
-  activeMemberCount: number;
-  // groups.launched_on (YYYY-MM-DD) or null when unknown.
-  launchedOn: string | null;
-  // Earliest active co_leader assignment date (YYYY-MM-DD) or null when the
-  // group has no co-leader.
-  coShepherdSince: string | null;
+  enoughMembers: boolean;
+  establishedLongEnough: boolean;
+  coShepherdTenured: boolean;
   shepherdWilling: boolean;
   needsSimilarStage: boolean;
 };
@@ -47,45 +47,11 @@ export type ReadinessResult = {
   totalCount: number;
 };
 
-// Whole years between two YYYY-MM-DD dates (anniversary-aware), or null when
-// either input is missing/malformed. Used for "3+ years" and "co-shepherd 1+
-// year". Exported for testing.
-export function wholeYearsBetween(
-  fromIso: string | null,
-  toIso: string
-): number | null {
-  if (!fromIso) return null;
-  const from = parseIsoParts(fromIso);
-  const to = parseIsoParts(toIso);
-  if (!from || !to) return null;
-  let years = to.y - from.y;
-  // Subtract a year when `to` hasn't reached the anniversary yet.
-  if (to.m < from.m || (to.m === from.m && to.d < from.d)) years -= 1;
-  return years;
-}
-
-function parseIsoParts(
-  iso: string
-): { y: number; m: number; d: number } | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  if (!m) return null;
-  return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
-}
-
-export function evaluateReadiness(
-  input: ReadinessInput,
-  todayIso: string
-): ReadinessResult {
-  const yearsActive = wholeYearsBetween(input.launchedOn, todayIso);
-  const coShepherdYears = wholeYearsBetween(input.coShepherdSince, todayIso);
-
+export function evaluateReadiness(input: ReadinessInput): ReadinessResult {
   const criteria: Record<MultiplicationCriterion, boolean> = {
-    enough_members: input.activeMemberCount >= MULTIPLICATION_MIN_MEMBERS,
-    established_long_enough:
-      yearsActive != null && yearsActive >= MULTIPLICATION_MIN_YEARS_ACTIVE,
-    co_shepherd_tenured:
-      coShepherdYears != null &&
-      coShepherdYears >= MULTIPLICATION_MIN_CO_SHEPHERD_YEARS,
+    enough_members: input.enoughMembers,
+    established_long_enough: input.establishedLongEnough,
+    co_shepherd_tenured: input.coShepherdTenured,
     shepherd_willing: input.shepherdWilling,
     needs_similar_stage: input.needsSimilarStage,
   };
@@ -129,8 +95,8 @@ export function segmentLabel(groupType: string | null): string {
 }
 
 // ADR 0022: a stable DOM anchor id for a segment, so the Readiness grid can
-// deep-link a cell to the matching segment block in the Plan tab
-// (/admin/multiply?tab=plan#<id>). Derived from segmentLabel so the grid and the
+// deep-link a cell to the matching segment block in the Pipeline tab
+// (/admin/multiply?tab=pipeline#<id>). Derived from segmentLabel so the grid and the
 // planner agree on the same id without sharing state — lowercase, with any run of
 // non-alphanumeric characters collapsed to a single hyphen.
 export function segmentAnchorId(segment: string): string {
@@ -155,6 +121,10 @@ export type CandidateView = {
   segment: string;
   targetYear: number | null;
   status: MultiplicationCandidateStatus;
+  // ADR 0029: the five manual readiness flags, as stored on the candidate.
+  enoughMembers: boolean;
+  establishedLongEnough: boolean;
+  coShepherdTenured: boolean;
   shepherdWilling: boolean;
   needsSimilarStage: boolean;
   notes: string | null;
@@ -164,8 +134,9 @@ export type CandidateView = {
   activeMemberCount: number;
   // ADR 0022: Julian's manually-entered headcount, or null when unset.
   manualMemberCount: number | null;
-  // The EFFECTIVE count the planner displays and the "12+ members" criterion
-  // reads: the manual value when Julian has entered one, else the roster count.
+  // The EFFECTIVE count the planner displays on the candidate summary line: the
+  // manual value when Julian has entered one, else the roster count. ADR 0029:
+  // this is display-only now — the "12+ members" criterion is a manual flag.
   memberCount: number;
   readiness: ReadinessResult;
   // Capacity & Multiplication #184: the linked apprentice (leader_pipeline),
@@ -181,14 +152,13 @@ export type CandidateView = {
 export type SegmentGroup = { segment: string; candidates: CandidateView[] };
 
 // Julian #145 / #398: turn the read model's enriched candidate entries into the
-// segmented, readiness-scored view the planner renders. Grouped by cell —
-// audience × category label (#398 replaces the old life_stage axis) — and sorted
-// by segment label so the layout is stable and scannable. Untagged groups bucket
-// under "Uncategorized" (segmentLabel) so they are never dropped. Pure —
-// readiness is computed against the supplied `todayIso`.
+// segmented, readiness-scored view the planner renders. Grouped by the anchoring
+// group's free-text type and sorted by segment label so the layout is stable and
+// scannable. Untagged groups bucket under "Untyped" (segmentLabel) so they are
+// never dropped. Pure — ADR 0029 readiness reads the candidate's stored flags,
+// so no `todayIso` is needed.
 export function buildPlannerSegments(
-  entries: MultiplicationCandidateEntry[],
-  todayIso: string
+  entries: MultiplicationCandidateEntry[]
 ): SegmentGroup[] {
   const segmentMap = new Map<string, SegmentGroup>();
   for (const entry of entries) {
@@ -211,6 +181,9 @@ export function buildPlannerSegments(
       segment,
       targetYear: entry.candidate.target_year,
       status: entry.candidate.status,
+      enoughMembers: entry.candidate.enough_members,
+      establishedLongEnough: entry.candidate.established_long_enough,
+      coShepherdTenured: entry.candidate.co_shepherd_tenured,
       shepherdWilling: entry.candidate.shepherd_willing,
       needsSimilarStage: entry.candidate.needs_similar_stage,
       notes: entry.candidate.notes,
@@ -221,16 +194,15 @@ export function buildPlannerSegments(
       memberCount,
       leaderPipelineId: entry.candidate.leader_pipeline_id,
       linkedApprentice: entry.linkedApprentice,
-      readiness: evaluateReadiness(
-        {
-          activeMemberCount: memberCount,
-          launchedOn: entry.group?.launched_on ?? null,
-          coShepherdSince: entry.coShepherdSince,
-          shepherdWilling: entry.candidate.shepherd_willing,
-          needsSimilarStage: entry.candidate.needs_similar_stage,
-        },
-        todayIso
-      ),
+      // ADR 0029: readiness reads exactly the five stored flags — no date math
+      // or roster count.
+      readiness: evaluateReadiness({
+        enoughMembers: entry.candidate.enough_members,
+        establishedLongEnough: entry.candidate.established_long_enough,
+        coShepherdTenured: entry.candidate.co_shepherd_tenured,
+        shepherdWilling: entry.candidate.shepherd_willing,
+        needsSimilarStage: entry.candidate.needs_similar_stage,
+      }),
     };
     const bucket = segmentMap.get(segment);
     if (bucket) bucket.candidates.push(view);
