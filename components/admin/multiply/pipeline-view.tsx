@@ -147,13 +147,12 @@ export function PipelineView({
 // Each arm tolerates an empty list, so a freshly pipelined type with nothing
 // under it still renders (never block).
 //
-// The canonical `seg-<type>` deep-link anchor (`type.anchorId`) is still owned
-// by the legacy MultiplicationPlanner rendered below on this tab, so we do NOT
-// emit it here too — a pipelined type that also has saved candidates would
-// otherwise duplicate the planner's segment id and make `#seg-…` ambiguous.
-// `buildPipelineView` keeps `anchorId` as the data seam; #757 retires the
-// planner and #759 wires the Readiness deep-link to this type-first section as
-// its sole owner.
+// This section now owns the canonical `seg-<type>` deep-link anchor
+// (`type.anchorId`, from buildPipelineView). The legacy MultiplicationPlanner
+// that used to render it is retired from this tab (#757), so there is no longer a
+// duplicate-id risk; the Readiness grid's `/admin/multiply?tab=pipeline#seg-…`
+// links resolve to this row (scroll-mt-24 keeps the anchored row off the
+// viewport top after the hash scroll, matching the retired planner).
 function PipelineTypeSection({
   type,
   pending,
@@ -164,7 +163,10 @@ function PipelineTypeSection({
   onRemove: () => void;
 }) {
   return (
-    <li className="grid gap-3 rounded-sm border border-line bg-surface p-3">
+    <li
+      id={type.anchorId}
+      className="grid scroll-mt-24 gap-3 rounded-sm border border-line bg-surface p-3"
+    >
       <div className="flex items-center justify-between gap-3">
         <h4 className="m-0 font-sans text-sm font-semibold text-ink">
           {type.type}

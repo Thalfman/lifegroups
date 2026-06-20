@@ -300,6 +300,19 @@ describe("matchShepherdsToType (ADR 0030 — supply side per type)", () => {
     });
   });
 
+  it("excludes launched apprentices — they already lead a group", () => {
+    const matched = matchShepherdsToType(
+      [
+        shepherdInput({ id: "a1", displayName: "Amy", stage: "launched" }),
+        shepherdInput({ id: "a2", displayName: "Bob", stage: "ready_to_lead" }),
+        shepherdInput({ id: "a3", displayName: "Cal", stage: "in_training" }),
+      ],
+      "Young Families"
+    );
+    // The launched apprentice (Amy) is dropped from the supply side entirely.
+    expect(matched.map((m) => m.id)).toEqual(["a2", "a3"]);
+  });
+
   it("returns empty (no error, no block) when no apprentice matches", () => {
     expect(
       matchShepherdsToType(

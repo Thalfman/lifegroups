@@ -202,10 +202,12 @@ function shepherdTypeMatchKey(groupType: string | null): string {
 
 // ADR 0030 (#758): match apprentices to a target group type — the supply side
 // under a pipelined type. An apprentice is a candidate to lead a new group of
-// type T when THEIR group's type is T (case-insensitive / trimmed). Ready-to-lead
-// apprentices (stage === "ready_to_lead") order first; within that, ties break by
-// display name so the list is stable. Returns an empty array when nothing matches
-// — a pipelined type never blocks on having a matched shepherd. Pure, no I/O.
+// type T when THEIR group's type is T (case-insensitive / trimmed). A `launched`
+// apprentice already leads a group, so they are no longer available supply and
+// are excluded (mirroring `apprenticeReadyBy`). Ready-to-lead apprentices
+// (stage === "ready_to_lead") order first; within that, ties break by display
+// name so the list is stable. Returns an empty array when nothing matches — a
+// pipelined type never blocks on having a matched shepherd. Pure, no I/O.
 export function matchShepherdsToType(
   apprentices: readonly ShepherdMatchInput[],
   targetType: string
@@ -216,7 +218,11 @@ export function matchShepherdsToType(
   if (!targetKey) return [];
 
   return apprentices
-    .filter((a) => shepherdTypeMatchKey(a.groupType) === targetKey)
+    .filter(
+      (a) =>
+        a.stage !== "launched" &&
+        shepherdTypeMatchKey(a.groupType) === targetKey
+    )
     .map((a) => ({
       id: a.id,
       displayName: a.displayName,

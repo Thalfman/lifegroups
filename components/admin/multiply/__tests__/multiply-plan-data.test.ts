@@ -45,6 +45,30 @@ const GROUP = {
   group_type: "Men 20-30s",
 } as never;
 
+// A minimal saved-candidate entry anchored to a concrete group of `group_type`.
+const candidateEntry = (group_type: string, groupName: string) =>
+  ({
+    candidate: {
+      id: "c1",
+      group_id: "gc1",
+      target_year: 2026,
+      status: "watching",
+      enough_members: false,
+      established_long_enough: false,
+      co_shepherd_tenured: false,
+      shepherd_willing: false,
+      needs_similar_stage: false,
+      notes: null,
+      successor_designate: null,
+      meeting_time: null,
+      leader_pipeline_id: null,
+      manual_member_count: null,
+    },
+    group: { id: "gc1", name: groupName, group_type },
+    activeMemberCount: 0,
+    linkedApprentice: null,
+  }) as never;
+
 describe("buildMultiplyPlanData", () => {
   it("assembles the planner view with no error when every read succeeds", async () => {
     const data = await buildMultiplyPlanData(
@@ -81,32 +105,97 @@ describe("buildMultiplyPlanData", () => {
     });
   });
 
-  it("a later blocking read (apprentice refs) also empties the view, with its own error", async () => {
+  it("a later blocking read (group refs) also empties the view, with its own error", async () => {
     const data = await buildMultiplyPlanData(
       emptyReads({
-        fetchGroupRefs: async () => ok([GROUP]),
-        fetchApprenticeRefs: async () => fail("refs boom"),
+        fetchGroupRefs: async () => fail("groups boom"),
       })
     );
 
     expect(data).toEqual({
       ...EMPTY_MULTIPLY_PLAN_VIEW,
-      error: "refs boom",
+      error: "groups boom",
       pipelinedTypes: [],
       groupTypes: [],
       pipeline: [],
     });
   });
 
-  it("orders the blocking precedence as data: candidates before apprentice refs", async () => {
+  it("orders the blocking precedence as data: candidates before group refs", async () => {
     const data = await buildMultiplyPlanData(
       emptyReads({
         fetchMultiplicationCandidates: async () => fail("candidates boom"),
-        fetchApprenticeRefs: async () => fail("refs boom"),
+        fetchGroupRefs: async () => fail("groups boom"),
       })
     );
 
     expect(data.error).toBe("candidates boom");
+  });
+
+  // ADR 0030: a missing matched shepherd never blocks a pipelined type. The
+  // apprentice read only feeds the optional matched-shepherds arm now that the
+  // planner is retired, so a transient failure degrades it to empty rather than
+  // blanking the whole Pipeline (potential / locked-in candidates still render).
+  it("degrades matched shepherds to empty on an apprentice read failure, without blocking", async () => {
+    const data = await buildMultiplyPlanData(
+      emptyReads({
+        fetchGroupRefs: async () =>
+          ok([
+            {
+              id: "g-yf",
+              name: "Smiths",
+              lifecycle_status: "active",
+              group_type: "Young Families",
+            },
+          ] as never),
+        fetchApprenticeRefs: async () => fail("refs boom"),
+        fetchGroupTypeConfigs: async () => ok([config("Young Families", true)]),
+        fetchGroupTypes: async () => ok(["Young Families"]),
+      })
+    );
+
+    // The blocking reads succeeded, so the Pipeline still renders…
+    expect(data.error).toBeNull();
+    expect(data.pipeline.map((t) => t.type)).toEqual(["Young Families"]);
+    expect(
+      data.pipeline[0].potentialCandidates.map((p) => p.groupName)
+    ).toEqual(["Smiths"]);
+    // …and the failed apprentice read simply yields no matched shepherds.
+    expect(data.pipeline[0].matchedShepherds).toEqual([]);
+  });
+
+  // Regression guard (Codex P1): the in_pipeline flag defaults false and is not
+  // backfilled, and the planner that used to show every saved candidate is
+  // retired from this tab. A type with an existing locked-in candidate must stay
+  // visible even when it is not explicitly pipelined — otherwise saved data
+  // silently disappears from the Multiply tab.
+  it("keeps a type with saved candidates visible even when it is not explicitly pipelined", async () => {
+    const data = await buildMultiplyPlanData(
+      emptyReads({
+        fetchMultiplicationCandidates: async () =>
+          ok([candidateEntry("Women", "Hope Circle")]),
+        fetchGroupRefs: async () =>
+          ok([
+            {
+              id: "gc1",
+              name: "Hope Circle",
+              lifecycle_status: "active",
+              group_type: "Women",
+            },
+          ] as never),
+        // Nothing is flagged in_pipeline.
+        fetchGroupTypeConfigs: async () => ok([]),
+        fetchGroupTypes: async () => ok(["Women"]),
+      })
+    );
+
+    expect(data.error).toBeNull();
+    // "Women" surfaces purely because it has a saved candidate.
+    expect(data.pipelinedTypes).toContain("Women");
+    expect(data.pipeline.map((t) => t.type)).toEqual(["Women"]);
+    expect(data.pipeline[0].lockedInCandidates.map((c) => c.groupName)).toEqual(
+      ["Hope Circle"]
+    );
   });
 
   // ADR 0030 Pipeline (minimal): the in_pipeline configs surface as
