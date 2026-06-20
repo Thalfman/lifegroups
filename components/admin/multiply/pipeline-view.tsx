@@ -24,10 +24,13 @@ import { PipelineUnpipelinedCandidates } from "@/components/admin/multiply/pipel
 // pipelined type renders even with nothing under it yet (never block). Adding /
 // removing a type is a soft, audited flag flip (the config row is kept).
 //
-// Read-only at this stage: selecting a potential candidate to lock it in (the
-// five-box readiness flow) arrives in #757, and the matched shepherds under each
-// type arrive in #758. Each section carries a stable anchor id so the Readiness
-// grid can deep-link into it (#759).
+// Each pipelined type composes the lock-in flow (#757: select a potential → tick
+// the five-box readiness checklist → save through the audited create RPC; Remove
+// = soft, audited archive) and the matched shepherds (#758). Saved candidates
+// whose type isn't pipelined — including Untyped — fall to the
+// PipelineUnpipelinedCandidates fallback so retiring the planner never hides a
+// saved plan. Each type section carries a stable anchor id for Readiness grid
+// deep-links (#759).
 export function PipelineView({
   pipeline,
   groupTypes,

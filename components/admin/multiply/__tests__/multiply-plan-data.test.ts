@@ -260,6 +260,38 @@ describe("buildMultiplyPlanData", () => {
     expect(data.unpipelinedCandidates).toEqual([]);
   });
 
+  // Codex round-3 P2: if the in_pipeline intent (configs) read fails,
+  // pipelinedTypes degrades to [] — so we can't reliably classify candidates as
+  // "not pipelined". Suppress the fallback rather than dumping every saved
+  // candidate into it under a false "not pipelined" claim.
+  it("suppresses the fallback list when the configs (intent) read fails", async () => {
+    const data = await buildMultiplyPlanData(
+      emptyReads({
+        fetchMultiplicationCandidates: async () =>
+          ok([candidateEntry("Women", "Hope Circle")]),
+        fetchGroupRefs: async () =>
+          ok([
+            {
+              id: "gc1",
+              name: "Hope Circle",
+              lifecycle_status: "active",
+              group_type: "Women",
+            },
+          ] as never),
+        fetchGroupTypeConfigs: async () => fail("configs boom"),
+        fetchGroupTypes: async () => ok(["Women"]),
+      })
+    );
+
+    // Configs is non-blocking, so the tab still renders without an error…
+    expect(data.error).toBeNull();
+    // …but with the intent unknown, neither the pipeline nor the fallback makes a
+    // (possibly false) claim about the saved candidate.
+    expect(data.pipelinedTypes).toEqual([]);
+    expect(data.pipeline).toEqual([]);
+    expect(data.unpipelinedCandidates).toEqual([]);
+  });
+
   // ADR 0030 Pipeline (minimal): the in_pipeline configs surface as
   // pipelinedTypes, the master list as groupTypes — both additive.
   it("surfaces only in_pipeline=true configs as pipelinedTypes, with the master list", async () => {

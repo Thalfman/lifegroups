@@ -174,12 +174,22 @@ export async function buildMultiplyPlanData(
   // no locked-in plan disappears now that the planner is gone. Matching the same
   // case-insensitive type key buildPipelineView uses; Untyped candidates never
   // match a pipelined (always concrete) type, so they always land here.
+  //
+  // But if the in_pipeline intent read itself failed, pipelinedTypes is degraded
+  // to [] and we can't reliably tell which candidates are "not pipelined" —
+  // classifying them all as unpipelined would be a false per-candidate claim. So
+  // suppress the fallback too (the pipeline section is already degraded to empty),
+  // consistent with the read-degrades-gracefully invariant: suppress derived
+  // output rather than report a false state.
   const pipelinedKeys = new Set(
     pipelinedTypes.map((t) => t.trim().toLowerCase())
   );
-  const unpipelinedCandidates = lockedInCandidates.filter(
-    (c) => !pipelinedKeys.has((c.segment ?? "").trim().toLowerCase())
-  );
+  const unpipelinedCandidates =
+    batch.errors.configs != null
+      ? []
+      : lockedInCandidates.filter(
+          (c) => !pipelinedKeys.has((c.segment ?? "").trim().toLowerCase())
+        );
   return {
     ...view,
     error: null,
