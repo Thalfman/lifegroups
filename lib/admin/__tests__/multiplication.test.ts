@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildPipelineView,
   buildPlannerSegments,
   evaluateReadiness,
   filterSegmentsByYear,
@@ -7,6 +8,7 @@ import {
   summarizeTargetYears,
   UNTYPED_SEGMENT,
 } from "@/lib/admin/multiplication";
+import type { SegmentableGroup } from "@/lib/admin/multiplication";
 import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
 
 // Build a candidate entry as the read model returns it, overriding only the
@@ -350,5 +352,150 @@ describe("filterSegmentsByYear", () => {
     const filtered = filterSegmentsByYear(segments(), null);
     expect(filtered.map((s) => s.segment)).toEqual(["Women's"]);
     expect(filtered[0].candidates.map((c) => c.candidateId)).toEqual(["3"]);
+  });
+});
+
+// ADR 0030 Module 3 (#756): the type-first Pipeline. buildPipelineView takes the
+// pipelined types, the active groups with no candidate row (potential pool), and
+// the saved candidates, and partitions each pipelined type into potential vs
+// locked-in candidates. Realistic locked-in candidates come from
+// buildPlannerSegments so the views carry the real CandidateView shape.
+describe("buildPipelineView (ADR 0030 — type-first Pipeline)", () => {
+  function group(over: {
+    id: string;
+    name?: string;
+    groupType?: string | null;
+  }): SegmentableGroup {
+    return {
+      id: over.id,
+      name: over.name ?? `Group ${over.id}`,
+      groupType: over.groupType ?? null,
+    };
+  }
+
+  // Flatten the planner segments into the flat CandidateView[] the Pipeline view
+  // partitions (one locked-in candidate per saved row, across all types).
+  function candidates(...entries: Parameters<typeof entry>[0][]) {
+    return buildPlannerSegments(entries.map(entry)).flatMap(
+      (s) => s.candidates
+    );
+  }
+
+  it("partitions a pipelined type into potential vs locked-in candidates", () => {
+    const view = buildPipelineView(
+      ["Young Families"],
+      [
+        group({ id: "yf-open", name: "Smiths", groupType: "Young Families" }),
+        // A different type is not a potential candidate of Young Families.
+        group({ id: "mens", name: "Men's AM", groupType: "Men's" }),
+      ],
+      candidates({ id: "c1", groupName: "Jones", groupType: "Young Families" })
+    );
+
+    expect(view).toHaveLength(1);
+    const [yf] = view;
+    expect(yf.type).toBe("Young Families");
+    expect(yf.potentialCandidates.map((p) => p.groupName)).toEqual(["Smiths"]);
+    expect(yf.lockedInCandidates.map((c) => c.groupName)).toEqual(["Jones"]);
+  });
+
+  it("locked-in candidates carry their five-box readiness through", () => {
+    const [yf] = buildPipelineView(
+      ["Young Families"],
+      [],
+      candidates({
+        id: "c1",
+        groupType: "Young Families",
+        enoughMembers: true,
+        coShepherdTenured: true,
+        needsSimilarStage: true,
+      })
+    );
+    expect(yf.lockedInCandidates[0].readiness.metCount).toBe(3);
+    expect(yf.lockedInCandidates[0].readiness.criteria.enough_members).toBe(
+      true
+    );
+  });
+
+  it("renders a pipelined type with zero groups and zero candidates (never-block)", () => {
+    const view = buildPipelineView(["Young Families"], [], []);
+    expect(view).toHaveLength(1);
+    expect(view[0].type).toBe("Young Families");
+    expect(view[0].potentialCandidates).toEqual([]);
+    expect(view[0].lockedInCandidates).toEqual([]);
+  });
+
+  it("excludes non-pipelined types' groups and candidates", () => {
+    const view = buildPipelineView(
+      ["Young Families"],
+      [group({ id: "g1", groupType: "Men's" })],
+      candidates({ id: "c1", groupType: "Women's" })
+    );
+    // Only the one pipelined type is present; the Men's/Women's data is dropped.
+    expect(view.map((t) => t.type)).toEqual(["Young Families"]);
+    expect(view[0].potentialCandidates).toEqual([]);
+    expect(view[0].lockedInCandidates).toEqual([]);
+  });
+
+  it("sorts types by label", () => {
+    const view = buildPipelineView(
+      ["Women's", "Men's", "Young Families"],
+      [],
+      []
+    );
+    expect(view.map((t) => t.type)).toEqual([
+      "Men's",
+      "Women's",
+      "Young Families",
+    ]);
+  });
+
+  it("sorts an Untyped arm last (defensive)", () => {
+    const view = buildPipelineView([UNTYPED_SEGMENT, "Men's"], [], []);
+    expect(view.map((t) => t.type)).toEqual(["Men's", UNTYPED_SEGMENT]);
+  });
+
+  it("matches groups and candidates case-insensitively to the pipelined type", () => {
+    const [yf] = buildPipelineView(
+      ["Young Families"],
+      [group({ id: "g1", name: "Lowercased", groupType: "young families" })],
+      candidates({ id: "c1", groupName: "Mixed", groupType: "YOUNG FAMILIES" })
+    );
+    expect(yf.potentialCandidates.map((p) => p.groupName)).toEqual([
+      "Lowercased",
+    ]);
+    expect(yf.lockedInCandidates.map((c) => c.groupName)).toEqual(["Mixed"]);
+  });
+
+  it("dedupes a repeated pipelined type and skips blanks", () => {
+    const view = buildPipelineView(["Men's", "  ", "men's"], [], []);
+    expect(view.map((t) => t.type)).toEqual(["Men's"]);
+  });
+
+  it("sorts potential and locked-in candidates by name", () => {
+    const [yf] = buildPipelineView(
+      ["Young Families"],
+      [
+        group({ id: "b", name: "Bravo", groupType: "Young Families" }),
+        group({ id: "a", name: "Alpha", groupType: "Young Families" }),
+      ],
+      candidates(
+        { id: "z", groupName: "Zulu", groupType: "Young Families" },
+        { id: "m", groupName: "Mike", groupType: "Young Families" }
+      )
+    );
+    expect(yf.potentialCandidates.map((p) => p.groupName)).toEqual([
+      "Alpha",
+      "Bravo",
+    ]);
+    expect(yf.lockedInCandidates.map((c) => c.groupName)).toEqual([
+      "Mike",
+      "Zulu",
+    ]);
+  });
+
+  it("derives a stable anchor id from the type label (deep-link seam)", () => {
+    const [yf] = buildPipelineView(["Young Families"], [], []);
+    expect(yf.anchorId).toBe("seg-young-families");
   });
 });

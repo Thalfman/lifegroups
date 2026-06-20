@@ -13,6 +13,10 @@ import {
   buildMultiplicationView,
   type MultiplicationView,
 } from "@/components/admin/launch-planning/launch-planning-data";
+import {
+  buildPipelineView,
+  type PipelineTypeView,
+} from "@/lib/admin/multiplication";
 
 // The Multiply area's Plan tab (ADR 0022): Julian's per-group multiplication
 // plan — the seeded candidate pipeline (ADR 0006), grouped by free-text group
@@ -31,6 +35,11 @@ export type MultiplyPlanData = MultiplicationView & {
   // control). Both degrade to [] on a failed read without blocking the planner.
   pipelinedTypes: string[];
   groupTypes: string[];
+  // ADR 0030 Module 3 (#756): the type-first Pipeline — each pipelined type with
+  // its auto-listed potential candidates (active groups of the type with no
+  // saved candidate) and its locked-in candidates. Empty when nothing is
+  // pipelined or a blocking read failed.
+  pipeline: PipelineTypeView[];
 };
 
 export type MultiplyPlanReads = {
@@ -101,14 +110,29 @@ export async function buildMultiplyPlanData(
   const groupTypes = batch.results.types.data ?? [];
 
   if (error)
-    return { ...EMPTY_MULTIPLY_PLAN_VIEW, error, pipelinedTypes, groupTypes };
+    return {
+      ...EMPTY_MULTIPLY_PLAN_VIEW,
+      error,
+      pipelinedTypes,
+      groupTypes,
+      pipeline: [],
+    };
 
   const view = buildMultiplicationView(
     batch.results.candidates.data ?? [],
     batch.results.groupRefs.data ?? [],
     batch.results.apprenticeRefs.data ?? []
   );
-  return { ...view, error: null, pipelinedTypes, groupTypes };
+  // The potential-candidate pool is the active groups not already anchored to a
+  // candidate (groupOptions); the locked-in candidates are the saved candidates
+  // flattened out of their segments. buildPipelineView partitions both onto the
+  // pipelined types.
+  const pipeline = buildPipelineView(
+    pipelinedTypes,
+    view.groupOptions,
+    view.segments.flatMap((s) => s.candidates)
+  );
+  return { ...view, error: null, pipelinedTypes, groupTypes, pipeline };
 }
 
 export async function loadMultiplyPlanData(): Promise<MultiplyPlanData> {
@@ -119,6 +143,7 @@ export async function loadMultiplyPlanData(): Promise<MultiplyPlanData> {
       error: "Database is not configured in this environment.",
       pipelinedTypes: [],
       groupTypes: [],
+      pipeline: [],
     };
   }
   return buildMultiplyPlanData(supabaseMultiplyPlanReads(client));
