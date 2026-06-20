@@ -22,6 +22,7 @@ function prospect(over: Partial<ProspectBoardEntry>): ProspectBoardEntry {
     created_at: "2026-06-01T00:00:00Z",
     next_step: null,
     additional_note: null,
+    desired_group_type: null,
     ...over,
   };
 }

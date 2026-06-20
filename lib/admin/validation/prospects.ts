@@ -32,10 +32,16 @@ function isProspectState(value: unknown): value is ProspectState {
   );
 }
 
+// The desired Group type mirrors groups.group_type: optional free text, trimmed,
+// empty -> null, <= 80 chars. Shared cap with the group-types list rules.
+const DESIRED_GROUP_TYPE_MAX = 80;
+
 export type CreateProspectPayload = {
   full_name: string;
   email: string | null;
   phone: string | null;
+  // #746: the optional desired Group type (null = not set).
+  desired_group_type: string | null;
 };
 
 export function validateCreateProspectPayload(
@@ -48,6 +54,7 @@ export function validateCreateProspectPayload(
   const fullName = trimString(input.full_name) ?? "";
   const email = readOptionalString(input.email);
   const phone = readOptionalString(input.phone);
+  const desiredType = readOptionalString(input.desired_group_type);
 
   if (fullName.length === 0) errors.push("Prospect name is required.");
   if (fullName.length > 120)
@@ -56,6 +63,10 @@ export function validateCreateProspectPayload(
     errors.push("Email must be a valid address.");
   if (phone !== undefined && !isPhone(phone))
     errors.push("Phone format is invalid.");
+  if (desiredType !== undefined && desiredType.length > DESIRED_GROUP_TYPE_MAX)
+    errors.push(
+      `Desired group type is too long (max ${DESIRED_GROUP_TYPE_MAX} characters).`
+    );
 
   if (errors.length > 0) return { ok: false, errors };
 
@@ -65,6 +76,7 @@ export function validateCreateProspectPayload(
       full_name: fullName,
       email: email ?? null,
       phone: phone ?? null,
+      desired_group_type: desiredType ?? null,
     },
   };
 }

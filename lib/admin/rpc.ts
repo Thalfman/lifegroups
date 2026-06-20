@@ -481,6 +481,10 @@ export type AdminUuidRpcArgs = {
     p_leader_pipeline_id: string | null;
     // ADR 0022: Julian-fed headcount. Null falls back to the in-app roster count.
     p_manual_member_count: number | null;
+    // ADR 0029: the three manually-ticked readiness flags.
+    p_enough_members: boolean;
+    p_established_long_enough: boolean;
+    p_co_shepherd_tenured: boolean;
   };
   admin_update_multiplication_candidate: {
     p_candidate_id: string;
@@ -496,6 +500,10 @@ export type AdminUuidRpcArgs = {
     p_manual_member_count: number | null;
     // The multiplying group this candidate anchors to.
     p_group_id: string;
+    // ADR 0029: the three manually-ticked readiness flags.
+    p_enough_members: boolean;
+    p_established_long_enough: boolean;
+    p_co_shepherd_tenured: boolean;
   };
   admin_archive_multiplication_candidate: { p_candidate_id: string };
   // Capacity & Multiplication #183: Leader Pipeline (apprentice) writes.
@@ -538,6 +546,8 @@ export type AdminUuidRpcArgs = {
     p_full_name: string;
     p_email: string | null;
     p_phone: string | null;
+    // #746: the optional free-text desired Group type (null = not set).
+    p_desired_group_type: string | null;
   };
   admin_transition_prospect: {
     p_prospect_id: string;

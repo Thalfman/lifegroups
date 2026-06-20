@@ -70,10 +70,27 @@ describe("adminCreateProspect", () => {
       p_full_name: "Pat Prospect",
       p_email: null,
       p_phone: null,
+      p_desired_group_type: null,
     });
     for (const path of FUNNEL_PATHS) {
       expect(mockRevalidatePath).toHaveBeenCalledWith(path);
     }
+  });
+
+  // #746: an optional desired Group type is threaded to the RPC, trimmed.
+  it("threads a chosen desired group type to the RPC", async () => {
+    const result = await adminCreateProspect(
+      undefined,
+      form({ full_name: "Pat Prospect", desired_group_type: "  Men's  " })
+    );
+
+    expect(result).toEqual({ ok: true, value: { id: NEW_ID } });
+    expect(mockRpc).toHaveBeenCalledWith("admin_create_prospect", {
+      p_full_name: "Pat Prospect",
+      p_email: null,
+      p_phone: null,
+      p_desired_group_type: "Men's",
+    });
   });
 
   it("rejects a blank name before the RPC", async () => {

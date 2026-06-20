@@ -34,6 +34,8 @@ export type ProspectBoardEntry = {
   // Additional Note. Either may be absent.
   next_step: NextStep | null;
   additional_note: string | null;
+  // #746: the optional free-text desired Group type (null = not set).
+  desired_group_type: string | null;
 };
 
 // The raw row as it comes back from PostgREST: next_step is untyped jsonb.
@@ -51,7 +53,8 @@ const PROSPECT_BOARD_COLUMNS = columns<ProspectBoardEntry>()(
   "archived",
   "created_at",
   "next_step",
-  "additional_note"
+  "additional_note",
+  "desired_group_type"
 );
 
 // Same default-cap rationale as fetchGuests: widen past PostgREST's ~1000 row
