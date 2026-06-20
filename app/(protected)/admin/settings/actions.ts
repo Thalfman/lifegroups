@@ -7,12 +7,14 @@ import {
   validateReadinessRulePayload,
   validateSetGroupTypesPayload,
   validateSetGroupTypeConfigPayload,
+  validateAddGroupTypePayload,
   type GroupMetricSettingsPayload,
   type HealthRubricPayload,
   type MetricDefaultsPayload,
   type ReadinessRulePayload,
   type SetGroupTypesPayload,
   type SetGroupTypeConfigPayload,
+  type AddGroupTypePayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -311,6 +313,41 @@ export async function adminSetGroupTypes(
   const result = await runAdminWriteAction(SET_GROUP_TYPES_SPEC, prev, input);
   // group_types is cached cross-request (lib/supabase/cached-config.ts); bust
   // the tag so the new list is reflected on the next read.
+  if (result.ok) updateTag(GROUP_TYPES_CACHE_TAG);
+  return result;
+}
+
+// ----- Inline "Add new type…" (#747) --------------------------------------
+// Append one free-text type to the canonical list, idempotently. Reused by the
+// GroupTypePicker so an intake (a Prospect's desired type) is never blocked by a
+// missing type. The Plan board is added to the revalidate set because the picker
+// lives on the Prospect create form there, on top of every other surface that
+// reads the list.
+const ADD_GROUP_TYPE_REVALIDATE_PATHS = [
+  ...GROUP_TYPES_REVALIDATE_PATHS,
+  "/admin/plan",
+] as const;
+
+const ADD_GROUP_TYPE_SPEC: AdminWriteActionSpec<
+  AddGroupTypePayload,
+  { id: string }
+> = {
+  name: "admin.settings.add_group_type",
+  keys: ["group_type"],
+  validate: validateAddGroupTypePayload,
+  rpc: (client, value) =>
+    adminRpc(client, "admin_add_group_type", { p_group_type: value.name }),
+  revalidate: () => ADD_GROUP_TYPE_REVALIDATE_PATHS,
+  noDataError: "The group type wasn't added. Please try again.",
+};
+
+export async function adminAddGroupType(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<AddGroupTypePayload>
+): Promise<ActionResult<{ id: string }>> {
+  const result = await runAdminWriteAction(ADD_GROUP_TYPE_SPEC, prev, input);
+  // Bust the cross-request group_types cache so the appended type shows up
+  // everywhere on the next read.
   if (result.ok) updateTag(GROUP_TYPES_CACHE_TAG);
   return result;
 }

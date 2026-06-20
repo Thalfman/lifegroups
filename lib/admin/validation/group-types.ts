@@ -70,6 +70,34 @@ export function validateSetGroupTypesPayload(
   return { ok: true, value: { types } };
 }
 
+// #747: the inline "Add new type…" affordance appends a single name to the
+// canonical list. Same per-name rules as the whole-list validator (trim,
+// non-blank, ≤80 chars); the idempotent admin_add_group_type RPC stays the gate.
+export type AddGroupTypePayload = {
+  name: string;
+};
+
+export function validateAddGroupTypePayload(
+  input: unknown
+): ValidationResult<AddGroupTypePayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+
+  const name =
+    typeof input.group_type === "string" ? input.group_type.trim() : "";
+
+  if (name.length === 0) return { ok: false, errors: ["Enter a group type."] };
+  if (name.length > MAX_TYPE_NAME_LENGTH)
+    return {
+      ok: false,
+      errors: [
+        `A group type must be ${MAX_TYPE_NAME_LENGTH} characters or fewer.`,
+      ],
+    };
+
+  return { ok: true, value: { name } };
+}
+
 export type SetGroupTypeConfigPayload = {
   groupType: string;
   targetCount: number;

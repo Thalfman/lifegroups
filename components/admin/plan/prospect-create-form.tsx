@@ -13,6 +13,7 @@ import {
   fieldLabelClassName as LABEL,
   fieldInputBaseClassName as INPUT,
 } from "@/components/admin/forms/field-styles";
+import { GroupTypePicker } from "@/components/admin/forms/group-type-picker";
 
 // Add a Prospect to the funnel (acceptance #2). A new Prospect always lands in
 // Interested with no group — the state machine moves them onward from there.
@@ -47,16 +48,21 @@ export function ProspectCreateForm({
   // by the board's revalidation.
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // useActionForm resets the <form> element on success; the desired-type select
-  // is uncontrolled, so the native reset clears it. Only the controlled Full name
-  // field needs explicit clearing here. Derived during render via useValueChange
-  // (a fresh `state` object each submit) rather than in an effect to avoid the
-  // cascading-render smell; this also raises the success flag.
+  // The GroupTypePicker is a controlled component, so the native <form> reset
+  // can't clear it; remount it by bumping this key on a successful add.
+  const [pickerKey, setPickerKey] = useState(0);
+
+  // useActionForm resets the <form> element on success; the controlled Full name
+  // field and the (also controlled) desired-type picker need explicit clearing
+  // here. Derived during render via useValueChange (a fresh `state` object each
+  // submit) rather than in an effect to avoid the cascading-render smell; this
+  // also raises the success flag.
   useValueChange(state, (next) => {
     if (!next?.ok) return;
     setFullName("");
     setFullNameError(undefined);
     setShowSuccess(true);
+    setPickerKey((k) => k + 1);
   });
 
   // Auto-dismiss the success flash after 5s. Keyed on the action result so a
@@ -142,26 +148,16 @@ export function ProspectCreateForm({
             placeholder="(555) 555-0100"
           />
         </div>
-        <div>
-          <label htmlFor="prospect-desired_group_type" className={LABEL}>
-            Desired group type (optional)
-          </label>
-          {/* Uncontrolled: the native form reset clears it on a successful add.
-              The list is the admin-managed group_types; "—" is no selection. */}
-          <select
-            id="prospect-desired_group_type"
-            name="desired_group_type"
-            defaultValue=""
-            className={INPUT}
-          >
-            <option value="">—</option>
-            {groupTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* The admin-managed group_types list, with an inline "Add new type…"
+            affordance so a missing type never blocks intake (#747). "—" is no
+            selection (the desired type is optional). */}
+        <GroupTypePicker
+          key={pickerKey}
+          id="prospect-desired_group_type"
+          name="desired_group_type"
+          label="Desired group type (optional)"
+          groupTypes={groupTypes}
+        />
         <div>
           <PButton
             type="submit"

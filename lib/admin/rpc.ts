@@ -674,6 +674,10 @@ export type AdminUuidRpcArgs = {
   // Settings > Group types: replace the canonical free-text type-name list
   // (app_settings keyed row). p_types is the validated, trimmed, deduped list.
   admin_set_group_types: { p_types: unknown[] };
+  // #747: idempotently append one free-text type to the canonical list (no-ops
+  // case-insensitively if present, preserving order). Used by the inline "Add
+  // new type…" affordance so an intake is never blocked by a missing type.
+  admin_add_group_type: { p_group_type: string };
   // Multiply: upsert one group type's config (target group count + an optional
   // readiness-rule override; null/empty rule = inherit the global rule), keyed
   // on the free-text type name.

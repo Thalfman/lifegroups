@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   validateSetGroupTypesPayload,
   validateSetGroupTypeConfigPayload,
+  validateAddGroupTypePayload,
 } from "@/lib/admin/validation/group-types";
 
 // The Settings group-type list + the Multiply per-type config validators. Both
@@ -79,5 +80,34 @@ describe("validateSetGroupTypeConfigPayload", () => {
     const result = validateSetGroupTypeConfigPayload({ group_type: "A" });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value.targetCount).toBe(0);
+  });
+});
+
+// #747: the inline "Add new type…" single-name validator. Same per-name rules as
+// the whole-list validator; the idempotent admin_add_group_type RPC stays the
+// authoritative gate.
+describe("validateAddGroupTypePayload", () => {
+  it("accepts and trims a non-blank name", () => {
+    const result = validateAddGroupTypePayload({
+      group_type: "  Mixed – Young Families ",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.name).toBe("Mixed – Young Families");
+  });
+
+  it("rejects a blank or whitespace-only name", () => {
+    expect(validateAddGroupTypePayload({ group_type: "" }).ok).toBe(false);
+    expect(validateAddGroupTypePayload({ group_type: "   " }).ok).toBe(false);
+    expect(validateAddGroupTypePayload({}).ok).toBe(false);
+  });
+
+  it("rejects an over-long (>80 char) name", () => {
+    const result = validateAddGroupTypePayload({ group_type: "x".repeat(81) });
+    expect(result.ok).toBe(false);
+  });
+
+  it("accepts a name at the 80-char boundary", () => {
+    const result = validateAddGroupTypePayload({ group_type: "x".repeat(80) });
+    expect(result.ok).toBe(true);
   });
 });

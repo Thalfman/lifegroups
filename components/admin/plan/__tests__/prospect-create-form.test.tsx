@@ -7,6 +7,12 @@ vi.mock("@/app/(protected)/admin/plan/actions", () => ({
   adminCreateProspect: vi.fn(),
 }));
 
+// The form now embeds the GroupTypePicker, which binds the add-type action;
+// stub it so static rendering never pulls server-only deps.
+vi.mock("@/app/(protected)/admin/settings/actions", () => ({
+  adminAddGroupType: vi.fn(),
+}));
+
 import { ProspectCreateForm } from "@/components/admin/plan/prospect-create-form";
 
 describe("ProspectCreateForm — Full name accessibility wiring", () => {
