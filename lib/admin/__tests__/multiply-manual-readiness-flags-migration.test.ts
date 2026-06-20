@@ -105,6 +105,17 @@ describe("manual readiness flags migration — audited write path", () => {
     }
   });
 
+  // Regression guard: the re-created update RPC must preserve the current
+  // group-re-attachment behavior (write group_id = p_group_id and validate the
+  // apprentice against the new group), not the older cell-era body that ignored
+  // p_group_id.
+  it("update still re-attaches the multiplying group from p_group_id", () => {
+    const body = functionBody(sql, "admin_update_multiplication_candidate");
+    expect(body).toMatch(/set\s+group_id\s*=\s*p_group_id/);
+    // The apprentice same-group check compares against the new p_group_id.
+    expect(body).toContain("v_apprentice_group <> p_group_id");
+  });
+
   it("drops the prior signatures so callers must use the new shape", () => {
     for (const fn of RPCS) {
       const priorArgs = PRIOR_ARGS[fn]

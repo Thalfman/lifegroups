@@ -8,12 +8,13 @@
 -- migration lays the persistence + write-path foundation only (no UI, no
 -- readiness-eval change — those land in later slices).
 --
--- Architecture parity with 20260608120000 (manual_member_count): additive columns
--- only; writes only via the admin_*_multiplication_candidate SECURITY DEFINER RPCs
--- (re-created here to thread the three flags), each paired with an audit_events
--- row; admin-only RLS unchanged; no hard deletes. NO backfill — existing rows take
--- the false default, so a ticked box always means Julian set it deliberately
--- (ADR 0029 §2), never an inferred value.
+-- The two RPCs are re-created from their current shape (20260708000000, which
+-- anchors a candidate to a concrete group and can re-attach it on update) with
+-- the three flags threaded in — NOT from the older cell-era body. Additive
+-- columns only; writes stay on the audited SECURITY DEFINER path, each paired
+-- with an audit_events row; admin-only RLS unchanged; no hard deletes. NO
+-- backfill — existing rows take the false default, so a ticked box always means
+-- Julian set it deliberately (ADR 0029 §2), never an inferred value.
 
 -- ---------------------------------------------------------------------------
 -- 1. Additive boolean columns, NOT NULL DEFAULT false — mirroring the existing
@@ -37,7 +38,8 @@ comment on column public.multiplication_candidates.co_shepherd_tenured is
   'ADR 0029: Julian-ticked "Co-Shepherd 1+ year" readiness criterion. Manual; no date math against the co-shepherd assignment date.';
 
 -- ---------------------------------------------------------------------------
--- 2. RPC: create (re-created to accept + persist the three readiness flags).
+-- 2. RPC: create (re-created from the 20260708000000 body to accept + persist
+--    the three readiness flags). Group-anchored; type is the group's group_type.
 -- ---------------------------------------------------------------------------
 
 create or replace function public.admin_create_multiplication_candidate(
@@ -62,10 +64,10 @@ set search_path = public, pg_temp
 as $$
 declare
   v_actor uuid;
-  v_group_exists boolean;
   v_notes text;
   v_successor text;
   v_status public.multiplication_candidate_status;
+  v_group_found boolean;
   v_apprentice_group uuid;
   v_new_id uuid;
 begin
@@ -75,6 +77,10 @@ begin
   v_actor := public.auth_profile_id();
   if v_actor is null then
     raise exception 'insufficient_privilege';
+  end if;
+
+  if p_group_id is null then
+    raise exception 'invalid_input';
   end if;
 
   if p_target_year is not null and (p_target_year < 2024 or p_target_year > 2100) then
@@ -98,13 +104,19 @@ begin
 
   v_status := coalesce(p_status, 'watching'::public.multiplication_candidate_status);
 
-  select true into v_group_exists from public.groups where id = p_group_id for update;
-  if v_group_exists is null then
+  select true into v_group_found
+    from public.groups where id = p_group_id for update;
+  if v_group_found is null then
     raise exception 'missing_group';
   end if;
+  if exists (
+    select 1 from public.multiplication_candidates
+     where group_id = p_group_id and archived_at is null
+  ) then
+    raise exception 'candidate_exists';
+  end if;
 
-  -- Same-group guard: a linked apprentice must lead out of its own group, or
-  -- the planner and ready badges would count the wrong leader.
+  -- Same-group guard: a linked apprentice must lead out of the multiplying group.
   if p_leader_pipeline_id is not null then
     select group_id into v_apprentice_group
       from public.leader_pipeline
@@ -115,13 +127,6 @@ begin
     if v_apprentice_group <> p_group_id then
       raise exception 'apprentice_group_mismatch';
     end if;
-  end if;
-
-  if exists (
-    select 1 from public.multiplication_candidates
-     where group_id = p_group_id and archived_at is null
-  ) then
-    raise exception 'candidate_exists';
   end if;
 
   insert into public.multiplication_candidates (
@@ -147,7 +152,8 @@ begin
     'multiplication_candidates',
     v_new_id,
     jsonb_build_object('after', jsonb_build_object(
-      'group_id', p_group_id, 'target_year', p_target_year, 'status', v_status,
+      'group_id', p_group_id,
+      'target_year', p_target_year, 'status', v_status,
       'shepherd_willing', coalesce(p_shepherd_willing, false),
       'needs_similar_stage', coalesce(p_needs_similar_stage, false),
       'has_notes', v_notes is not null,
@@ -166,7 +172,9 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 3. RPC: update (re-created to accept + persist the three readiness flags).
+-- 3. RPC: update (re-created from the 20260708000000 body to accept + persist
+--    the three readiness flags). Preserves group re-attachment (group_id =
+--    p_group_id) and validates the apprentice against the NEW group.
 -- ---------------------------------------------------------------------------
 
 create or replace function public.admin_update_multiplication_candidate(
@@ -195,7 +203,8 @@ declare
   v_notes text;
   v_successor text;
   v_status public.multiplication_candidate_status;
-  v_group_id uuid;
+  v_exists boolean;
+  v_group_found boolean;
   v_apprentice_group uuid;
   v_before jsonb;
 begin
@@ -205,6 +214,10 @@ begin
   v_actor := public.auth_profile_id();
   if v_actor is null then
     raise exception 'insufficient_privilege';
+  end if;
+
+  if p_group_id is null then
+    raise exception 'invalid_input';
   end if;
 
   if p_target_year is not null and (p_target_year < 2024 or p_target_year > 2100) then
@@ -228,7 +241,8 @@ begin
 
   v_status := coalesce(p_status, 'watching'::public.multiplication_candidate_status);
 
-  select group_id, jsonb_build_object(
+  select true, jsonb_build_object(
+           'group_id', group_id,
            'target_year', target_year, 'status', status,
            'shepherd_willing', shepherd_willing,
            'needs_similar_stage', needs_similar_stage,
@@ -241,16 +255,31 @@ begin
            'established_long_enough', established_long_enough,
            'co_shepherd_tenured', co_shepherd_tenured
          )
-    into v_group_id, v_before
+    into v_exists, v_before
     from public.multiplication_candidates
    where id = p_candidate_id and archived_at is null
    for update;
 
-  if v_before is null then
+  if v_exists is null then
     raise exception 'missing_candidate';
   end if;
 
-  -- Same-group guard against the candidate's own group.
+  -- The candidate can be re-attached to a different multiplying group, so the
+  -- target group must exist and not already hold another active candidate.
+  select true into v_group_found
+    from public.groups where id = p_group_id for update;
+  if v_group_found is null then
+    raise exception 'missing_group';
+  end if;
+  if exists (
+    select 1 from public.multiplication_candidates
+     where group_id = p_group_id and archived_at is null
+       and id <> p_candidate_id
+  ) then
+    raise exception 'candidate_exists';
+  end if;
+
+  -- Same-group guard against the (possibly new) target group.
   if p_leader_pipeline_id is not null then
     select group_id into v_apprentice_group
       from public.leader_pipeline
@@ -258,13 +287,14 @@ begin
     if v_apprentice_group is null then
       raise exception 'missing_apprentice';
     end if;
-    if v_apprentice_group <> v_group_id then
+    if v_apprentice_group <> p_group_id then
       raise exception 'apprentice_group_mismatch';
     end if;
   end if;
 
   update public.multiplication_candidates
-     set target_year             = p_target_year,
+     set group_id                = p_group_id,
+         target_year             = p_target_year,
          status                  = v_status,
          shepherd_willing        = coalesce(p_shepherd_willing, false),
          needs_similar_stage     = coalesce(p_needs_similar_stage, false),
@@ -286,6 +316,7 @@ begin
     'multiplication_candidates',
     p_candidate_id,
     jsonb_build_object('before', v_before, 'after', jsonb_build_object(
+      'group_id', p_group_id,
       'target_year', p_target_year, 'status', v_status,
       'shepherd_willing', coalesce(p_shepherd_willing, false),
       'needs_similar_stage', coalesce(p_needs_similar_stage, false),
@@ -305,9 +336,9 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 4. Grants. Drop the prior 10-arg signatures (…, uuid, integer) so callers
---    must use the new 13-arg shape (…, integer, boolean, boolean, boolean);
---    re-grant execute to authenticated.
+-- 4. Grants. Drop the prior signatures (create 10-arg, update 11-arg with its
+--    trailing p_group_id) so callers must use the new shapes (create 13-arg,
+--    update 14-arg); re-grant execute to authenticated.
 -- ---------------------------------------------------------------------------
 
 drop function if exists public.admin_create_multiplication_candidate(
@@ -344,4 +375,4 @@ comment on function public.admin_create_multiplication_candidate(
 comment on function public.admin_update_multiplication_candidate(
   uuid, integer, public.multiplication_candidate_status, boolean, boolean, text,
   text, public.multiplication_meeting_time, uuid, integer, uuid, boolean, boolean, boolean
-) is 'ADR 0029 admin write: updates a multiplication candidate, including the three manually-ticked readiness flags. Writes a paired audit_events row.';
+) is 'ADR 0029 admin write: updates a multiplication candidate (including re-attaching its multiplying group), with the three manually-ticked readiness flags. Writes a paired audit_events row.';
