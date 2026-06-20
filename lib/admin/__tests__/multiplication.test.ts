@@ -503,16 +503,29 @@ describe("buildPipelineView (ADR 0030 — type-first Pipeline)", () => {
 
   // #759: the Readiness cell's shepherds deep-link targets the matched-shepherds
   // block within the same Pipeline type section. The block's id composes off the
-  // section anchor with a `-shepherds` suffix so the grid link and the block
+  // section anchor with a `--shepherds` suffix so the grid link and the block
   // agree without sharing state.
   it("derives the shepherds sub-anchor off the section anchor (#759)", () => {
     const [yf] = buildPipelineView(["Young Families"], [], []);
     expect(segmentShepherdsAnchorId("Young Families")).toBe(
-      "seg-young-families-shepherds"
+      "seg-young-families--shepherds"
     );
     expect(segmentShepherdsAnchorId("Young Families")).toBe(
-      `${yf.anchorId}-shepherds`
+      `${yf.anchorId}--shepherds`
     );
+  });
+
+  // The `--` separator keeps the shepherds sub-anchor in a namespace no section
+  // anchor can produce, so a type literally named "<X> Shepherds" can't collide
+  // with X's shepherds block (segmentAnchorId never emits a double hyphen).
+  it("namespaces the shepherds sub-anchor so it can't collide with a section anchor", () => {
+    const [mens] = buildPipelineView(["Men's"], [], []);
+    const [mensShepherds] = buildPipelineView(["Men's Shepherds"], [], []);
+    // Both section anchors are single-hyphenated and distinct from the sub-anchor.
+    expect(mensShepherds.anchorId).toBe("seg-men-s-shepherds");
+    expect(segmentShepherdsAnchorId("Men's")).toBe("seg-men-s--shepherds");
+    expect(segmentShepherdsAnchorId("Men's")).not.toBe(mensShepherds.anchorId);
+    expect(segmentShepherdsAnchorId("Men's")).not.toBe(mens.anchorId);
   });
 
   // ADR 0030 (#758): the supply side. buildPipelineView feeds the apprentices

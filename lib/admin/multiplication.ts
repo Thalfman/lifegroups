@@ -116,9 +116,15 @@ export function segmentAnchorId(segment: string): string {
 // so a Readiness cell can deep-link straight to the supply side (the apprentices
 // who could lead the new group), not just the candidate groups. Composed off
 // segmentAnchorId so the grid link and the Pipeline block agree on the same id
-// without sharing state.
+// without sharing state. The `--` separator is deliberate: segmentAnchorId
+// collapses any run of non-alphanumerics to a SINGLE hyphen and trims the ends,
+// so it can never itself emit a double hyphen. That keeps this sub-anchor in a
+// namespace no section anchor can collide with — e.g. types "Men's" and
+// "Men's Shepherds" would otherwise both reach `seg-men-s-shepherds` (the
+// shepherds block of the former vs. the section of the latter), a duplicate id
+// the shell's getElementById hash scroll would resolve to the wrong block.
 export function segmentShepherdsAnchorId(segment: string): string {
-  return `${segmentAnchorId(segment)}-shepherds`;
+  return `${segmentAnchorId(segment)}--shepherds`;
 }
 
 // The per-candidate facts the planner surface renders: the group identity, the
