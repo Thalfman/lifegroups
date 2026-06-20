@@ -12,9 +12,11 @@ import {
   adminUpdateApprentice,
 } from "@/app/(protected)/admin/leader-pipeline/actions";
 import {
+  APPRENTICE_NAME_FALLBACK,
   LEADER_READINESS_STAGES,
   STAGE_LABEL,
   nextStage,
+  resolveApprenticeNameSource,
   type ApprenticeView,
   type PipelineRollup,
 } from "@/lib/admin/leader-pipeline";
@@ -233,23 +235,35 @@ function AddApprenticeForm({
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminCreateApprentice
   );
-  // Group, member, and name are controlled: the chosen group filters the
-  // member dropdown, and picking a member fills the name — which stays
-  // editable, since a name-only apprentice (no members record yet) is valid.
+  // Dropdown-first (#754): the member dropdown is the primary path. Picking a
+  // member DERIVES the apprentice's name from the member record — no name field.
+  // The explicit "not listed" fallback reveals a free-text name input so an
+  // incomplete roster never blocks adding an apprentice. `memberSelection` holds
+  // the dropdown value: "" (none), a member id, or the fallback sentinel.
   const [groupId, setGroupId] = useState("");
-  const [memberId, setMemberId] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [memberSelection, setMemberSelection] = useState("");
+  const [fallbackName, setFallbackName] = useState("");
   const memberOptions = memberOptionsByGroup[groupId] ?? NO_MEMBER_OPTIONS;
-  // React resets the uncontrolled fields once the create lands; mirror that
-  // for the controlled trio so the form clears as one. Derived during render
+  const nameSource = resolveApprenticeNameSource(
+    memberSelection,
+    memberOptions
+  );
+  // React resets the uncontrolled fields once the create lands; mirror that for
+  // the controlled fields so the form clears as one. Derived during render
   // rather than in an effect to avoid the cascading-render smell.
   useValueChange(state, (next) => {
     if (next?.ok) {
       setGroupId("");
-      setMemberId("");
-      setDisplayName("");
+      setMemberSelection("");
+      setFallbackName("");
     }
   });
+  // Only enable submit once a name is sourced — a member is picked, or the
+  // fallback name is non-empty — so the dropdown-first flow guides rather than
+  // surfacing a "name is required" error.
+  const canSubmit =
+    nameSource.mode === "member" ||
+    (nameSource.mode === "fallback" && fallbackName.trim() !== "");
   if (availableGroups.length === 0) {
     return (
       <div className="grid justify-items-start gap-2">
@@ -275,7 +289,8 @@ function AddApprenticeForm({
             value={groupId}
             onChange={(e) => {
               setGroupId(e.target.value);
-              setMemberId("");
+              setMemberSelection("");
+              setFallbackName("");
             }}
             className={INPUT}
           >
@@ -293,49 +308,64 @@ function AddApprenticeForm({
           <label htmlFor="ap-member" className={LABEL}>
             Group member
           </label>
+          {/* The dropdown is the primary path; member_id rides a hidden field
+              (below) because this select's value can be the fallback sentinel,
+              which is not a uuid. */}
           <select
             id="ap-member"
-            name="member_id"
-            value={memberId}
-            onChange={(e) => {
-              setMemberId(e.target.value);
-              const picked = memberOptions.find((m) => m.id === e.target.value);
-              if (picked) setDisplayName(picked.name);
-            }}
-            disabled={groupId === "" || memberOptions.length === 0}
+            value={memberSelection}
+            onChange={(e) => setMemberSelection(e.target.value)}
+            disabled={groupId === ""}
             className={INPUT}
           >
             <option value="">
               {groupId === ""
                 ? "Select a group first…"
                 : memberOptions.length === 0
-                  ? "No active members in this group"
-                  : "No linked member — type a name"}
+                  ? "No active members — choose “not listed” below"
+                  : "Select a member…"}
             </option>
             {memberOptions.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
               </option>
             ))}
+            <option value={APPRENTICE_NAME_FALLBACK}>
+              Not listed — enter a name
+            </option>
           </select>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
-        <div>
-          <label htmlFor="ap-name" className={LABEL}>
-            Apprentice name
-          </label>
+      {/* The apprentice's name: derived from the member record (hidden) when a
+          member is picked, or typed via the fallback input when "not listed". */}
+      {nameSource.mode === "member" ? (
+        <>
+          <input type="hidden" name="member_id" value={nameSource.memberId} />
           <input
-            id="ap-name"
+            type="hidden"
             name="display_name"
-            type="text"
-            maxLength={APPRENTICE_DISPLAY_NAME_MAX}
-            placeholder="e.g. Tony L."
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className={INPUT}
+            value={nameSource.displayName}
           />
-        </div>
+        </>
+      ) : null}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
+        {nameSource.mode === "fallback" ? (
+          <div>
+            <label htmlFor="ap-name" className={LABEL}>
+              Apprentice name
+            </label>
+            <input
+              id="ap-name"
+              name="display_name"
+              type="text"
+              maxLength={APPRENTICE_DISPLAY_NAME_MAX}
+              placeholder="e.g. Tony L."
+              value={fallbackName}
+              onChange={(e) => setFallbackName(e.target.value)}
+              className={INPUT}
+            />
+          </div>
+        ) : null}
         <div>
           <label htmlFor="ap-stage" className={LABEL}>
             Stage
@@ -380,9 +410,19 @@ function AddApprenticeForm({
         </div>
       </div>
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <PButton
+          type="submit"
+          tone="terra"
+          size="md"
+          disabled={pending || !canSubmit}
+        >
           {pending ? "Adding…" : "Add apprentice"}
         </PButton>
+        {groupId !== "" && !canSubmit ? (
+          <p className="m-0 font-sans text-xs text-ink3">
+            Pick a group member, or choose “not listed” and enter a name.
+          </p>
+        ) : null}
         <FormStatus state={state} />
       </div>
     </form>
