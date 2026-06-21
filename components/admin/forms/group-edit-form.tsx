@@ -19,6 +19,7 @@ import {
 import type { GroupsRow } from "@/types/database";
 import type { MeetingFrequency } from "@/types/enums";
 import { GroupTypePicker } from "./group-type-picker";
+import type { FormDraft } from "@/lib/nav/draft-store";
 import { useActionForm, FormStatus } from "./action-form";
 
 function isoTimeForInput(value: string | null): string {
@@ -43,6 +44,17 @@ export function GroupEditForm({
   onPendingChange,
   // The admin-managed free-text group-type list (see create form).
   groupTypes = [],
+  // OPP-3b (#781) — a restored draft from the "Manage group types" round trip.
+  // When present, each field seeds from it instead of the stored group value, so
+  // an in-progress edit survives the hop to Settings and back.
+  draft,
+  // OPP-3b — offer the "Manage group types" hand-off only from the Groups list
+  // drawer (off by default). The detail header reuses this form but its return
+  // target is the list, not the detail tab, so it leaves the affordance off
+  // (Codex P2).
+  enableManageTypes = false,
+  // OPP-3b — carry the setup origin through the manage round trip (Codex P2).
+  fromSetup = false,
 }: {
   group: GroupsRow;
   onCancel?: () => void;
@@ -50,12 +62,15 @@ export function GroupEditForm({
   onDirty?: () => void;
   onPendingChange?: (pending: boolean) => void;
   groupTypes?: readonly string[];
+  draft?: FormDraft;
+  enableManageTypes?: boolean;
+  fromSetup?: boolean;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateGroup
   );
   const [frequency, setFrequency] = useState<MeetingFrequency>(
-    group.meeting_frequency
+    (draft?.meeting_frequency as MeetingFrequency) ?? group.meeting_frequency
   );
 
   // Notify the drawer once the update lands so it can close and refresh the
@@ -75,8 +90,9 @@ export function GroupEditForm({
   // The group's stored type may no longer be in the admin-managed list (it was
   // removed, or this group was typed via free text). Keep it as a selectable
   // (and pre-selected) option so saving an unrelated edit can't silently clear
-  // it; the update RPC round-trips the unchanged value cleanly.
-  const currentType = group.group_type ?? "";
+  // it; the update RPC round-trips the unchanged value cleanly. A restored draft
+  // (#781 OPP-3b) takes precedence over the stored type.
+  const currentType = draft?.group_type ?? group.group_type ?? "";
 
   return (
     <form action={formAction} onChange={onDirty} className="grid gap-3">
@@ -94,7 +110,7 @@ export function GroupEditForm({
             name="name"
             type="text"
             required
-            defaultValue={group.name}
+            defaultValue={draft?.name ?? group.name}
             className={fieldInputClassName}
           />
         </div>
@@ -108,7 +124,7 @@ export function GroupEditForm({
           <select
             id={`edit-meeting_day-${group.id}`}
             name="meeting_day"
-            defaultValue={group.meeting_day ?? ""}
+            defaultValue={draft?.meeting_day ?? group.meeting_day ?? ""}
             className={fieldSelectClassName}
           >
             <option value="">Not set</option>
@@ -130,7 +146,9 @@ export function GroupEditForm({
             id={`edit-meeting_time-${group.id}`}
             name="meeting_time"
             type="time"
-            defaultValue={isoTimeForInput(group.meeting_time)}
+            defaultValue={
+              draft?.meeting_time ?? isoTimeForInput(group.meeting_time)
+            }
             className={fieldInputClassName}
           />
         </div>
@@ -166,7 +184,9 @@ export function GroupEditForm({
             <select
               id={`edit-meeting_week_parity-${group.id}`}
               name="meeting_week_parity"
-              defaultValue={group.meeting_week_parity ?? ""}
+              defaultValue={
+                draft?.meeting_week_parity ?? group.meeting_week_parity ?? ""
+              }
               className={fieldSelectClassName}
             >
               <option value="">Choose weeks</option>
@@ -193,7 +213,7 @@ export function GroupEditForm({
             id={`edit-location_area-${group.id}`}
             name="location_area"
             type="text"
-            defaultValue={group.location_area ?? ""}
+            defaultValue={draft?.location_area ?? group.location_area ?? ""}
             className={fieldInputClassName}
             placeholder="Westside"
           />
@@ -209,7 +229,9 @@ export function GroupEditForm({
             id={`edit-address_optional-${group.id}`}
             name="address_optional"
             type="text"
-            defaultValue={group.address_optional ?? ""}
+            defaultValue={
+              draft?.address_optional ?? group.address_optional ?? ""
+            }
             className={fieldInputClassName}
           />
         </div>
@@ -227,7 +249,7 @@ export function GroupEditForm({
             min={0}
             max={1000}
             inputMode="numeric"
-            defaultValue={group.capacity ?? ""}
+            defaultValue={draft?.capacity ?? group.capacity ?? ""}
             className={fieldInputClassName}
             placeholder="12"
           />
@@ -244,6 +266,9 @@ export function GroupEditForm({
             id={`edit-group_type-${group.id}`}
             label="Group type"
             initialValue={currentType}
+            enableManageTypes={enableManageTypes}
+            manageDisabled={pending}
+            fromSetup={fromSetup}
           />
         </div>
         <div>
@@ -257,7 +282,7 @@ export function GroupEditForm({
             id={`edit-launched_on-${group.id}`}
             name="launched_on"
             type="date"
-            defaultValue={group.launched_on ?? ""}
+            defaultValue={draft?.launched_on ?? group.launched_on ?? ""}
             className={fieldInputClassName}
           />
         </div>
@@ -272,7 +297,7 @@ export function GroupEditForm({
             id={`edit-description-${group.id}`}
             name="description"
             rows={3}
-            defaultValue={group.description ?? ""}
+            defaultValue={draft?.description ?? group.description ?? ""}
             className={cn(fieldInputClassName, "min-h-20 resize-y")}
           />
         </div>

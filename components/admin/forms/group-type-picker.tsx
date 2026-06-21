@@ -1,7 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { adminAddGroupType } from "@/app/(protected)/admin/plan/actions";
 import { CreatablePicker } from "@/components/admin/forms/creatable-picker";
+import { newDraftId, saveFormDraft, snapshotForm } from "@/lib/nav/draft-store";
+import { decorateReturn, DRAFT_PARAM } from "@/lib/nav/return-to";
 
 // Picker for a free-text group type (#747), now a thin specialization of the
 // shared CreatablePicker (#776 Phase 0): the existing-types dropdown plus a
@@ -14,6 +17,9 @@ export function GroupTypePicker({
   id = "prospect-desired_group_type",
   label = "Desired group type (optional)",
   initialValue,
+  enableManageTypes = false,
+  manageDisabled = false,
+  fromSetup = false,
 }: {
   groupTypes?: readonly string[];
   name?: string;
@@ -22,30 +28,89 @@ export function GroupTypePicker({
   // The group's current type (the edit form), preselected and kept selectable
   // even if it's no longer in the admin list. The prospect/create forms omit it.
   initialValue?: string;
+  // OPP-3b (#781) — when set (the group create/edit forms), render a "Manage
+  // group types" affordance that hands off to the Settings list editor and
+  // returns to this exact form with every field restored. The prospect form
+  // leaves it off (its return flow isn't wired), so adding a type stays inline.
+  enableManageTypes?: boolean;
+  // OPP-3b — disable the hand-off while the host form's create/save is in flight,
+  // so navigating away mid-write can't store a pre-save draft and later create a
+  // duplicate on return (Codex P2).
+  manageDisabled?: boolean;
+  // OPP-3b — when the Groups list was reached via the setup-recovery flow, carry
+  // a secondary setup marker through the round trip so returning keeps the
+  // "← Back to setup" affordance (mirrors the health-rubric flow; Codex P2).
+  fromSetup?: boolean;
 }) {
   return (
-    <CreatablePicker
-      options={groupTypes}
-      name={name}
-      id={id}
-      label={label}
-      initialValue={initialValue}
-      addOptionLabel="＋ Add new type…"
-      newItemLabel="New group type"
-      placeholder="e.g. Young Families"
-      addHint="Adds the type to the shared list so it's available everywhere."
-      emptyError="Enter a group type."
-      onCreate={async (value) => {
-        const formData = new FormData();
-        formData.set("group_type", value);
-        const result = await adminAddGroupType(undefined, formData);
-        return result.ok
-          ? { ok: true }
-          : {
-              ok: false,
-              error: result.errors[0] ?? "Couldn't add that type. Try again.",
-            };
-      }}
-    />
+    <div className="grid gap-1">
+      <CreatablePicker
+        options={groupTypes}
+        name={name}
+        id={id}
+        label={label}
+        initialValue={initialValue}
+        addOptionLabel="＋ Add new type…"
+        newItemLabel="New group type"
+        placeholder="e.g. Young Families"
+        addHint="Adds the type to the shared list so it's available everywhere."
+        emptyError="Enter a group type."
+        onCreate={async (value) => {
+          const formData = new FormData();
+          formData.set("group_type", value);
+          const result = await adminAddGroupType(undefined, formData);
+          return result.ok
+            ? { ok: true }
+            : {
+                ok: false,
+                error: result.errors[0] ?? "Couldn't add that type. Try again.",
+              };
+        }}
+      />
+      {/* The router is only needed for the manage hand-off, so it lives in a
+          child rendered solely when enabled — consumers that don't opt in (the
+          prospect form) need no App Router context. */}
+      {enableManageTypes ? (
+        <ManageGroupTypesLink disabled={manageDisabled} fromSetup={fromSetup} />
+      ) : null}
+    </div>
+  );
+}
+
+// The "Manage group types" hand-off (#781 OPP-3b): snapshot the half-filled form
+// to sessionStorage, then route to the audited Settings group-types editor
+// carrying the draft id + the `groups` return marker. On save (or cancel) the
+// Settings banner returns the user to the Groups list, which reopens this drawer
+// and restores the draft — no inline global-config editing; list management
+// stays on its real page (plan §3a).
+function ManageGroupTypesLink({
+  disabled,
+  fromSetup,
+}: {
+  disabled: boolean;
+  fromSetup: boolean;
+}) {
+  const router = useRouter();
+  function manageTypes(event: React.MouseEvent<HTMLButtonElement>) {
+    const form = event.currentTarget.closest("form");
+    if (!form) return;
+    const draftId = newDraftId();
+    saveFormDraft(draftId, snapshotForm(form));
+    // Carry the setup origin on a separate marker (the single `from` param holds
+    // `groups`); the `groups` return builder propagates it back to the list.
+    const base = `/admin/settings?tab=groups&${DRAFT_PARAM}=${draftId}${
+      fromSetup ? "&origin_setup=1" : ""
+    }`;
+    router.push(decorateReturn(base, "groups"));
+  }
+  return (
+    <button
+      type="button"
+      onClick={manageTypes}
+      disabled={disabled}
+      className="cursor-pointer justify-self-start border-none bg-transparent p-0 font-sans text-xs text-ink2 underline hover:text-ink disabled:cursor-not-allowed disabled:text-ink3 disabled:no-underline"
+    >
+      Manage group types
+    </button>
   );
 }

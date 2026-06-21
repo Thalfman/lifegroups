@@ -146,7 +146,30 @@ export const CONTEXTUAL_ACTION_REGISTRY: ContextualActionRegistry = {
       body: "care_create_follow_up",
     },
   ],
-  person: [],
+  // Person detail-header actions (#781 OPP-6). Admin-only lifecycle actions an
+  // admin can take on a person from their detail page, mirroring the People
+  // directory row (change a leader's role, archive the person). These resolve in
+  // a drawer the OWNING detail header mounts (PersonDetailHeaderActions) rather
+  // than the shared host, because the bodies need person-specific context (the
+  // current leader role, profile-vs-member) the {kind,id,label} entity doesn't
+  // carry — so they intentionally omit `body`. The header further narrows them
+  // by instance applicability (e.g. change-role only for leaders/co-leaders,
+  // archive only for an active person) on top of this role gate.
+  person: [
+    {
+      id: "change_person_role",
+      label: "Change role",
+      model: "drawer",
+      roleGate: "admin",
+    },
+    {
+      id: "archive_person",
+      label: "Archive",
+      model: "drawer",
+      roleGate: "admin",
+      destructive: true,
+    },
+  ],
   prospect: [],
   over_shepherd: [],
   candidate: [],

@@ -281,6 +281,7 @@ export function buildCareWorkspace({
             items={dashboard.attentionQueue}
             totalCount={totalAttention}
             rosterFiltered={rosterFilter === "needs_attention"}
+            viewerRole={viewerRole}
           />
           <div className="grid gap-3">
             <p className="m-0 font-sans text-sm text-ink2">

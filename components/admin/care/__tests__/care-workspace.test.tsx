@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+
+// The all-leaders panel now renders the attention queue's per-leader contextual
+// menus (#781 OPP-7), which read the shared host. These panels render in
+// isolation here (no AdminContextualActionHost), so stub the hook the way the
+// Care row / queue tests do — production always mounts the provider in the admin
+// layout.
+vi.mock("@/components/lg/admin/contextual-action-provider", () => ({
+  useContextualAction: () => ({ openAction: vi.fn() }),
+}));
+
 import {
   buildCareWorkspace,
   buildGroupNameByShepherdId,
