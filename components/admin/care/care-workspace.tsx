@@ -219,6 +219,14 @@ export function buildCareWorkspace({
     groupHealthByGroupId: enrichment.groupHealthByGroupId,
     noteStateByLeaderId: enrichment.noteStateByLeaderId,
   });
+  // The leaders the contextual actions may target: exactly those shown in the
+  // accordion (active shepherds). The Notes feed can surface historical notes
+  // about a since-deactivated leader, and the care write RPCs reject writes to a
+  // non-active subject — so gate the feed's action menu to this set rather than
+  // offering actions that would reliably fail (#785).
+  const actionableLeaderIds = new Set<string>(
+    accordionPanes.flatMap((pane) => pane.leaders.map((l) => l.profileId))
+  );
   const hasCareLeaders = care.entries.length > 0;
   const hasCoverage = care.assignments.length > 0;
   const showCareSetupNotice =
@@ -407,6 +415,7 @@ export function buildCareWorkspace({
           sealedAvailable={notesFeed.sealedAvailable}
           namesAvailable={notesFeed.namesAvailable}
           viewerRole={viewerRole}
+          actionableLeaderIds={actionableLeaderIds}
         />
       ),
     },

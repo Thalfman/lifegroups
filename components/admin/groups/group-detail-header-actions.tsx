@@ -4,6 +4,7 @@ import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
 import { GroupActionsMenu } from "@/components/admin/groups/group-actions-menu";
 import { GroupEditorDrawer } from "@/components/admin/groups/group-editor-drawer";
 import type { GroupEditorState } from "@/components/admin/groups/types";
+import { lifecycleCategory } from "@/lib/dashboard/labels";
 import type { GroupsRow } from "@/types/database";
 
 // The group-detail header action menu (#776 Phase 1, OPP-2). Reviewing a group
@@ -34,7 +35,12 @@ export function GroupDetailHeaderActions({
       <GroupActionsMenu
         group={group}
         groupLabel={group.name}
-        isArchived={group.lifecycle_status !== "active"}
+        // Mirror the Groups list exactly: only a *closed* group is "archived"
+        // (Restore + reopen RPC apply only to closed). Other lifecycles —
+        // planned_pause, seasonal_break, at_risk, … — keep the Edit/Calendar
+        // path; treating them as archived would hide Edit and offer a Restore
+        // that the reopen RPC rejects.
+        isArchived={lifecycleCategory(group.lifecycle_status) === "archived"}
         isSuperAdmin={isSuperAdmin}
         onEdit={(g) => drawer.open({ mode: "edit", group: g })}
       />

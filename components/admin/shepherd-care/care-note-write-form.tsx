@@ -26,6 +26,7 @@ export function CareNoteWriteForm({
   subjectProfileId,
   kind,
   subjectName,
+  idNamespace,
   onSaved,
   onDirty,
   onCancel,
@@ -38,6 +39,13 @@ export function CareNoteWriteForm({
   // every repeated admin control (Admin Interaction Model req 4). Optional so
   // the one-form-per-page detail surface keeps its plain visible label.
   subjectName?: string;
+  // An extra id-uniqueness token (#776 Phase 1 / #785). The accordion's inline
+  // forms and a contextual-drawer instance can be mounted for the SAME leader at
+  // once (the Care shell keeps all tab panels mounted), so a drawer body passes
+  // a distinct namespace to keep textarea/label ids unique — otherwise a label's
+  // htmlFor could resolve to the hidden background textarea. Inline callers omit
+  // it, keeping their ids byte-stable.
+  idNamespace?: string;
   // Optional drawer wiring (#776 Phase 1): supplied only when this form is a
   // contextual drawer body, mirroring the care-action forms (#268). `onSaved`
   // closes + refreshes, `onDirty` lets the drawer warn before discarding,
@@ -63,9 +71,12 @@ export function CareNoteWriteForm({
   }, [pending, onPendingChange]);
 
   const label = kind === "care_note" ? "Care note" : "Prayer request";
-  // Ids include the subject so repeated forms (one per Leader in the
-  // accordion) never collide on label/textarea ids.
-  const idPrefix = `${kind === "care_note" ? "cn" : "pr"}-${subjectProfileId}`;
+  // Ids include the subject (and an optional namespace) so repeated forms — one
+  // per Leader in the accordion, plus a possible contextual-drawer instance for
+  // the same leader — never collide on label/textarea ids.
+  const idPrefix = `${kind === "care_note" ? "cn" : "pr"}-${subjectProfileId}${
+    idNamespace ? `-${idNamespace}` : ""
+  }`;
   const placeholder =
     kind === "care_note"
       ? "What's going on with this shepherd pastorally?"

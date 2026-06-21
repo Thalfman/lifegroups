@@ -76,7 +76,7 @@ describe("NotesFeedShell leader-vs-group menu gating", () => {
     };
   }
 
-  it("shows the menu on a leader-subject item, not a group-subject item", () => {
+  it("shows the menu on an active leader-subject item, not a group-subject item", () => {
     render(
       <NotesFeedShell
         items={[
@@ -93,6 +93,7 @@ describe("NotesFeedShell leader-vs-group menu gating", () => {
         sealedAvailable
         namesAvailable
         viewerRole="ministry_admin"
+        actionableLeaderIds={new Set(["ldr-1"])}
       />
     );
     expect(
@@ -100,6 +101,32 @@ describe("NotesFeedShell leader-vs-group menu gating", () => {
     ).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: "Care actions for Westside Group" })
+    ).toBeNull();
+  });
+
+  it("hides the menu for a leader-subject item that is not active (#785)", () => {
+    // A historical note about a since-deactivated leader: the subject isn't in
+    // the actionable set, so no menu (its care writes would be RPC-rejected).
+    render(
+      <NotesFeedShell
+        items={[
+          item({
+            id: "old-note",
+            subjectKind: "leader",
+            subjectId: "ldr-gone",
+            subjectName: "Former Leader",
+          }),
+        ]}
+        sealedSummary={[]}
+        feedAvailable
+        sealedAvailable
+        namesAvailable
+        viewerRole="ministry_admin"
+        actionableLeaderIds={new Set(["ldr-1"])}
+      />
+    );
+    expect(
+      screen.queryByRole("button", { name: "Care actions for Former Leader" })
     ).toBeNull();
   });
 

@@ -68,12 +68,10 @@ describe("GroupDetailHeaderActions", () => {
     expect(editor.getAttribute("data-group")).toBe("grp-1");
   });
 
-  it("marks an archived group's menu as archived and carries the super-admin flag", () => {
+  it("marks a closed group's menu as archived and carries the super-admin flag", () => {
     render(
       <GroupDetailHeaderActions
-        group={
-          { ...GROUP, lifecycle_status: "archived" } as unknown as GroupsRow
-        }
+        group={{ ...GROUP, lifecycle_status: "closed" } as unknown as GroupsRow}
         groupTypes={[]}
         defaultCapacity={null}
         isSuperAdmin={false}
@@ -81,6 +79,27 @@ describe("GroupDetailHeaderActions", () => {
     );
     expect(
       screen.getByRole("button", { name: "menu archived=true sa=false" })
+    ).toBeTruthy();
+  });
+
+  it("does NOT mark a paused (non-closed) group as archived (#785 Codex P2)", () => {
+    // Only `closed` is archived; planned_pause/seasonal_break/at_risk keep the
+    // Edit path and must not show a Restore that the reopen RPC would reject.
+    render(
+      <GroupDetailHeaderActions
+        group={
+          {
+            ...GROUP,
+            lifecycle_status: "planned_pause",
+          } as unknown as GroupsRow
+        }
+        groupTypes={[]}
+        defaultCapacity={null}
+        isSuperAdmin={false}
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: "menu archived=false sa=false" })
     ).toBeTruthy();
   });
 });

@@ -127,6 +127,10 @@ export const CARE_CONTEXTUAL_BODIES: Partial<
       subjectProfileId={entity.id}
       subjectName={entity.label}
       kind="care_note"
+      // The accordion may already host an inline note form for this same leader
+      // (both panels stay mounted in the Care shell), so namespace the drawer
+      // instance's field ids to avoid a duplicate-id / wrong-label collision.
+      idNamespace="ctx"
       onSaved={controls.markSaved}
       onDirty={controls.markDirty}
       onPendingChange={controls.reportPending}
@@ -138,6 +142,7 @@ export const CARE_CONTEXTUAL_BODIES: Partial<
       subjectProfileId={entity.id}
       subjectName={entity.label}
       kind="prayer_request"
+      idNamespace="ctx"
       onSaved={controls.markSaved}
       onDirty={controls.markDirty}
       onPendingChange={controls.reportPending}

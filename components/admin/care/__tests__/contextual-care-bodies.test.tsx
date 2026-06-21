@@ -147,6 +147,9 @@ describe("CARE_CONTEXTUAL_BODIES — note + log bodies", () => {
     expect(lastNoteProps.subjectName).toBe("Sam Carter");
     expect(lastNoteProps.kind).toBe("care_note");
     expect(lastNoteProps.onSaved).toBe(c.markSaved);
+    // #785 — a drawer-specific id namespace, so the drawer's note form doesn't
+    // collide with the accordion's inline note form for the same leader.
+    expect(lastNoteProps.idNamespace).toBe("ctx");
   });
 
   it("maps the log action id to the interaction type", () => {

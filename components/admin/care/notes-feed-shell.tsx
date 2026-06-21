@@ -85,12 +85,18 @@ function FilterSelect({
 const FeedItemCard = memo(function FeedItemCard({
   item,
   viewerRole,
+  actionableLeaderIds,
 }: {
   item: CareFeedItem;
   // #776 OPP-1 — when supplied (the real feed, inside the contextual-action
   // host), leader-subject items carry the same per-leader action menu the
   // accordion row does. A stable string, so it doesn't break the memo.
   viewerRole?: UserRole;
+  // #785 — only active leaders (those shown in the accordion) get the menu; the
+  // care write RPCs reject a non-active subject, so a historical note about a
+  // deactivated leader must not offer actions that would reliably fail. A stable
+  // Set reference, so it doesn't break the memo.
+  actionableLeaderIds?: ReadonlySet<string>;
 }) {
   const about =
     item.subjectKind === "group"
@@ -107,9 +113,12 @@ const FeedItemCard = memo(function FeedItemCard({
             {prayerRequestStatusChipLabel(item.prayerStatus)}
           </Badge>
         ) : null}
-        {/* Only leader-subject items map to a leader entity to act on; group
-            notes have no per-leader care lane here, so they carry no menu. */}
-        {viewerRole && item.subjectKind === "leader" ? (
+        {/* Only ACTIVE leader-subject items map to a leader entity to act on:
+            group notes have no per-leader care lane, and a historical note about
+            a deactivated leader would only offer RPC-rejected actions (#785). */}
+        {viewerRole &&
+        item.subjectKind === "leader" &&
+        actionableLeaderIds?.has(item.subjectId) ? (
           <span className="ml-auto">
             <CareLeaderActionsMenu
               leaderProfileId={item.subjectId}
@@ -202,6 +211,7 @@ export function NotesFeedShell({
   sealedAvailable,
   namesAvailable,
   viewerRole,
+  actionableLeaderIds,
 }: {
   items: CareFeedItem[];
   sealedSummary: SealedLeaderSummary[];
@@ -213,6 +223,9 @@ export function NotesFeedShell({
   // #776 OPP-1 — the admin viewer's role; when provided, leader-subject feed
   // items carry the per-leader action menu. Omitted in host-less contexts.
   viewerRole?: UserRole;
+  // #785 — the active leaders the menu may target (the accordion's shepherds);
+  // a leader-subject item only gets the menu when its subject is in this set.
+  actionableLeaderIds?: ReadonlySet<string>;
 }) {
   const [leaderId, setLeaderId] = useState<string>(ALL);
   const [groupId, setGroupId] = useState<string>(ALL);
@@ -314,6 +327,7 @@ export function NotesFeedShell({
                 key={`${item.kind}-${item.id}`}
                 item={item}
                 viewerRole={viewerRole}
+                actionableLeaderIds={actionableLeaderIds}
               />
             ))}
           </ul>
