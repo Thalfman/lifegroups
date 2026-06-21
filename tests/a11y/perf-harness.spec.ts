@@ -34,10 +34,11 @@ const HEAVY_SURFACES = [
   "people",
   "person-detail",
   "home",
-  // #777 WS3: the Care accordion's leader panels. Captures the DOM-node drop
-  // from mount-on-first-open — collapsed panels no longer carry their slot
-  // bodies and form-heavy editors in the initial tree.
-  "care-accordion-panel",
+  // #777 WS3: the full Over-Shepherds accordion (CarePanes, not bare leader
+  // panels). Captures the DOM-node drop from mount-on-first-open at the pane
+  // level — a collapsed pane carries only its summary roll-up, deferring its
+  // leader panels (and their slot bodies + form-heavy editors) until opened.
+  "care-accordion",
 ] as const;
 
 type LongTaskWindow = Window & { __perfLongTasks?: number[] };

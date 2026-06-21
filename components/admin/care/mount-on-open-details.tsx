@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // Mount-on-first-open disclosure for the Care accordion (#777 Workstream 3).
 // The Over-Shepherds view nests three disclosure levels (Over-Shepherd pane →
@@ -32,9 +32,22 @@ export function MountOnOpenDetails({
   summaryClassName?: string;
   bodyClassName?: string;
 }) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
   const [opened, setOpened] = useState(false);
+
+  // A native <details> can already be open before React attaches its onToggle
+  // listener — an admin clicking the summary during pre-hydration, or the
+  // browser restoring an open pane (bfcache / autofocus). That first toggle has
+  // no listener, so without this the body would stay empty until a close+reopen.
+  // SSR and the first client render still emit opened=false (no hydration
+  // mismatch); this adopts the element's real open state right after hydration.
+  useEffect(() => {
+    if (detailsRef.current?.open) setOpened(true);
+  }, []);
+
   return (
     <details
+      ref={detailsRef}
       className={detailsClassName}
       onToggle={(event) => {
         // One-way latch: only ever arm on open, so a later collapse keeps the

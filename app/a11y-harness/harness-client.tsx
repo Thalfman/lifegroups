@@ -47,6 +47,7 @@ import type { GroupPeopleTabData } from "@/components/admin/groups/group-detail-
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
+import { CareAccordion } from "@/components/admin/care/care-accordion";
 import { NotesFeedShell } from "@/components/admin/care/notes-feed-shell";
 import type {
   CareFeedItem,
@@ -54,6 +55,7 @@ import type {
 } from "@/lib/admin/care-note-feed";
 import type {
   CareAccordionLeader,
+  CareAccordionPane,
   CareGradeEntryBundle,
 } from "@/lib/admin/care-accordion";
 import {
@@ -336,6 +338,25 @@ const CARE_PANEL_GRADE_ENTRY: CareGradeEntryBundle = {
   leaderGradesAvailable: true,
   groupGradesAvailable: true,
 };
+
+// Full Over-Shepherds accordion (#777 WS3): a couple of CarePanes wrapping the
+// leader panels, so the perf-harness measures the PANE-level mount-on-open
+// gating (pane.leaders.map is deferred until a pane opens), not just the inner
+// leader-panel body reduction the standalone-panel surface captures.
+const CARE_ACCORDION_PANES: CareAccordionPane[] = [
+  {
+    overShepherdId: "00000000-0000-4000-8000-0000000000b1",
+    overShepherdName: "Omar Shepherd",
+    isUnassigned: false,
+    leaders: [CARE_PANEL_LEADER_SEALED, CARE_PANEL_LEADER_GRANTED],
+  },
+  {
+    overShepherdId: null,
+    overShepherdName: "Unassigned",
+    isUnassigned: true,
+    leaders: [],
+  },
+];
 
 // All Notes feed fixtures (ADR 0023): one of each feed kind so the spec can
 // assert the kind badges, context lines, and labelled filters; two sealed
@@ -1370,6 +1391,20 @@ export function A11yHarnessClient() {
         />
         <CareLeaderPanel
           leader={CARE_PANEL_LEADER_GRANTED}
+          gradeEntry={CARE_PANEL_GRADE_ENTRY}
+        />
+      </Surface>
+
+      {/* Full Over-Shepherds accordion (#777 WS3). Renders CarePanes (not bare
+          leader panels) so the perf-harness DOM-node baseline reflects the
+          pane-level mount-on-open: a collapsed pane carries only its summary
+          roll-up, deferring pane.leaders.map until opened. */}
+      <Surface
+        id="care-accordion"
+        heading="Care accordion (Over-Shepherds view)"
+      >
+        <CareAccordion
+          panes={CARE_ACCORDION_PANES}
           gradeEntry={CARE_PANEL_GRADE_ENTRY}
         />
       </Surface>
