@@ -48,6 +48,11 @@ export function GroupEditForm({
   // When present, each field seeds from it instead of the stored group value, so
   // an in-progress edit survives the hop to Settings and back.
   draft,
+  // OPP-3b — offer the "Manage group types" hand-off only from the Groups list
+  // drawer (off by default). The detail header reuses this form but its return
+  // target is the list, not the detail tab, so it leaves the affordance off
+  // (Codex P2).
+  enableManageTypes = false,
 }: {
   group: GroupsRow;
   onCancel?: () => void;
@@ -56,6 +61,7 @@ export function GroupEditForm({
   onPendingChange?: (pending: boolean) => void;
   groupTypes?: readonly string[];
   draft?: FormDraft;
+  enableManageTypes?: boolean;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateGroup
@@ -257,7 +263,7 @@ export function GroupEditForm({
             id={`edit-group_type-${group.id}`}
             label="Group type"
             initialValue={currentType}
-            enableManageTypes
+            enableManageTypes={enableManageTypes}
           />
         </div>
         <div>

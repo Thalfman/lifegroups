@@ -198,6 +198,11 @@ export function LockedInCandidateRow({
                 type="checkbox"
                 checked={readiness[criterion]}
                 onChange={() => toggleCriterion(criterion)}
+                // Serialize toggles: while a readiness write is in flight the
+                // boxes are disabled, so a second toggle can't post a full update
+                // built from a stale snapshot and let an out-of-order response
+                // silently revert the newer change (Codex P2).
+                disabled={pending}
                 className="h-3.5 w-3.5 accent-teal"
               />
               {CRITERION_LABEL[criterion]}

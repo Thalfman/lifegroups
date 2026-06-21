@@ -66,19 +66,23 @@ export function ChangeLeaderRoleForm({
     onPendingChange?.(pending);
   }, [pending, onPendingChange]);
 
-  // On a fresh successful save: embedded → hand off to the host (close drawer +
-  // refresh); inline → collapse and re-seed the target role. Derived during
-  // render rather than in an effect to avoid the cascading-render smell.
+  // Inline mode: on a fresh successful save, collapse and re-seed the target
+  // role. This is LOCAL state only, so it stays in useValueChange (run during
+  // render) per the hook's contract.
   useValueChange(state, (next) => {
-    if (next?.ok) {
-      if (embedded) {
-        onSaved?.();
-      } else {
-        setOpen(false);
-        setNewRole(otherRole);
-      }
+    if (next?.ok && !embedded) {
+      setOpen(false);
+      setNewRole(otherRole);
     }
   });
+
+  // Embedded mode: the parent notification (drawer close + router.refresh) is a
+  // cross-component update, so it runs from a post-commit effect — never during
+  // render — mirroring the create form (Codex P2). `onSaved` is memoized by the
+  // caller, so this fires once per successful save.
+  useEffect(() => {
+    if (embedded && state?.ok) onSaved?.();
+  }, [embedded, state, onSaved]);
 
   // The destructive direction (role downgrade) carries an explicit confirm step,
   // consistent with the deactivate buttons' confirm guard. It now opens the

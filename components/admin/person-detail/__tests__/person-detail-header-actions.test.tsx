@@ -137,6 +137,23 @@ describe("PersonDetailHeaderActions", () => {
     await waitFor(() => expect(refresh).toHaveBeenCalled());
   });
 
+  it("renders no menu when the admin is viewing their own profile (#788 self-target)", () => {
+    render(
+      <PersonDetailHeaderActions
+        person={{
+          kind: "profile",
+          id: "p1",
+          fullName: "Dana Leader",
+          status: "active",
+          leaderRole: "leader",
+        }}
+        viewerRole="ministry_admin"
+        isSelf
+      />
+    );
+    expect(screen.queryByRole("button", { name: /Actions for/ })).toBeNull();
+  });
+
   it("renders no menu for a non-admin viewer", () => {
     render(
       <PersonDetailHeaderActions

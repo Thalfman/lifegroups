@@ -39,17 +39,25 @@ type DrawerState = { action: ContextualAction };
 export function PersonDetailHeaderActions({
   person,
   viewerRole,
+  isSelf = false,
 }: {
   person: PersonHeaderTarget;
   viewerRole: UserRole;
+  // The signed-in admin viewing their own profile. The People directory hides
+  // lifecycle actions for the self row, and the people RPCs reject a self-target,
+  // so suppress them here too rather than offer a guaranteed-to-fail action
+  // (Codex P2). Members are never login-backed, so this only matters for profiles.
+  isSelf?: boolean;
 }) {
   const router = useRouter();
   const drawer = useEditingDrawer<DrawerState>();
   const isActive = person.status === "active";
 
   // Instance applicability on top of the registry's role gate: change-role only
-  // for an active leader/co-leader; archive only for someone still active.
+  // for an active leader/co-leader; archive only for someone still active; and
+  // never a self-target lifecycle action (the RPC would reject it).
   function applicable(action: ContextualAction): boolean {
+    if (isSelf) return false;
     if (action.id === "change_person_role")
       return person.leaderRole !== null && isActive;
     if (action.id === "archive_person") return isActive;

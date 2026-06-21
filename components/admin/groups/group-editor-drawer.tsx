@@ -18,6 +18,10 @@ export function GroupEditorDrawer({
   // OPP-3b (#781) — a restored form draft to seed the open form with, when the
   // drawer was reopened by the "Manage group types" return round trip.
   draft,
+  // OPP-3b — whether to offer the "Manage group types" hand-off in the form's
+  // type picker. On only from the Groups list (whose return flow reopens this
+  // drawer); the group detail header leaves it off (Codex P2).
+  enableManageTypes = false,
 }: {
   editor: GroupEditorState | null;
   defaultCapacity: number | null;
@@ -27,6 +31,7 @@ export function GroupEditorDrawer({
   onRequestClose: () => void;
   onSaved: () => void;
   draft?: FormDraft;
+  enableManageTypes?: boolean;
 }) {
   const group = editor?.mode === "edit" ? editor.group : null;
 
@@ -51,6 +56,7 @@ export function GroupEditorDrawer({
             group={editor.group}
             groupTypes={groupTypes}
             draft={draft}
+            enableManageTypes={enableManageTypes}
             onCancel={onRequestClose}
             onDirty={onDirty}
             onPendingChange={onPendingChange}
@@ -67,6 +73,7 @@ export function GroupEditorDrawer({
           defaultCapacity={defaultCapacity}
           groupTypes={groupTypes}
           draft={draft}
+          enableManageTypes={enableManageTypes}
           onCancel={onRequestClose}
           onDirty={onDirty}
           onPendingChange={onPendingChange}

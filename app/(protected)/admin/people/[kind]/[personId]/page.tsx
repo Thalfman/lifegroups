@@ -78,6 +78,11 @@ export default async function AdminPersonDetailPage({
                 leaderRole: person.leaderRole,
               }}
               viewerRole={session.profile.role}
+              // Suppress self-target lifecycle actions on the admin's own
+              // profile (the people RPCs reject a self-target).
+              isSelf={
+                person.kind === "profile" && person.id === session.profile.id
+              }
             />
           </div>
           <Suspense

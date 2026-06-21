@@ -324,7 +324,10 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
       const targetGroup = draft.group_id
         ? groupsById.get(draft.group_id)
         : undefined;
-      dirtyRef.current = false;
+      // The restored values are unsaved and the sessionStorage copy is already
+      // gone, so mark the drawer dirty — closing it now must hit the discard
+      // guard rather than silently dropping the restored input (Codex P2).
+      dirtyRef.current = true;
       // Restoring a client-only sessionStorage draft must happen post-hydration
       // (the server can't read it, so doing it in render would mismatch) — the
       // same one-shot storage-restore exception use-persisted-view-state takes.
@@ -672,6 +675,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         defaultCapacity={props.metricDefaults.default_group_capacity}
         groupTypes={props.groupTypes ?? []}
         draft={draftValues}
+        // The list drawer owns the manage-types return round trip (it reopens
+        // here from the draft); the detail header leaves it off (Codex P2).
+        enableManageTypes
         onDirty={markDirty}
         onPendingChange={reportPending}
         onRequestClose={requestClose}

@@ -46,6 +46,11 @@ export function GroupCreateForm({
   // trip. When present, every field seeds from it (and More details opens) so the
   // operator lands back exactly where they left off. Absent on a fresh open.
   draft,
+  // OPP-3b — whether to offer the "Manage group types" hand-off. On ONLY from the
+  // Groups list drawer, whose return flow lands back on the list + reopens this
+  // drawer; off from the group detail header, where the `groups` return target
+  // would drop the user on the list instead of their detail tab (Codex P2).
+  enableManageTypes = false,
 }: {
   defaultCapacity: number | null;
   onSaved?: () => void;
@@ -54,6 +59,7 @@ export function GroupCreateForm({
   onPendingChange?: (pending: boolean) => void;
   groupTypes?: readonly string[];
   draft?: FormDraft;
+  enableManageTypes?: boolean;
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateGroup,
@@ -294,7 +300,7 @@ export function GroupCreateForm({
             id="group-group_type"
             label="Group type (optional)"
             initialValue={draft?.group_type}
-            enableManageTypes
+            enableManageTypes={enableManageTypes}
           />
           <p className={fieldHintClassName}>
             Choose a type from the admin-managed list, add a new one, or leave
