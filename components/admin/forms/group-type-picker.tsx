@@ -13,11 +13,15 @@ export function GroupTypePicker({
   name = "desired_group_type",
   id = "prospect-desired_group_type",
   label = "Desired group type (optional)",
+  initialValue,
 }: {
   groupTypes?: readonly string[];
   name?: string;
   id?: string;
   label?: string;
+  // The group's current type (the edit form), preselected and kept selectable
+  // even if it's no longer in the admin list. The prospect/create forms omit it.
+  initialValue?: string;
 }) {
   return (
     <CreatablePicker
@@ -25,6 +29,7 @@ export function GroupTypePicker({
       name={name}
       id={id}
       label={label}
+      initialValue={initialValue}
       addOptionLabel="＋ Add new type…"
       newItemLabel="New group type"
       placeholder="e.g. Young Families"

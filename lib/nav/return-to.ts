@@ -12,18 +12,26 @@
 // The query param that carries the origin marker on a destination URL.
 export const RETURN_PARAM = "from";
 
+// The slice of URLSearchParams a return-href builder needs. Kept minimal so both
+// a server-side `URLSearchParams` and Next's client `ReadonlyURLSearchParams`
+// satisfy it.
+export type ReturnParams = { get(name: string): string | null };
+
 // Closed union of return origins. Add a key here (with its config below) when a
 // new redirect-and-return flow lands — keeping the set typed means a banner or
 // reader can never reference an origin that has no return target.
-export type ReturnOrigin = "setup";
+export type ReturnOrigin = "setup" | "group-health";
 
 type ReturnOriginConfig = {
   // The marker value written as `from=<value>` (kept distinct from the key so a
   // key can be renamed without breaking live URLs).
   value: string;
   // Where the "← Back …" affordance routes, carrying the marker through so the
-  // destination (e.g. Home) knows it is a return, not a fresh visit.
-  returnHref: string;
+  // destination knows it is a return, not a fresh visit. A static string for a
+  // fixed destination (setup → Home); a builder when the target depends on the
+  // arriving URL's params (group-health → the specific group's health tab,
+  // #776 OPP-8). The builder receives the destination's search params.
+  returnHref: string | ((params: ReturnParams) => string);
   // The affordance text rendered by `<ReturnBanner>`.
   label: string;
 };
@@ -34,7 +42,33 @@ const RETURN_ORIGINS: Record<ReturnOrigin, ReturnOriginConfig> = {
     returnHref: `/admin?${RETURN_PARAM}=setup`,
     label: "← Back to setup",
   },
+  // #776 OPP-8 — "Edit rubric" from a group's health tab routes to the audited
+  // Settings rubric editor and returns here. The destination URL carries the
+  // group id (`?group=<id>`), so the return href is built from it and carries
+  // `from=group-health` back so the health tab re-activates ReturnFocus on the
+  // "Edit rubric" button. When the group was itself reached from the setup chain
+  // the outbound link adds `origin_setup=1` (the single `from` param can't carry
+  // both origins, #785); we propagate it on the return URL so the group page can
+  // keep the "← Back to setup" affordance alongside the rubric ReturnFocus.
+  "group-health": {
+    value: "group-health",
+    returnHref: (params: ReturnParams) =>
+      `/admin/groups/${params.get("group") ?? ""}?tab=health&${RETURN_PARAM}=group-health${
+        params.get("origin_setup") === "1" ? "&origin_setup=1" : ""
+      }`,
+    label: "← Back to group health",
+  },
 };
+
+// Resolve an origin's return href against the destination's search params: calls
+// the builder for dynamic origins, returns the string for static ones.
+export function resolveReturnHref(
+  origin: ReturnOrigin,
+  params: ReturnParams
+): string {
+  const { returnHref } = RETURN_ORIGINS[origin];
+  return typeof returnHref === "function" ? returnHref(params) : returnHref;
+}
 
 export function returnOriginConfig(origin: ReturnOrigin): ReturnOriginConfig {
   return RETURN_ORIGINS[origin];

@@ -16,8 +16,10 @@ import {
   type SealedLeaderSummary,
 } from "@/lib/admin/care-note-feed";
 import { prayerRequestStatusChipLabel } from "@/lib/admin/prayer-request-status";
+import { CareLeaderActionsMenu } from "@/components/admin/care/care-row-actions";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { pluralize } from "@/lib/shared/pluralize";
+import type { UserRole } from "@/lib/auth/roles";
 
 // ADR 0023 — the Care area's Notes tab: every note the viewer may read, in one
 // newest-first feed, with a presence-only summary of what stays sealed. The
@@ -82,8 +84,19 @@ function FilterSelect({
 // that stayed in the filtered set.
 const FeedItemCard = memo(function FeedItemCard({
   item,
+  viewerRole,
+  actionableLeaderIds,
 }: {
   item: CareFeedItem;
+  // #776 OPP-1 — when supplied (the real feed, inside the contextual-action
+  // host), leader-subject items carry the same per-leader action menu the
+  // accordion row does. A stable string, so it doesn't break the memo.
+  viewerRole?: UserRole;
+  // #785 — only active leaders (those shown in the accordion) get the menu; the
+  // care write RPCs reject a non-active subject, so a historical note about a
+  // deactivated leader must not offer actions that would reliably fail. A stable
+  // Set reference, so it doesn't break the memo.
+  actionableLeaderIds?: ReadonlySet<string>;
 }) {
   const about =
     item.subjectKind === "group"
@@ -99,6 +112,20 @@ const FeedItemCard = memo(function FeedItemCard({
           <Badge tone={item.prayerStatus === "answered" ? "sage" : "neutral"}>
             {prayerRequestStatusChipLabel(item.prayerStatus)}
           </Badge>
+        ) : null}
+        {/* Only ACTIVE leader-subject items map to a leader entity to act on:
+            group notes have no per-leader care lane, and a historical note about
+            a deactivated leader would only offer RPC-rejected actions (#785). */}
+        {viewerRole &&
+        item.subjectKind === "leader" &&
+        actionableLeaderIds?.has(item.subjectId) ? (
+          <span className="ml-auto">
+            <CareLeaderActionsMenu
+              leaderProfileId={item.subjectId}
+              leaderName={item.subjectName}
+              viewerRole={viewerRole}
+            />
+          </span>
         ) : null}
       </div>
       <p className="m-0 whitespace-pre-wrap font-sans text-base text-ink">
@@ -183,6 +210,8 @@ export function NotesFeedShell({
   feedAvailable,
   sealedAvailable,
   namesAvailable,
+  viewerRole,
+  actionableLeaderIds,
 }: {
   items: CareFeedItem[];
   sealedSummary: SealedLeaderSummary[];
@@ -191,6 +220,12 @@ export function NotesFeedShell({
   // False when the author-name read failed: "Unknown person" labels then mean
   // "couldn't load", not "nobody knows who this is" — the notice says so.
   namesAvailable: boolean;
+  // #776 OPP-1 — the admin viewer's role; when provided, leader-subject feed
+  // items carry the per-leader action menu. Omitted in host-less contexts.
+  viewerRole?: UserRole;
+  // #785 — the active leaders the menu may target (the accordion's shepherds);
+  // a leader-subject item only gets the menu when its subject is in this set.
+  actionableLeaderIds?: ReadonlySet<string>;
 }) {
   const [leaderId, setLeaderId] = useState<string>(ALL);
   const [groupId, setGroupId] = useState<string>(ALL);
@@ -288,7 +323,12 @@ export function NotesFeedShell({
         ) : (
           <ul className="m-0 p-0">
             {visible.map((item) => (
-              <FeedItemCard key={`${item.kind}-${item.id}`} item={item} />
+              <FeedItemCard
+                key={`${item.kind}-${item.id}`}
+                item={item}
+                viewerRole={viewerRole}
+                actionableLeaderIds={actionableLeaderIds}
+              />
             ))}
           </ul>
         )}

@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { isReturning, returnOriginConfig } from "@/lib/nav/return-to";
+import {
+  isReturning,
+  resolveReturnHref,
+  returnOriginConfig,
+} from "@/lib/nav/return-to";
 
 // ADR 0027: the reusable "← Back to setup" affordance. Setup deep-links from
 // Home's checklist carry `?from=setup`; the surfaces they land on render this so
@@ -16,7 +20,9 @@ export function isFromSetup(value: string | string[] | undefined): boolean {
 }
 
 export function BackToSetupLink({ className }: { className?: string }) {
-  const { returnHref, label } = returnOriginConfig("setup");
+  // setup's return href is static, so an empty param bag resolves it.
+  const returnHref = resolveReturnHref("setup", new URLSearchParams());
+  const { label } = returnOriginConfig("setup");
   return (
     <Link
       href={returnHref}

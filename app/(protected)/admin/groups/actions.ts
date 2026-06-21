@@ -16,6 +16,14 @@ import { adminRpc, type GroupRpcArgs } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH = "/admin/groups";
 
+// Lifecycle (close/reopen) can be driven from the group DETAIL header (#776
+// OPP-2), not just the list, so revalidate the specific detail route too —
+// otherwise restoring/archiving from the detail page leaves it stale until a
+// manual refresh (the list-only revalidate never touches `/admin/groups/[id]`).
+function groupLifecyclePaths(groupId: string): string[] {
+  return [REVALIDATE_PATH, `/admin/groups/${groupId}`];
+}
+
 const GROUP_KEYS = [
   "name",
   "description",
@@ -112,7 +120,7 @@ const CLOSE_GROUP_SPEC: AdminWriteActionSpec<GroupIdPayload, { id: string }> = {
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   rpc: (client, value) =>
     adminRpc(client, "admin_close_group", { p_group_id: value.group_id }),
-  revalidate: () => REVALIDATE_PATH,
+  revalidate: (value) => groupLifecyclePaths(value.group_id),
   noDataError: "The group was not closed. Please try again.",
 };
 
@@ -133,7 +141,7 @@ const REOPEN_GROUP_SPEC: AdminWriteActionSpec<GroupIdPayload, { id: string }> =
     fields: (_actor, value) => ({ target_group_id: value.group_id }),
     rpc: (client, value) =>
       adminRpc(client, "admin_reopen_group", { p_group_id: value.group_id }),
-    revalidate: () => REVALIDATE_PATH,
+    revalidate: (value) => groupLifecyclePaths(value.group_id),
     noDataError: "The group was not reopened. Please try again.",
   };
 

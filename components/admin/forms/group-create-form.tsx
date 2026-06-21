@@ -19,6 +19,7 @@ import {
   MEETING_PARITY_OPTIONS,
 } from "./meeting-schedule-options";
 import type { MeetingFrequency } from "@/types/enums";
+import { GroupTypePicker } from "./group-type-picker";
 import { useActionForm, FormStatus } from "./action-form";
 
 export function GroupCreateForm({
@@ -36,8 +37,9 @@ export function GroupCreateForm({
   onDirty,
   onCancel,
   onPendingChange,
-  // The admin-managed free-text group-type list. The picker offers these plus an
-  // empty "Untyped" option; any value is accepted server-side (free text).
+  // The admin-managed free-text group-type list. The creatable picker offers
+  // these plus an in-place "add new type" affordance (#776 OPP-3); leaving it at
+  // "—" creates the group Untyped. Any value is accepted server-side (free text).
   groupTypes = [],
 }: {
   defaultCapacity: number | null;
@@ -268,25 +270,19 @@ export function GroupCreateForm({
           </p>
         </div>
         <div>
-          <label htmlFor="group-group_type" className={fieldLabelClassName}>
-            Group type (optional)
-          </label>
-          <select
-            id="group-group_type"
+          {/* #776 OPP-3 — the creatable group-type picker: choose an existing
+              type or add a brand-new one in place (no Settings detour), still
+              through the audited admin_add_group_type RPC. Leaving it at "—"
+              creates the group Untyped. */}
+          <GroupTypePicker
+            groupTypes={groupTypes}
             name="group_type"
-            defaultValue=""
-            className={fieldSelectClassName}
-          >
-            <option value="">Untyped</option>
-            {groupTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
+            id="group-group_type"
+            label="Group type (optional)"
+          />
           <p className={fieldHintClassName}>
-            Choose a type from the admin-managed list, or leave Untyped to tag
-            it later.
+            Choose a type from the admin-managed list, add a new one, or leave
+            it blank to tag the group later.
           </p>
         </div>
         <div>

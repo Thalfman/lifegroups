@@ -98,7 +98,12 @@ describe("adminCloseGroup", () => {
     expect(mockRpc).toHaveBeenCalledWith("admin_close_group", {
       p_group_id: GROUP_ID,
     });
+    // Lifecycle can be driven from the detail header (#776 OPP-2 / #785), so the
+    // specific detail route is revalidated too — not just the list.
     expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/groups");
+    expect(mockRevalidatePath).toHaveBeenCalledWith(
+      `/admin/groups/${GROUP_ID}`
+    );
   });
 
   it("rejects a non-uuid group id", async () => {
@@ -120,5 +125,14 @@ describe("adminReopenGroup", () => {
     expect(mockRpc).toHaveBeenCalledWith("admin_reopen_group", {
       p_group_id: GROUP_ID,
     });
+  });
+
+  it("revalidates the group detail route so a restore from the detail header isn't stale (#785)", async () => {
+    await adminReopenGroup(undefined, form({ group_id: GROUP_ID }));
+
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/groups");
+    expect(mockRevalidatePath).toHaveBeenCalledWith(
+      `/admin/groups/${GROUP_ID}`
+    );
   });
 });

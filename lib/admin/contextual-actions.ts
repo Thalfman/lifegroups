@@ -31,8 +31,15 @@ export type ContextualActionModel = "inline" | "drawer" | "redirect-and-return";
 export type ContextualRoleGate = "admin" | "super_admin";
 
 // The drawer-body identifiers the host knows how to render. Extended per phase
-// as real form bodies are registered; Phase 0 seeds the group editor only.
-export type ContextualActionBodyKey = "group_editor";
+// as real form bodies are registered; Phase 0 seeded the group editor, Phase 1
+// (#776 OPP-1) adds the Care drawer bodies.
+export type ContextualActionBodyKey =
+  | "group_editor"
+  | "care_note_writer"
+  | "prayer_request_writer"
+  | "care_log_touch"
+  | "care_set_touchpoint"
+  | "care_create_follow_up";
 
 // Actions that expose a visibility-exception surface (the admin-only
 // transparency grant, the encrypted SC.4 private note). They must NEVER appear
@@ -82,7 +89,63 @@ export const CONTEXTUAL_ACTION_REGISTRY: ContextualActionRegistry = {
       body: "group_editor",
     },
   ],
-  leader: [],
+  // The Care row / Notes-feed actions (#776 Phase 1, OPP-1). All admin-only and
+  // resolved in the shared drawer. The `log_*` trio share one body (`care_log_touch`,
+  // which maps the action id → interaction type, mirroring `care-actions.tsx`).
+  // None of these ids is in SENSITIVE_ACTION_IDS, so `assertLeaderSafe` stays
+  // satisfied: the transparency toggle is a standalone admin-only control (never
+  // a leader-entity action), and the encrypted SC.4 private note is never wired.
+  leader: [
+    {
+      id: "add_care_note",
+      label: "Add care note",
+      model: "drawer",
+      roleGate: "admin",
+      body: "care_note_writer",
+    },
+    {
+      id: "add_prayer_request",
+      label: "Add prayer request",
+      model: "drawer",
+      roleGate: "admin",
+      body: "prayer_request_writer",
+    },
+    {
+      id: "log_call",
+      label: "Log call",
+      model: "drawer",
+      roleGate: "admin",
+      body: "care_log_touch",
+    },
+    {
+      id: "log_text",
+      label: "Log text",
+      model: "drawer",
+      roleGate: "admin",
+      body: "care_log_touch",
+    },
+    {
+      id: "log_visit",
+      label: "Log visit",
+      model: "drawer",
+      roleGate: "admin",
+      body: "care_log_touch",
+    },
+    {
+      id: "set_touchpoint",
+      label: "Set next step",
+      model: "drawer",
+      roleGate: "admin",
+      body: "care_set_touchpoint",
+    },
+    {
+      id: "create_follow_up",
+      label: "Create follow-up",
+      model: "drawer",
+      roleGate: "admin",
+      body: "care_create_follow_up",
+    },
+  ],
   person: [],
   prospect: [],
   over_shepherd: [],
