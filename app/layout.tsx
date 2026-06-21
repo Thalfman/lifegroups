@@ -4,6 +4,7 @@ import { Newsreader, Geist, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PwaClientSetup } from "@/components/pwa/pwa-client-setup";
+import { WebVitalsReporter } from "@/components/observability/web-vitals-reporter";
 import "./globals.css";
 
 const newsreader = Newsreader({
@@ -73,6 +74,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <PwaClientSetup />
         <Analytics />
         <SpeedInsights />
+        <WebVitalsReporter />
       </body>
     </html>
   );
