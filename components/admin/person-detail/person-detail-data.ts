@@ -50,6 +50,10 @@ export type PersonSpine = {
   roleLabel: string;
   isLoginBacked: boolean;
   isLeader: boolean;
+  // The raw leader role (leader / co_leader) when this person is a shepherd,
+  // else null — drives the detail-header "Change role" action (#781 OPP-6),
+  // which only applies to those two roles.
+  leaderRole: "leader" | "co_leader" | null;
 };
 
 // The page-facing spine result: the identity (for the header + 404 decision)
@@ -165,6 +169,10 @@ export async function resolvePersonSpine(
       roleLabel: ROLE_LABELS[profile.role],
       isLoginBacked: true,
       isLeader: isLeaderRole(profile.role),
+      leaderRole:
+        profile.role === "leader" || profile.role === "co_leader"
+          ? profile.role
+          : null,
     };
   }
 
@@ -183,6 +191,8 @@ export async function resolvePersonSpine(
     roleLabel: "Member",
     isLoginBacked: false,
     isLeader: false,
+    // Members are non-login participant records — never a shepherd role.
+    leaderRole: null,
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useValueChange } from "@/lib/hooks/use-value-change";
@@ -27,15 +27,29 @@ export function ChangeLeaderRoleForm({
   profileId,
   profileName,
   currentRole,
+  onSaved,
+  onCancel,
+  onPendingChange,
+  onDirty,
 }: {
   profileId: string;
   profileName: string;
   currentRole: LeaderRole;
+  // Embedded (drawer-body) mode hooks (#781 OPP-6). When `onSaved` is provided
+  // the form renders directly — no collapsed "Change role" opener — and reports
+  // its lifecycle to the host drawer instead of toggling its own open state, so
+  // the person detail header can host it in the shared EditingSurface. Omitted in
+  // the People directory's inline-expander usage, which keeps its prior behavior.
+  onSaved?: () => void;
+  onCancel?: () => void;
+  onPendingChange?: (pending: boolean) => void;
+  onDirty?: () => void;
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminChangeLeaderRole,
     { resetOnSuccess: true }
   );
+  const embedded = onSaved !== undefined;
   const [open, setOpen] = useState(false);
 
   const otherRole: LeaderRole =
@@ -46,13 +60,23 @@ export function ChangeLeaderRoleForm({
   const [newRole, setNewRole] = useState<LeaderRole>(otherRole);
   const downgrade = isRoleDowngrade(currentRole, newRole);
 
-  // Collapse the form and re-seed the target role on a fresh successful save.
-  // Derived during render rather than in an effect to avoid the cascading-render
-  // smell.
+  // Mirror the in-flight state to the host drawer (embedded mode) so it can keep
+  // itself open while a save is pending.
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
+
+  // On a fresh successful save: embedded → hand off to the host (close drawer +
+  // refresh); inline → collapse and re-seed the target role. Derived during
+  // render rather than in an effect to avoid the cascading-render smell.
   useValueChange(state, (next) => {
     if (next?.ok) {
-      setOpen(false);
-      setNewRole(otherRole);
+      if (embedded) {
+        onSaved?.();
+      } else {
+        setOpen(false);
+        setNewRole(otherRole);
+      }
     }
   });
 
@@ -63,7 +87,10 @@ export function ChangeLeaderRoleForm({
   // confirm button. A promotion (no guard) submits straight through.
   const downgradeMessage = `Change ${profileName} from ${ROLE_LABELS[currentRole]} to ${ROLE_LABELS[newRole]}? This narrows what they can do.`;
 
-  if (!open) {
+  // The collapsed opener is the inline (directory) affordance only; in embedded
+  // mode the host drawer is already the "opened" surface, so render the form
+  // directly.
+  if (!embedded && !open) {
     return (
       <div className="grid gap-1">
         <Button
@@ -91,7 +118,13 @@ export function ChangeLeaderRoleForm({
     <form
       ref={formRef}
       action={formAction}
-      className="grid min-w-[230px] gap-2 rounded-sm border border-line bg-bg px-3 py-2.5"
+      onChange={onDirty}
+      className={cn(
+        "grid gap-2",
+        embedded
+          ? "min-w-0"
+          : "min-w-[230px] rounded-sm border border-line bg-bg px-3 py-2.5"
+      )}
     >
       <input type="hidden" name="profile_id" value={profileId} />
       <p className="m-0 font-sans text-xs text-ink2">
@@ -129,8 +162,12 @@ export function ChangeLeaderRoleForm({
           variant="ghost"
           size="sm"
           onClick={() => {
-            setNewRole(otherRole);
-            setOpen(false);
+            if (embedded) {
+              onCancel?.();
+            } else {
+              setNewRole(otherRole);
+              setOpen(false);
+            }
           }}
           disabled={pending}
         >
