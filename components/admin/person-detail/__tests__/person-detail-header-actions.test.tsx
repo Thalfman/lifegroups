@@ -57,6 +57,7 @@ describe("PersonDetailHeaderActions", () => {
           fullName: "Dana Leader",
           status: "active",
           leaderRole: "leader",
+          role: "leader",
         }}
         viewerRole="ministry_admin"
       />
@@ -78,6 +79,7 @@ describe("PersonDetailHeaderActions", () => {
           fullName: "Morgan Member",
           status: "active",
           leaderRole: null,
+          role: null,
         }}
         viewerRole="ministry_admin"
       />
@@ -98,6 +100,7 @@ describe("PersonDetailHeaderActions", () => {
           fullName: "Dana Leader",
           status: "inactive",
           leaderRole: "leader",
+          role: "leader",
         }}
         viewerRole="ministry_admin"
       />
@@ -115,6 +118,7 @@ describe("PersonDetailHeaderActions", () => {
           fullName: "Morgan Member",
           status: "active",
           leaderRole: null,
+          role: null,
         }}
         viewerRole="ministry_admin"
       />
@@ -146,11 +150,31 @@ describe("PersonDetailHeaderActions", () => {
           fullName: "Dana Leader",
           status: "active",
           leaderRole: "leader",
+          role: "leader",
         }}
         viewerRole="ministry_admin"
         isSelf
       />
     );
+    expect(screen.queryByRole("button", { name: /Actions for/ })).toBeNull();
+  });
+
+  it("does not offer Archive for a super_admin target to a ministry_admin (#788 forbidden_target)", () => {
+    render(
+      <PersonDetailHeaderActions
+        person={{
+          kind: "profile",
+          id: "sa1",
+          fullName: "Tom Super",
+          status: "active",
+          leaderRole: null,
+          role: "super_admin",
+        }}
+        viewerRole="ministry_admin"
+      />
+    );
+    // change-role doesn't apply (not a leader) and archive is forbidden, so the
+    // menu has no actions and renders nothing.
     expect(screen.queryByRole("button", { name: /Actions for/ })).toBeNull();
   });
 
@@ -163,6 +187,7 @@ describe("PersonDetailHeaderActions", () => {
           fullName: "Dana Leader",
           status: "active",
           leaderRole: "leader",
+          role: "leader",
         }}
         viewerRole="leader"
       />

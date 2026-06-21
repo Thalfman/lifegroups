@@ -76,6 +76,7 @@ export default async function AdminPersonDetailPage({
                 fullName: person.fullName,
                 status: person.status,
                 leaderRole: person.leaderRole,
+                role: person.role,
               }}
               viewerRole={session.profile.role}
               // Suppress self-target lifecycle actions on the admin's own

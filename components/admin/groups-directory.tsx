@@ -341,8 +341,16 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
       );
       /* eslint-enable react-hooks/set-state-in-effect */
     }
-    // Strip the draft marker so a manual refresh doesn't reopen from a stale id.
-    router.replace(window.location.pathname, { scroll: false });
+    // Strip only the draft marker so a manual refresh can't reopen from a stale
+    // id — preserving any other params (notably origin_setup=1, which keeps the
+    // Back-to-setup affordance alive when the round trip began mid-setup; #788).
+    const cleaned = new URLSearchParams(window.location.search);
+    cleaned.delete(DRAFT_PARAM);
+    const qs = cleaned.toString();
+    router.replace(
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+      { scroll: false }
+    );
   }, [searchParams, groupsById, router]);
 
   const profilesById = useMemo(

@@ -13,7 +13,7 @@ import {
   adminDeactivateMember,
 } from "@/app/(protected)/admin/people/actions";
 import type { ContextualAction } from "@/lib/admin/contextual-actions";
-import type { UserRole } from "@/lib/auth/roles";
+import { isSuperAdminRole, type UserRole } from "@/lib/auth/roles";
 
 // The person detail-header action menu (#781 OPP-6) — the People-directory's
 // per-person lifecycle actions, now reachable from the person's own detail page
@@ -32,6 +32,9 @@ export type PersonHeaderTarget = {
   // The raw leader role when this person is a leader/co-leader, else null —
   // "Change role" is only meaningful (and only RPC-valid) for those two.
   leaderRole: "leader" | "co_leader" | null;
+  // The raw login role (null for non-login members) — gates Archive away from a
+  // super_admin target a non-super-admin can't deactivate (#788).
+  role: UserRole | null;
 };
 
 type DrawerState = { action: ContextualAction };
@@ -53,14 +56,22 @@ export function PersonDetailHeaderActions({
   const drawer = useEditingDrawer<DrawerState>();
   const isActive = person.status === "active";
 
+  // A super_admin target can only be archived by another super_admin — the
+  // deactivate RPC rejects a ministry_admin → super_admin deactivate as
+  // forbidden_target, so the directory never offers it and neither should this
+  // header (#788).
+  const archiveForbiddenTarget =
+    person.role === "super_admin" && !isSuperAdminRole(viewerRole);
+
   // Instance applicability on top of the registry's role gate: change-role only
-  // for an active leader/co-leader; archive only for someone still active; and
-  // never a self-target lifecycle action (the RPC would reject it).
+  // for an active leader/co-leader; archive only for an active, non-forbidden
+  // target; and never a self-target lifecycle action (the RPC would reject it).
   function applicable(action: ContextualAction): boolean {
     if (isSelf) return false;
     if (action.id === "change_person_role")
       return person.leaderRole !== null && isActive;
-    if (action.id === "archive_person") return isActive;
+    if (action.id === "archive_person")
+      return isActive && !archiveForbiddenTarget;
     return true;
   }
 
