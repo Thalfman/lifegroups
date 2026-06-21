@@ -19,6 +19,8 @@ import {
 // searchParams: CarePageView translates them into the matching Directory /
 // Coverage tab (#334), keeping the deep links live without breaking the
 // alias-render-200 contract.
+//
+// Kept off-nav by design — keep/retire/re-export decision: Keep (ADR 0033).
 export const dynamic = "force-dynamic";
 
 export default async function AdminShepherdCarePage({

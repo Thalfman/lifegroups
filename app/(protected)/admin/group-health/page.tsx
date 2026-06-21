@@ -4,6 +4,11 @@ import { requireAdmin } from "@/lib/auth/session";
 import { loadGroupHealthData } from "@/components/admin/group-health/group-health-data";
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 
+// Kept off-nav by design — keep/retire/re-export decision: Keep (ADR 0033).
+// This standalone triage surface stays reachable by URL: its `grade-actions.ts`
+// is the canonical home for the Care rubric-grade write, and it is the target of
+// the "Edit rubric" deep-link (lib/nav/return-to.ts).
+//
 // One render path for the two degraded-read states (no database vs. failed
 // read): same page chrome, only the message and tone differ.
 function GroupHealthNotice({

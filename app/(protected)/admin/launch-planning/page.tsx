@@ -10,6 +10,8 @@ import { churchMonthIso } from "@/lib/shared/church-time";
 // so the surface keeps its own URL but shares ONE loader + shell with the
 // canonical /admin/planning route. The sidebar marks Planning active for this
 // URL via the alias→canonical map (#321).
+//
+// Kept off-nav by design — keep/retire/re-export decision: Keep (ADR 0033).
 export const dynamic = "force-dynamic";
 
 type SearchParams = { month?: string | string[] };

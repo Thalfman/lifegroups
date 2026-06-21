@@ -7,6 +7,10 @@
 //
 // Wired through the admin page runner (ADR 0028); the frozen-surface banner is
 // the runner's `frozenBanner`.
+//
+// Kept off-nav by design — keep/retire/re-export decision: Keep (ADR 0033). The
+// only admin-side window into live leader check-in data; preserved pending a
+// canonical replacement.
 import { PageBody } from "@/components/lg/PageHeader";
 import { CheckInReviewShell } from "@/components/admin/check-in-review-shell";
 import { adminPage } from "@/lib/admin/admin-page";
