@@ -17,6 +17,11 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PButton } from "@/components/pastoral/button";
 import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import {
   superAdminInlineDelete,
   superAdminPermanentDeletePreflight,
 } from "@/app/(protected)/admin/super-admin/permanent-delete-actions";
@@ -82,86 +87,89 @@ export function SuperAdminInlineDelete({
   const deleted = del.state?.ok === true;
 
   return (
-    <span className="relative inline-flex items-center gap-1.5">
-      {/* Marks this Delete as private to the super admin — it never renders for
-          other roles, so the marker is only ever seen by a super admin. */}
-      <SuperAdminOnlyMark />
-      <PButton
-        type="button"
-        tone="ghost"
-        size="sm"
-        data-testid="inline-delete"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={`Delete ${label}`}
-        onClick={() => setOpen((v) => !v)}
-        className="border-rose/40 text-rose hover:bg-roseSoft"
-      >
-        Delete
-      </PButton>
-
-      {/* Hidden preflight form — auto-submitted on open via requestSubmit. */}
-      <form
-        ref={preflightFormRef}
-        action={preflight.formAction}
-        className="hidden"
-      >
-        <input type="hidden" name="entityType" value={entityType} />
-        <input type="hidden" name="id" value={id} />
-      </form>
-
-      {open ? (
-        <div
-          role="dialog"
-          aria-label={`Delete ${label}`}
-          className="absolute right-0 top-[calc(100%+6px)] z-dropdown grid w-[280px] gap-2.5 rounded-md border border-line bg-surface p-3 shadow-softLg"
-        >
-          <div className="font-sans text-sm font-semibold text-ink">
-            Delete this record permanently?
-          </div>
-
-          <DeletePreview
-            pending={preflight.pending}
-            failed={preflightFailed}
-            report={report}
-            onRetry={() => preflightFormRef.current?.requestSubmit()}
-          />
-
-          <form
-            ref={delFormRef}
-            action={del.formAction}
-            className="flex items-center gap-2"
+    <Popover open={open} onOpenChange={setOpen}>
+      <span className="inline-flex items-center gap-1.5">
+        {/* Marks this Delete as private to the super admin — it never renders
+            for other roles, so the marker is only ever seen by a super admin. */}
+        <SuperAdminOnlyMark />
+        {/* Radix supplies aria-haspopup="dialog" + aria-expanded + the open
+            toggle on the trigger, replacing the hand-rolled props + onClick. */}
+        <PopoverTrigger asChild>
+          <PButton
+            type="button"
+            tone="ghost"
+            size="sm"
+            data-testid="inline-delete"
+            aria-label={`Delete ${label}`}
+            className="border-rose/40 text-rose hover:bg-roseSoft"
           >
-            <input type="hidden" name="entityType" value={entityType} />
-            <input type="hidden" name="id" value={id} />
-            <input type="hidden" name="path" value={revalidatePath} />
-            <Button
-              type="submit"
-              variant="destructive"
-              size="sm"
-              disabled={del.pending || deleted || !canDelete}
-            >
-              {del.pending ? "Deleting…" : "Delete"}
-            </Button>
-            <PButton
-              type="button"
-              tone="ghost"
-              size="sm"
-              onClick={() => setOpen(false)}
-            >
-              {deleted ? "Close" : "Cancel"}
-            </PButton>
-          </form>
+            Delete
+          </PButton>
+        </PopoverTrigger>
 
-          {deleted ? (
-            <span className={successTextClassName}>
-              Deleted — recoverable from a backup.
-            </span>
-          ) : null}
-          <FormStatus state={del.state} />
+        {/* Hidden preflight form — auto-submitted on open via requestSubmit.
+            Kept outside PopoverContent so it persists while the panel mounts. */}
+        <form
+          ref={preflightFormRef}
+          action={preflight.formAction}
+          className="hidden"
+        >
+          <input type="hidden" name="entityType" value={entityType} />
+          <input type="hidden" name="id" value={id} />
+        </form>
+      </span>
+
+      {/* The confirm panel. Radix positions it (below-right of the trigger) and
+          gives it role="dialog"; we name it and keep the 280px card chrome. */}
+      <PopoverContent
+        aria-label={`Delete ${label}`}
+        className="z-dropdown grid w-[280px] gap-2.5 rounded-md border border-line bg-surface p-3 shadow-softLg"
+      >
+        <div className="font-sans text-sm font-semibold text-ink">
+          Delete this record permanently?
         </div>
-      ) : null}
-    </span>
+
+        <DeletePreview
+          pending={preflight.pending}
+          failed={preflightFailed}
+          report={report}
+          onRetry={() => preflightFormRef.current?.requestSubmit()}
+        />
+
+        <form
+          ref={delFormRef}
+          action={del.formAction}
+          className="flex items-center gap-2"
+        >
+          <input type="hidden" name="entityType" value={entityType} />
+          <input type="hidden" name="id" value={id} />
+          <input type="hidden" name="path" value={revalidatePath} />
+          <Button
+            type="submit"
+            variant="destructive"
+            size="sm"
+            disabled={del.pending || deleted || !canDelete}
+          >
+            {del.pending ? "Deleting…" : "Delete"}
+          </Button>
+          <PButton
+            type="button"
+            tone="ghost"
+            size="sm"
+            onClick={() => setOpen(false)}
+          >
+            {deleted ? "Close" : "Cancel"}
+          </PButton>
+        </form>
+
+        {deleted ? (
+          <span className={successTextClassName}>
+            Deleted — recoverable from a backup.
+          </span>
+        ) : null}
+        <FormStatus state={del.state} />
+      </PopoverContent>
+    </Popover>
   );
 }
 
