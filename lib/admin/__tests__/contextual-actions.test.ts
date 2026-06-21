@@ -42,7 +42,6 @@ describe("contextual-actions registry", () => {
       "log_call",
       "log_text",
       "log_visit",
-      "set_status",
       "set_touchpoint",
       "create_follow_up",
     ];
@@ -51,7 +50,6 @@ describe("contextual-actions registry", () => {
       "care_note_writer",
       "prayer_request_writer",
       "care_log_touch",
-      "care_set_status",
       "care_set_touchpoint",
       "care_create_follow_up",
     ]);

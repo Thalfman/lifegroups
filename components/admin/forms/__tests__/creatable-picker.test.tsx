@@ -113,6 +113,29 @@ describe("CreatablePicker", () => {
       );
     });
 
+    it("keeps a case-different initialValue selectable and selected (#785 Codex P2)", () => {
+      // Stored `men` against an option `Men`: an exact-match seed keeps `men` as
+      // its own option so the controlled select has a match — an unrelated save
+      // can't blank the field.
+      render(
+        <CreatablePicker
+          options={["Men", "Women"]}
+          onCreate={noop}
+          name="thing"
+          id="thing"
+          label="Thing"
+          initialValue="men"
+        />
+      );
+      const select = screen.getByRole("combobox") as HTMLSelectElement;
+      expect(select.value).toBe("men");
+      expect(
+        within(select)
+          .getAllByRole("option")
+          .map((o) => o.textContent)
+      ).toEqual(expect.arrayContaining(["Men", "men"]));
+    });
+
     it("keeps an initialValue not in the options selectable and selected", () => {
       render(
         <CreatablePicker

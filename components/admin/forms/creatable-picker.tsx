@@ -64,13 +64,12 @@ export function CreatablePicker({
   const seedValue = initialValue ?? "";
   // Values appended this session (one the user just added) layer on top of the
   // server-provided list until the next server read carries them natively. Seed
-  // with the initial value when it isn't already an option, so a preselected
-  // free-text / removed value stays in the list.
+  // with the initial value when it isn't already an EXACT option — a value that
+  // differs only by case (stored `men` vs option `Men`) must stay seeded, or the
+  // controlled <select> would have no matching option and an unrelated save could
+  // submit it blank, clearing the field (the old edit form kept such values).
   const [extras, setExtras] = useState<string[]>(
-    seedValue.length > 0 &&
-      !options.some((o) => o.toLowerCase() === seedValue.toLowerCase())
-      ? [seedValue]
-      : []
+    seedValue.length > 0 && !options.includes(seedValue) ? [seedValue] : []
   );
   const [value, setValue] = useState(seedValue);
   const [adding, setAdding] = useState(false);
@@ -80,12 +79,12 @@ export function CreatablePicker({
   const selectRef = useRef<HTMLSelectElement>(null);
   const newItemRef = useRef<HTMLInputElement>(null);
 
-  const values = [
-    ...options,
-    ...extras.filter(
-      (t) => !options.some((g) => g.toLowerCase() === t.toLowerCase())
-    ),
-  ];
+  // Exact (case-sensitive) dedup against options: a seeded value that differs
+  // only by case from an option is kept as its own selectable option so the
+  // controlled select always has a match. The add-new flow has its own
+  // case-insensitive guard (`addItem`'s `existing` check), so this never shows a
+  // duplicate `Men`/`men` the user typed.
+  const values = [...options, ...extras.filter((t) => !options.includes(t))];
 
   // Clear back to no-selection when the enclosing form resets on success.
   useEffect(() => {

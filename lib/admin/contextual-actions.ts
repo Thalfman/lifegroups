@@ -38,7 +38,6 @@ export type ContextualActionBodyKey =
   | "care_note_writer"
   | "prayer_request_writer"
   | "care_log_touch"
-  | "care_set_status"
   | "care_set_touchpoint"
   | "care_create_follow_up";
 
@@ -131,13 +130,6 @@ export const CONTEXTUAL_ACTION_REGISTRY: ContextualActionRegistry = {
       model: "drawer",
       roleGate: "admin",
       body: "care_log_touch",
-    },
-    {
-      id: "set_status",
-      label: "Update status",
-      model: "drawer",
-      roleGate: "admin",
-      body: "care_set_status",
     },
     {
       id: "set_touchpoint",

@@ -21,9 +21,14 @@ import type { ShepherdCareInteractionType } from "@/types/enums";
 // Data contract: the host passes only { entity:{kind,id,label}, action, controls }.
 // `entity.id` is the leader's profile id (which is the `shepherd_profile_id` /
 // `subject_profile_id` every Care write keys on); `entity.label` is the leader's
-// name. The status/touchpoint forms open with `current={null}` (the accordion /
-// feed models don't carry the care row) — the sparse `set_*` upsert only writes
-// the submitted field, so nothing is clobbered; they simply don't pre-fill.
+// name. The touchpoint form opens with `current={null}` (the accordion / feed
+// models don't carry the care row); that's safe because its date field is
+// required-and-empty, so there is no silent default to clobber — the user must
+// pick the next-step date, which is the action's whole purpose. (An "Update
+// status" action is deliberately NOT offered here: with no current row its
+// select would default to "doing_well" and a careless save could downgrade a
+// leader flagged concern/needs_follow_up — that edit stays on the leader detail
+// page, which prefills the real status.)
 
 // The log_* actions share one body; map the chosen action id → interaction type
 // + lower-case noun, exactly as `care-actions.tsx` does on the detail page.
@@ -153,17 +158,6 @@ export const CARE_CONTEXTUAL_BODIES: Partial<
       />
     );
   },
-  care_set_status: ({ entity, controls }) => (
-    <CareProfileFieldForm
-      shepherdProfileId={entity.id}
-      field="status"
-      current={null}
-      onSaved={controls.markSaved}
-      onDirty={controls.markDirty}
-      onPendingChange={controls.reportPending}
-      onCancel={controls.requestClose}
-    />
-  ),
   care_set_touchpoint: ({ entity, controls }) => (
     <CareProfileFieldForm
       shepherdProfileId={entity.id}
