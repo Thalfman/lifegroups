@@ -20,10 +20,13 @@ describe("HealthWhyPeek", () => {
     );
 
     expect(await screen.findByText("How this grade is set")).toBeTruthy();
-    // Bands come from the actual group-health rubric (A ≥ 90, B ≥ 75, C ≥ 60,
-    // below 60 → D), matching the grade shown on the tab.
-    expect(screen.getByText("A · 90% and up")).toBeTruthy();
-    expect(screen.getByText("D · below 60%")).toBeTruthy();
+    // The peek explains the rule qualitatively (no hardcoded cut-offs that could
+    // contradict a saved custom rubric) and routes to the authoritative editor.
+    expect(
+      screen.getByText(
+        /scored on attendance, spiritual growth, group question/i
+      )
+    ).toBeTruthy();
 
     // The deep link reuses the Phase-1 return convention (from=group-health) and
     // scopes the editor to this group.

@@ -51,6 +51,9 @@ export function GroupCreateForm({
   // drawer; off from the group detail header, where the `groups` return target
   // would drop the user on the list instead of their detail tab (Codex P2).
   enableManageTypes = false,
+  // OPP-3b — carry the setup origin through the manage round trip when the list
+  // was reached from the setup-recovery flow (Codex P2).
+  fromSetup = false,
 }: {
   defaultCapacity: number | null;
   onSaved?: () => void;
@@ -60,6 +63,7 @@ export function GroupCreateForm({
   groupTypes?: readonly string[];
   draft?: FormDraft;
   enableManageTypes?: boolean;
+  fromSetup?: boolean;
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateGroup,
@@ -301,6 +305,8 @@ export function GroupCreateForm({
             label="Group type (optional)"
             initialValue={draft?.group_type}
             enableManageTypes={enableManageTypes}
+            manageDisabled={pending}
+            fromSetup={fromSetup}
           />
           <p className={fieldHintClassName}>
             Choose a type from the admin-managed list, add a new one, or leave

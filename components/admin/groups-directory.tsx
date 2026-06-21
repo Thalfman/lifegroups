@@ -678,6 +678,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         // The list drawer owns the manage-types return round trip (it reopens
         // here from the draft); the detail header leaves it off (Codex P2).
         enableManageTypes
+        // Carry the setup origin through that round trip when the list itself was
+        // reached from setup-recovery, so the Back-to-setup link survives (#788).
+        fromSetup={props.fromSetup ?? false}
         onDirty={markDirty}
         onPendingChange={reportPending}
         onRequestClose={requestClose}

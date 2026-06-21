@@ -18,6 +18,8 @@ export function GroupTypePicker({
   label = "Desired group type (optional)",
   initialValue,
   enableManageTypes = false,
+  manageDisabled = false,
+  fromSetup = false,
 }: {
   groupTypes?: readonly string[];
   name?: string;
@@ -31,6 +33,14 @@ export function GroupTypePicker({
   // returns to this exact form with every field restored. The prospect form
   // leaves it off (its return flow isn't wired), so adding a type stays inline.
   enableManageTypes?: boolean;
+  // OPP-3b — disable the hand-off while the host form's create/save is in flight,
+  // so navigating away mid-write can't store a pre-save draft and later create a
+  // duplicate on return (Codex P2).
+  manageDisabled?: boolean;
+  // OPP-3b — when the Groups list was reached via the setup-recovery flow, carry
+  // a secondary setup marker through the round trip so returning keeps the
+  // "← Back to setup" affordance (mirrors the health-rubric flow; Codex P2).
+  fromSetup?: boolean;
 }) {
   return (
     <div className="grid gap-1">
@@ -60,7 +70,9 @@ export function GroupTypePicker({
       {/* The router is only needed for the manage hand-off, so it lives in a
           child rendered solely when enabled — consumers that don't opt in (the
           prospect form) need no App Router context. */}
-      {enableManageTypes ? <ManageGroupTypesLink /> : null}
+      {enableManageTypes ? (
+        <ManageGroupTypesLink disabled={manageDisabled} fromSetup={fromSetup} />
+      ) : null}
     </div>
   );
 }
@@ -71,25 +83,32 @@ export function GroupTypePicker({
 // Settings banner returns the user to the Groups list, which reopens this drawer
 // and restores the draft — no inline global-config editing; list management
 // stays on its real page (plan §3a).
-function ManageGroupTypesLink() {
+function ManageGroupTypesLink({
+  disabled,
+  fromSetup,
+}: {
+  disabled: boolean;
+  fromSetup: boolean;
+}) {
   const router = useRouter();
   function manageTypes(event: React.MouseEvent<HTMLButtonElement>) {
     const form = event.currentTarget.closest("form");
     if (!form) return;
     const draftId = newDraftId();
     saveFormDraft(draftId, snapshotForm(form));
-    router.push(
-      decorateReturn(
-        `/admin/settings?tab=groups&${DRAFT_PARAM}=${draftId}`,
-        "groups"
-      )
-    );
+    // Carry the setup origin on a separate marker (the single `from` param holds
+    // `groups`); the `groups` return builder propagates it back to the list.
+    const base = `/admin/settings?tab=groups&${DRAFT_PARAM}=${draftId}${
+      fromSetup ? "&origin_setup=1" : ""
+    }`;
+    router.push(decorateReturn(base, "groups"));
   }
   return (
     <button
       type="button"
       onClick={manageTypes}
-      className="cursor-pointer justify-self-start border-none bg-transparent p-0 font-sans text-xs text-ink2 underline hover:text-ink"
+      disabled={disabled}
+      className="cursor-pointer justify-self-start border-none bg-transparent p-0 font-sans text-xs text-ink2 underline hover:text-ink disabled:cursor-not-allowed disabled:text-ink3 disabled:no-underline"
     >
       Manage group types
     </button>

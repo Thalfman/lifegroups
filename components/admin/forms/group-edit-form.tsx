@@ -53,6 +53,8 @@ export function GroupEditForm({
   // target is the list, not the detail tab, so it leaves the affordance off
   // (Codex P2).
   enableManageTypes = false,
+  // OPP-3b — carry the setup origin through the manage round trip (Codex P2).
+  fromSetup = false,
 }: {
   group: GroupsRow;
   onCancel?: () => void;
@@ -62,6 +64,7 @@ export function GroupEditForm({
   groupTypes?: readonly string[];
   draft?: FormDraft;
   enableManageTypes?: boolean;
+  fromSetup?: boolean;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateGroup
@@ -264,6 +267,8 @@ export function GroupEditForm({
             label="Group type"
             initialValue={currentType}
             enableManageTypes={enableManageTypes}
+            manageDisabled={pending}
+            fromSetup={fromSetup}
           />
         </div>
         <div>

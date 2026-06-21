@@ -22,6 +22,8 @@ export function GroupEditorDrawer({
   // type picker. On only from the Groups list (whose return flow reopens this
   // drawer); the group detail header leaves it off (Codex P2).
   enableManageTypes = false,
+  // OPP-3b — carry the setup origin through the manage round trip (Codex P2).
+  fromSetup = false,
 }: {
   editor: GroupEditorState | null;
   defaultCapacity: number | null;
@@ -32,6 +34,7 @@ export function GroupEditorDrawer({
   onSaved: () => void;
   draft?: FormDraft;
   enableManageTypes?: boolean;
+  fromSetup?: boolean;
 }) {
   const group = editor?.mode === "edit" ? editor.group : null;
 
@@ -57,6 +60,7 @@ export function GroupEditorDrawer({
             groupTypes={groupTypes}
             draft={draft}
             enableManageTypes={enableManageTypes}
+            fromSetup={fromSetup}
             onCancel={onRequestClose}
             onDirty={onDirty}
             onPendingChange={onPendingChange}
@@ -74,6 +78,7 @@ export function GroupEditorDrawer({
           groupTypes={groupTypes}
           draft={draft}
           enableManageTypes={enableManageTypes}
+          fromSetup={fromSetup}
           onCancel={onRequestClose}
           onDirty={onDirty}
           onPendingChange={onPendingChange}

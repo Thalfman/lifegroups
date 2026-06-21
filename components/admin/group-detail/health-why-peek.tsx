@@ -6,22 +6,22 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import { BUILT_IN_GROUP_HEALTH_RUBRIC } from "@/lib/admin/group-health";
 import { decorateReturn } from "@/lib/nav/return-to";
 
 // The OPP-8 read-only "why?" peek (#781). Next to a group's Group-Health Grade
-// it explains the GOVERNING RULE behind the letter — the score bands and the
-// scored dimensions — without editing anything inline (editing global config
+// it explains the GOVERNING RULE behind the letter — which dimensions are scored
+// and how they roll up — without editing anything inline (editing global config
 // from an entity's context stays a non-goal). For the sanctioned edit path it
 // carries a deep link to the audited Settings rubric editor, REUSING the Phase-1
 // redirect-and-return round trip (decorateReturn + `from=group-health`): the user
 // lands back on this group's health tab, focus restored to the standalone "Edit
 // rubric" button (the ReturnFocus target). The peek itself never writes.
 //
-// The bands + dimensions come from the SAME rubric that computes the displayed
-// grade (lib/admin/group-health.ts), not the separate A–F rubric — so the
-// explanation can't contradict the letter on the page (Codex P2). The grade
-// engine bands to A–D: A ≥ a, B ≥ b, C ≥ c, anything below c is D.
+// It deliberately does NOT restate numeric cut-offs/weights: the grade is
+// computed from the resolved group_health_rubric (built-in defaults overlaid with
+// any saved custom cut lines), which this client peek doesn't have, so quoting a
+// fixed ladder could contradict the letter on the page (Codex P2). The exact
+// thresholds + weights are authoritative in the rubric — one click away.
 const SCORED_DIMENSION_LABELS = [
   "attendance",
   "spiritual growth",
@@ -35,7 +35,6 @@ export function HealthWhyPeek({
   groupId: string;
   fromSetup?: boolean;
 }) {
-  const { a, b, c } = BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines;
   // Same outbound shape as EditRubricLink: the Settings care tab, scoped to this
   // group, carrying the return marker (and the setup origin when relevant).
   const editHref = decorateReturn(
@@ -58,21 +57,13 @@ export function HealthWhyPeek({
           How this grade is set
         </p>
         <p className="m-0 font-sans text-sm text-ink2">
-          The score rolls up to a letter on these bands:
+          Each group is scored on {SCORED_DIMENSION_LABELS.join(", ")}, weighted
+          by the Group-Health rubric, and the weighted score rolls up to an A–F
+          letter.
         </p>
-        <ul className="m-0 grid list-none gap-0.5 p-0 font-sans text-sm text-ink2">
-          <li>A · {a}% and up</li>
-          <li>
-            B · {b}–{a - 1}%
-          </li>
-          <li>
-            C · {c}–{b - 1}%
-          </li>
-          <li>D · below {c}%</li>
-        </ul>
         <p className="m-0 font-sans text-sm text-ink2">
-          Scored on {SCORED_DIMENSION_LABELS.join(", ")}, weighted in the
-          rubric.
+          The exact weights and grade cut-offs live in the rubric — open it to
+          see or adjust them.
         </p>
         <Link
           href={editHref}

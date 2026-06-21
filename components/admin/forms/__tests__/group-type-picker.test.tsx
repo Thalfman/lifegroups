@@ -105,6 +105,49 @@ describe("GroupTypePicker (#747)", () => {
     window.sessionStorage.clear();
   });
 
+  it("carries the setup origin through the hand-off when fromSetup (#788)", async () => {
+    const user = userEvent.setup();
+    render(
+      <form>
+        <input name="name" defaultValue="Wednesday" />
+        <GroupTypePicker
+          groupTypes={["Men"]}
+          name="group_type"
+          id="g"
+          enableManageTypes
+          fromSetup
+        />
+      </form>
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Manage group types" })
+    );
+    expect(push.mock.calls[0][0]).toContain("origin_setup=1");
+    window.sessionStorage.clear();
+  });
+
+  it("disables the hand-off while a write is in flight, blocking the navigation (#788)", async () => {
+    const user = userEvent.setup();
+    render(
+      <form>
+        <input name="name" defaultValue="Wednesday" />
+        <GroupTypePicker
+          groupTypes={["Men"]}
+          name="group_type"
+          id="g"
+          enableManageTypes
+          manageDisabled
+        />
+      </form>
+    );
+    const button = screen.getByRole("button", {
+      name: "Manage group types",
+    }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    await user.click(button);
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it("adds a new type via the audited action and selects it", async () => {
     const user = userEvent.setup();
     render(<GroupTypePicker groupTypes={["Men"]} />);

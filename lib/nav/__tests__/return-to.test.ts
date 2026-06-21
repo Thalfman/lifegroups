@@ -146,6 +146,20 @@ describe("returnTo convention", () => {
       );
     });
 
+    it("propagates the setup origin back to the list when set (#788)", () => {
+      const params = new URLSearchParams(
+        "tab=groups&from=groups&draft=abc123&origin_setup=1"
+      );
+      expect(resolveReturnHref("groups", params)).toBe(
+        "/admin/groups?from=groups&draft=abc123&origin_setup=1"
+      );
+    });
+
+    it("omits the setup origin when it wasn't set", () => {
+      const params = new URLSearchParams("tab=groups&from=groups&draft=abc123");
+      expect(resolveReturnHref("groups", params)).not.toContain("origin_setup");
+    });
+
     it("labels the return affordance for the group being edited", () => {
       expect(returnOriginConfig("groups").label).toBe(
         "← Back to the group you were editing"

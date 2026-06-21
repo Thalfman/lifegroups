@@ -19,7 +19,12 @@ export const dynamic = "force-dynamic";
 export default adminPage({
   params: (raw) => ({
     initialTab: resolveGroupListTab(raw.searchParams.tab),
-    fromSetup: isFromSetup(raw.searchParams.from),
+    // `origin_setup=1` is the setup origin riding back through the Manage-group-
+    // types round trip (#788), whose own `from` param holds `groups`; treat
+    // either signal as "in the setup chain" so the Back-to-setup link survives.
+    fromSetup:
+      isFromSetup(raw.searchParams.from) ||
+      raw.searchParams.origin_setup === "1",
   }),
   load: async (_params, session) => ({
     data: await loadGroupManagementData(),

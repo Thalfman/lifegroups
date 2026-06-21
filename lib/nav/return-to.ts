@@ -71,9 +71,13 @@ const RETURN_ORIGINS: Record<ReturnOrigin, ReturnOriginConfig> = {
     value: "groups",
     returnHref: (params: ReturnParams) => {
       const draft = params.get(DRAFT_PARAM);
+      // Propagate the setup origin (origin_setup=1) back to the list so a
+      // round trip started mid-setup-recovery keeps the "← Back to setup"
+      // affordance — the single `from` param already holds `groups` (#788).
+      const originSetup = params.get("origin_setup") === "1";
       return `/admin/groups?${RETURN_PARAM}=groups${
         draft ? `&${DRAFT_PARAM}=${draft}` : ""
-      }`;
+      }${originSetup ? "&origin_setup=1" : ""}`;
     },
     label: "← Back to the group you were editing",
   },
