@@ -25,6 +25,13 @@ import {
   type SupabaseClient,
 } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
+// Latency padding to close the email-enumeration timing oracle on this PUBLIC
+// flow: the "already registered" branches return after a single indexed lookup,
+// while the "new email" branch runs a paginated listUsers scan + createUser +
+// RPC. padToFloor levels every business-logic return to the same floor + jitter
+// so a link-holder can't time the difference. Shared with invite-user (SEC-3).
+import { INVITE_TIMING_FLOOR_MS, padToFloor } from "../_shared/timing.ts";
+
 type ResponseBody = {
   ok: boolean;
   code?: string;
@@ -127,6 +134,16 @@ declare const Deno: {
 };
 
 Deno.serve(async (req: Request) => {
+  // Captured before any identity-dependent work so every padded return settles
+  // to the same wall-clock floor regardless of which branch ran (SEC-3).
+  const startedAt = performance.now();
+  // Wrap a response so it can't be returned before the timing floor elapses.
+  // Used on every business-logic return from the invitation pre-check onward.
+  const padded = async (response: Response): Promise<Response> => {
+    await padToFloor(startedAt, INVITE_TIMING_FLOOR_MS);
+    return response;
+  };
+
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: {
@@ -207,14 +224,14 @@ Deno.serve(async (req: Request) => {
     )
     .eq("token_hash", tokenHash)
     .maybeSingle();
-  if (invErr) return fail("db_error", 500);
+  if (invErr) return padded(fail("db_error", 500));
   const inv = invRow as Invitation | null;
-  if (!inv) return fail("invitation_not_found", 404);
-  if (inv.revoked_at) return fail("invitation_revoked", 410);
+  if (!inv) return padded(fail("invitation_not_found", 404));
+  if (inv.revoked_at) return padded(fail("invitation_revoked", 410));
   if (new Date(inv.expires_at).getTime() <= Date.now())
-    return fail("invitation_expired", 410);
+    return padded(fail("invitation_expired", 410));
   if (inv.max_uses !== null && inv.used_count >= inv.max_uses)
-    return fail("invitation_used", 409);
+    return padded(fail("invitation_used", 409));
 
   // 2. Don't let self-signup hijack or duplicate an existing identity. Both an
   //    existing profile (which redeem_invitation refuses to relink) and an
@@ -229,15 +246,15 @@ Deno.serve(async (req: Request) => {
     .select("id")
     .eq("email", email)
     .maybeSingle();
-  if (profileErr) return fail("db_error", 500);
-  if (existingProfile) return fail("email_unavailable", 409);
+  if (profileErr) return padded(fail("db_error", 500));
+  if (existingProfile) return padded(fail("email_unavailable", 409));
 
   try {
     if (await emailHasAuthUser(service, email)) {
-      return fail("email_unavailable", 409);
+      return padded(fail("email_unavailable", 409));
     }
   } catch {
-    return fail("db_error", 500);
+    return padded(fail("db_error", 500));
   }
 
   // 3. Create the auth user with the chosen password (already email-confirmed
@@ -252,7 +269,7 @@ Deno.serve(async (req: Request) => {
   if (createErr || !created?.user?.id) {
     // A duplicate here means a race with another signup of the same email;
     // keep the generic code so it can't be used to enumerate.
-    return fail("email_unavailable", 409);
+    return padded(fail("email_unavailable", 409));
   }
   const authUserId = created.user.id;
 
@@ -275,7 +292,7 @@ Deno.serve(async (req: Request) => {
       // best-effort; surface the original error regardless.
     }
     const mapped = mapRpcToken(rpcErr.message ?? "");
-    return fail(mapped.code, mapped.status);
+    return padded(fail(mapped.code, mapped.status));
   }
 
   const result = (rpcData ?? {}) as { profile_id?: string };
@@ -285,8 +302,8 @@ Deno.serve(async (req: Request) => {
     } catch {
       // best-effort.
     }
-    return fail("db_error", 500);
+    return padded(fail("db_error", 500));
   }
 
-  return jsonResponse({ ok: true, errors: [] }, 200);
+  return padded(jsonResponse({ ok: true, errors: [] }, 200));
 });
