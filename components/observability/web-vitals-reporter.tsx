@@ -14,7 +14,10 @@ import { normalizeVitalRoute } from "@/lib/observability/web-vitals";
 //
 // The beacon is same-origin so no CSP change is needed (`connect-src 'self'`
 // already covers it). The route is normalized before sending so a secret-bearing
-// path (e.g. `/invite/<token>`) never leaves the page. Renders nothing.
+// path (e.g. `/invite/<token>`) never leaves the page — neither in the body nor,
+// because the POST is sent with `referrer: "no-referrer"`, in the Referer header
+// (the global strict-origin-when-cross-origin policy would otherwise preserve
+// the full same-origin path there). Renders nothing.
 export function WebVitalsReporter() {
   const pathname = usePathname();
 
@@ -39,22 +42,18 @@ export function WebVitalsReporter() {
         pathname: normalizeVitalRoute(routeRef.current),
       });
 
-      // sendBeacon survives page unload (the common case for INP/LCP, reported on
-      // navigation/hide). It can also return false when the user agent refuses to
-      // queue the request — fall back to a keepalive fetch so the sample isn't
-      // silently dropped.
-      const queued =
-        typeof navigator !== "undefined" &&
-        typeof navigator.sendBeacon === "function" &&
-        navigator.sendBeacon("/api/vitals", body);
-
-      if (!queued) {
-        fetch("/api/vitals", { method: "POST", body, keepalive: true }).catch(
-          () => {
-            // Best-effort telemetry: a dropped beacon is never a user-facing error.
-          }
-        );
-      }
+      // keepalive lets the POST survive page unload (the common case for INP/LCP,
+      // reported on navigation/hide) — the same guarantee sendBeacon gives, but
+      // unlike sendBeacon a fetch can set a referrer policy. no-referrer strips
+      // the Referer so a secret-bearing page URL never reaches access logs.
+      fetch("/api/vitals", {
+        method: "POST",
+        body,
+        keepalive: true,
+        referrerPolicy: "no-referrer",
+      }).catch(() => {
+        // Best-effort telemetry: a dropped beacon is never a user-facing error.
+      });
     },
     []
   );
