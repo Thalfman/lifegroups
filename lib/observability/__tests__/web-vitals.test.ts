@@ -8,10 +8,48 @@ vi.mock("../logger", () => ({
   log: { info: mockInfo, warn: vi.fn(), error: vi.fn() },
 }));
 
-import { logWebVital, parseWebVitalReport } from "../web-vitals";
+import {
+  logWebVital,
+  normalizeVitalRoute,
+  parseWebVitalReport,
+} from "../web-vitals";
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("normalizeVitalRoute", () => {
+  it("leaves static routes untouched", () => {
+    expect(normalizeVitalRoute("/admin/care")).toBe("/admin/care");
+  });
+
+  it("collapses a base64url invite token so the secret never reaches logs", () => {
+    // 43-char base64url token (randomBytes(32)) — a bearer secret.
+    const token = "dGhpc0lzQTQzQ2hhckJhc2U2NHVybFRva2VuRXhhbXBsZQ";
+    expect(normalizeVitalRoute(`/invite/${token}`)).toBe("/invite/:id");
+  });
+
+  it("collapses a UUID path segment", () => {
+    expect(
+      normalizeVitalRoute("/admin/groups/123e4567-e89b-42d3-a456-426614174000")
+    ).toBe("/admin/groups/:id");
+  });
+
+  it("collapses an all-numeric segment", () => {
+    expect(normalizeVitalRoute("/admin/groups/42")).toBe("/admin/groups/:id");
+  });
+
+  it("spares multi-word static slugs", () => {
+    expect(normalizeVitalRoute("/admin/settings/people-import-template")).toBe(
+      "/admin/settings/people-import-template"
+    );
+  });
+
+  it("strips query/hash and falls back to 'unknown' on bad input", () => {
+    expect(normalizeVitalRoute("/admin?x=1#frag")).toBe("/admin");
+    expect(normalizeVitalRoute(undefined)).toBe("unknown");
+    expect(normalizeVitalRoute("")).toBe("unknown");
+  });
 });
 
 describe("parseWebVitalReport", () => {
@@ -74,6 +112,18 @@ describe("parseWebVitalReport", () => {
     );
 
     expect(report?.route).toBe("unknown");
+  });
+
+  it("normalizes a secret-bearing pathname server-side (defense in depth)", () => {
+    const report = parseWebVitalReport(
+      JSON.stringify({
+        name: "LCP",
+        value: 1200,
+        pathname: "/invite/dGhpc0lzQTQzQ2hhckJhc2U2NHVybFRva2VuRXhhbXBsZQ",
+      })
+    );
+
+    expect(report?.route).toBe("/invite/:id");
   });
 });
 

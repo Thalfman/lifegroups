@@ -6,8 +6,12 @@
 // logging logic out of the call sites.
 //
 // PRIVACY: the emitted `web_vital` line carries ONLY the metric name, a rounded
-// value, the browser's rating bucket, and the route path. No PII, no identity,
-// no row contents. The route path is a public URL pattern, not a private field.
+// value, the browser's rating bucket, and a NORMALIZED route. The normalizer
+// (`normalizeVitalRoute`) collapses opaque dynamic segments to `:id`, so a
+// secret-bearing path like `/invite/<256-bit token>` can never reach the logs —
+// invite tokens are bearer secrets stored only as hashes (see
+// `lib/shared/invite-token.ts`). It is applied on the client before the beacon
+// is sent AND again here as defense-in-depth against a hand-crafted POST.
 
 import { log } from "./logger";
 
@@ -15,6 +19,36 @@ import { log } from "./logger";
 // (`Next.js-hydration`, `Next.js-route-change-to-render`, `Next.js-render`)
 // carry no rating, so an absent/unknown rating normalizes to null.
 const KNOWN_RATINGS = new Set(["good", "needs-improvement", "poor"]);
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// A path segment is an opaque dynamic value (id / uuid / bearer token) — not a
+// static route name — when it is a UUID, all digits, or a long high-entropy
+// string. The length gate plus an uppercase/digit/underscore character class
+// catches base64url invite tokens and hex ids while sparing multi-word static
+// slugs (e.g. `people-import-template`, `over-shepherds`), which are lowercase
+// kebab-case and so never trip the character class.
+function isOpaqueSegment(segment: string): boolean {
+  if (UUID_RE.test(segment)) return true;
+  if (/^\d+$/.test(segment)) return true;
+  if (segment.length >= 16 && /[A-Z0-9_]/.test(segment)) return true;
+  return false;
+}
+
+// Collapse opaque dynamic segments to `:id` so route attribution aggregates
+// per-route pattern and never carries a secret-bearing segment. Defensive about
+// its input: strips any query/hash (usePathname omits them, a forged POST may
+// not) and falls back to "unknown".
+export function normalizeVitalRoute(pathname: unknown): string {
+  if (typeof pathname !== "string" || pathname.length === 0) return "unknown";
+  const path = pathname.split(/[?#]/)[0];
+  const normalized = path
+    .split("/")
+    .map((segment) => (isOpaqueSegment(segment) ? ":id" : segment))
+    .join("/");
+  return normalized || "unknown";
+}
 
 export type WebVitalReport = {
   metric: string;
@@ -47,7 +81,6 @@ export function parseWebVitalReport(raw: string): WebVitalReport | null {
     typeof body.rating === "string" && KNOWN_RATINGS.has(body.rating)
       ? body.rating
       : null;
-  const route = typeof body.pathname === "string" ? body.pathname : "unknown";
 
   return {
     metric: name,
@@ -55,7 +88,7 @@ export function parseWebVitalReport(raw: string): WebVitalReport | null {
     // while preserving CLS's sub-unit precision, keeping one `value_ms` field.
     value_ms: Math.round(value * 100) / 100,
     rating,
-    route,
+    route: normalizeVitalRoute(body.pathname),
   };
 }
 
