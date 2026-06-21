@@ -83,6 +83,42 @@ describe("contextual-actions registry", () => {
     });
   });
 
+  // #781 OPP-6 — the person detail-header lifecycle actions.
+  describe("person (detail-header) actions", () => {
+    it("resolves change-role + archive for both admin roles", () => {
+      for (const role of ["ministry_admin", "super_admin"] as const) {
+        expect(actionsForEntity("person", role).map((a) => a.id)).toEqual([
+          "change_person_role",
+          "archive_person",
+        ]);
+      }
+    });
+
+    it("gates every non-admin role out of the person actions", () => {
+      for (const role of ["leader", "co_leader", "over_shepherd"] as const) {
+        expect(actionsForEntity("person", role)).toEqual([]);
+      }
+    });
+
+    it("marks archive destructive and carries no shared-host body", () => {
+      const archive = CONTEXTUAL_ACTION_REGISTRY.person.find(
+        (a) => a.id === "archive_person"
+      );
+      expect(archive).toMatchObject({ model: "drawer", destructive: true });
+      // Person actions resolve in the detail header's own drawer, not the shared
+      // host, so they deliberately omit a body key.
+      for (const action of CONTEXTUAL_ACTION_REGISTRY.person) {
+        expect(action.body).toBeUndefined();
+      }
+    });
+
+    it("exposes no visibility-exception action", () => {
+      for (const action of CONTEXTUAL_ACTION_REGISTRY.person) {
+        expect(SENSITIVE_ACTION_IDS.has(action.id)).toBe(false);
+      }
+    });
+  });
+
   describe("passesRoleGate", () => {
     it("super_admin gate admits only the super admin", () => {
       expect(passesRoleGate("super_admin", "super_admin")).toBe(true);

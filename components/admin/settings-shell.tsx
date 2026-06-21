@@ -320,6 +320,10 @@ function CarePanel({ model }: { model: SettingsCareModel }) {
 function GroupsPanel({ model }: { model: SettingsGroupsModel }) {
   return (
     <div className="grid gap-9">
+      {/* OPP-3b (#781) — when the admin arrived here from a half-filled group
+          form's "Manage group types", show the return affordance back to that
+          group (the draft id rides through so the form is restored on arrival). */}
+      <ReturnBanner originKey="groups" />
       <section className="grid gap-4">
         <SettingsSectionHeader
           eyebrow="Group types"

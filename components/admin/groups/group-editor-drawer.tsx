@@ -3,6 +3,7 @@ import { GroupCreateForm } from "@/components/admin/forms/group-create-form";
 import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { fieldLabelTextClassName } from "@/components/admin/forms/field-styles";
+import type { FormDraft } from "@/lib/nav/draft-store";
 import type { GroupsRow } from "@/types/database";
 import type { GroupEditorState } from "./types";
 
@@ -14,6 +15,15 @@ export function GroupEditorDrawer({
   onPendingChange,
   onRequestClose,
   onSaved,
+  // OPP-3b (#781) — a restored form draft to seed the open form with, when the
+  // drawer was reopened by the "Manage group types" return round trip.
+  draft,
+  // OPP-3b — whether to offer the "Manage group types" hand-off in the form's
+  // type picker. On only from the Groups list (whose return flow reopens this
+  // drawer); the group detail header leaves it off (Codex P2).
+  enableManageTypes = false,
+  // OPP-3b — carry the setup origin through the manage round trip (Codex P2).
+  fromSetup = false,
 }: {
   editor: GroupEditorState | null;
   defaultCapacity: number | null;
@@ -22,6 +32,9 @@ export function GroupEditorDrawer({
   onPendingChange: (pending: boolean) => void;
   onRequestClose: () => void;
   onSaved: () => void;
+  draft?: FormDraft;
+  enableManageTypes?: boolean;
+  fromSetup?: boolean;
 }) {
   const group = editor?.mode === "edit" ? editor.group : null;
 
@@ -45,6 +58,9 @@ export function GroupEditorDrawer({
           <GroupEditForm
             group={editor.group}
             groupTypes={groupTypes}
+            draft={draft}
+            enableManageTypes={enableManageTypes}
+            fromSetup={fromSetup}
             onCancel={onRequestClose}
             onDirty={onDirty}
             onPendingChange={onPendingChange}
@@ -60,6 +76,9 @@ export function GroupEditorDrawer({
         <GroupCreateForm
           defaultCapacity={defaultCapacity}
           groupTypes={groupTypes}
+          draft={draft}
+          enableManageTypes={enableManageTypes}
+          fromSetup={fromSetup}
           onCancel={onRequestClose}
           onDirty={onDirty}
           onPendingChange={onPendingChange}

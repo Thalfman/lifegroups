@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { PButton } from "@/components/pastoral/button";
-import { adminArchiveMultiplicationCandidate } from "@/app/(protected)/admin/launch-planning/actions";
+import {
+  adminArchiveMultiplicationCandidate,
+  adminUpdateMultiplicationCandidate,
+} from "@/app/(protected)/admin/launch-planning/actions";
 import {
   CANDIDATE_STATUS_LABEL,
   CRITERION_LABEL,
@@ -10,6 +13,48 @@ import {
   type MultiplicationCriterion,
 } from "@/lib/admin/multiplication";
 import { errorTextClassName as ERROR } from "@/components/admin/forms/field-styles";
+
+// The five readiness criteria in display order. Mirrors evaluateReadiness's key
+// order (and readiness-checklist.tsx's CRITERIA_ORDER) so the inline toggle
+// reads the same as the "Lock in" checklist it complements.
+const CRITERIA_ORDER: readonly MultiplicationCriterion[] = [
+  "enough_members",
+  "established_long_enough",
+  "co_shepherd_tenured",
+  "shepherd_willing",
+  "needs_similar_stage",
+];
+
+// Build the FormData for an inline readiness edit. admin_update_multiplication_candidate
+// is a FULL update — any field absent from the form is cleared/defaulted — so we
+// echo every current candidate value back and only vary the five readiness flags.
+// Checkboxes follow the repo convention: presence = true, absence = false.
+function buildReadinessUpdateForm(
+  candidate: CandidateView,
+  readiness: Record<MultiplicationCriterion, boolean>
+): FormData {
+  const formData = new FormData();
+  formData.set("candidate_id", candidate.candidateId);
+  // group_id is required by the validator; a locked-in candidate always anchors
+  // to a concrete group, but guard defensively rather than post an empty uuid.
+  if (candidate.groupId) formData.set("group_id", candidate.groupId);
+  formData.set("status", candidate.status);
+  if (candidate.targetYear != null)
+    formData.set("target_year", String(candidate.targetYear));
+  if (candidate.notes != null) formData.set("notes", candidate.notes);
+  if (candidate.successorDesignate != null)
+    formData.set("successor_designate", candidate.successorDesignate);
+  if (candidate.meetingTime != null)
+    formData.set("meeting_time", candidate.meetingTime);
+  if (candidate.leaderPipelineId != null)
+    formData.set("leader_pipeline_id", candidate.leaderPipelineId);
+  if (candidate.manualMemberCount != null)
+    formData.set("manual_member_count", String(candidate.manualMemberCount));
+  for (const criterion of CRITERIA_ORDER) {
+    if (readiness[criterion]) formData.set(criterion, "on");
+  }
+  return formData;
+}
 
 // ADR 0030 — the saved multiplication_candidates of a pipelined type (one per
 // group), with status / target year / readiness chips. #757 wires Remove: a
@@ -46,6 +91,17 @@ export function LockedInCandidateRow({
 }) {
   const [error, setError] = useState<string | undefined>(undefined);
   const [pending, startTransition] = useTransition();
+  // OPP-5 (#781): readiness is editable inline now, so the row owns an optimistic
+  // copy of the five flags. Seeded from the candidate's stored readiness; updated
+  // on toggle before the write resolves and rolled back per-criterion on failure.
+  // The server's revalidatePath("/admin/multiply") repaints the summary on
+  // success, but the optimistic copy keeps the checkbox in sync in the meantime.
+  const [readiness, setReadiness] = useState<
+    Record<MultiplicationCriterion, boolean>
+  >(c.readiness.criteria);
+  const fieldsetId = useId();
+
+  const metCount = CRITERIA_ORDER.filter((k) => readiness[k]).length;
 
   function remove() {
     setError(undefined);
@@ -61,6 +117,28 @@ export function LockedInCandidateRow({
       }
       // On success, revalidatePath("/admin/multiply") in the action re-partitions
       // the group back onto the potential list.
+    });
+  }
+
+  // OPP-5: optimistic, no-confirm readiness toggle. Flip the flag in place, post
+  // the full update, and roll back only that one criterion if the write fails —
+  // never report a false "ready" (the same false-zero failure mode the read path
+  // guards against). A per-criterion functional rollback keeps a concurrent
+  // toggle of another box intact.
+  function toggleCriterion(criterion: MultiplicationCriterion) {
+    const nextValue = !readiness[criterion];
+    setError(undefined);
+    setReadiness((cur) => ({ ...cur, [criterion]: nextValue }));
+    startTransition(async () => {
+      const next = { ...readiness, [criterion]: nextValue };
+      const result = await adminUpdateMultiplicationCandidate(
+        undefined,
+        buildReadinessUpdateForm(c, next)
+      );
+      if (!result.ok) {
+        setReadiness((cur) => ({ ...cur, [criterion]: !nextValue }));
+        setError(result.errors[0] ?? "That readiness change wasn't saved.");
+      }
     });
   }
 
@@ -87,7 +165,7 @@ export function LockedInCandidateRow({
           {c.manualMemberCount != null ? " (entered)" : ""}
         </span>
         <span className="font-sans text-xs text-ink3">
-          {c.readiness.metCount}/{c.readiness.totalCount} ready
+          {metCount}/{CRITERIA_ORDER.length} ready
         </span>
         <PButton
           type="button"
@@ -101,29 +179,37 @@ export function LockedInCandidateRow({
           {pending ? "Removing…" : "Remove"}
         </PButton>
       </div>
-      {/* Render all five criteria with met / unmet styling (not just
-          the ticked ones) so the summary carries the full readiness
-          state — a 0/5 candidate still shows which boxes are unchecked.
-          The ✓ / ○ prefix is a non-colour cue for the met/unmet split. */}
-      <ul className="m-0 flex flex-wrap list-none gap-1 p-0">
-        {(
-          Object.entries(c.readiness.criteria) as [
-            MultiplicationCriterion,
-            boolean,
-          ][]
-        ).map(([criterion, met]) => (
-          <li
-            key={criterion}
-            className={
-              met
-                ? "rounded-sm bg-tealSoft px-1.5 py-0.5 font-sans text-xs text-ink2"
-                : "rounded-sm bg-surface px-1.5 py-0.5 font-sans text-xs text-ink3"
-            }
-          >
-            {met ? "✓" : "○"} {CRITERION_LABEL[criterion]}
-          </li>
-        ))}
-      </ul>
+      {/* OPP-5 (#781): the five criteria are inline checkboxes now — a one-box
+          change no longer costs a full drawer round trip. Each toggle is
+          optimistic and audited through adminUpdateMultiplicationCandidate; the
+          checkbox is the met/unmet cue (no separate ✓ / ○ glyph needed). */}
+      <fieldset className="m-0 flex flex-wrap gap-x-3 gap-y-1 border-0 p-0">
+        <legend className="sr-only">Readiness for {c.groupName}</legend>
+        {CRITERIA_ORDER.map((criterion) => {
+          const id = `${fieldsetId}-${criterion}`;
+          return (
+            <label
+              key={criterion}
+              htmlFor={id}
+              className="inline-flex cursor-pointer items-center gap-1 font-sans text-xs text-ink2"
+            >
+              <input
+                id={id}
+                type="checkbox"
+                checked={readiness[criterion]}
+                onChange={() => toggleCriterion(criterion)}
+                // Serialize toggles: while a readiness write is in flight the
+                // boxes are disabled, so a second toggle can't post a full update
+                // built from a stale snapshot and let an out-of-order response
+                // silently revert the newer change (Codex P2).
+                disabled={pending}
+                className="h-3.5 w-3.5 accent-teal"
+              />
+              {CRITERION_LABEL[criterion]}
+            </label>
+          );
+        })}
+      </fieldset>
       {error ? (
         <p role="alert" className={ERROR}>
           {error}

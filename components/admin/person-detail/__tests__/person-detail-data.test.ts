@@ -137,6 +137,8 @@ const leaderSpine: PersonSpine = {
   roleLabel: "Leader",
   isLoginBacked: true,
   isLeader: true,
+  leaderRole: "leader",
+  role: "leader",
 };
 
 const adminSpine: PersonSpine = {
@@ -149,6 +151,8 @@ const adminSpine: PersonSpine = {
   roleLabel: "Ministry Admin",
   isLoginBacked: true,
   isLeader: false,
+  leaderRole: null,
+  role: "ministry_admin",
 };
 
 const memberSpine: PersonSpine = {
@@ -161,6 +165,8 @@ const memberSpine: PersonSpine = {
   roleLabel: "Member",
   isLoginBacked: false,
   isLeader: false,
+  leaderRole: null,
+  role: null,
 };
 
 describe("buildPersonBody", () => {

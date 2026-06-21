@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useDeferredValue,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -65,6 +66,12 @@ import { effectiveGroupsViewMode } from "@/components/admin/groups/view-mode";
 import { isTaskListTab } from "@/lib/dashboard/group-list-tabs";
 import { GroupCard } from "@/components/admin/groups/group-card";
 import { GroupEditorDrawer } from "@/components/admin/groups/group-editor-drawer";
+import {
+  clearFormDraft,
+  readFormDraft,
+  type FormDraft,
+} from "@/lib/nav/draft-store";
+import { DRAFT_PARAM } from "@/lib/nav/return-to";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { GroupsTable } from "@/components/admin/groups/groups-table";
 import {
@@ -235,6 +242,12 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   // Refs, not state, so neither typing nor an in-flight save re-renders the
   // list behind the drawer.
   const [editor, setEditor] = useState<GroupEditorState | null>(null);
+  // OPP-3b (#781) — the form draft to seed the open drawer with, set only when
+  // the drawer was reopened by the "Manage group types" return round trip.
+  // Cleared on any fresh open so a later manual open never inherits stale input.
+  const [draftValues, setDraftValues] = useState<FormDraft | undefined>(
+    undefined
+  );
   // Whether the non-blocking "discard unsaved changes?" prompt is open. State
   // (the rendered dialog reads it), replacing the old blocking `window.confirm`
   // so the dismissal click paints immediately.
@@ -244,10 +257,12 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
 
   const openCreate = useCallback(() => {
     dirtyRef.current = false;
+    setDraftValues(undefined);
     setEditor({ mode: "create" });
   }, []);
   const openEdit = useCallback((group: GroupsRow) => {
     dirtyRef.current = false;
+    setDraftValues(undefined);
     setEditor({ mode: "edit", group });
   }, []);
   const markDirty = useCallback(() => {
@@ -274,6 +289,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   const confirmDiscard = useCallback(() => {
     setDiscardOpen(false);
     dirtyRef.current = false;
+    setDraftValues(undefined);
     setEditor(null);
   }, []);
   // Close after a successful save / create / archive and refresh so the list
@@ -281,9 +297,69 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   const handleSaved = useCallback(() => {
     dirtyRef.current = false;
     submittingRef.current = false;
+    setDraftValues(undefined);
     setEditor(null);
     router.refresh();
   }, [router]);
+
+  // OPP-3b (#781) — reopen the editor from a returning "Manage group types" round
+  // trip. The Settings return banner lands the user here with `?draft=<id>`; we
+  // read the snapshot from sessionStorage, reopen the matching drawer (edit when
+  // the draft carries a group_id, else create) with every field restored, then
+  // clear the draft + strip the param so a refresh can't re-trigger it. One-shot.
+  const restoredRef = useRef(false);
+  const searchParams = useSearchParams();
+  const groupsById = useMemo(
+    () => new Map(props.groups.map((g) => [g.id, g])),
+    [props.groups]
+  );
+  useEffect(() => {
+    if (restoredRef.current) return;
+    const draftId = searchParams.get(DRAFT_PARAM);
+    if (!draftId) return;
+    restoredRef.current = true;
+    const draft = readFormDraft(draftId);
+    clearFormDraft(draftId);
+    if (draft) {
+      const targetGroup = draft.group_id
+        ? groupsById.get(draft.group_id)
+        : undefined;
+      // A draft with a group_id reopens that group's edit drawer; one without
+      // reopens the create drawer. If an edit draft's group can't be resolved
+      // (a transient degraded read, or the group is gone), DON'T fall back to
+      // create — saving that would submit the create form and could duplicate
+      // the group; skip the restore instead (Codex P2).
+      const editorState: GroupEditorState | null = !draft.group_id
+        ? { mode: "create" }
+        : targetGroup
+          ? { mode: "edit", group: targetGroup }
+          : null;
+      if (editorState) {
+        // The restored values are unsaved and the sessionStorage copy is already
+        // gone, so mark the drawer dirty — closing it now must hit the discard
+        // guard rather than silently dropping the restored input (Codex P2).
+        dirtyRef.current = true;
+        // Restoring a client-only sessionStorage draft must happen post-hydration
+        // (the server can't read it, so doing it in render would mismatch) — the
+        // same one-shot storage-restore exception use-persisted-view-state takes.
+        /* eslint-disable react-hooks/set-state-in-effect --
+           one-shot restore from a URL marker + sessionStorage; see above */
+        setDraftValues(draft);
+        setEditor(editorState);
+        /* eslint-enable react-hooks/set-state-in-effect */
+      }
+    }
+    // Strip only the draft marker so a manual refresh can't reopen from a stale
+    // id — preserving any other params (notably origin_setup=1, which keeps the
+    // Back-to-setup affordance alive when the round trip began mid-setup; #788).
+    const cleaned = new URLSearchParams(window.location.search);
+    cleaned.delete(DRAFT_PARAM);
+    const qs = cleaned.toString();
+    router.replace(
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+      { scroll: false }
+    );
+  }, [searchParams, groupsById, router]);
 
   const profilesById = useMemo(
     () => new Map(props.profiles.map((p) => [p.id, p])),
@@ -614,6 +690,13 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         editor={editor}
         defaultCapacity={props.metricDefaults.default_group_capacity}
         groupTypes={props.groupTypes ?? []}
+        draft={draftValues}
+        // The list drawer owns the manage-types return round trip (it reopens
+        // here from the draft); the detail header leaves it off (Codex P2).
+        enableManageTypes
+        // Carry the setup origin through that round trip when the list itself was
+        // reached from setup-recovery, so the Back-to-setup link survives (#788).
+        fromSetup={props.fromSetup ?? false}
         onDirty={markDirty}
         onPendingChange={reportPending}
         onRequestClose={requestClose}

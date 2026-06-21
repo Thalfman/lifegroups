@@ -18,7 +18,7 @@ import {
   profileNeedsContact,
   resolveCareNeedsContact,
 } from "@/lib/admin/care-needs-contact";
-import { ROLE_LABELS, isLeaderRole } from "@/lib/auth/roles";
+import { ROLE_LABELS, isLeaderRole, type UserRole } from "@/lib/auth/roles";
 import type {
   PersonDetail,
   PersonGroupRef,
@@ -50,6 +50,14 @@ export type PersonSpine = {
   roleLabel: string;
   isLoginBacked: boolean;
   isLeader: boolean;
+  // The raw leader role (leader / co_leader) when this person is a shepherd,
+  // else null — drives the detail-header "Change role" action (#781 OPP-6),
+  // which only applies to those two roles.
+  leaderRole: "leader" | "co_leader" | null;
+  // The raw login role for a profile (null for non-login members) — gates the
+  // detail-header Archive action so a ministry_admin isn't offered Archive for a
+  // super_admin target the deactivate RPC rejects as forbidden_target (#788).
+  role: UserRole | null;
 };
 
 // The page-facing spine result: the identity (for the header + 404 decision)
@@ -165,6 +173,11 @@ export async function resolvePersonSpine(
       roleLabel: ROLE_LABELS[profile.role],
       isLoginBacked: true,
       isLeader: isLeaderRole(profile.role),
+      leaderRole:
+        profile.role === "leader" || profile.role === "co_leader"
+          ? profile.role
+          : null,
+      role: profile.role,
     };
   }
 
@@ -183,6 +196,9 @@ export async function resolvePersonSpine(
     roleLabel: "Member",
     isLoginBacked: false,
     isLeader: false,
+    // Members are non-login participant records — never a shepherd role.
+    leaderRole: null,
+    role: null,
   };
 }
 

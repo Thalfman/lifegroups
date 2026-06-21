@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
 import { Badge, STATUS_TONES, type BadgeTone } from "@/components/ui/badge";
+import { CareLeaderActionsMenu } from "@/components/admin/care/care-row-actions";
+import type { UserRole } from "@/lib/auth/roles";
 import type {
   CareAttentionItem,
   CareAttentionReason,
@@ -39,10 +41,19 @@ export function CareAttentionQueue({
   items,
   totalCount,
   rosterFiltered = false,
+  viewerRole,
 }: {
   items: CareAttentionItem[];
   totalCount: number;
   rosterFiltered?: boolean;
+  // #781 OPP-7 — when an admin viewer is supplied, each row carries the same
+  // per-leader contextual action menu the Care accordion / Notes feed use, so a
+  // triage sweep can log a touchpoint / set the next step / create a follow-up
+  // in place instead of bouncing off the dashboard to the leader's care page.
+  // Every queued shepherd is an active leader (the dashboard model is built from
+  // the active-shepherd care directory), so they are all safe to act on. Omitted
+  // for non-admin contexts, where no contextual action resolves anyway.
+  viewerRole?: UserRole;
 }) {
   // #477: the queue sits directly above the full roster on the All-leaders
   // tab, so the former cross-tab "View in Directory" links are gone — the
@@ -63,12 +74,19 @@ export function CareAttentionQueue({
       ) : (
         <div>
           {items.map((item) => (
-            <Link
+            // The row is no longer a single wrapping link: the contextual action
+            // menu is interactive and must not nest inside an anchor (#781
+            // OPP-7). The navigational part (name + detail + reasons) stays a
+            // link to the leader's care page; the reason badge and the action
+            // menu sit beside it in a link-free column.
+            <div
               key={item.shepherdProfileId}
-              href={item.href}
-              className="flex min-h-11 items-start justify-between gap-3 border-b border-lineSoft py-3 text-inherit no-underline transition-colors duration-150 hover:bg-surfaceAlt"
+              className="flex min-h-11 items-start justify-between gap-3 border-b border-lineSoft py-3"
             >
-              <div className="min-w-0 flex-1">
+              <Link
+                href={item.href}
+                className="min-w-0 flex-1 rounded-sm text-inherit no-underline transition-colors duration-150 hover:bg-surfaceAlt"
+              >
                 <div className="font-sans text-base font-semibold text-ink [overflow-wrap:anywhere]">
                   {item.shepherdName}
                 </div>
@@ -84,9 +102,18 @@ export function CareAttentionQueue({
                     ))}
                   </div>
                 ) : null}
+              </Link>
+              <div className="flex shrink-0 items-center gap-2">
+                <ReasonBadge reason={item.reason} />
+                {viewerRole ? (
+                  <CareLeaderActionsMenu
+                    leaderProfileId={item.shepherdProfileId}
+                    leaderName={item.shepherdName}
+                    viewerRole={viewerRole}
+                  />
+                ) : null}
               </div>
-              <ReasonBadge reason={item.reason} />
-            </Link>
+            </div>
           ))}
           {remaining > 0 ? (
             <div className="mt-2.5 text-right font-sans text-sm italic text-ink3">

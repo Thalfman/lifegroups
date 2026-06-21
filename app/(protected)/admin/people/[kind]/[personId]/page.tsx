@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { DetailTabPanelSkeleton } from "@/components/lg/DetailPageSkeleton";
 import { PersonDetailShell } from "@/components/admin/person-detail/person-detail-shell";
+import { PersonDetailHeaderActions } from "@/components/admin/person-detail/person-detail-header-actions";
 import {
   loadPersonSpine,
   loadPersonBody,
@@ -20,7 +21,7 @@ export default async function AdminPersonDetailPage({
 }: {
   params: Promise<Params>;
 }) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const { kind, personId } = await params;
   if (kind !== "profile" && kind !== "member") notFound();
 
@@ -57,13 +58,33 @@ export default async function AdminPersonDetailPage({
       />
       <PageBody>
         <div className="grid gap-[18px]">
-          <div>
+          {/* Back link on the left, the registry-driven action menu on the
+              right (#781 OPP-6): Change role / Archive now live on the person's
+              own detail header, mirroring the group detail header, so acting on
+              someone no longer means returning to the People directory row. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <Link
               href="/admin/people"
               className="font-sans text-sm text-ink2 underline hover:text-ink"
             >
               ← Back to People
             </Link>
+            <PersonDetailHeaderActions
+              person={{
+                kind: person.kind,
+                id: person.id,
+                fullName: person.fullName,
+                status: person.status,
+                leaderRole: person.leaderRole,
+                role: person.role,
+              }}
+              viewerRole={session.profile.role}
+              // Suppress self-target lifecycle actions on the admin's own
+              // profile (the people RPCs reject a self-target).
+              isSelf={
+                person.kind === "profile" && person.id === session.profile.id
+              }
+            />
           </div>
           <Suspense
             key={`${person.kind}-${person.id}`}
