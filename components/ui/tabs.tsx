@@ -1,9 +1,9 @@
 "use client";
 
 import {
+  useDeferredValue,
   useRef,
   useState,
-  useTransition,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
@@ -54,13 +54,18 @@ export function Tabs({
     defaultTabId && tabs.some((t) => t.id === defaultTabId)
       ? defaultTabId
       : (tabs[0]?.id ?? "");
+  // `activeId` is the urgent selection — it drives the tab highlight and
+  // `aria-selected`, so a click/keypress repaints the selected tab immediately.
+  // The panel mounts off `deferredActiveId`: switching to a heavy panel (e.g.
+  // Settings' ssr:false editors) renders at low priority, off the interaction
+  // frame, so the selection feedback lands first and INP stays low. On the
+  // first/SSR render useDeferredValue returns the current value, so markup is
+  // unchanged.
   const [activeId, setActiveId] = useState(initial);
-  const [, startTransition] = useTransition();
+  const deferredActiveId = useDeferredValue(activeId);
   const tabRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
 
   function focusTab(id: string) {
-    // Keyboard selection stays urgent: DOM focus and selection must move
-    // together (roving tabindex), so this is NOT wrapped in a transition.
     setActiveId(id);
     // Move DOM focus to the newly selected tab so keyboard navigation tracks
     // the selection (roving tabindex).
@@ -86,7 +91,10 @@ export function Tabs({
     if (next) focusTab(next.id);
   }
 
-  const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
+  // The mounted panel follows the deferred selection so its (possibly heavy)
+  // subtree renders off the click's critical path; the tablist above stays on
+  // the urgent `activeId`.
+  const activeTab = tabs.find((t) => t.id === deferredActiveId) ?? tabs[0];
 
   return (
     <div className={cn("grid gap-6", className)}>
@@ -112,11 +120,7 @@ export function Tabs({
               aria-selected={selected}
               aria-controls={`${idPrefix}-panel-${tab.id}`}
               tabIndex={selected ? 0 : -1}
-              // Pointer selection swaps the panel as a low-priority transition so
-              // the click (tab highlight) paints first and a heavy panel mounts
-              // off the interaction frame (lower INP). Keyboard selection above
-              // stays urgent for focus a11y.
-              onClick={() => startTransition(() => setActiveId(tab.id))}
+              onClick={() => setActiveId(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
                 "inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-pill border px-4 font-sans text-base font-medium leading-tight transition-colors duration-150",

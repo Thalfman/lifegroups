@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useValueChange } from "@/lib/hooks/use-value-change";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
@@ -78,25 +78,30 @@ export function PeopleManagementShell({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [, startTransition] = useTransition();
 
   // Optimistic local tab state so a click flips the visible tab (highlight +
-  // panel visibility) on the urgent render, while the URL `?tab=` bookkeeping
-  // follows in a transition. Seed from the URL and re-sync when it changes
-  // externally (back/forward, a deep-link), matching groups-directory's
-  // useValueChange pattern.
+  // panel visibility) on the urgent render. Seed from the URL and re-sync when
+  // it changes externally (back/forward, a deep-link), matching
+  // groups-directory's useValueChange pattern.
   const urlTab = resolvePeopleTab(searchParams.get("tab"));
   const [active, setActive] = useState(urlTab);
   useValueChange(urlTab, setActive);
 
+  // Mirror the active tab into the URL's `?tab=` AFTER paint. Doing the
+  // history write here (not in the click handler) keeps `replaceState` and
+  // Next's history bookkeeping off the interaction frame, so the tab click
+  // isn't on the INP path. Reads the live URL so an externally-driven change
+  // (back/forward) is a no-op rather than a redundant rewrite.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (resolvePeopleTab(params.get("tab")) === active) return;
+    params.set("tab", active);
+    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+  }, [active, pathname]);
+
   function selectTab(key: PeopleTabKey) {
     if (key === active) return;
     setActive(key); // urgent: tab highlight + panel visibility flip now
-    startTransition(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("tab", key);
-      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
-    });
   }
 
   // The Add person drawer (the standard Editing Pattern, like Groups' New
