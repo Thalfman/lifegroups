@@ -25,6 +25,14 @@ export function WebVitalsReporter() {
   // fresh callback identity each render would make `useReportWebVitals` treat it
   // as a new reporter and could re-emit already-collected metrics on navigation,
   // duplicating `web_vital` lines and skewing before/after comparisons.
+  //
+  // Lifecycle metrics (INP/LCP/CLS) finalize at page-hide, so this attributes
+  // them to the route active at *send* time. After an in-app (soft) navigation
+  // that can differ from where the interaction occurred. This is a deliberate,
+  // documented limitation: the workstream is lightweight instrumentation, and
+  // its before/after verification uses hard navigations (per-document loads),
+  // where send-time and event route coincide. Per-route attribution of SPA
+  // lifecycle metrics is out of scope here.
   const routeRef = useRef(pathname);
   useEffect(() => {
     routeRef.current = pathname;
