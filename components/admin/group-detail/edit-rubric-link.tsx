@@ -8,11 +8,22 @@ import { decorateReturn } from "@/lib/nav/return-to";
 // a "← Back to group health" banner and the user lands back on this exact group
 // + tab, focus restored to this button (its id is the ReturnFocus target). It
 // never edits global config inline — the edit happens on the Settings page.
-export function EditRubricLink({ groupId }: { groupId: string }) {
-  const href = decorateReturn(
-    `/admin/settings?tab=care&group=${groupId}`,
-    "group-health"
-  );
+//
+// `fromSetup`: when the group itself was reached via the setup chain, carry an
+// `origin_setup` marker through the round trip (#785) so the return URL can keep
+// the "← Back to setup" affordance — the single `from` param already holds
+// `group-health`, so the setup origin rides a separate param.
+export function EditRubricLink({
+  groupId,
+  fromSetup = false,
+}: {
+  groupId: string;
+  fromSetup?: boolean;
+}) {
+  const base = `/admin/settings?tab=care&group=${groupId}${
+    fromSetup ? "&origin_setup=1" : ""
+  }`;
+  const href = decorateReturn(base, "group-health");
   return (
     <LinkButton
       id="edit-rubric-button"

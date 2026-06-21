@@ -46,11 +46,16 @@ const RETURN_ORIGINS: Record<ReturnOrigin, ReturnOriginConfig> = {
   // Settings rubric editor and returns here. The destination URL carries the
   // group id (`?group=<id>`), so the return href is built from it and carries
   // `from=group-health` back so the health tab re-activates ReturnFocus on the
-  // "Edit rubric" button.
+  // "Edit rubric" button. When the group was itself reached from the setup chain
+  // the outbound link adds `origin_setup=1` (the single `from` param can't carry
+  // both origins, #785); we propagate it on the return URL so the group page can
+  // keep the "← Back to setup" affordance alongside the rubric ReturnFocus.
   "group-health": {
     value: "group-health",
     returnHref: (params: ReturnParams) =>
-      `/admin/groups/${params.get("group") ?? ""}?tab=health&${RETURN_PARAM}=group-health`,
+      `/admin/groups/${params.get("group") ?? ""}?tab=health&${RETURN_PARAM}=group-health${
+        params.get("origin_setup") === "1" ? "&origin_setup=1" : ""
+      }`,
     label: "← Back to group health",
   },
 };

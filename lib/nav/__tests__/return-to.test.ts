@@ -65,6 +65,25 @@ describe("returnTo convention", () => {
       );
     });
 
+    it("propagates the setup origin through the rubric round trip (#785)", () => {
+      // When the group was reached from setup, origin_setup=1 rides the round
+      // trip so the return URL keeps both from=group-health (ReturnFocus) and the
+      // setup signal (Back-to-setup).
+      const params = new URLSearchParams(
+        "tab=care&from=group-health&group=g1&origin_setup=1"
+      );
+      expect(resolveReturnHref("group-health", params)).toBe(
+        "/admin/groups/g1?tab=health&from=group-health&origin_setup=1"
+      );
+    });
+
+    it("omits the setup origin when it wasn't set", () => {
+      const params = new URLSearchParams("from=group-health&group=g1");
+      expect(resolveReturnHref("group-health", params)).toBe(
+        "/admin/groups/g1?tab=health&from=group-health"
+      );
+    });
+
     it("isReturning recognizes the group-health marker", () => {
       expect(isReturning("group-health", "group-health")).toBe(true);
       expect(isReturning("group-health", "setup")).toBe(false);

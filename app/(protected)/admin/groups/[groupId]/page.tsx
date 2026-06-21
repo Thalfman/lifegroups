@@ -71,7 +71,7 @@ import type { AttendanceSessionStatus } from "@/types/enums";
 export const dynamic = "force-dynamic";
 
 type Params = { groupId: string };
-type Search = { tab?: string; from?: string };
+type Search = { tab?: string; from?: string; origin_setup?: string };
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -135,7 +135,10 @@ export default async function AdminGroupDetailPage({
   // ADR 0027: arrived from a setup deep-link (via the Groups list). Keep the
   // "← Back to setup" affordance here — this is where the roster work (Assign
   // leaders/members) actually happens — and preserve the marker across tabs.
-  const fromSetup = isFromSetup(search.from);
+  // `origin_setup=1` is the setup origin riding back through the Edit-rubric
+  // round trip (#785), since that trip needs `from=group-health` for its own
+  // ReturnFocus — treat either signal as "in the setup chain".
+  const fromSetup = isFromSetup(search.from) || search.origin_setup === "1";
   const tabMarker = fromSetup ? "&from=setup" : "";
 
   const session = await requireAdmin();
@@ -234,6 +237,7 @@ export default async function AdminGroupDetailPage({
               isSuperAdmin={isSuperAdmin}
               hiddenNavAreas={[...hiddenNavAreas]}
               returningFromRubric={returningFromRubric}
+              fromSetup={fromSetup}
             />
           </Suspense>
         </div>
@@ -254,6 +258,7 @@ async function GroupTabPanel({
   isSuperAdmin,
   hiddenNavAreas,
   returningFromRubric,
+  fromSetup,
 }: {
   group: GroupsRow;
   groupId: string;
@@ -261,6 +266,7 @@ async function GroupTabPanel({
   isSuperAdmin: boolean;
   hiddenNavAreas: string[];
   returningFromRubric: boolean;
+  fromSetup: boolean;
 }) {
   const tabData = await loadGroupTabData(group, options);
   return (
@@ -282,6 +288,7 @@ async function GroupTabPanel({
           groupId={groupId}
           isSuperAdmin={isSuperAdmin}
           returningFromRubric={returningFromRubric}
+          fromSetup={fromSetup}
         />
       ) : null}
       {tabData.tab === "attendance" ? (
@@ -382,11 +389,13 @@ function HealthTab({
   groupId,
   isSuperAdmin,
   returningFromRubric,
+  fromSetup,
 }: {
   data: GroupHealthTabData;
   groupId: string;
   isSuperAdmin: boolean;
   returningFromRubric: boolean;
+  fromSetup: boolean;
 }) {
   if (data.failed) {
     return (
@@ -445,7 +454,7 @@ function HealthTab({
                   audited Settings editor. A redirect-and-return round trip: it
                   hands off with a return marker and lands the user back on this
                   same group/health tab, focus restored to this button. */}
-              <EditRubricLink groupId={groupId} />
+              <EditRubricLink groupId={groupId} fromSetup={fromSetup} />
             </div>
           ) : null}
         </div>
