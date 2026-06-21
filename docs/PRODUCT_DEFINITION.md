@@ -73,7 +73,7 @@ expanded. A person's app role is distinct from their role _within_ a group
 
 **Onboarding flow:** an invited person receives a link to
 `/invite/[token]`, sets a password, chooses **their own name** at `/welcome`
-(ADR [0025](./adr/0025-invitee-chooses-own-name.md) — the inviter never
+(ADR [0032](./adr/0032-invitee-chooses-own-name.md) — the inviter never
 types it), and lands on their role's surface.
 
 ## 3. Information architecture — where things are placed

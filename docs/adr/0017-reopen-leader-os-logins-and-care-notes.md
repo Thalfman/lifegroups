@@ -1,5 +1,7 @@
 # Re-open Leader and Over-Shepherd logins; the author-private Care Note
 
+**Status:** Accepted
+
 The pivot (ADR 0016) needs Over-Shepherds and Leaders to log in: an
 Over-Shepherd records care about their Leaders, and a Leader records care about
 their group members. This re-opens the Leader surface that ADR 0002 froze and

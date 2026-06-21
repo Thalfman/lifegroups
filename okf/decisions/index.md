@@ -27,8 +27,9 @@ cross-references.
 - **0017 — Reopen Leader/OS logins + Care Notes.** Over-shepherds and leaders
   log in to scoped Care surfaces.
 - **0020 — Leader Care Note is group-scoped.** Amends 0017.
-- **0022 (two files)** — `multiply-unifies-plan-readiness-leaders` (Multiply
-  hosts Plan/Readiness/Leaders tabs) and `admin-jsonb-write-reguard-and-audit-locks`.
+- **0022 — `multiply-unifies-plan-readiness-leaders`.** Multiply hosts the
+  Plan/Readiness/Leaders tabs. (The former duplicate-numbered
+  `admin-jsonb-write-reguard-and-audit-locks` was renumbered to **0031**.)
 - **0023 — All-notes feed + admin authorship.** Care aggregate Notes tab.
 - **0024 — Default-on leader surface + Groups/People nav.**
 - **0027 — Home is a self-dismissing setup workspace.**

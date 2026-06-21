@@ -1,5 +1,7 @@
 # Rename the user-facing "Leader" label back to "Shepherd"
 
+**Status:** Accepted — supersedes [ADR 0008](./0008-leader-rename-labels-and-glossary-only.md)
+
 Reverses the **user-facing** half of [ADR 0008](./0008-leader-rename-labels-and-glossary-only.md).
 Front-facing copy now reads **Shepherd** (was "Leader") and **Co-Shepherd** (was
 "Co-Leader"). **Over-Shepherd** is unchanged. This is a **labels-only** change:

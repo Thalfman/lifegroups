@@ -1,5 +1,7 @@
 # Runtime feature flags may re-enable ADR-0002-frozen surfaces
 
+**Status:** Accepted
+
 A Super-Admin-Console feature-flag store will be able to re-enable surfaces that
 [ADR 0002](./0002-oversight-ladder-and-leader-gating.md) deliberately froze
 behind code gates — the **Leader surface** and **check-ins**. This amends ADR
@@ -17,7 +19,7 @@ do not fold it into this ADR.
 
 Tom wants to configure the app from within the app rather than ship a deploy for
 every product decision. The frozen surfaces are deferrals, not deletions (ADR
-0002 already says "not for leaders *yet*"), so a guarded runtime switch is the
+0002 already says "not for leaders _yet_"), so a guarded runtime switch is the
 natural control.
 
 ## The load-bearing constraint — verify before flip
@@ -37,7 +39,7 @@ not a substitute for the security review.
 The flag store lives in the Super Admin Console and is Tom's to operate, but a
 flag does **not** override LDR.1: no new Leader-facing feature ships without
 Julian's explicit go-ahead (CONTEXT.md, ADR 0002). The verify-before-flip rule
-covers the *security* boundary (routes + RLS); it does not cover the *product*
+covers the _security_ boundary (routes + RLS); it does not cover the _product_
 boundary (Julian owns whether the Leader surface opens at all).
 
 Therefore: enabling the Leader-surface flag requires both re-verification **and**

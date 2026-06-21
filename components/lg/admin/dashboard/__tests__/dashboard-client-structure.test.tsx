@@ -314,11 +314,11 @@ describe("DashboardClient pivot overview cards (#470)", () => {
     indexOf(html, 'href="/admin/multiply"');
 
     // Live demo counts render — the funnel's roll-up line and the readiness
-    // headline both derive from the typed seeds, not zeros. ("Cells ready<"
+    // headline both derive from the typed seeds, not zeros. ("Groups ready<"
     // pins the card's own StatTile label, distinct from the vital-signs
-    // band's "Cells ready to multiply" title.)
+    // band's "Groups ready to multiply" title.)
     indexOf(html, "joined a group");
-    indexOf(html, "Cells ready<");
+    indexOf(html, "Groups ready<");
   });
 
   it("renders the legacy guests card only when the guests frozen surface is live", () => {
@@ -363,12 +363,12 @@ describe("DashboardClient pivot overview cards (#470)", () => {
     });
 
     indexOf(html, "Readiness data unavailable");
-    // Neither the "no cells" empty state nor a 0-of-0 readout may render.
-    // (The "Cells ready<" needle is the card's StatTile label text node; the
-    // vital-signs band's "Cells ready to multiply" title legitimately stays,
+    // Neither the "no group types" empty state nor a 0-of-0 readout may render.
+    // (The "Groups ready<" needle is the card's StatTile label text node; the
+    // vital-signs band's "Groups ready to multiply" title legitimately stays,
     // degraded to "—" by the same available:false.)
-    expect(html).not.toContain("No active cells yet");
-    expect(html).not.toContain("Cells ready<");
+    expect(html).not.toContain("No active group types yet");
+    expect(html).not.toContain("Groups ready<");
   });
 });
 
@@ -456,7 +456,7 @@ const CALM_EMPTY_LINES = [
   "Care queue is clear.", // LeaderCareOverviewCard footer
   "No groups are meeting yet — the health pulse will gather here as groups begin.", // HealthDistributionCard
   "No Prospects in the Interest Funnel yet — new interest will gather here.", // InterestFunnelOverviewCard
-  "No active cells yet — readiness will gather here once group types are set up in Settings.", // MultiplyOverviewCard
+  "No active group types yet — readiness will gather here once group types are set up in Settings.", // MultiplyOverviewCard
 ];
 
 describe("Home empty-state tone pass (#480)", () => {
@@ -510,7 +510,7 @@ describe("DashboardClient vital signs band (#476)", () => {
     "Active shepherds",
     "Shepherds needing care",
     "Prospects in funnel",
-    "Cells ready to multiply",
+    "Groups ready to multiply",
     "Follow-ups due this week",
   ];
   const LAUNCH_TITLES = [

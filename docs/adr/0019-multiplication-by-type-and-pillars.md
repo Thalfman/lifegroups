@@ -1,5 +1,7 @@
 # Multiplication by group type, assessed by five pillars
 
+**Status:** Accepted
+
 Multiplication re-frames from planning individual groups to deciding whether to
 launch another group of a **type**. The unit is the **Audience** (Men's,
 Women's, Mixed) — three boards. Each board is assessed by five **pillars**, and

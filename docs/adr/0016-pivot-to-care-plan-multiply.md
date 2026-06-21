@@ -1,5 +1,7 @@
 # Pivot to a three-area operating system: Care, Plan, Multiply
 
+**Status:** Accepted
+
 The app re-scopes from the three jobs of ADR 0010 ({know how my leaders are
 doing, know what groups need to launch, know how my groups are doing}) to three
 **areas**: **Care**, **Plan** (the Interest Funnel), and **Multiply**. Julian

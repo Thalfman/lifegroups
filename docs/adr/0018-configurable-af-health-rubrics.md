@@ -1,5 +1,7 @@
 # Configurable, fluid A–F health rubrics (Group and Leader)
 
+**Status:** Accepted
+
 ADR 0007 shipped Group Health with placeholder labels and **deferred the
 rubric**, because Julian was still designing how to grade a group. This ADR
 resolves that by handing him the builder instead of hardcoding a formula: a
@@ -19,7 +21,7 @@ scopes). Grades are tracked within the current **Ministry Year** (August–May).
 
 ## What ADR 0007 keeps
 
-ADR 0007's *ownership* principle is unchanged and load-bearing: the rubric is
+ADR 0007's _ownership_ principle is unchanged and load-bearing: the rubric is
 **Julian's pastoral copy**, so it lives in **Settings**, not the Super Admin
 Console. Tom does not edit Julian's criteria or weightings.
 

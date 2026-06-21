@@ -1,5 +1,7 @@
 # "Shepherd" → "Leader" rename: labels and glossary only
 
+**Status:** Superseded by [ADR 0025](./0025-rename-leader-label-to-shepherd.md)
+
 > **Superseded by [ADR 0025](./0025-rename-leader-label-to-shepherd.md)
 > (2026-06).** The user-facing labels reverted to **Shepherd** / **Co-Shepherd**.
 > The decision below to keep the **code/DB identity** (`leader` / `co_leader`,
