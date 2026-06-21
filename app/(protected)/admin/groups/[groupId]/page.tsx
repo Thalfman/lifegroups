@@ -33,6 +33,7 @@ import { ReturnFocus } from "@/lib/nav/return-focus";
 import { GroupHealthEditButton } from "@/components/admin/group-detail/group-health-edit-button";
 import { GroupDetailHeaderActions } from "@/components/admin/groups/group-detail-header-actions";
 import { EditRubricLink } from "@/components/admin/group-detail/edit-rubric-link";
+import { HealthWhyPeek } from "@/components/admin/group-detail/health-why-peek";
 import { GroupRosterManager } from "@/components/admin/group-detail/group-roster-manager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -413,7 +414,13 @@ function HealthTab({
       <Card>
         <div className="grid gap-3">
           <StatusZone label={`Group-Health Grade · ${data.period}`}>
-            <Badge dot>{healthCategoryLabel(data.health)}</Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge dot>{healthCategoryLabel(data.health)}</Badge>
+              {/* #781 OPP-8 — a read-only "why?" peek explaining the governing
+                  rubric (score bands + scored dimensions), with a deep link that
+                  reuses the Phase-1 return round trip to the Settings editor. */}
+              <HealthWhyPeek groupId={groupId} fromSetup={fromSetup} />
+            </div>
           </StatusZone>
           {data.stale ? (
             <p className={cn("m-0", BODY_TEXT, "text-sm")}>
