@@ -15,7 +15,9 @@ export const config = {
     // extensionless generated icon routes (/icons/*) must stay reachable
     // without auth — otherwise a signed-in invite/reset user carrying the
     // password-setup cookie would have those fetches redirected to
-    // /reset-password instead of receiving the metadata.
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // /reset-password instead of receiving the metadata. /api/vitals is also
+    // excluded: the web-vitals beacon needs no session, so refreshing it there
+    // would add a getClaims() round trip to the very surface it measures.
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|api/vitals|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
