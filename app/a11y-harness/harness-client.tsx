@@ -47,6 +47,7 @@ import type { GroupPeopleTabData } from "@/components/admin/groups/group-detail-
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
+import { CareAccordion } from "@/components/admin/care/care-accordion";
 import { NotesFeedShell } from "@/components/admin/care/notes-feed-shell";
 import type {
   CareFeedItem,
@@ -54,6 +55,7 @@ import type {
 } from "@/lib/admin/care-note-feed";
 import type {
   CareAccordionLeader,
+  CareAccordionPane,
   CareGradeEntryBundle,
 } from "@/lib/admin/care-accordion";
 import {
@@ -61,6 +63,7 @@ import {
   type SettingsShellData,
 } from "@/components/admin/settings-shell";
 import { DashboardClient } from "@/components/lg/admin/dashboard/DashboardClient";
+import { MinistrySnapshotSection } from "@/components/lg/admin/dashboard/MinistrySnapshotSection";
 import {
   ADMIN_FALLBACK,
   INTEREST_FUNNEL_FALLBACK,
@@ -336,6 +339,25 @@ const CARE_PANEL_GRADE_ENTRY: CareGradeEntryBundle = {
   leaderGradesAvailable: true,
   groupGradesAvailable: true,
 };
+
+// Full Over-Shepherds accordion (#777 WS3): a couple of CarePanes wrapping the
+// leader panels, so the perf-harness measures the PANE-level mount-on-open
+// gating (pane.leaders.map is deferred until a pane opens), not just the inner
+// leader-panel body reduction the standalone-panel surface captures.
+const CARE_ACCORDION_PANES: CareAccordionPane[] = [
+  {
+    overShepherdId: "00000000-0000-4000-8000-0000000000b1",
+    overShepherdName: "Omar Shepherd",
+    isUnassigned: false,
+    leaders: [CARE_PANEL_LEADER_SEALED, CARE_PANEL_LEADER_GRANTED],
+  },
+  {
+    overShepherdId: null,
+    overShepherdName: "Unassigned",
+    isUnassigned: true,
+    leaders: [],
+  },
+];
 
 // All Notes feed fixtures (ADR 0023): one of each feed kind so the spec can
 // assert the kind badges, context lines, and labelled filters; two sealed
@@ -1374,6 +1396,20 @@ export function A11yHarnessClient() {
         />
       </Surface>
 
+      {/* Full Over-Shepherds accordion (#777 WS3). Renders CarePanes (not bare
+          leader panels) so the perf-harness DOM-node baseline reflects the
+          pane-level mount-on-open: a collapsed pane carries only its summary
+          roll-up, deferring pane.leaders.map until opened. */}
+      <Surface
+        id="care-accordion"
+        heading="Care accordion (Over-Shepherds view)"
+      >
+        <CareAccordion
+          panes={CARE_ACCORDION_PANES}
+          gradeEntry={CARE_PANEL_GRADE_ENTRY}
+        />
+      </Surface>
+
       {/* All Notes feed (ADR 0023). The Care area's Notes tab: labelled
           filter selects, the readable-notes list (kind badges + context
           lines), and the sealed-summary block whose per-leader transparency
@@ -1458,17 +1494,32 @@ export function A11yHarnessClient() {
         <DashboardClient
           key={`${homeQuiet ? "quiet" : "demo"}-${homeSetupVariant ? "setup" : "default"}`}
           data={homeQuiet ? HOME_QUIET_DATA : ADMIN_FALLBACK}
-          interestFunnel={
-            homeQuiet ? HOME_QUIET_FUNNEL : INTEREST_FUNNEL_FALLBACK
-          }
-          multiplyReadiness={
-            homeQuiet ? HOME_QUIET_READINESS : MULTIPLY_READINESS_FALLBACK
-          }
           guestsLive={false}
           scopeId={null}
           canResetActivity
           isSuperAdmin
           hiddenNavAreas={homeHiddenNavAreas}
+          // #777 WS2: the real page streams the Ministry-snapshot body in its own
+          // Suspense boundary; the harness renders it synchronously via the
+          // presentational MinistrySnapshotSection so the a11y assertions still
+          // cover the band + overview cards.
+          snapshotSlot={
+            <MinistrySnapshotSection
+              data={homeQuiet ? HOME_QUIET_DATA : ADMIN_FALLBACK}
+              interestFunnel={
+                homeQuiet ? HOME_QUIET_FUNNEL : INTEREST_FUNNEL_FALLBACK
+              }
+              multiplyReadiness={
+                homeQuiet ? HOME_QUIET_READINESS : MULTIPLY_READINESS_FALLBACK
+              }
+              showLaunchPlanning={
+                !homeHiddenNavAreas.includes("/admin/planning")
+              }
+              showLeaderPipeline={!homeHiddenNavAreas.includes("/admin/people")}
+              guestsLive={false}
+              scopeId={null}
+            />
+          }
         />
       </Surface>
 

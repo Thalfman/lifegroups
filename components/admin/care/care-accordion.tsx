@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
 import { DisclosureChevron } from "@/components/admin/care/disclosure-chevron";
+import { MountOnOpenDetails } from "@/components/admin/care/mount-on-open-details";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
@@ -54,85 +55,89 @@ function CarePane({
   // are my leaders doing?"). Quiet when zero — the absence of a clay pill is the
   // "all up to date" cue, keeping the scan free of noise.
   const attentionCount = countLeadersNeedingAttention(pane.leaders);
+  // #777 WS3: mount-on-first-open. The summary roll-up (name, attention badge,
+  // leader count) stays server-rendered so a collapsed pane still signals where
+  // the work is; the leader panels below only hydrate once the pane is opened.
   return (
-    <details
-      className={cn(
+    <MountOnOpenDetails
+      detailsClassName={cn(
         "rounded-md border bg-surface",
         pane.isUnassigned ? "border-lineSoft" : "border-line"
       )}
-    >
-      <summary className="lg-sac-summary flex items-center gap-2.5 rounded-md px-4 py-3.5 transition-colors duration-150 hover:bg-surfaceAlt">
-        <DisclosureChevron />
-        <span
-          className={cn(
-            "min-w-0 flex-1 font-sans text-base font-semibold [overflow-wrap:anywhere]",
-            pane.isUnassigned ? "text-ink2" : "text-ink"
-          )}
-        >
-          {pane.overShepherdName}
-        </span>
-        {attentionCount > 0 ? (
-          <Badge tone={STATUS_TONES.followUp} dot className="shrink-0">
-            {attentionLabel(attentionCount)}
-          </Badge>
-        ) : null}
-        <span className="whitespace-nowrap font-sans text-sm text-ink3">
-          {leaderCountLabel(pane.leaders.length)}
-        </span>
-      </summary>
-
-      <div className="grid gap-2.5 px-4 pb-4 pt-1">
-        {pane.isUnassigned && pane.leaders.length > 0 ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-lineSoft bg-bg/70 px-3 py-2.5">
-            <p className="m-0 font-sans text-sm text-ink2">
-              These shepherds need over-shepherd coverage.
-            </p>
-            {isSuperAdmin ? (
-              <Link
-                href="/admin/shepherd-care/over-shepherds"
-                className={buttonClassName("ghost", "sm")}
-              >
-                Assign coverage
-              </Link>
-            ) : (
-              <p className="m-0 font-sans text-sm text-ink3">
-                Ask a super admin to assign coverage.
-              </p>
+      summaryClassName="lg-sac-summary flex items-center gap-2.5 rounded-md px-4 py-3.5 transition-colors duration-150 hover:bg-surfaceAlt"
+      bodyClassName="grid gap-2.5 px-4 pb-4 pt-1"
+      summary={
+        <>
+          <DisclosureChevron />
+          <span
+            className={cn(
+              "min-w-0 flex-1 font-sans text-base font-semibold [overflow-wrap:anywhere]",
+              pane.isUnassigned ? "text-ink2" : "text-ink"
             )}
-          </div>
-        ) : null}
-        {pane.leaders.length === 0 ? (
-          <p className="m-0 font-sans text-sm italic text-ink3">
-            {pane.isUnassigned
-              ? "Every shepherd has an over-shepherd."
-              : "No shepherds covered yet. Finish the people-to-shepherd-to-group setup first."}
+          >
+            {pane.overShepherdName}
+          </span>
+          {attentionCount > 0 ? (
+            <Badge tone={STATUS_TONES.followUp} dot className="shrink-0">
+              {attentionLabel(attentionCount)}
+            </Badge>
+          ) : null}
+          <span className="whitespace-nowrap font-sans text-sm text-ink3">
+            {leaderCountLabel(pane.leaders.length)}
+          </span>
+        </>
+      }
+    >
+      {pane.isUnassigned && pane.leaders.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-lineSoft bg-bg/70 px-3 py-2.5">
+          <p className="m-0 font-sans text-sm text-ink2">
+            These shepherds need over-shepherd coverage.
           </p>
-        ) : (
-          pane.leaders.map((leader) => (
-            <CareLeaderPanel
-              key={leader.profileId}
-              leader={leader}
-              viewerRole={viewerRole}
-              gradeEntry={gradeEntry}
-            />
-          ))
-        )}
-        {/* SAD9: super-admin-only permanent delete of the over-shepherd record
+          {isSuperAdmin ? (
+            <Link
+              href="/admin/shepherd-care/over-shepherds"
+              className={buttonClassName("ghost", "sm")}
+            >
+              Assign coverage
+            </Link>
+          ) : (
+            <p className="m-0 font-sans text-sm text-ink3">
+              Ask a super admin to assign coverage.
+            </p>
+          )}
+        </div>
+      ) : null}
+      {pane.leaders.length === 0 ? (
+        <p className="m-0 font-sans text-sm italic text-ink3">
+          {pane.isUnassigned
+            ? "Every shepherd has an over-shepherd."
+            : "No shepherds covered yet. Finish the people-to-shepherd-to-group setup first."}
+        </p>
+      ) : (
+        pane.leaders.map((leader) => (
+          <CareLeaderPanel
+            key={leader.profileId}
+            leader={leader}
+            viewerRole={viewerRole}
+            gradeEntry={gradeEntry}
+          />
+        ))
+      )}
+      {/* SAD9: super-admin-only permanent delete of the over-shepherd record
             itself. Lives in the expanded body (not the summary) so it can't
             fight the <details> disclosure toggle. The preflight surfaces — and
             the engine refuses — a delete while active coverage assignments still
             reference this over-shepherd, so they must be cleared first. */}
-        {isSuperAdmin && pane.overShepherdId && !pane.isUnassigned ? (
-          <div className="flex justify-end border-t border-lineSoft pt-2.5">
-            <SuperAdminInlineDelete
-              entityType="over_shepherd"
-              id={pane.overShepherdId}
-              label={pane.overShepherdName}
-            />
-          </div>
-        ) : null}
-      </div>
-    </details>
+      {isSuperAdmin && pane.overShepherdId && !pane.isUnassigned ? (
+        <div className="flex justify-end border-t border-lineSoft pt-2.5">
+          <SuperAdminInlineDelete
+            entityType="over_shepherd"
+            id={pane.overShepherdId}
+            label={pane.overShepherdName}
+          />
+        </div>
+      ) : null}
+    </MountOnOpenDetails>
   );
 }
 

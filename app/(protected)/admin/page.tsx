@@ -7,19 +7,9 @@ import { measureReadBundle } from "@/lib/observability/read-timing";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminDashboardData } from "@/lib/dashboard/queries";
 import {
-  EMPTY_PROSPECT_STATE_COUNTS,
-  fetchProspectStateCounts,
-} from "@/lib/supabase/prospect-reads";
-import { loadMultiplyGridData } from "@/components/admin/multiply/multiply-grid-data";
-import { buildMultiplyHomeSummary } from "@/lib/admin/group-type-coverage";
-import {
-  INTEREST_FUNNEL_FALLBACK,
-  MULTIPLY_READINESS_FALLBACK,
-} from "@/lib/dashboard/fallback-data";
-import type {
-  InterestFunnelDashboardSummary,
-  MultiplyReadinessDashboardSummary,
-} from "@/lib/dashboard/types";
+  MinistrySnapshotSkeleton,
+  MultiplyOverviewSection,
+} from "@/components/lg/admin/dashboard/MultiplyOverviewSection";
 import { resolveOverviewGrain } from "@/lib/admin/overview-period";
 import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
 import { firstParam } from "@/lib/shared/search-params";
@@ -94,23 +84,14 @@ async function AdminHomeData({
   // which Ministry-snapshot cards Home shows, so a retired tab leaves no stats
   // behind. Resolved alongside the dashboard read to keep this hot page to a
   // single round of parallel reads.
-  // The pivot overview cards (#470) load alongside the dashboard read in the
-  // same parallel round: a narrow Prospect count read (Plan) and the Multiply
-  // grid (Multiply). Each degrades PER CARD below — a failed read renders that
-  // card unavailable, never a false zero — and the no-client preview renders
-  // the typed demo seeds instead.
-  // Each bundle is timed separately so the production `read_bundle` logs show
-  // which read dominates this hot page's TTFB (mirrors /admin/multiply). The
-  // `describe` payloads carry only counts/discriminants — never row contents —
-  // per the read-timing privacy contract.
-  const [
-    dashboard,
-    guestsLive,
-    mutedKeys,
-    hiddenNavAreas,
-    prospectCounts,
-    multiplyGridData,
-  ] = await Promise.all([
+  //
+  // Boundary A — the LCP path (#777 WS2). This first boundary fetches only what
+  // the above-the-fold content (Needs attention / This week) needs. The two
+  // slowest reads — the Prospect-state count (Plan) and the 4-read Multiply grid
+  // (Multiply) — feed ONLY the below-the-fold Ministry-snapshot section, so they
+  // move into the streamed `MultiplyOverviewSection` (Boundary B) and no longer
+  // block this paint.
+  const [dashboard, guestsLive, mutedKeys, hiddenNavAreas] = await Promise.all([
     measureReadBundle(
       "admin_home_dashboard",
       () => getAdminDashboardData(client, { grain }),
@@ -132,52 +113,9 @@ async function AdminHomeData({
       () => loadHiddenNavAreas(),
       (set) => ({ hidden: set.size })
     ),
-    client
-      ? measureReadBundle(
-          "admin_home_prospect_counts",
-          () => fetchProspectStateCounts(client),
-          (r) => ({ result_kind: r.error ? "error" : "ok" })
-        )
-      : null,
-    client
-      ? measureReadBundle(
-          "admin_home_multiply_grid",
-          () => loadMultiplyGridData(),
-          (r) => ({ result_kind: r.error ? "error" : "ok" })
-        )
-      : null,
   ]);
   const { data } = dashboard;
 
-  const interestFunnel: InterestFunnelDashboardSummary =
-    prospectCounts === null
-      ? INTEREST_FUNNEL_FALLBACK
-      : prospectCounts.error !== null
-        ? {
-            counts: EMPTY_PROSPECT_STATE_COUNTS,
-            available: false,
-            error: prospectCounts.error.message,
-          }
-        : { counts: prospectCounts.data, available: true, error: null };
-
-  // loadMultiplyGridData reports a non-null error whenever ANY of its reads
-  // failed; the grid it returns is then partial, so the summary must not be
-  // built over it (a partial grid would read as a false "0 of 0 ready").
-  const multiplyReadiness: MultiplyReadinessDashboardSummary =
-    multiplyGridData === null
-      ? MULTIPLY_READINESS_FALLBACK
-      : multiplyGridData.error !== null
-        ? {
-            readyCells: 0,
-            activeCells: 0,
-            available: false,
-            error: multiplyGridData.error,
-          }
-        : {
-            ...buildMultiplyHomeSummary(multiplyGridData.rows),
-            available: true,
-            error: null,
-          };
   // A degraded read returns demo fallback data carrying an error; the deliberate
   // no-client demo preview is `fallback` without an error and is not degraded.
   // The Needs-attention area suppresses itself when degraded so it never
@@ -187,8 +125,6 @@ async function AdminHomeData({
   return (
     <DashboardClient
       data={data}
-      interestFunnel={interestFunnel}
-      multiplyReadiness={multiplyReadiness}
       guestsLive={guestsLive}
       degraded={degraded}
       scopeId={session.profile.id}
@@ -197,6 +133,20 @@ async function AdminHomeData({
       hiddenNavAreas={[...hiddenNavAreas]}
       isSuperAdmin={session.profile.role === "super_admin"}
       fromSetup={fromSetup}
+      // Boundary B — the Ministry-snapshot body streams in after the main paint:
+      // its async server child does the two slow reads, then renders the band +
+      // overview cards. `data` is reused from Boundary A (no re-fetch).
+      snapshotSlot={
+        <Suspense fallback={<MinistrySnapshotSkeleton />}>
+          <MultiplyOverviewSection
+            data={data}
+            degraded={degraded}
+            guestsLive={guestsLive}
+            scopeId={session.profile.id}
+            hiddenNavAreas={[...hiddenNavAreas]}
+          />
+        </Suspense>
+      }
     />
   );
 }
