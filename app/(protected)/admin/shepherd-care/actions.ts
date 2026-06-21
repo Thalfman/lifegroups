@@ -1,5 +1,10 @@
 "use server";
 
+// Subject scoping is enforced by the RPC + RLS (over_shepherd coverage /
+// auth_is_admin), not a client-side `guard`. If a scoped admin tier ever lands,
+// add a `guard` to the subject-scoped specs so an out-of-coverage target is a
+// clean logged denial rather than a generic RPC error (ARCH-5).
+
 import {
   validateAddPrivateNoteKeySlotPayload,
   validateArchiveShepherdCareFollowUpPayload,
