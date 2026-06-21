@@ -69,7 +69,7 @@ export async function resetPasswordAction(
     };
   }
 
-  // Choose-your-name step (ADR 0025). Pendingness is re-derived server-side —
+  // Choose-your-name step (ADR 0032). Pendingness is re-derived server-side —
   // never trusted from the client — and the name is saved BEFORE the password
   // so a failed name write is fully retryable (the password is untouched;
   // retrying a committed password change would hit GoTrue's same-password

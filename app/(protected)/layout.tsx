@@ -21,7 +21,7 @@ export default async function ProtectedLayout({
     case "backend_error":
       redirect("/unauthorized?reason=unavailable");
     case "authenticated": {
-      // Choose-your-name gate (ADR 0025): an invited person who hasn't picked
+      // Choose-your-name gate (ADR 0032): an invited person who hasn't picked
       // their name yet (e.g. their email already had a login, so they never
       // saw /reset-password) finishes that one step before using the app.
       const nameGate = namePendingRedirectTarget(session);

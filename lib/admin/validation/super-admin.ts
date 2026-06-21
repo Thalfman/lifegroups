@@ -143,7 +143,7 @@ const INVITE_USER_ROLES: ReadonlySet<
 > = new Set(["ministry_admin", "over_shepherd", "leader", "co_leader"]);
 
 // No full_name: the invitee chooses their own name at account setup
-// (ADR 0025); the inviter never types it.
+// (ADR 0032); the inviter never types it.
 export type InviteUserPayload = {
   email: string; // canonicalized lowercase
   role: "ministry_admin" | "over_shepherd" | "leader" | "co_leader";

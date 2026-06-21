@@ -1,4 +1,4 @@
-// Narrow, RLS-scoped read of the caller's own name state (ADR 0025). Shared
+// Narrow, RLS-scoped read of the caller's own name state (ADR 0032). Shared
 // by /reset-password (page + action) and /welcome so the placeholder-aware
 // prefill logic lives once. Column allowlist — never select("*").
 

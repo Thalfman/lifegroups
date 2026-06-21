@@ -60,7 +60,7 @@ export const SESSION_PROFILE_COLUMNS = [
   "id", // primary key; actor identity for guards/actions
   "auth_user_id", // checked by the isProfilesRow trust-boundary guard
   "full_name", // rendered in shells/layouts from session.profile
-  "full_name_pending", // choose-your-name gate: (protected)/layout + app/page (ADR 0025)
+  "full_name_pending", // choose-your-name gate: (protected)/layout + app/page (ADR 0032)
   "email", // rendered in shells/layouts from session.profile
   "role", // authorization: every role guard switches on this
   "status", // authorization: guards require "active"

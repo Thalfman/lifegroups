@@ -43,7 +43,7 @@ query params. The matcher excludes static assets and the manifest.
 - `anonymous` → redirect `/login`
 - `profile_missing` → redirect `/unauthorized`
 - `backend_error` → redirect `/unauthorized?reason=unavailable`
-- `authenticated` → name-pending gate (ADR 0025) may redirect `/welcome`,
+- `authenticated` → name-pending gate (ADR 0032) may redirect `/welcome`,
   else renders the shell.
 
 Each nested layout/page then applies its own **role redirect-guard**

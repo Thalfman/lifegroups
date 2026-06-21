@@ -97,7 +97,7 @@ describe("validateInviteUserPayload", () => {
     expect(r.ok).toBe(true);
   });
 
-  // The invitee chooses their own name at account setup (ADR 0025) — the
+  // The invitee chooses their own name at account setup (ADR 0032) — the
   // payload neither requires nor carries one.
   it("accepts a payload without full_name", () => {
     const r = validateInviteUserPayload({

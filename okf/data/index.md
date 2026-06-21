@@ -27,7 +27,7 @@ the conventions (soft-delete, audit pairing, privacy exceptions) that must hold.
 ## Tables by domain
 
 - **People/roles:** `profiles` (app-login users; `auth_user_id`, `role`,
-  `status`, `full_name_pending` ADR 0025), `invitations`, `members` (non-auth
+  `status`, `full_name_pending` ADR 0032), `invitations`, `members` (non-auth
   participants), `group_leaders` (profile↔group, `active` flag),
   `group_memberships` (member↔group, `role_in_group`, `ended_at`).
 - **Over-shepherd coverage:** `over_shepherds` (non-auth roster; `active`,

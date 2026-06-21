@@ -29,7 +29,7 @@ import { useActionForm, FormStatus } from "./action-form";
 // One invite workflow with a delivery choice (#460). Merges the old
 // InviteUserForm (email invite + "Copy invite link") and InviteLinkForm
 // (anonymous shareable link) into a single card so role and group are picked
-// once. The invitee chooses their own name in every path (ADR 0025) — the
+// once. The invitee chooses their own name in every path (ADR 0032) — the
 // email path collects it at the password-setup screen, the shareable link at
 // self-signup. The three server actions:
 //   - "Send invite"    → superAdminInviteUser (known email, invite email)

@@ -6,7 +6,7 @@ import { WelcomeForm } from "./welcome-form";
 
 export const dynamic = "force-dynamic";
 
-// Choose-your-name fallback gate (ADR 0025). An invited person normally picks
+// Choose-your-name fallback gate (ADR 0032). An invited person normally picks
 // their name on /reset-password alongside their password, but two paths skip
 // that screen: an invite to an email that already had a login (no setup email
 // is sent), and an abandoned setup. The (protected) layout and the Home Hub

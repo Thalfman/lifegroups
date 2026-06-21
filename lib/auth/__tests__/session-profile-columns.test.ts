@@ -34,7 +34,7 @@ const PINNED_SESSION_PROFILE_COLUMNS = [
   "id",
   "auth_user_id",
   "full_name",
-  "full_name_pending", // deliberate widening: choose-your-name gate (ADR 0025)
+  "full_name_pending", // deliberate widening: choose-your-name gate (ADR 0032)
   "email",
   "role",
   "status",

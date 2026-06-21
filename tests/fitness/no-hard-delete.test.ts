@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { readSourceFiles } from "./support/source-globber";
 import { effectiveFunctions } from "./support/sql-functions";
-import { stripSqlStrings } from "./support/scan";
 
 // Security invariant (CLAUDE.md / AGENTS.md P0, audit 2026-06-21 TEST-5):
 // **No hard deletes in normal workflows.** Archive (soft — `archived_at` /
@@ -32,18 +31,21 @@ const MIGRATIONS = readSourceFiles({
   extensions: [".sql"],
 });
 
-// Static `DELETE FROM <table>` (strings stripped first so a `'delete from …'`
-// built for dynamic SQL or named in prose can't masquerade as DML) plus the
-// dynamic `format(… delete from %I …)` form the repo uses for danger-zone
-// table loops. Group 1 (static) is the target table.
-const STATIC_DELETE_RE = /\bdelete\s+from\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi;
-const DYNAMIC_DELETE_RE = /\bdelete\s+from\s+(?:public\.)?%[is]\b/i;
+// `DELETE FROM <table>` against a real table, in any form. The body is already
+// comment-stripped (by the function parser), so we scan it WITH string literals
+// intact: a destructive statement built as dynamic SQL — `EXECUTE 'delete from
+// public.foo …'`, a `v_sql := 'delete from …'` variable, or `format(… delete
+// from %I …)` — keeps its text inside a string, which `stripSqlStrings` would
+// erase. Requiring a table-shaped target (`public.x`, a bare/quoted identifier,
+// or a `%I`/`%s` placeholder) right after `delete from` keeps an incidental
+// prose mention ("…cannot delete from …") from matching. This biases toward
+// catching: an over-match fails loudly and a human allowlists it, whereas a
+// missed delete silently bypasses the archive-by-default rule.
+const DELETE_RE =
+  /\bdelete\s+from\s+(?:public\.)?(?:%[is]\b|"?[a-z_][a-z0-9_]*"?)/i;
 
 function deletesInBody(body: string): boolean {
-  if (DYNAMIC_DELETE_RE.test(body)) return true;
-  const text = stripSqlStrings(body);
-  STATIC_DELETE_RE.lastIndex = 0;
-  return STATIC_DELETE_RE.exec(text) !== null;
+  return DELETE_RE.test(body);
 }
 
 // Functions allowed to issue a `DELETE FROM`. Keyed by bare function name so a

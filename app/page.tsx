@@ -21,7 +21,7 @@ export default async function HomePage({
   const session = await getCurrentSession();
   switch (session.kind) {
     case "authenticated": {
-      // Choose-your-name gate (ADR 0025). The Home Hub sits outside the
+      // Choose-your-name gate (ADR 0032). The Home Hub sits outside the
       // (protected) layout, so it carries its own copy of the redirect.
       const nameGate = namePendingRedirectTarget(session);
       if (nameGate) redirect(nameGate);

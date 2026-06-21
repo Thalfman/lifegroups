@@ -10,7 +10,7 @@
 > [`ui-audit.md`](./ui-audit.md) (UX audit), and the ADRs.
 >
 > **Precedence.** On any conflict, the ADRs win ([`adr/`](./adr/), currently
-> 0001–0025), and [`CONTEXT.md`](../CONTEXT.md) owns vocabulary. This document
+> 0001–0032), and [`CONTEXT.md`](../CONTEXT.md) owns vocabulary. This document
 > describes; it does not decide.
 >
 > **Status.** Definition sections (§1–§7) describe the intended end product —
@@ -107,7 +107,7 @@ flag may re-enable them only after a verify-before-flip).
 | `/`                                                    | Home Hub tile launcher                               | all authenticated | landing                           |
 | `/login`, `/forgot-password`, `/reset-password`        | Auth flows                                           | public            | —                                 |
 | `/invite/[token]`                                      | Invite acceptance (set password)                     | public link       | —                                 |
-| `/welcome`                                             | Invitee names themself (ADR 0025)                    | authenticated     | gate                              |
+| `/welcome`                                             | Invitee names themself (ADR 0032)                    | authenticated     | gate                              |
 | `/unauthorized`                                        | No-access explainer                                  | authenticated     | error                             |
 | `/admin`                                               | Home dashboard (triage)                              | admins            | visible                           |
 | `/admin/care`                                          | Care area (5 tabs, §4.2)                             | admins            | visible                           |

@@ -83,6 +83,10 @@ function readParens(
 // a real predicate (defense-in-depth) is NOT broad.
 function isBroadClause(raw: string): boolean {
   let s = raw.replace(/\s+/g, " ").trim().toLowerCase();
+  // Normalize Supabase's perf "initPlan" spelling `(select auth.uid())` back to
+  // `auth.uid()` so the broad form `using ((select auth.uid()) is not null)` —
+  // the repo's performance-preferred style (20260601010000) — is still caught.
+  s = s.replace(/\(\s*select\s+auth\.uid\(\)\s*\)/g, "auth.uid()");
   // Peel redundant wrapping parens: ((true)) → true.
   while (s.startsWith("(") && s.endsWith(")")) {
     const inner = s.slice(1, -1).trim();

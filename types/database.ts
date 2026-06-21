@@ -8,7 +8,7 @@ export interface ProfilesRow {
   id: UUID;
   auth_user_id: UUID | null;
   full_name: string;
-  // True while an invited person hasn't chosen their own name yet (ADR 0025);
+  // True while an invited person hasn't chosen their own name yet (ADR 0032);
   // full_name then holds a placeholder (their email) or the pre-invite name.
   full_name_pending: boolean;
   email: string;

@@ -24,7 +24,7 @@ function first(value: string | string[] | undefined): string | undefined {
 type View =
   | { kind: "not_configured" }
   // recovery session already established (post /auth/confirm). namePending is
-  // the choose-your-name step (ADR 0025): an invited person picks their name
+  // the choose-your-name step (ADR 0032): an invited person picks their name
   // here alongside their password; namePrefill carries an existing name (the
   // relink case) for them to confirm or edit.
   | { kind: "form"; namePending: boolean; namePrefill: string }

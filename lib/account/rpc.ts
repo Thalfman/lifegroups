@@ -1,4 +1,4 @@
-// Typed wrapper for the one self-service SECURITY DEFINER RPC (ADR 0025).
+// Typed wrapper for the one self-service SECURITY DEFINER RPC (ADR 0032).
 // Same boundary idiom as lib/admin/rpc.ts: the wrapper pins the function
 // name and argument shape; callUuidRpc owns the casts and the uuid
 // trust-boundary read.

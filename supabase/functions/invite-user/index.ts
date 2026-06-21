@@ -11,7 +11,7 @@
 //   3. Validate the payload (email, role, optional phone, optional
 //      group_id; group_id rejected for ministry_admin; optional delivery
 //      'email' | 'link', default 'email'). No full_name: the invitee
-//      chooses their own name at account setup (ADR 0025).
+//      chooses their own name at account setup (ADR 0032).
 //   4. Resolve the Supabase Auth user by email; if missing, provision it:
 //      delivery='email' -> `auth.admin.inviteUserByEmail` sends a real
 //      invite email; delivery='link' -> `auth.admin.generateLink` returns
@@ -732,7 +732,7 @@ Deno.serve(async (req: Request) => {
 
   // Single atomic RPC: profile upsert + group_leaders + audit, one txn.
   // No p_full_name (optional, ignored server-side): the invitee chooses
-  // their own name at account setup (ADR 0025).
+  // their own name at account setup (ADR 0032).
   const { data: rpcData, error: rpcErr } = await service.rpc(
     "super_admin_complete_invite",
     {
