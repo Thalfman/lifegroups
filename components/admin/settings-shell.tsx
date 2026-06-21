@@ -7,6 +7,7 @@ import {
 } from "@/components/admin/settings-tabs";
 import { PBadge } from "@/components/pastoral/atoms";
 import { SetupReturnBanner } from "@/components/lg/admin/setup-return-banner";
+import { ReturnBanner } from "@/components/lg/admin/return-banner";
 import {
   buildOverrideRows,
   overrideSummaryChips,
@@ -258,6 +259,12 @@ function SettingsSectionHeader({
 function CarePanel({ model }: { model: SettingsCareModel }) {
   return (
     <div className="grid gap-9">
+      {/* #776 OPP-8 — self-gating "← Back to group health" affordance. Renders
+          only when the user arrived via the "Edit rubric" round trip
+          (`from=group-health`), naming where they'll return to so the hand-off
+          reads as intentional, not a silent dump into Settings. */}
+      <ReturnBanner originKey="group-health" />
+
       {/* #374 / ADR 0018: the Group Health Rubric — Julian's weighted criteria
           that roll up to an A–F grade. Owned here in Settings (Ministry-Admin),
           not the Super Admin Console. Save is gated on the weights totalling

@@ -18,6 +18,7 @@ import {
 } from "./meeting-schedule-options";
 import type { GroupsRow } from "@/types/database";
 import type { MeetingFrequency } from "@/types/enums";
+import { GroupTypePicker } from "./group-type-picker";
 import { useActionForm, FormStatus } from "./action-form";
 
 function isoTimeForInput(value: string | null): string {
@@ -76,8 +77,6 @@ export function GroupEditForm({
   // (and pre-selected) option so saving an unrelated edit can't silently clear
   // it; the update RPC round-trips the unchanged value cleanly.
   const currentType = group.group_type ?? "";
-  const currentTypeMissing =
-    currentType !== "" && !groupTypes.includes(currentType);
 
   return (
     <form action={formAction} onChange={onDirty} className="grid gap-3">
@@ -234,30 +233,18 @@ export function GroupEditForm({
           />
         </div>
         <div>
-          <label
-            htmlFor={`edit-group_type-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Group type
-          </label>
-          <select
-            id={`edit-group_type-${group.id}`}
+          {/* #776 OPP-3 — the creatable group-type picker. `initialValue`
+              preselects the group's current type and keeps it selectable even
+              if it has since been removed from the admin list (replacing the
+              old hand-rolled "(not in current list)" option), and lets the admin
+              add a brand-new type in place via the audited add-type RPC. */}
+          <GroupTypePicker
+            groupTypes={groupTypes}
             name="group_type"
-            defaultValue={currentType}
-            className={fieldSelectClassName}
-          >
-            <option value="">Untyped</option>
-            {currentTypeMissing ? (
-              <option value={currentType}>
-                {currentType} (not in current list)
-              </option>
-            ) : null}
-            {groupTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
+            id={`edit-group_type-${group.id}`}
+            label="Group type"
+            initialValue={currentType}
+          />
         </div>
         <div>
           <label

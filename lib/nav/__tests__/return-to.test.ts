@@ -4,6 +4,7 @@ import {
   RETURN_PARAM,
   decorateReturn,
   isReturning,
+  resolveReturnHref,
   returnOriginConfig,
 } from "@/lib/nav/return-to";
 
@@ -51,6 +52,65 @@ describe("returnTo convention", () => {
       const href = decorateReturn("/admin/groups?tab=needs_setup", "setup");
       const value = new URL(href, "https://x").searchParams.get(RETURN_PARAM);
       expect(isReturning("setup", value ?? undefined)).toBe(true);
+    });
+  });
+
+  // #776 Phase 1 (OPP-8) — the dynamic group-health origin: the "Edit rubric"
+  // round trip from a group's health tab to the Settings rubric editor and back.
+  describe("group-health origin", () => {
+    it("resolveReturnHref builds the return target from the group param", () => {
+      const params = new URLSearchParams("tab=care&from=group-health&group=g1");
+      expect(resolveReturnHref("group-health", params)).toBe(
+        "/admin/groups/g1?tab=health&from=group-health"
+      );
+    });
+
+    it("propagates the setup origin through the rubric round trip (#785)", () => {
+      // When the group was reached from setup, origin_setup=1 rides the round
+      // trip so the return URL keeps both from=group-health (ReturnFocus) and the
+      // setup signal (Back-to-setup).
+      const params = new URLSearchParams(
+        "tab=care&from=group-health&group=g1&origin_setup=1"
+      );
+      expect(resolveReturnHref("group-health", params)).toBe(
+        "/admin/groups/g1?tab=health&from=group-health&origin_setup=1"
+      );
+    });
+
+    it("omits the setup origin when it wasn't set", () => {
+      const params = new URLSearchParams("from=group-health&group=g1");
+      expect(resolveReturnHref("group-health", params)).toBe(
+        "/admin/groups/g1?tab=health&from=group-health"
+      );
+    });
+
+    it("isReturning recognizes the group-health marker", () => {
+      expect(isReturning("group-health", "group-health")).toBe(true);
+      expect(isReturning("group-health", "setup")).toBe(false);
+      expect(isReturning("group-health", undefined)).toBe(false);
+    });
+
+    it("the outbound decorated href round-trips origin + group context", () => {
+      // The EditRubricLink decorates the Settings destination with the marker;
+      // the banner then resolves the return href back to the originating group.
+      const outbound = decorateReturn(
+        "/admin/settings?tab=care&group=g1",
+        "group-health"
+      );
+      const params = new URL(outbound, "https://x").searchParams;
+      expect(
+        isReturning("group-health", params.get(RETURN_PARAM) ?? undefined)
+      ).toBe(true);
+      expect(resolveReturnHref("group-health", params)).toBe(
+        "/admin/groups/g1?tab=health&from=group-health"
+      );
+    });
+
+    it("setup's static return href still resolves unchanged", () => {
+      expect(resolveReturnHref("setup", new URLSearchParams())).toBe(
+        "/admin?from=setup"
+      );
+      expect(returnOriginConfig("setup").label).toBe("← Back to setup");
     });
   });
 });

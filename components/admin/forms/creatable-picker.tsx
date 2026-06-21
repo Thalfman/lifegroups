@@ -36,6 +36,7 @@ export function CreatablePicker({
   name,
   id,
   label,
+  initialValue,
   addOptionLabel = "＋ Add new…",
   newItemLabel = "New item",
   placeholder,
@@ -48,6 +49,11 @@ export function CreatablePicker({
   name: string;
   id: string;
   label: string;
+  // The value to preselect on mount (the edit form's current group type). When
+  // it's not in `options` (a free-text value, or one later removed from the
+  // admin list) it's seeded into `extras` so it stays selectable — and the form
+  // reset returns here, not to "—", so saving an unrelated edit can't clear it.
+  initialValue?: string;
   addOptionLabel?: string;
   newItemLabel?: string;
   placeholder?: string;
@@ -55,10 +61,17 @@ export function CreatablePicker({
   maxLength?: number;
   emptyError?: string;
 }) {
+  const seedValue = initialValue ?? "";
   // Values appended this session (one the user just added) layer on top of the
-  // server-provided list until the next server read carries them natively.
-  const [extras, setExtras] = useState<string[]>([]);
-  const [value, setValue] = useState("");
+  // server-provided list until the next server read carries them natively. Seed
+  // with the initial value when it isn't already an EXACT option — a value that
+  // differs only by case (stored `men` vs option `Men`) must stay seeded, or the
+  // controlled <select> would have no matching option and an unrelated save could
+  // submit it blank, clearing the field (the old edit form kept such values).
+  const [extras, setExtras] = useState<string[]>(
+    seedValue.length > 0 && !options.includes(seedValue) ? [seedValue] : []
+  );
+  const [value, setValue] = useState(seedValue);
   const [adding, setAdding] = useState(false);
   const [newItem, setNewItem] = useState("");
   const [error, setError] = useState<string | undefined>(undefined);
@@ -66,26 +79,26 @@ export function CreatablePicker({
   const selectRef = useRef<HTMLSelectElement>(null);
   const newItemRef = useRef<HTMLInputElement>(null);
 
-  const values = [
-    ...options,
-    ...extras.filter(
-      (t) => !options.some((g) => g.toLowerCase() === t.toLowerCase())
-    ),
-  ];
+  // Exact (case-sensitive) dedup against options: a seeded value that differs
+  // only by case from an option is kept as its own selectable option so the
+  // controlled select always has a match. The add-new flow has its own
+  // case-insensitive guard (`addItem`'s `existing` check), so this never shows a
+  // duplicate `Men`/`men` the user typed.
+  const values = [...options, ...extras.filter((t) => !options.includes(t))];
 
   // Clear back to no-selection when the enclosing form resets on success.
   useEffect(() => {
     const form = selectRef.current?.form;
     if (!form) return;
     const onReset = () => {
-      setValue("");
+      setValue(seedValue);
       setAdding(false);
       setNewItem("");
       setError(undefined);
     };
     form.addEventListener("reset", onReset);
     return () => form.removeEventListener("reset", onReset);
-  }, []);
+  }, [seedValue]);
 
   // Move focus to the revealed box when the user opts to add a new value.
   useEffect(() => {

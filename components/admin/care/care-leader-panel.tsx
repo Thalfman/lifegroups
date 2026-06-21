@@ -9,6 +9,8 @@ import { formatIsoDateOr } from "@/lib/shared/date";
 import { pluralize } from "@/lib/shared/pluralize";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { NoteTransparencyToggle } from "@/components/admin/shepherd-care/note-transparency-toggle";
+import { CareLeaderActionsMenu } from "@/components/admin/care/care-row-actions";
+import type { UserRole } from "@/lib/auth/roles";
 import { CareNoteWriteForm } from "@/components/admin/shepherd-care/care-note-write-form";
 import { LeaderHealthGradeEditor } from "@/components/admin/shepherd-care/leader-health-grade";
 import { GroupRubricGradeEntry } from "@/components/admin/care/group-rubric-grade-entry";
@@ -192,11 +194,16 @@ function GradesAndNotes({
 export function CareLeaderPanel({
   leader,
   gradeEntry,
+  viewerRole,
 }: {
   leader: CareAccordionLeader;
   // ADR 0023 — when provided, the panel hosts the inline grade editors + note
   // write forms. Omitted in contexts without the enrichment (older tests).
   gradeEntry?: CareGradeEntryBundle;
+  // #776 OPP-1 — when provided (the real Care surface, inside the shared
+  // contextual-action host), the panel shows the per-leader action menu. Omitted
+  // in host-less contexts (the a11y harness, older tests) so no menu renders.
+  viewerRole?: UserRole;
 }) {
   const groupLabel =
     leader.groupNames.length > 0 ? leader.groupNames.join(", ") : "No group";
@@ -242,6 +249,20 @@ export function CareLeaderPanel({
         </>
       }
     >
+      {/* #776 OPP-1 — act on this shepherd (add note/prayer, log a touch, set
+          the next step, create a follow-up) without leaving Care. Lives in the
+          expanded body, never the <summary>, so it can't fight the disclosure
+          toggle. Rendered only inside the shared contextual-action host. */}
+      {viewerRole ? (
+        <div className="flex justify-end">
+          <CareLeaderActionsMenu
+            leaderProfileId={leader.profileId}
+            leaderName={leader.fullName}
+            viewerRole={viewerRole}
+          />
+        </div>
+      ) : null}
+
       {/* At-a-glance, mirroring the spreadsheet row (Last contact / Next step).
             Both come straight from the care directory row — no extra read. */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(140px,1fr))]">

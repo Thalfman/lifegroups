@@ -27,6 +27,7 @@ import { buildCareAccordion } from "@/lib/admin/care-accordion";
 import { PEOPLE_IMPORT_HREF } from "@/lib/admin/people-import";
 import type { CareAccordionEnrichment } from "@/lib/supabase/care-accordion-reads";
 import type { ActiveShepherdCoverageAssignmentSummary } from "@/lib/supabase/read-models";
+import type { UserRole } from "@/lib/auth/roles";
 import type { GroupsRow } from "@/types/database";
 
 const CARE_GROUP_HEADING = "m-0 font-sans text-sm font-semibold text-ink3";
@@ -138,6 +139,11 @@ export function buildCareWorkspace({
   enrichment,
   notesFeed,
 }: CareWorkspaceInput): CareWorkspace {
+  // /admin/care admits only ministry_admin + super_admin (requireAdmin), so the
+  // viewer is always an admin; carry the precise role for the registry's
+  // role-gating on the per-leader contextual action menu (#776 OPP-1).
+  const viewerRole: UserRole = isSuperAdmin ? "super_admin" : "ministry_admin";
+
   const ownerNameByShepherdId = new Map<string, string>();
   for (const a of care.assignments) {
     ownerNameByShepherdId.set(a.shepherd_profile_id, a.over_shepherd.full_name);
@@ -213,6 +219,14 @@ export function buildCareWorkspace({
     groupHealthByGroupId: enrichment.groupHealthByGroupId,
     noteStateByLeaderId: enrichment.noteStateByLeaderId,
   });
+  // The leaders the contextual actions may target: exactly those shown in the
+  // accordion (active shepherds). The Notes feed can surface historical notes
+  // about a since-deactivated leader, and the care write RPCs reject writes to a
+  // non-active subject — so gate the feed's action menu to this set rather than
+  // offering actions that would reliably fail (#785).
+  const actionableLeaderIds = new Set<string>(
+    accordionPanes.flatMap((pane) => pane.leaders.map((l) => l.profileId))
+  );
   const hasCareLeaders = care.entries.length > 0;
   const hasCoverage = care.assignments.length > 0;
   const showCareSetupNotice =
@@ -245,6 +259,7 @@ export function buildCareWorkspace({
           <CareAccordion
             panes={accordionPanes}
             isSuperAdmin={isSuperAdmin}
+            viewerRole={viewerRole}
             gradeEntry={enrichment.gradeEntry}
           />
         </div>
@@ -399,6 +414,8 @@ export function buildCareWorkspace({
           feedAvailable={notesFeed.feedAvailable}
           sealedAvailable={notesFeed.sealedAvailable}
           namesAvailable={notesFeed.namesAvailable}
+          viewerRole={viewerRole}
+          actionableLeaderIds={actionableLeaderIds}
         />
       ),
     },

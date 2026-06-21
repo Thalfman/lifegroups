@@ -12,6 +12,7 @@ import {
   type CareAccordionPane,
   type CareGradeEntryBundle,
 } from "@/lib/admin/care-accordion";
+import type { UserRole } from "@/lib/auth/roles";
 import { pluralize } from "@/lib/shared/pluralize";
 
 // The canonical Care view (#373, ADR 0016): a collapsible accordion grouped by
@@ -42,10 +43,12 @@ function attentionLabel(count: number): string {
 function CarePane({
   pane,
   isSuperAdmin,
+  viewerRole,
   gradeEntry,
 }: {
   pane: CareAccordionPane;
   isSuperAdmin: boolean;
+  viewerRole?: UserRole;
   gradeEntry?: CareGradeEntryBundle;
 }) {
   // Triage roll-up so a collapsed pane signals where the work is (Job 1: "how
@@ -115,6 +118,7 @@ function CarePane({
           <CareLeaderPanel
             key={leader.profileId}
             leader={leader}
+            viewerRole={viewerRole}
             gradeEntry={gradeEntry}
           />
         ))
@@ -140,10 +144,16 @@ function CarePane({
 export function CareAccordion({
   panes,
   isSuperAdmin = false,
+  viewerRole,
   gradeEntry,
 }: {
   panes: CareAccordionPane[];
   isSuperAdmin?: boolean;
+  // The admin viewer's role, for the per-leader contextual action menu's
+  // registry gating (#776 OPP-1). /admin/care is admin-only, so this is always
+  // ministry_admin or super_admin. Omitted in contexts without the shared
+  // contextual-action host (the a11y harness, older tests) → no menu renders.
+  viewerRole?: UserRole;
   // ADR 0023 — the inline grade editors' inputs; passed straight through to
   // each leader panel so the pure accordion model stays untouched.
   gradeEntry?: CareGradeEntryBundle;
@@ -174,6 +184,7 @@ export function CareAccordion({
               key={pane.overShepherdId ?? "unassigned"}
               pane={pane}
               isSuperAdmin={isSuperAdmin}
+              viewerRole={viewerRole}
               gradeEntry={gradeEntry}
             />
           ))
