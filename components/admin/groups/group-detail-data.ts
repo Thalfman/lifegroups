@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { measureReadBundle } from "@/lib/observability/read-timing";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveMemberships,
@@ -272,50 +273,45 @@ async function buildOverviewTab(
   group: GroupsRow,
   periodMonth: string
 ): Promise<GroupOverviewTabData> {
-  const [leadersRes, membershipsRes, defaultsRes, healthRes, overrideRes] =
-    await Promise.all([
-      reads.fetchAllGroupLeaders({ activeOnly: true }),
-      reads.fetchActiveMemberships({ groupId: group.id }),
-      reads.fetchMetricDefaults(),
-      // Targeted single-group health read (#308): runs the same grade
-      // computation as the bulk overview but only for this group, so opening
-      // one detail page no longer recomputes every active group.
-      reads.fetchGroupHealthOverview(group.id, periodMonth),
-      // Per-group metric overrides — resolved the SAME way the Groups list and
-      // Settings do (defaults → per-group override precedence, ADR 0011) so
-      // the detail capacity zone can't disagree with the list card.
-      reads.fetchGroupMetricSettings(group.id),
-    ]);
+  // Declaration order is the error precedence; every read here feeds the four
+  // status labels (see the fail-closed gate below).
+  const batch = await readBatch({
+    leaders: () => reads.fetchAllGroupLeaders({ activeOnly: true }),
+    memberships: () => reads.fetchActiveMemberships({ groupId: group.id }),
+    defaults: () => reads.fetchMetricDefaults(),
+    // Targeted single-group health read (#308): runs the same grade
+    // computation as the bulk overview but only for this group, so opening
+    // one detail page no longer recomputes every active group.
+    health: () => reads.fetchGroupHealthOverview(group.id, periodMonth),
+    // Per-group metric overrides — resolved the SAME way the Groups list and
+    // Settings do (defaults → per-group override precedence, ADR 0011) so
+    // the detail capacity zone can't disagree with the list card.
+    override: () => reads.fetchGroupMetricSettings(group.id),
+  });
 
   // The four labels are only trustworthy if every read that feeds them
   // succeeded. On a failure, fail closed (statuses null → the page notice)
   // rather than rendering a confidently-wrong status.
-  const statusFailed = Boolean(
-    leadersRes.error ||
-    membershipsRes.error ||
-    defaultsRes.error ||
-    overrideRes.error ||
-    healthRes.error
-  );
-  const memberCount = membershipsRes.error
+  const statusFailed = !batch.ok;
+  const memberCount = batch.errors.memberships
     ? null
-    : (membershipsRes.data ?? []).length;
-  const stale = healthRes.data?.stale ?? false;
+    : (batch.results.memberships.data ?? []).length;
+  const stale = batch.results.health.data?.stale ?? false;
   if (statusFailed) {
     return { tab: "overview", statuses: null, stale, memberCount };
   }
 
-  const defaults = decodeMetricDefaults(defaultsRes.data ?? null);
-  const override = overrideRes.data ?? null;
-  const hasLeader = (leadersRes.data ?? []).some(
+  const defaults = decodeMetricDefaults(batch.results.defaults.data ?? null);
+  const override = batch.results.override.data ?? null;
+  const hasLeader = (batch.results.leaders.data ?? []).some(
     (l) => l.group_id === group.id && l.active
   );
   const grade: GroupHealthLetter | null =
-    healthRes.data?.computed_letter ?? null;
+    batch.results.health.data?.computed_letter ?? null;
 
   const cap = effectiveCapacity(group, override, defaults);
   const status = capacityStatus({
-    activeMemberCount: (membershipsRes.data ?? []).length,
+    activeMemberCount: (batch.results.memberships.data ?? []).length,
     effectiveCapacity: cap,
     warningPct: effectiveCapacityWarningPct(override, defaults),
     fullPct: effectiveCapacityFullPct(defaults),
@@ -349,20 +345,22 @@ async function buildPeopleTab(
 ): Promise<GroupPeopleTabData> {
   const archived = lifecycleCategory(group.lifecycle_status) === "archived";
 
-  const [leadersRes, profilesRes, membershipsRes, allMembersRes, prospectsRes] =
-    await Promise.all([
-      reads.fetchAllGroupLeaders({ activeOnly: true }),
+  const batch = await readBatch({
+    leaders: () => reads.fetchAllGroupLeaders({ activeOnly: true }),
+    profiles: () =>
       reads.fetchProfilesForAdmin({ roles: ["leader", "co_leader"] }),
-      reads.fetchActiveMemberships({ groupId: group.id }),
-      // The full active-member pool feeds the inline assign control; skip the
-      // read for an archived group, whose roster is read-only.
-      archived
-        ? Promise.resolve({ data: null, error: null })
-        : reads.fetchAllMembers(),
-      reads.fetchProspectSignalsForGroup(group.id),
-    ]);
+    memberships: () => reads.fetchActiveMemberships({ groupId: group.id }),
+    // The full active-member pool feeds the inline assign control; skip the
+    // read for an archived group, whose roster is read-only.
+    allMembers: archived
+      ? () => Promise.resolve({ data: null, error: null })
+      : () => reads.fetchAllMembers(),
+    prospects: () => reads.fetchProspectSignalsForGroup(group.id),
+  });
 
-  const memberIds = (membershipsRes.data ?? []).map((m) => m.member_id);
+  const memberIds = (batch.results.memberships.data ?? []).map(
+    (m) => m.member_id
+  );
   const rosterMemberIds = new Set(memberIds);
 
   // A non-archived group already loaded the full active-member pool above (it
@@ -377,17 +375,23 @@ async function buildPeopleTab(
   // The roster fails closed on whichever read backs it.
   const membersRes = archived
     ? await reads.fetchMembersByIds(memberIds)
-    : allMembersRes;
+    : batch.results.allMembers;
 
-  // Fail closed per section: a failed read must not render an empty roster as
-  // if authoritative (leader names come from the profiles read).
-  const leadersFailed = Boolean(leadersRes.error || profilesRes.error);
-  const membersFailed = Boolean(membershipsRes.error || membersRes.error);
+  // Fail closed per section, composing precedence from the batch's error bag: a
+  // failed read must not render an empty roster as if authoritative (leader
+  // names come from the profiles read). The members section also folds in the
+  // archived-only by-id waterfall read, which isn't part of the batch.
+  const leadersFailed =
+    (batch.errors.leaders ?? batch.errors.profiles) !== null;
+  const membersFailed =
+    (batch.errors.memberships ?? membersRes.error?.message ?? null) !== null;
 
-  const profilesById = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
+  const profilesById = new Map(
+    (batch.results.profiles.data ?? []).map((p) => [p.id, p])
+  );
   const leaders = leadersFailed
     ? null
-    : (leadersRes.data ?? [])
+    : (batch.results.leaders.data ?? [])
         .filter((l) => l.group_id === group.id && l.active)
         .map((l) => ({
           id: l.id,
@@ -411,22 +415,22 @@ async function buildPeopleTab(
   // assign control is suppressed rather than offering wrong choices. An
   // archived group skips options entirely (read-only roster).
   const assignedProfileIds = new Set(
-    (leadersRes.data ?? [])
+    (batch.results.leaders.data ?? [])
       .filter((l) => l.group_id === group.id && l.active)
       .map((l) => l.profile_id)
   );
   const assignableLeaders =
     archived || leadersFailed
       ? null
-      : (profilesRes.data ?? [])
+      : (batch.results.profiles.data ?? [])
           .filter((p) => p.status === "active" && !assignedProfileIds.has(p.id))
           .sort((a, b) => a.full_name.localeCompare(b.full_name))
           .map((p) => ({ id: p.id, name: p.full_name }));
 
   const assignableMembers =
-    archived || membersFailed || allMembersRes.error
+    archived || membersFailed || batch.errors.allMembers !== null
       ? null
-      : (allMembersRes.data ?? [])
+      : (batch.results.allMembers.data ?? [])
           .filter((m) => m.status === "active" && !rosterMemberIds.has(m.id))
           .sort((a, b) => a.full_name.localeCompare(b.full_name))
           .map((m) => ({ id: m.id, name: m.full_name }));
@@ -440,7 +444,9 @@ async function buildPeopleTab(
     assignableMembers,
     // Fail closed: a failed funnel read shows a degraded note, never a false
     // "no prospects matched to this group".
-    prospectSignals: prospectsRes.error ? null : prospectsRes.data,
+    prospectSignals: batch.errors.prospects
+      ? null
+      : batch.results.prospects.data,
   };
 }
 
@@ -449,28 +455,31 @@ async function buildHealthTab(
   group: GroupsRow,
   periodMonth: string
 ): Promise<GroupHealthTabData> {
-  const [overviewRes, ratingsRes, defaultsRes, platformConfigRes] =
-    await Promise.all([
-      // Single-group health read (#308) — same grade logic, O(1) reads.
-      reads.fetchGroupHealthOverview(group.id, periodMonth),
-      reads.fetchGroupHealthRatings(group.id, periodMonth),
-      reads.fetchMetricDefaults(),
-      // The operator-editable rating question wordings for the shared editor.
-      // Super-Admin-only via RLS: a ministry admin reads null and resolveCopy
-      // falls back to the documented placeholders — intended, not an error.
-      reads.fetchPlatformConfig(),
-    ]);
+  const batch = await readBatch({
+    // Single-group health read (#308) — same grade logic, O(1) reads.
+    overview: () => reads.fetchGroupHealthOverview(group.id, periodMonth),
+    ratings: () => reads.fetchGroupHealthRatings(group.id, periodMonth),
+    defaults: () => reads.fetchMetricDefaults(),
+    // The operator-editable rating question wordings for the shared editor.
+    // Super-Admin-only via RLS: a ministry admin reads null and resolveCopy
+    // falls back to the documented placeholders — intended, not an error.
+    platformConfig: () => reads.fetchPlatformConfig(),
+  });
 
-  const failed = Boolean(
-    overviewRes.error || ratingsRes.error || defaultsRes.error
-  );
-  const row = overviewRes.data ?? null;
+  // platformConfig is deliberately excluded from the gate: a ministry admin
+  // reads null under RLS and falls back to placeholder copy — not a failure.
+  const failed =
+    (batch.errors.overview ?? batch.errors.ratings ?? batch.errors.defaults) !==
+    null;
+  const row = batch.results.overview.data ?? null;
   const watchGrade = decodeMetricDefaults(
-    defaultsRes.data ?? null
+    batch.results.defaults.data ?? null
   ).group_health_watch_grade;
   const grade = row?.computed_letter ?? null;
 
-  const editableCopy = decodeAppConfig(platformConfigRes.data).editableCopy;
+  const editableCopy = decodeAppConfig(
+    batch.results.platformConfig.data
+  ).editableCopy;
 
   return {
     tab: "health",
@@ -483,8 +492,10 @@ async function buildHealthTab(
     stale: row?.stale ?? false,
     attendancePct: row?.attendance_pct ?? null,
     attendanceWeeksCounted: row?.attendance_weeks_counted ?? 0,
-    spiritualGrowthScore: ratingsRes.data?.spiritual_growth_score ?? null,
-    groupQuestionScore: ratingsRes.data?.group_question_score ?? null,
+    spiritualGrowthScore:
+      batch.results.ratings.data?.spiritual_growth_score ?? null,
+    groupQuestionScore:
+      batch.results.ratings.data?.group_question_score ?? null,
     // No editor over unknown values: the row only flows through when every
     // status-feeding read succeeded.
     editorRow: failed ? null : row,
@@ -507,14 +518,22 @@ async function buildAttendanceTab(
   // no new data unless a Super Admin re-enables check-ins via the runtime
   // flag. We surface what's on record as explicitly historical and never
   // frame it as a live feed.
-  const [sessionsRes, checkInsLive] = await Promise.all([
-    reads.fetchAttendanceSessions({ groupId: group.id, limit: 12 }),
+  // checkInsLive is a plain boolean flag (not a ReadResult, it fails safe to
+  // false on its own), so it can't go through readBatch; co-await it alongside
+  // the batch to keep the two reads concurrent.
+  const [batch, checkInsLive] = await Promise.all([
+    readBatch({
+      sessions: () =>
+        reads.fetchAttendanceSessions({ groupId: group.id, limit: 12 }),
+    }),
     reads.fetchCheckInsLive(),
   ]);
   return {
     tab: "attendance",
     checkInsLive,
-    sessions: sessionsRes.error ? null : (sessionsRes.data ?? []),
+    sessions: batch.errors.sessions
+      ? null
+      : (batch.results.sessions.data ?? []),
   };
 }
 
@@ -522,10 +541,14 @@ async function buildFollowUpsTab(
   reads: GroupDetailReads,
   group: GroupsRow
 ): Promise<GroupFollowUpsTabData> {
-  const followUpsRes = await reads.fetchOpenFollowUps({ groupId: group.id });
+  const batch = await readBatch({
+    followUps: () => reads.fetchOpenFollowUps({ groupId: group.id }),
+  });
   return {
     tab: "follow-ups",
-    followUps: followUpsRes.error ? null : (followUpsRes.data ?? []),
+    followUps: batch.errors.followUps
+      ? null
+      : (batch.results.followUps.data ?? []),
   };
 }
 
@@ -540,16 +563,19 @@ async function buildEventsTab(
   // occurrences pick up any per-date changes (cancelled, retyped, retitled) —
   // the calendar page merges the two the identical way (read-only here; no
   // writes per ADR 0009).
-  const eventsRes = await reads.fetchGroupCalendarEvents({
-    groupId: group.id,
-    fromDate: todayIso,
-    toDate: toIso,
+  const batch = await readBatch({
+    events: () =>
+      reads.fetchGroupCalendarEvents({
+        groupId: group.id,
+        fromDate: todayIso,
+        toDate: toIso,
+      }),
   });
 
   // Fail closed if the override read failed: without it we cannot tell which
   // generated occurrences were cancelled / retyped / retitled, so showing the
   // un-overridden schedule would present stale dates as live meetings.
-  if (eventsRes.error) return { tab: "events", occurrences: null };
+  if (batch.errors.events) return { tab: "events", occurrences: null };
 
   // Reuse the calendar's occurrence-generation + override-merge helpers
   // rather than duplicating the cadence logic. Generated meetings from the
@@ -566,7 +592,7 @@ async function buildEventsTab(
   );
   const occurrences = mergeOverrides(
     generated,
-    toSavedOverrides(eventsRes.data ?? []),
+    toSavedOverrides(batch.results.events.data ?? []),
     group.meeting_time
   );
   return { tab: "events", occurrences };
