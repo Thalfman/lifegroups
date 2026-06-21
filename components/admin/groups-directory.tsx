@@ -324,22 +324,30 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
       const targetGroup = draft.group_id
         ? groupsById.get(draft.group_id)
         : undefined;
-      // The restored values are unsaved and the sessionStorage copy is already
-      // gone, so mark the drawer dirty — closing it now must hit the discard
-      // guard rather than silently dropping the restored input (Codex P2).
-      dirtyRef.current = true;
-      // Restoring a client-only sessionStorage draft must happen post-hydration
-      // (the server can't read it, so doing it in render would mismatch) — the
-      // same one-shot storage-restore exception use-persisted-view-state takes.
-      /* eslint-disable react-hooks/set-state-in-effect --
-         one-shot restore from a URL marker + sessionStorage; see above */
-      setDraftValues(draft);
       // A draft with a group_id reopens that group's edit drawer; one without
-      // (or whose group has since gone) reopens the create drawer.
-      setEditor(
-        targetGroup ? { mode: "edit", group: targetGroup } : { mode: "create" }
-      );
-      /* eslint-enable react-hooks/set-state-in-effect */
+      // reopens the create drawer. If an edit draft's group can't be resolved
+      // (a transient degraded read, or the group is gone), DON'T fall back to
+      // create — saving that would submit the create form and could duplicate
+      // the group; skip the restore instead (Codex P2).
+      const editorState: GroupEditorState | null = !draft.group_id
+        ? { mode: "create" }
+        : targetGroup
+          ? { mode: "edit", group: targetGroup }
+          : null;
+      if (editorState) {
+        // The restored values are unsaved and the sessionStorage copy is already
+        // gone, so mark the drawer dirty — closing it now must hit the discard
+        // guard rather than silently dropping the restored input (Codex P2).
+        dirtyRef.current = true;
+        // Restoring a client-only sessionStorage draft must happen post-hydration
+        // (the server can't read it, so doing it in render would mismatch) — the
+        // same one-shot storage-restore exception use-persisted-view-state takes.
+        /* eslint-disable react-hooks/set-state-in-effect --
+           one-shot restore from a URL marker + sessionStorage; see above */
+        setDraftValues(draft);
+        setEditor(editorState);
+        /* eslint-enable react-hooks/set-state-in-effect */
+      }
     }
     // Strip only the draft marker so a manual refresh can't reopen from a stale
     // id — preserving any other params (notably origin_setup=1, which keeps the

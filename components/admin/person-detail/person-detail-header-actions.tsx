@@ -13,7 +13,7 @@ import {
   adminDeactivateMember,
 } from "@/app/(protected)/admin/people/actions";
 import type { ContextualAction } from "@/lib/admin/contextual-actions";
-import { isSuperAdminRole, type UserRole } from "@/lib/auth/roles";
+import type { UserRole } from "@/lib/auth/roles";
 
 // The person detail-header action menu (#781 OPP-6) — the People-directory's
 // per-person lifecycle actions, now reachable from the person's own detail page
@@ -56,12 +56,12 @@ export function PersonDetailHeaderActions({
   const drawer = useEditingDrawer<DrawerState>();
   const isActive = person.status === "active";
 
-  // A super_admin target can only be archived by another super_admin — the
-  // deactivate RPC rejects a ministry_admin → super_admin deactivate as
-  // forbidden_target, so the directory never offers it and neither should this
-  // header (#788).
-  const archiveForbiddenTarget =
-    person.role === "super_admin" && !isSuperAdminRole(viewerRole);
+  // A super_admin is excluded from these lifecycle flows everywhere — the People
+  // directory and the Super-Admin console both omit them, and the deactivate RPC
+  // rejects a ministry_admin → super_admin deactivate as forbidden_target. Treat
+  // a super_admin target as non-archivable regardless of viewer so the detail
+  // header never reintroduces a hidden super-admin deactivation path (#788).
+  const archiveForbiddenTarget = person.role === "super_admin";
 
   // Instance applicability on top of the registry's role gate: change-role only
   // for an active leader/co-leader; archive only for an active, non-forbidden

@@ -159,23 +159,28 @@ describe("PersonDetailHeaderActions", () => {
     expect(screen.queryByRole("button", { name: /Actions for/ })).toBeNull();
   });
 
-  it("does not offer Archive for a super_admin target to a ministry_admin (#788 forbidden_target)", () => {
-    render(
-      <PersonDetailHeaderActions
-        person={{
-          kind: "profile",
-          id: "sa1",
-          fullName: "Tom Super",
-          status: "active",
-          leaderRole: null,
-          role: "super_admin",
-        }}
-        viewerRole="ministry_admin"
-      />
-    );
-    // change-role doesn't apply (not a leader) and archive is forbidden, so the
-    // menu has no actions and renders nothing.
-    expect(screen.queryByRole("button", { name: /Actions for/ })).toBeNull();
+  it("never offers Archive for a super_admin target, even to a super_admin (#788)", () => {
+    // The directory + Super-Admin console exclude super_admins from lifecycle
+    // flows, so the detail header must too — regardless of the viewer's role.
+    for (const viewerRole of ["ministry_admin", "super_admin"] as const) {
+      render(
+        <PersonDetailHeaderActions
+          person={{
+            kind: "profile",
+            id: "sa1",
+            fullName: "Tom Super",
+            status: "active",
+            leaderRole: null,
+            role: "super_admin",
+          }}
+          viewerRole={viewerRole}
+        />
+      );
+      // change-role doesn't apply (not a leader) and archive is forbidden, so
+      // the menu has no actions and renders nothing.
+      expect(screen.queryByRole("button", { name: /Actions for/ })).toBeNull();
+      cleanup();
+    }
   });
 
   it("renders no menu for a non-admin viewer", () => {
