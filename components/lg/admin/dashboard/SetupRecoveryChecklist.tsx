@@ -6,7 +6,7 @@ import {
 } from "@/lib/dashboard/setup-recovery";
 import type { AdminDashboardData } from "@/lib/dashboard/types";
 import { cn } from "@/lib/utils";
-import { SetupReturnFocus } from "./SetupReturnFocus";
+import { ReturnFocus } from "@/lib/nav/return-focus";
 
 // Id given to the first incomplete step's action, so a from=setup return to Home
 // can re-focus the next step the admin needs to do (ADR 0027).
@@ -111,7 +111,7 @@ export function SetupRecoveryChecklist({
         ))}
       </ol>
 
-      <SetupReturnFocus targetId={NEXT_STEP_ID} active={focusOnReturn} />
+      <ReturnFocus targetId={NEXT_STEP_ID} active={focusOnReturn} />
     </section>
   );
 }

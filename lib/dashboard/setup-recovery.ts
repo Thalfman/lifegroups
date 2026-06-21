@@ -1,5 +1,10 @@
 import type { AdminDashboardData } from "@/lib/dashboard/types";
 import { PEOPLE_IMPORT_HREF } from "@/lib/admin/people-import";
+import {
+  RETURN_PARAM,
+  decorateReturn,
+  returnOriginConfig,
+} from "@/lib/nav/return-to";
 
 export type SetupRecoveryStepKey =
   | "import_people"
@@ -48,17 +53,15 @@ function statusFromCount(count: number): SetupRecoveryStatus {
 
 // ADR 0027: setup deep-links carry a `?from=setup` marker so the target surface
 // renders a reusable "← Back to setup" affordance and returning to Home
-// re-focuses the next incomplete step. Append it without clobbering an existing
-// query string or fragment (e.g. `/admin/settings?tab=system#people-import` →
-// `/admin/settings?tab=system&from=setup#people-import`).
-export const FROM_SETUP_PARAM = "from";
-export const FROM_SETUP_VALUE = "setup";
+// re-focuses the next incomplete step. These are now the `setup` specialization
+// of the generalized `returnTo` convention (`lib/nav/return-to.ts`, #776); the
+// exports stay so existing callers (`back-to-setup-link`, the setup pages) keep
+// working unchanged.
+export const FROM_SETUP_PARAM = RETURN_PARAM;
+export const FROM_SETUP_VALUE = returnOriginConfig("setup").value;
 
 function withFromSetup(href: string): string {
-  const [path, hash] = href.split("#");
-  const separator = path.includes("?") ? "&" : "?";
-  const withMarker = `${path}${separator}${FROM_SETUP_PARAM}=${FROM_SETUP_VALUE}`;
-  return hash ? `${withMarker}#${hash}` : withMarker;
+  return decorateReturn(href, "setup");
 }
 
 function hasHiddenArea(
