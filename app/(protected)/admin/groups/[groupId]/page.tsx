@@ -28,8 +28,18 @@ import { cn } from "@/lib/utils";
 import { requireAdmin } from "@/lib/auth/session";
 import { isSuperAdminRole } from "@/lib/auth/roles";
 import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
+import { isReturning } from "@/lib/nav/return-to";
+import { ReturnFocus } from "@/lib/nav/return-focus";
 import { GroupHealthEditButton } from "@/components/admin/group-detail/group-health-edit-button";
+import { GroupDetailHeaderActions } from "@/components/admin/groups/group-detail-header-actions";
+import { EditRubricLink } from "@/components/admin/group-detail/edit-rubric-link";
 import { GroupRosterManager } from "@/components/admin/group-detail/group-roster-manager";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  fetchGroupTypesCached,
+  fetchMetricDefaultsCached,
+} from "@/lib/supabase/cached-config";
+import { decodeMetricDefaults } from "@/lib/admin/metrics";
 import { Suspense } from "react";
 import { DetailTabPanelSkeleton } from "@/components/lg/DetailPageSkeleton";
 import {
@@ -78,6 +88,27 @@ function resolveTab(raw: string | undefined): TabKey {
   return (TABS.find((t) => t.key === raw)?.key ?? "overview") as TabKey;
 }
 
+// The editor-only config the detail-header actions need (the group-type picker
+// list + the ministry default capacity). Loaded behind its own client and
+// degrading to empty/null so the header still renders if a config read fails
+// (mirroring the list shell, which reads the same two cached config rows).
+async function loadGroupEditorConfig(): Promise<{
+  groupTypes: string[];
+  defaultCapacity: number | null;
+}> {
+  const client = await createSupabaseServerClient();
+  if (!client) return { groupTypes: [], defaultCapacity: null };
+  const [typesResult, defaultsResult] = await Promise.all([
+    fetchGroupTypesCached(client),
+    fetchMetricDefaultsCached(client),
+  ]);
+  return {
+    groupTypes: typesResult.data ?? [],
+    defaultCapacity: decodeMetricDefaults(defaultsResult.data ?? null)
+      .default_group_capacity,
+  };
+}
+
 // The two text voices on this page: the small zone/detail label and the body
 // copy. Same classes the migrated Care panels use for their slot labels.
 const LABEL_TEXT =
@@ -116,12 +147,16 @@ export default async function AdminGroupDetailPage({
   // so it must complete before anything renders. The heavy per-tab reads are
   // deferred into the Suspense boundary below and stream in after the header +
   // tab bar paint (repo-sweep #605).
-  const [spine, hiddenNavAreas] = await Promise.all([
+  const [spine, hiddenNavAreas, editorConfig] = await Promise.all([
     loadGroupSpine(groupId),
     loadHiddenNavAreas(),
+    loadGroupEditorConfig(),
   ]);
   if (spine.kind !== "ok") notFound();
   const { group } = spine;
+  // #776 OPP-8 — returned here after editing the rubric in Settings; the Health
+  // tab restores scroll + focus to the "Edit rubric" button via ReturnFocus.
+  const returningFromRubric = isReturning("group-health", search.from);
   const tabOptions: GroupDetailOptions = {
     groupId,
     tab,
@@ -139,16 +174,28 @@ export default async function AdminGroupDetailPage({
       />
       <PageBody maxWidth={920}>
         <div className="grid gap-5">
-          {fromSetup ? (
-            <BackToSetupLink className="w-fit font-sans text-sm font-semibold text-ink2 no-underline hover:text-ink" />
-          ) : (
-            <Link
-              href="/admin/groups"
-              className="font-sans text-sm text-ink2 no-underline"
-            >
-              ← Back to groups
-            </Link>
-          )}
+          {/* Back link on the left, the group action menu on the right (#776
+              OPP-2): Edit / Archive / Restore / (super-admin) Delete now live on
+              the detail header, so reviewing a group no longer means going back
+              to the list to act on it. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {fromSetup ? (
+              <BackToSetupLink className="w-fit font-sans text-sm font-semibold text-ink2 no-underline hover:text-ink" />
+            ) : (
+              <Link
+                href="/admin/groups"
+                className="font-sans text-sm text-ink2 no-underline"
+              >
+                ← Back to groups
+              </Link>
+            )}
+            <GroupDetailHeaderActions
+              group={group}
+              groupTypes={editorConfig.groupTypes}
+              defaultCapacity={editorConfig.defaultCapacity}
+              isSuperAdmin={isSuperAdmin}
+            />
+          </div>
 
           <div
             role="tablist"
@@ -186,6 +233,7 @@ export default async function AdminGroupDetailPage({
               options={tabOptions}
               isSuperAdmin={isSuperAdmin}
               hiddenNavAreas={[...hiddenNavAreas]}
+              returningFromRubric={returningFromRubric}
             />
           </Suspense>
         </div>
@@ -205,12 +253,14 @@ async function GroupTabPanel({
   options,
   isSuperAdmin,
   hiddenNavAreas,
+  returningFromRubric,
 }: {
   group: GroupsRow;
   groupId: string;
   options: GroupDetailOptions;
   isSuperAdmin: boolean;
   hiddenNavAreas: string[];
+  returningFromRubric: boolean;
 }) {
   const tabData = await loadGroupTabData(group, options);
   return (
@@ -227,7 +277,12 @@ async function GroupTabPanel({
         />
       ) : null}
       {tabData.tab === "health" ? (
-        <HealthTab data={tabData} isSuperAdmin={isSuperAdmin} />
+        <HealthTab
+          data={tabData}
+          groupId={groupId}
+          isSuperAdmin={isSuperAdmin}
+          returningFromRubric={returningFromRubric}
+        />
       ) : null}
       {tabData.tab === "attendance" ? (
         <AttendanceTab data={tabData} groupId={groupId} />
@@ -324,10 +379,14 @@ function OverviewTab({
 
 function HealthTab({
   data,
+  groupId,
   isSuperAdmin,
+  returningFromRubric,
 }: {
   data: GroupHealthTabData;
+  groupId: string;
   isSuperAdmin: boolean;
+  returningFromRubric: boolean;
 }) {
   if (data.failed) {
     return (
@@ -373,7 +432,7 @@ function HealthTab({
               health triage, scoped to this group — no bounce to a second
               surface to edit the grade this tab displays. */}
           {data.editorRow ? (
-            <div>
+            <div className="flex flex-wrap items-center gap-3">
               <GroupHealthEditButton
                 row={data.editorRow}
                 period={data.period}
@@ -381,10 +440,20 @@ function HealthTab({
                 groupQuestionLabel={data.groupQuestionLabel}
                 isSuperAdmin={isSuperAdmin}
               />
+              {/* #776 OPP-8 — edit the Group-Health *rubric* (the scoring
+                  criteria + weights that decide this grade), which lives in the
+                  audited Settings editor. A redirect-and-return round trip: it
+                  hands off with a return marker and lands the user back on this
+                  same group/health tab, focus restored to this button. */}
+              <EditRubricLink groupId={groupId} />
             </div>
           ) : null}
         </div>
       </Card>
+
+      {/* Restores scroll + focus to the Edit-rubric button when the user returns
+          from the Settings rubric editor (the `from=group-health` marker). */}
+      <ReturnFocus targetId="edit-rubric-button" active={returningFromRubric} />
 
       <p className={cn("m-0", BODY_TEXT, "text-sm")}>
         Group health is recomputed live from attendance consistency and the

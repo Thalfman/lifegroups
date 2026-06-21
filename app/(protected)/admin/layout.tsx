@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
-import { ContextualActionProvider } from "@/components/lg/admin/contextual-action-provider";
+import { AdminContextualActionHost } from "@/components/lg/admin/contextual-action-host";
 import { requireAdmin } from "@/lib/auth/session";
 import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
 
@@ -24,9 +24,9 @@ export default async function AdminLayout({
       hiddenNavAreas={hiddenNavAreas}
     >
       {/* The shared contextual-action host lives in the admin layout only (not
-          the role-shared LgAppShell), so its drawer + the actions it will host
-          stay admin-scoped and can never mount on /leader or /over-shepherd. */}
-      <ContextualActionProvider>{children}</ContextualActionProvider>
+          the role-shared LgAppShell), so its drawer + the actions it hosts stay
+          admin-scoped and can never mount on /leader or /over-shepherd. */}
+      <AdminContextualActionHost>{children}</AdminContextualActionHost>
     </LgAppShell>
   );
 }

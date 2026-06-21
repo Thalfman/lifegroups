@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import {
   RETURN_PARAM,
   isReturning,
+  resolveReturnHref,
   returnOriginConfig,
   type ReturnOrigin,
 } from "@/lib/nav/return-to";
@@ -26,7 +27,10 @@ export function ReturnBanner({
   if (!isReturning(originKey, params.get(RETURN_PARAM) ?? undefined)) {
     return null;
   }
-  const { returnHref, label } = returnOriginConfig(originKey);
+  // Resolve the return href against the arriving URL — dynamic origins (e.g.
+  // group-health) build it from a param like `?group=<id>`.
+  const returnHref = resolveReturnHref(originKey, params);
+  const { label } = returnOriginConfig(originKey);
   return (
     <Link
       href={returnHref}

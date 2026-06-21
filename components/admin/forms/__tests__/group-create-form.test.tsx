@@ -19,13 +19,17 @@ describe("GroupCreateForm", () => {
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Create group<\/button>/);
   });
 
-  it("offers the group-type list plus an Untyped option", () => {
+  it("offers the group-type list plus a creatable add-new affordance (#776 OPP-3)", () => {
     const html = renderToStaticMarkup(
       <GroupCreateForm defaultCapacity={12} groupTypes={GROUP_TYPES} />
     );
 
-    expect(html).toContain("Untyped");
+    // The creatable picker: a "—" no-selection option, the admin-managed types,
+    // and the in-place "Add new type" affordance (replacing the old plain
+    // <select> with its "Untyped" option).
     expect(html).toContain("Married Couples");
     expect(html).toContain("Young Adults");
+    expect(html).toContain("Add new type");
+    expect(html).toContain('name="group_type"');
   });
 });

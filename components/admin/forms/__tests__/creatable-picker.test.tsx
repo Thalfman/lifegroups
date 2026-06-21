@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within, cleanup } from "@testing-library/react";
+import { render, screen, within, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -87,6 +87,78 @@ describe("CreatablePicker", () => {
 
     expect(screen.getByRole("alert").textContent).toBe("Nope.");
     expect(screen.getByLabelText("New thing")).toBeTruthy();
+  });
+
+  // #776 Phase 1 (OPP-3) — the edit form preselects the group's current type.
+  describe("initialValue", () => {
+    const noop = vi.fn(
+      async (): Promise<CreatableCreateResult> => ({
+        ok: true,
+      })
+    );
+
+    it("preselects an initialValue that is one of the options", () => {
+      render(
+        <CreatablePicker
+          options={["Men", "Women"]}
+          onCreate={noop}
+          name="thing"
+          id="thing"
+          label="Thing"
+          initialValue="Women"
+        />
+      );
+      expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
+        "Women"
+      );
+    });
+
+    it("keeps an initialValue not in the options selectable and selected", () => {
+      render(
+        <CreatablePicker
+          options={["Men", "Women"]}
+          onCreate={noop}
+          name="thing"
+          id="thing"
+          label="Thing"
+          initialValue="Legacy Type"
+        />
+      );
+      const select = screen.getByRole("combobox") as HTMLSelectElement;
+      expect(select.value).toBe("Legacy Type");
+      expect(
+        within(select)
+          .getAllByRole("option")
+          .map((o) => o.textContent)
+      ).toContain("Legacy Type");
+    });
+
+    it("resets back to the initialValue (not blank) on the enclosing form's reset", async () => {
+      const user = userEvent.setup();
+      render(
+        <form>
+          <CreatablePicker
+            options={["Men", "Women"]}
+            onCreate={noop}
+            name="thing"
+            id="thing"
+            label="Thing"
+            initialValue="Men"
+          />
+        </form>
+      );
+      const select = screen.getByRole("combobox") as HTMLSelectElement;
+      // Change away from the seed, then reset: the picker returns to "Men"
+      // (the edit form's current type), not to the "—" no-selection state.
+      await user.selectOptions(select, "Women");
+      expect(select.value).toBe("Women");
+      // The native reset fires the form's "reset" event the picker listens for;
+      // act() flushes the resulting React state update before we assert.
+      act(() => {
+        select.form?.reset();
+      });
+      expect(select.value).toBe("Men");
+    });
   });
 
   // Shared open → type → Add flow.

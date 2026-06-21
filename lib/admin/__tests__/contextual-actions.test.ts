@@ -34,6 +34,57 @@ describe("contextual-actions registry", () => {
     }
   });
 
+  // #776 Phase 1 (OPP-1) — the Care row / Notes-feed leader actions.
+  describe("leader (Care) actions", () => {
+    const EXPECTED_LEADER_ACTIONS = [
+      "add_care_note",
+      "add_prayer_request",
+      "log_call",
+      "log_text",
+      "log_visit",
+      "set_status",
+      "set_touchpoint",
+      "create_follow_up",
+    ];
+    const VALID_BODY_KEYS = new Set([
+      "group_editor",
+      "care_note_writer",
+      "prayer_request_writer",
+      "care_log_touch",
+      "care_set_status",
+      "care_set_touchpoint",
+      "care_create_follow_up",
+    ]);
+
+    it("resolves the OPP-1 actions for both admin roles", () => {
+      for (const role of ["ministry_admin", "super_admin"] as const) {
+        expect(actionsForEntity("leader", role).map((a) => a.id)).toEqual(
+          EXPECTED_LEADER_ACTIONS
+        );
+      }
+    });
+
+    it("gates every non-admin role out of the leader actions", () => {
+      for (const role of ["leader", "co_leader", "over_shepherd"] as const) {
+        expect(actionsForEntity("leader", role)).toEqual([]);
+      }
+    });
+
+    it("every drawer action names a known body key", () => {
+      for (const action of CONTEXTUAL_ACTION_REGISTRY.leader) {
+        expect(action.model).toBe("drawer");
+        expect(action.body).toBeDefined();
+        expect(VALID_BODY_KEYS.has(action.body as string)).toBe(true);
+      }
+    });
+
+    it("exposes neither the transparency toggle nor the private note", () => {
+      const ids = CONTEXTUAL_ACTION_REGISTRY.leader.map((a) => a.id);
+      expect(ids).not.toContain("transparency_toggle");
+      expect(ids).not.toContain("edit_admin_private_note");
+    });
+  });
+
   describe("passesRoleGate", () => {
     it("super_admin gate admits only the super admin", () => {
       expect(passesRoleGate("super_admin", "super_admin")).toBe(true);
