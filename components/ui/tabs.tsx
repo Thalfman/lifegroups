@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/utils";
 
 // Thin, accessible Tabs primitive — the shared shape behind surface tab rails
@@ -49,9 +55,12 @@ export function Tabs({
       ? defaultTabId
       : (tabs[0]?.id ?? "");
   const [activeId, setActiveId] = useState(initial);
+  const [, startTransition] = useTransition();
   const tabRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
 
   function focusTab(id: string) {
+    // Keyboard selection stays urgent: DOM focus and selection must move
+    // together (roving tabindex), so this is NOT wrapped in a transition.
     setActiveId(id);
     // Move DOM focus to the newly selected tab so keyboard navigation tracks
     // the selection (roving tabindex).
@@ -103,7 +112,11 @@ export function Tabs({
               aria-selected={selected}
               aria-controls={`${idPrefix}-panel-${tab.id}`}
               tabIndex={selected ? 0 : -1}
-              onClick={() => setActiveId(tab.id)}
+              // Pointer selection swaps the panel as a low-priority transition so
+              // the click (tab highlight) paints first and a heavy panel mounts
+              // off the interaction frame (lower INP). Keyboard selection above
+              // stays urgent for focus a11y.
+              onClick={() => startTransition(() => setActiveId(tab.id))}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
                 "inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-pill border px-4 font-sans text-base font-medium leading-tight transition-colors duration-150",

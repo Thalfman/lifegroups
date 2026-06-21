@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
 import { cn } from "@/lib/utils";
@@ -77,13 +78,25 @@ export function PeopleManagementShell({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const active = resolvePeopleTab(searchParams.get("tab"));
+  const [, startTransition] = useTransition();
+
+  // Optimistic local tab state so a click flips the visible tab (highlight +
+  // panel visibility) on the urgent render, while the URL `?tab=` bookkeeping
+  // follows in a transition. Seed from the URL and re-sync when it changes
+  // externally (back/forward, a deep-link), matching groups-directory's
+  // useValueChange pattern.
+  const urlTab = resolvePeopleTab(searchParams.get("tab"));
+  const [active, setActive] = useState(urlTab);
+  useValueChange(urlTab, setActive);
 
   function selectTab(key: PeopleTabKey) {
     if (key === active) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", key);
-    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    setActive(key); // urgent: tab highlight + panel visibility flip now
+    startTransition(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", key);
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    });
   }
 
   // The Add person drawer (the standard Editing Pattern, like Groups' New
