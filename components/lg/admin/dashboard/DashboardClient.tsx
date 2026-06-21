@@ -1,18 +1,6 @@
 import type { ReactNode } from "react";
 import { PageBody } from "@/components/lg/PageHeader";
-import type {
-  AdminDashboardData,
-  InterestFunnelDashboardSummary,
-  MultiplyReadinessDashboardSummary,
-} from "@/lib/dashboard/types";
-import { VitalSignsBand } from "./VitalSignsBand";
-import { LeaderCareOverviewCard } from "./LeaderCareOverviewCard";
-import { LaunchPlanningOverviewCard } from "./LaunchPlanningOverviewCard";
-import { HealthDistributionCard } from "./HealthDistributionCard";
-import { GuestPipelineFunnelCard } from "./GuestPipelineFunnelCard";
-import { InterestFunnelOverviewCard } from "./InterestFunnelOverviewCard";
-import { MultiplyOverviewCard } from "./MultiplyOverviewCard";
-import { LeaderPipelineOverviewCard } from "./LeaderPipelineOverviewCard";
+import type { AdminDashboardData } from "@/lib/dashboard/types";
 import { NeedsAttentionArea } from "./NeedsAttentionArea";
 import { SetupRecoveryChecklist } from "./SetupRecoveryChecklist";
 import { buildSetupRecoveryChecklist } from "@/lib/dashboard/setup-recovery";
@@ -21,7 +9,6 @@ import { ActivityBand } from "./ActivityBand";
 import { ActivityResetControl } from "./ActivityResetControl";
 import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
 import { PeriodSlicer } from "./PeriodSlicer";
-import { CollapsibleOverview } from "./CollapsibleOverview";
 
 // Home — the /admin triage page (#299). It answers "what needs my attention
 // first?" by ranking urgent work above everything else, then stepping out to
@@ -64,8 +51,7 @@ function SectionHeading({
 
 export function DashboardClient({
   data,
-  interestFunnel,
-  multiplyReadiness,
+  snapshotSlot,
   guestsLive,
   degraded,
   scopeId,
@@ -76,11 +62,12 @@ export function DashboardClient({
   fromSetup = false,
 }: {
   data: AdminDashboardData;
-  // Pivot overview summaries (#470), loaded in parallel with the dashboard
-  // read and degraded per-card: available:false renders an unavailable state,
-  // never a false zero.
-  interestFunnel: InterestFunnelDashboardSummary;
-  multiplyReadiness: MultiplyReadinessDashboardSummary;
+  // The Ministry-snapshot body (vital-signs band + overview cards), streamed in
+  // its own <Suspense> boundary by the page (#777 WS2) so the LCP-path content
+  // above paints without waiting on the slow Prospect-count / Multiply-grid
+  // reads. The non-page call sites (structure test, a11y harness) pass a
+  // synchronously-rendered MinistrySnapshotSection instead.
+  snapshotSlot: ReactNode;
   guestsLive: boolean;
   // True when the dashboard read failed and `data` is demo fallback.
   degraded?: boolean;
@@ -101,7 +88,6 @@ export function DashboardClient({
   // (/admin?from=setup): re-focus the next incomplete step (ADR 0027).
   fromSetup?: boolean;
 }) {
-  const hidden = new Set(hiddenNavAreas ?? []);
   // ADR 0027: Home is a self-dismissing setup workspace. While there is real
   // first-run setup work to do it leads with the checklist and SUPPRESSES the
   // needs-attention queue; once that work is done it reverts to the normal
@@ -120,17 +106,6 @@ export function DashboardClient({
   const setupMode =
     !degraded &&
     setupChecklist.steps.some((step) => step.status === "needs_action");
-  // Launch-planning capacity drills into the Planning tab; the leader pipeline
-  // drills into People. When their tab is hidden, their snapshot card would
-  // report stats for a gone surface, so it drops out with the tab. Leader care
-  // (Care), health distribution (Group-Health, now absorbed by Care), the
-  // Interest Funnel (Plan) and Multiplication readiness (Multiply) stay; the
-  // legacy guest funnel renders only when its frozen-surface flag is live
-  // (`guestsLive`, #470) — the Interest Funnel card holds its slot by default.
-  // The vital-signs band's four retired launch-planning metrics ride the same
-  // Planning gate (#476): hidden by default, restored when Planning is shown.
-  const showLaunchPlanning = !hidden.has("/admin/planning");
-  const showLeaderPipeline = !hidden.has("/admin/people");
   return (
     <PageBody>
       <div className="grid gap-8">
@@ -183,59 +158,16 @@ export function DashboardClient({
 
         {/* 3 — Ministry snapshot. Point-in-time vital signs + domain overview
             cards. Secondary to the urgent work above, so it sits lower and the
-            deeper cards collapse behind a disclosure. The band is founded on
-            the Care/Plan/Multiply pivot signals (#476) and reuses the same
-            funnel/readiness summaries the overview cards render; its retired
-            launch-planning metrics ride the same Planning nav gate as the
-            LaunchPlanningOverviewCard below. */}
+            deeper cards collapse behind a disclosure. The body (band + cards)
+            depends on the slow Prospect-count / Multiply-grid reads, so the page
+            streams it in its own <Suspense> boundary via `snapshotSlot` (#777
+            WS2) — the heading stays here, outside the boundary, so it paints
+            with the LCP-path content above. */}
         <section aria-labelledby="home-snapshot" className="grid gap-3">
           <SectionHeading>
             <span id="home-snapshot">Ministry snapshot</span>
           </SectionHeading>
-          <VitalSignsBand
-            data={data}
-            interestFunnel={interestFunnel}
-            multiplyReadiness={multiplyReadiness}
-            showLaunchPlanning={showLaunchPlanning}
-            degraded={degraded}
-          />
-
-          <CollapsibleOverview scopeId={scopeId}>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <LeaderCareOverviewCard summary={data.shepherdCare} />
-              {showLaunchPlanning ? (
-                <LaunchPlanningOverviewCard
-                  snapshot={data.launchPlanning}
-                  multiplication={data.multiplication}
-                />
-              ) : null}
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-              <HealthDistributionCard counts={data.healthSummary.counts} />
-              {/* The pivot areas' overview cards (#470): the Interest Funnel
-                  takes the slot the frozen Guests placeholder held, and
-                  Multiplication readiness joins it — so Plan and Multiply are
-                  visible from the command center under default flags. The
-                  legacy guests card returns only when its frozen-surface flag
-                  is live (re-enabled-and-verified, #256). */}
-              <InterestFunnelOverviewCard summary={interestFunnel} />
-              <MultiplyOverviewCard
-                summary={multiplyReadiness}
-                multiplication={data.multiplication}
-              />
-              {guestsLive ? (
-                <GuestPipelineFunnelCard
-                  breakdown={data.guestPipelineBreakdown}
-                  total={data.guestPipelineCount}
-                  live={guestsLive}
-                />
-              ) : null}
-              {showLeaderPipeline ? (
-                <LeaderPipelineOverviewCard summary={data.leaderPipeline} />
-              ) : null}
-            </div>
-          </CollapsibleOverview>
+          {snapshotSlot}
         </section>
 
         {/* 4 — Recent activity. Metadata only (counts + period), never note or
