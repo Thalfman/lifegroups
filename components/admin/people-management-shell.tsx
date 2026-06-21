@@ -87,16 +87,28 @@ export function PeopleManagementShell({
   const [active, setActive] = useState(urlTab);
   useValueChange(urlTab, setActive);
 
-  // Mirror the active tab into the URL's `?tab=` AFTER paint. Doing the
-  // history write here (not in the click handler) keeps `replaceState` and
-  // Next's history bookkeeping off the interaction frame, so the tab click
-  // isn't on the INP path. Reads the live URL so an externally-driven change
-  // (back/forward) is a no-op rather than a redundant rewrite.
+  // Mirror the active tab into the URL's `?tab=` AFTER paint. The write lives
+  // here (not in the click handler) and is scheduled on a macrotask, because an
+  // effect caused by a discrete interaction (the tab click) can otherwise run
+  // before the browser repaints — which would leave `replaceState` and Next's
+  // history/search-param bookkeeping on the interaction (INP) frame. The timer
+  // hands the urgent tab paint to the browser first. Reads the live URL so an
+  // externally-driven change (back/forward) is a no-op rather than a redundant
+  // rewrite, and clears on re-run so only the latest selection is written.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (resolvePeopleTab(params.get("tab")) === active) return;
-    params.set("tab", active);
-    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    if (
+      resolvePeopleTab(
+        new URLSearchParams(window.location.search).get("tab")
+      ) === active
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      params.set("tab", active);
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [active, pathname]);
 
   function selectTab(key: PeopleTabKey) {
