@@ -34,7 +34,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "super_admin.update_profile_role": "Changed role",
   "super_admin.invite_user": "Invited user",
   "super_admin.set_platform_config": "Updated platform config",
-  // ADR 0025 self-service: an invitee chose their display name.
+  // ADR 0032 self-service: an invitee chose their display name.
   "account.set_own_full_name": "Chose their name",
   // #563 self-service: a user requested deletion of their own account.
   "account.request_deletion": "Requested account deletion",

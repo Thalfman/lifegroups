@@ -92,7 +92,7 @@ error }`. `resolveGuardVerdict` checks: session kind → status active → role 
   `resetPasswordAction` updates password + optionally name, clears cookie.
 - **Self-signup:** `/invite/[token]` → `redeemInviteAction` → Edge Function
   `redeem-invite`.
-- **Choose-your-name (ADR 0025):** name-pending → `/welcome` → `chooseNameAction`.
+- **Choose-your-name (ADR 0032):** name-pending → `/welcome` → `chooseNameAction`.
 
 ## leader_surface flag
 

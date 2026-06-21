@@ -35,7 +35,7 @@ const PIVOT_VITAL_SIGNS = [
   "Active shepherds",
   "Shepherds needing care",
   "Prospects in funnel",
-  "Cells ready to multiply",
+  "Groups ready to multiply",
   "Follow-ups due this week",
 ];
 
@@ -263,7 +263,7 @@ test.describe("home empty-state voice (issue 480)", () => {
       "Care queue is clear.",
       "No groups are meeting yet — the health pulse will gather here as groups begin.",
       "No Prospects in the Interest Funnel yet — new interest will gather here.",
-      "No active cells yet — readiness will gather here once group types are set up in Settings.",
+      "No active group types yet — readiness will gather here once group types are set up in Settings.",
     ]) {
       await expect(
         home.getByText(line),

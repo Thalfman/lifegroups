@@ -11,7 +11,7 @@
 //   3. Validate the payload (email, role, optional phone, optional
 //      group_id; group_id rejected for ministry_admin; optional delivery
 //      'email' | 'link', default 'email'). No full_name: the invitee
-//      chooses their own name at account setup (ADR 0025).
+//      chooses their own name at account setup (ADR 0032).
 //   4. Resolve the Supabase Auth user by email; if missing, provision it:
 //      delivery='email' -> `auth.admin.inviteUserByEmail` sends a real
 //      invite email; delivery='link' -> `auth.admin.generateLink` returns
@@ -31,6 +31,13 @@ import {
   createClient,
   type SupabaseClient,
 } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+// Defense-in-depth against the email-enumeration timing side channel between the
+// "existing user" branch (paginated listUsers) and the "new user" branch
+// (single inviteUserByEmail). The super-admin gate is the real access control;
+// this pad just keeps a probe from distinguishing branches. Shared with
+// redeem-invite so the floor/jitter can't drift between the two (audit SEC-3).
+import { INVITE_TIMING_FLOOR_MS, padToFloor } from "../_shared/timing.ts";
 
 // Minimal structured logger. Mirrors the field conventions in
 // lib/observability/logger.ts but inlined here because Deno cannot resolve
@@ -190,27 +197,6 @@ function redactPostgrestError(
   if (pgErr.details) safe.details = redact(String(pgErr.details), secrets);
   if (pgErr.hint) safe.hint = redact(String(pgErr.hint), secrets);
   return safe;
-}
-
-// Defense-in-depth against the timing side channel between the
-// "existing user" branch (paginated listUsers) and the "new user" branch
-// (single inviteUserByEmail). The super-admin gate is the real access
-// control; this pad just keeps a probe from distinguishing branches.
-// Floor dominates observed p99 listUsers latency on tenants up to ~10k
-// auth users; jitter window adds 250–650ms of noise on top so the total
-// elapsed at the RPC call settles in ~1450–1850ms regardless of branch.
-const INVITE_TIMING_FLOOR_MS = 1200;
-
-function jitterMs(): number {
-  return 250 + Math.floor(Math.random() * 400);
-}
-
-async function padToFloor(startMs: number, floorMs: number): Promise<void> {
-  const elapsed = performance.now() - startMs;
-  const remaining = floorMs - elapsed + jitterMs();
-  if (remaining > 0) {
-    await new Promise<void>((r) => setTimeout(r, remaining));
-  }
 }
 
 // Paginated search; returns the first matching auth user (case-insensitive).
@@ -746,7 +732,7 @@ Deno.serve(async (req: Request) => {
 
   // Single atomic RPC: profile upsert + group_leaders + audit, one txn.
   // No p_full_name (optional, ignored server-side): the invitee chooses
-  // their own name at account setup (ADR 0025).
+  // their own name at account setup (ADR 0032).
   const { data: rpcData, error: rpcErr } = await service.rpc(
     "super_admin_complete_invite",
     {

@@ -25,7 +25,7 @@ Needed before adding a route, changing a role gate, or debugging a redirect.
 `app/(protected)/` wraps all signed-in surfaces. Its layout calls
 `getCurrentSession()` and redirects: anonymous → `/login`, `profile_missing` →
 `/unauthorized`, `backend_error` → `/unauthorized?reason=unavailable`,
-name-pending (ADR 0025) → `/welcome`. Nested layouts add role guards
+name-pending (ADR 0032) → `/welcome`. Nested layouts add role guards
 (`admin/layout.tsx` → `requireAdmin()`).
 
 ## Public routes (no auth)
@@ -39,7 +39,7 @@ PWA: `/manifest.webmanifest`, `/icons/*`.
 **`/welcome` is NOT a no-auth page** — it lives outside `(protected)` but
 `app/welcome/page.tsx` creates a Supabase client, calls `auth.getUser()`, and
 redirects anonymous visitors to `/login`. It is a **signed-in fallback gate**
-for the choose-your-name step (ADR 0025), reachable only by an authenticated
+for the choose-your-name step (ADR 0032), reachable only by an authenticated
 name-pending session.
 
 ## Admin nav spine (ministry_admin + super_admin)

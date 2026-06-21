@@ -335,9 +335,11 @@ _Avoid_: Dashboard (ambiguous with the admin metrics surface), home page.
 **Admin OS**:
 The working surface a Ministry Admin / Super Admin operates in after leaving the
 Home Hub — the sidebar-shell app at `/admin` and its tabs. Post-pivot those tabs
-are **Home · Care · Plan · Multiply · Settings** (ADR 0016); the former Groups,
-Planning, People, Calendar, and Follow-ups tabs are hidden behind Super-Admin
-nav-visibility flags, default off. In the UI it is **labelled "Ministry Admin"** (the landing
+are **Home · Care · Plan · Multiply · Settings** (ADR 0016), joined by the
+**Groups** and **People** management tabs, which default **on** per ADR 0024 (the
+Super-Admin console can re-hide them). The remaining pre-pivot Planning, Calendar,
+and Follow-ups tabs are hidden behind Super-Admin nav-visibility flags, default
+off. In the UI it is **labelled "Ministry Admin"** (the landing
 title and the sidebar section header), not "Admin OS" — the canonical decision
 recorded in the PRD (#175); the rename itself ships with that implementation.
 This deliberately overloads "Ministry Admin": it names both the _role_ (the

@@ -19,7 +19,7 @@ const PIVOT_TITLES = [
   "Active shepherds",
   "Shepherds needing care",
   "Prospects in funnel",
-  "Cells ready to multiply",
+  "Groups ready to multiply",
   "Follow-ups due this week",
 ] as const;
 
@@ -88,10 +88,10 @@ describe("VitalSignsBand pivot metrics (#476)", () => {
     const funnel = cardSlice(html, "Prospects in funnel");
     expect(funnel).toContain(">10<");
     expect(funnel).toContain("4 joined a group");
-    // Cells ready to multiply — "X of Y" from the Multiply grid summary.
-    const cells = cardSlice(html, "Cells ready to multiply");
+    // Groups ready to multiply — "X of Y" from the Multiply grid summary.
+    const cells = cardSlice(html, "Groups ready to multiply");
     expect(cells).toContain(">2<");
-    expect(cells).toContain("of 6 active cells");
+    expect(cells).toContain("of 6 active group types");
     // Follow-ups due this week — the demo follow-ups are all undated, so the
     // demo count is a TRUE zero (the read succeeded), not a degraded one.
     expect(cardSlice(html, "Follow-ups due this week")).toContain(">0<");
@@ -146,7 +146,7 @@ describe("VitalSignsBand pivot metrics (#476)", () => {
       },
     });
 
-    const cells = cardSlice(html, "Cells ready to multiply");
+    const cells = cardSlice(html, "Groups ready to multiply");
     expect(cells).toContain("—");
     expect(cells).toContain("Readiness data unavailable");
     expect(cells).not.toContain(">0<");

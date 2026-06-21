@@ -167,15 +167,15 @@ export function VitalSignsBand({
           }
         />
         <VitalSign
-          title="Cells ready to multiply"
+          title="Groups ready to multiply"
           value={readinessOk ? String(multiplyReadiness.readyCells) : "—"}
           empty={!readinessOk}
           meta={
             !readinessOk
               ? "Readiness data unavailable"
               : multiplyReadiness.activeCells === 0
-                ? "No active cells yet"
-                : `of ${multiplyReadiness.activeCells} active cells`
+                ? "No active group types yet"
+                : `of ${multiplyReadiness.activeCells} active group types`
           }
           valueColor={
             readinessOk && multiplyReadiness.readyCells > 0

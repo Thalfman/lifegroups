@@ -290,7 +290,7 @@ function ActivityPanel({ person }: { person: PersonDetail }) {
         <ul className="m-0 grid list-none gap-2 p-0">
           {person.groups.map((g) => (
             <li key={g.id} className={BODY_TEXT}>
-              {person.kind === "profile" ? "Leads" : "Member of"}{" "}
+              {person.kind === "profile" ? "Shepherds" : "Member of"}{" "}
               <Link
                 href={`/admin/groups/${g.id}`}
                 className="text-ink underline"

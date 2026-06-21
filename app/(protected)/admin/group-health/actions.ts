@@ -1,5 +1,11 @@
 "use server";
 
+// Subject scoping is enforced by the RPC + RLS (auth_is_admin), not a
+// client-side `guard` — fine while admins are global. A group-health write
+// affects several surfaces, so confirm each spec's revalidate set covers every
+// page that renders the affected group (e.g. /admin/group-health, /admin/plan,
+// /admin/care); a scoped admin tier would also want a `guard` here (ARCH-5/6).
+
 import {
   runAdminWriteAction,
   type AdminWriteActionSpec,

@@ -22,7 +22,7 @@ export function leaderTextFor(
     .map((l) => {
       const profile = profilesById.get(l.profile_id);
       if (!profile) return "(unknown)";
-      return `${profile.full_name} · ${l.role === "co_leader" ? "Co" : "Lead"}`;
+      return `${profile.full_name} · ${l.role === "co_leader" ? "Co-Shepherd" : "Shepherd"}`;
     })
     .join(" · ");
 }

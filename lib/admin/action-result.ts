@@ -6,20 +6,23 @@ import {
   makeRpcErrorMapper,
   type RpcErrorMessages,
 } from "@/lib/shared/action-result";
+import { COMMON_RPC_ERROR_MESSAGES } from "@/lib/shared/rpc-errors";
 
 export type { ActionResult } from "@/lib/shared/action-result";
 export { actionOk, actionFail } from "@/lib/shared/action-result";
 
 // Fixed error tokens raised by the Phase 5A.1 admin_* RPC functions.
-// Mapped to user-facing messages by `mapRpcError`.
+// Mapped to user-facing messages by `mapRpcError`. Cross-surface tokens with
+// identical copy (missing_group, missing_follow_up, the calendar tokens) come
+// from COMMON_RPC_ERROR_MESSAGES; everything below is admin-specific copy.
 export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
+  ...COMMON_RPC_ERROR_MESSAGES,
   insufficient_privilege:
     "You're not signed in as an admin, or your session expired. Sign in again and retry.",
   duplicate_email:
     "A profile with that email already exists. Check the shepherd list before adding a new one.",
   duplicate_assignment:
     "That assignment already exists. They're already part of the group.",
-  missing_group: "We couldn't find that group. Refresh the page and try again.",
   missing_profile:
     "We couldn't find that profile. Refresh the page and try again.",
   missing_member:
@@ -54,8 +57,6 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "That prospect has been archived and can no longer be moved. Refresh the board.",
   // Phase 5C.0 tokens.
   missing_guest: "We couldn't find that guest. Refresh the page and try again.",
-  missing_follow_up:
-    "We couldn't find that follow-up. Refresh the page and try again.",
   missing_care_profile:
     "We couldn't find that care profile. Log an interaction or set the care profile first, then try again.",
   group_closed:
@@ -64,12 +65,8 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "That status isn't allowed here. Shepherds can mark follow-ups in progress or done.",
   invalid_status_transition:
     "That follow-up has already been closed or moved past this step. Refresh to see the latest state.",
-  // Phase 5A.6 group calendar tokens.
-  missing_event: "We couldn't find that calendar event. Refresh and try again.",
-  event_already_archived:
-    "That calendar event is already archived. Restore it before editing.",
-  event_not_archived:
-    "That calendar event isn't archived — there's nothing to restore.",
+  // Phase 5A.6 group calendar tokens (missing_event / event_already_archived /
+  // event_not_archived are shared via COMMON_RPC_ERROR_MESSAGES).
   date_conflict:
     "There's already an active event on that date for this group. Edit or archive the existing one first.",
   // Phase 5D.1 over-shepherd coverage tokens.

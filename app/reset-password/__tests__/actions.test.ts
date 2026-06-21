@@ -92,7 +92,7 @@ beforeEach(() => {
   mockRpcSetOwnFullName.mockResolvedValue({ data: AUTH_ID, error: null });
 });
 
-describe("resetPasswordAction — choose-your-name step (ADR 0025)", () => {
+describe("resetPasswordAction — choose-your-name step (ADR 0032)", () => {
   it("saves the chosen name BEFORE the password and completes setup", async () => {
     const { client, updateUser } = makeClient({ profileRow: PENDING_ROW });
     mockCreateClient.mockResolvedValue(client);

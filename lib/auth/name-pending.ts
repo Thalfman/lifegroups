@@ -1,6 +1,6 @@
 import type { SessionResult } from "./session";
 
-// Choose-your-name gate (ADR 0025). An invited person normally picks their
+// Choose-your-name gate (ADR 0032). An invited person normally picks their
 // name on /reset-password alongside their password, but two paths skip that
 // screen: an invite to an email that already had a login (no setup email is
 // sent), and an abandoned setup. This helper is the post-sign-in net: both

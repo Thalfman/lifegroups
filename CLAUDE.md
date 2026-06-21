@@ -17,7 +17,7 @@ architecture decisions — those live in dedicated docs. Read these first:
 ## What this is
 
 **Julian's admin operating system for shepherding Life Group Leaders.** Next.js
-15 (App Router) + React 19 + TypeScript + Tailwind, on Supabase (Auth +
+16 (App Router) + React 19 + TypeScript + Tailwind, on Supabase (Auth +
 Postgres + RLS). As of the **2026-06 pivot (ADR 0016)** the navigation spine is
 three areas — **Care · Plan · Multiply** — surfaced under `/admin`, joined by
 the **Groups** and **People** management tabs (seeded back on by ADR 0024; the

@@ -1,4 +1,4 @@
-// Self-service account validation (ADR 0025): pure TypeScript, no I/O. Used
+// Self-service account validation (ADR 0032): pure TypeScript, no I/O. Used
 // by the /reset-password and /welcome actions before calling
 // set_own_full_name; the RPC re-validates server-side as the security
 // boundary. Shape mirrors lib/admin/validation/shared.ts without importing

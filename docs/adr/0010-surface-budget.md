@@ -1,5 +1,7 @@
 # Surface budget: a new surface must map to one job and name what it replaces
 
+**Status:** Accepted
+
 The app fragmented because nothing in the workflow forced a new user-reachable
 surface to justify its existence. Refinement defaulted to addition, so the
 Ministry Admin navigation drifted to roughly nine near-peer destinations over

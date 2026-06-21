@@ -18,7 +18,7 @@ export function ResetPasswordForm({
   namePending,
   namePrefill,
 }: {
-  // Choose-your-name step (ADR 0025): when the profile's name is still
+  // Choose-your-name step (ADR 0032): when the profile's name is still
   // pending, the person picks it here alongside their password. namePrefill
   // carries an existing name (the relink case) to confirm or edit.
   namePending: boolean;

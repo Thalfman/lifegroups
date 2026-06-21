@@ -1,5 +1,13 @@
 "use server";
 
+// Subject scoping here is enforced by the RPC + RLS (auth_is_admin), not a
+// client-side `guard` — fine while admins are global. If a SCOPED admin (e.g.
+// regional) ever lands, add a `guard` to these specs so an out-of-scope target
+// is a clean logged denial, not a generic RPC error (ARCH-5). The
+// REVALIDATE_PATHS below already cover every surface that renders this queue
+// (ARCH-6): the Follow-ups tab, the Care tab's embedded list, Guests, Home,
+// and the leader surface.
+
 import {
   validateAdminUpdateFollowUpStatusPayload,
   validateCreateFollowUpPayload,

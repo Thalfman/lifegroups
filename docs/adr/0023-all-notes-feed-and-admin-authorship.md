@@ -1,5 +1,7 @@
 # The All Notes feed, and admins join the Care Note author set
 
+**Status:** Accepted
+
 Care Notes and Prayer Requests worked, but two things made them hard to use
 day-to-day: only Over-Shepherds could write them (the Ministry Admin had no
 authoring path at all), and there was no way to see notes in one place — every

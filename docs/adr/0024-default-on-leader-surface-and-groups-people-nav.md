@@ -1,5 +1,7 @@
 # Leader surface and the Groups/People nav tabs default to ON
 
+**Status:** Accepted
+
 The 2026-06 pivot (ADR 0016) hid the Groups and People tabs behind
 nav-visibility flags and left the Leader login frozen behind the
 `leader_surface` verify-before-flip gate (ADR 0009/0017). Both were the right

@@ -1,5 +1,7 @@
 # The Leader's Care Note is scoped to the group, not per member
 
+**Status:** Accepted
+
 ADR 0017 re-opened the Leader login and said a Leader "writes Care Notes and
 Prayer Requests per member." Building that surface (#382) surfaced a modelling
 mismatch, and Julian's call is to **scope the Leader's Care Note and Prayer

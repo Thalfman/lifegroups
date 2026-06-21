@@ -36,7 +36,9 @@ export function MultiplyOverviewCard({
       >
         <EmptyState
           title="Readiness data unavailable"
-          description={summary.error ?? "Cell readiness could not be loaded."}
+          description={
+            summary.error ?? "Group-type readiness could not be loaded."
+          }
         />
       </StatusCard>
     );
@@ -50,13 +52,13 @@ export function MultiplyOverviewCard({
     >
       {summary.activeCells === 0 ? (
         <CardNote>
-          No active cells yet — readiness will gather here once group types are
-          set up in Settings.
+          No active group types yet — readiness will gather here once group
+          types are set up in Settings.
         </CardNote>
       ) : (
         <StatTileGrid>
           <StatTile
-            label="Cells ready"
+            label="Groups ready"
             value={summary.readyCells}
             valueColor={summary.readyCells > 0 ? P.sage : P.ink}
             hint={`of ${summary.activeCells}`}

@@ -1,5 +1,7 @@
 # Six-area navigation spine, amending the one-job mapping rule
 
+**Status:** Accepted — amended by [ADR 0016](./0016-pivot-to-care-plan-multiply.md)
+
 The Ministry Admin navigation is collapsing onto six job-oriented areas —
 **Home, Groups, Care, People, Planning, Settings** — rendered as a flat list on
 every navigation surface (admin sidebar, Home Hub launcher tiles, bottom nav).
