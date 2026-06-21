@@ -7,6 +7,10 @@
 //
 // Wired through the admin page runner (ADR 0028); the frozen-surface banner is
 // the runner's `frozenBanner`.
+//
+// Kept off-nav by design — keep/retire/re-export decision: Keep (ADR 0033). The
+// only Prospect/Interest-Funnel surface that exists; preserved pending a future
+// canonical funnel.
 import { PageBody } from "@/components/lg/PageHeader";
 import { GuestsManagementShell } from "@/components/admin/guests/guests-shell";
 import { loadGuestsData } from "@/components/admin/guests/guests-data";

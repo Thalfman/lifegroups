@@ -1,5 +1,11 @@
 "use server";
 
+// Canonical home — do NOT retire or warn-log on invoke (ADR 0033). Although this
+// file lives in the pre-pivot-named /admin/launch-planning folder, these actions
+// are imported by the canonical Multiply surface
+// (components/admin/multiply/*, components/admin/multiplication/*), so any
+// deprecation here would fire on canonical use.
+
 import {
   validateCandidateIdPayload,
   validateCreateMultiplicationCandidatePayload,

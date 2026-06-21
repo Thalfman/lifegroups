@@ -1,5 +1,11 @@
 "use server";
 
+// Canonical home — do NOT retire or warn-log on invoke (ADR 0033). Although this
+// file lives in the pre-pivot-named /admin/group-health folder, this action is
+// imported by the canonical Care surface
+// (components/admin/care/group-rubric-grade-entry.tsx), so any deprecation here
+// would fire on canonical use.
+
 import {
   runAdminWriteAction,
   type AdminWriteActionSpec,

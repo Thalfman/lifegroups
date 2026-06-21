@@ -1,5 +1,10 @@
 "use server";
 
+// Canonical home — do NOT retire or warn-log on invoke (ADR 0033). Although this
+// file lives in the pre-pivot-named /admin/shepherd-care folder, these actions
+// are imported by the canonical Care surface (components/admin/shepherd-care/*),
+// so any deprecation here would fire on canonical use.
+
 // Subject scoping is enforced by the RPC + RLS (over_shepherd coverage /
 // auth_is_admin), not a client-side `guard`. If a scoped admin tier ever lands,
 // add a `guard` to the subject-scoped specs so an out-of-coverage target is a

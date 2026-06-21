@@ -12,6 +12,8 @@ import { churchMonthIso } from "@/lib/shared/church-time";
 // aliases render the same view at a different initial tab (alias-render, 200 —
 // never a 302), so the three entries share ONE loader path and can't drift. This
 // canonical route defaults to its first view, Calendar.
+//
+// Kept off-nav by design — keep/retire/re-export decision: Keep (ADR 0033).
 export const dynamic = "force-dynamic";
 
 type SearchParams = { month?: string | string[] };
