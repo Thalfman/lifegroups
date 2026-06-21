@@ -4,9 +4,11 @@ import type {
 } from "@/components/admin/group-management-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { currentUtcDateIso } from "@/lib/supabase/read-core";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveMemberships,
+  fetchActiveShepherdCoverageAssignmentsForAdmin,
   fetchAllGroupLeaders,
   fetchAllGroupMetricSettings,
   fetchAllGroups,
@@ -16,6 +18,11 @@ import {
   fetchProfilesForAdmin,
 } from "@/lib/supabase/read-models";
 import { fetchShepherdCareDirectoryForAdmin } from "@/lib/supabase/shepherd-care-reads";
+import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
+import {
+  needsContactProfileIds,
+  resolveCareNeedsContact,
+} from "@/lib/admin/care-needs-contact";
 import {
   fetchMetricDefaultsCached,
   fetchGroupTypesCached,
@@ -47,6 +54,13 @@ export type GroupManagementReads = {
   fetchShepherdCareDirectory: OmitClient<
     typeof fetchShepherdCareDirectoryForAdmin
   >;
+  // The active-coverage and care attention-reset reads the shared needs-contact
+  // resolver waterfalls over the directory (windows + coverage + baselines), so
+  // Groups answers "needs care contact" identically to Care/People/person-detail.
+  fetchActiveAssignments: OmitClient<
+    typeof fetchActiveShepherdCoverageAssignmentsForAdmin
+  >;
+  fetchAttentionBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
   fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
   // The admin-managed free-text group-type list for the create/edit forms.
   fetchGroupTypes: OmitClient<typeof fetchGroupTypesCached>;
@@ -66,6 +80,8 @@ export function supabaseGroupManagementReads(
     listGroupHealthOverview,
     fetchOpenFollowUps,
     fetchShepherdCareDirectory: fetchShepherdCareDirectoryForAdmin,
+    fetchActiveAssignments: fetchActiveShepherdCoverageAssignmentsForAdmin,
+    fetchAttentionBaselines: fetchAttentionResetBaselines,
     fetchAttendanceSessions,
     fetchGroupTypes: fetchGroupTypesCached,
   });
@@ -97,9 +113,10 @@ export const EMPTY_GROUP_MANAGEMENT_DATA: GroupManagementData = {
 
 export async function buildGroupManagementData(
   reads: GroupManagementReads,
-  options: { period?: string } = {}
+  options: { period?: string; todayIso?: string } = {}
 ): Promise<GroupManagementData> {
   const period = options.period ?? currentPeriodMonthIso();
+  const todayIso = options.todayIso ?? currentUtcDateIso();
 
   // The Health zone reflects the Group-Health Grade (Q12 computed grade), not
   // the groups.health_status enum. We read the same live overview the Group
@@ -118,7 +135,7 @@ export async function buildGroupManagementData(
     settingsResult,
     healthOverview,
     openFollowUpsResult,
-    careDirectoryResult,
+    careNeedsContact,
     groupTypesResult,
   ] = await Promise.all([
     reads.fetchAllGroups(),
@@ -138,8 +155,21 @@ export async function buildGroupManagementData(
     reads.fetchOpenFollowUps(),
     // Needs Attention's care leg (plan §4): per-leader shepherd-care concerns.
     // Care is per-leader (PRD), so we map a group's leader/co-leader concern,
-    // never member records — reusing the canonical care directory read.
-    reads.fetchShepherdCareDirectory(),
+    // never member records. Routed through the shared needs-contact resolver
+    // (lib/admin/care-needs-contact.ts) — the same windows + active-coverage +
+    // "care" attention-reset baselines + directory waterfall Care/People/
+    // person-detail use — so Groups answers "needs care contact" identically
+    // and the rule lives in one place. The resolver reads the directory once,
+    // with context, so we no longer read it raw here.
+    resolveCareNeedsContact(
+      {
+        fetchActiveAssignments: reads.fetchActiveAssignments,
+        fetchMetricDefaults: reads.fetchMetricDefaults,
+        fetchAttentionBaselines: reads.fetchAttentionBaselines,
+        fetchCareDirectory: reads.fetchShepherdCareDirectory,
+      },
+      { todayIso }
+    ),
     // The admin-managed free-text group-type list, for the create/edit forms'
     // type picker. A read failure degrades to an empty list (the picker then
     // only offers Untyped) rather than blocking the page.
@@ -156,12 +186,11 @@ export async function buildGroupManagementData(
 
   const healthGradesByGroupId: Record<string, GroupHealthLetter | null> = {};
   // The set of leader/co-leader profile ids whose care row currently needs
-  // attention — the per-leader care concern signal (PRD). Members are not in
-  // this directory at all, so they can never be counted.
-  const careConcernProfileIds = new Set<string>();
-  for (const entry of careDirectoryResult.data ?? []) {
-    if (entry.needs_attention) careConcernProfileIds.add(entry.profile.id);
-  }
+  // attention — the per-leader care concern signal (PRD), now derived from the
+  // shared resolver rather than an inline raw-flag loop. Members are not in the
+  // directory at all, so they can never be counted; a failed directory read
+  // degrades to an empty set (no false concerns).
+  const careConcernProfileIds = needsContactProfileIds(careNeedsContact);
   // Groups with a leader/co-leader who needs care attention.
   const careConcernGroupIds = new Set<string>();
   for (const link of leadersResult.data ?? []) {

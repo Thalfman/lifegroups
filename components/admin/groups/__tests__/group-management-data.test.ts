@@ -5,6 +5,7 @@ import {
   type GroupManagementReads,
 } from "@/components/admin/groups/group-management-data";
 import type { ReadResult } from "@/lib/supabase/read-core";
+import { buildCareDirectoryEntries } from "@/lib/supabase/shepherd-care-reads";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
 const fail = (message: string): ReadResult<never> => ({
@@ -26,6 +27,8 @@ function emptyReads(
     listGroupHealthOverview: async () => ok([]),
     fetchOpenFollowUps: async () => ok([]),
     fetchShepherdCareDirectory: async () => ok([]),
+    fetchActiveAssignments: async () => ok([]),
+    fetchAttentionBaselines: async () => ok([]),
     fetchAttendanceSessions: async () => ok([]),
     fetchGroupTypes: async () => ok([]),
     ...overrides,
@@ -53,6 +56,84 @@ describe("buildGroupManagementData", () => {
     // g2's leader has no concern and the group is absent from the overview /
     // follow-ups, so it is never stamped — only groups with a signal appear.
     expect(data.healthSignalsByGroupId.g2).toBeUndefined();
+  });
+
+  // A care row last contacted 51 days before "today". With no active
+  // over-shepherd the leader is directly-overseen (30-day window) → stale, so
+  // the shared rule flags them. The old raw read ran with no coverage context,
+  // treating every leader as delegated (60-day window), and would have *missed*
+  // this — proving Groups now applies the windows + coverage from the resolver.
+  const TODAY = "2026-06-21";
+  const careRow = (overrides: Record<string, unknown> = {}) => ({
+    id: "c1",
+    shepherd_profile_id: "p1",
+    current_status: "healthy",
+    last_contact_at: "2026-05-01", // 51 days before TODAY
+    next_touchpoint_due: null,
+    archived_at: null,
+    created_at: "2026-05-01",
+    updated_at: "2026-05-01",
+    ...overrides,
+  });
+
+  it("applies coverage windows to the care-concern signal (a case the raw flag missed)", async () => {
+    const data = await buildGroupManagementData(
+      emptyReads({
+        // No active coverage → directly-overseen → 30-day window → 51 days stale.
+        fetchActiveAssignments: async () => ok([]),
+        fetchShepherdCareDirectory: async (options) =>
+          ok(
+            buildCareDirectoryEntries(
+              [{ id: "p1" }] as never,
+              [careRow()] as never,
+              options
+            )
+          ),
+        fetchAllGroupLeaders: async () =>
+          ok([{ group_id: "g1", profile_id: "p1", active: true }] as never),
+      }),
+      { todayIso: TODAY }
+    );
+
+    expect(data.healthSignalsByGroupId.g1?.hasCareConcern).toBe(true);
+  });
+
+  it("respects care attention-reset baselines (a case the raw flag missed)", async () => {
+    const data = await buildGroupManagementData(
+      emptyReads({
+        fetchActiveAssignments: async () => ok([]),
+        // A global "care" reset 10 days ago floors the effective last-contact
+        // inside the 30-day window, so the leader reads fresh. The old
+        // context-free read ignored baselines and would have flagged g1.
+        fetchAttentionBaselines: async () =>
+          ok([
+            {
+              id: "b1",
+              surface: "care",
+              scope: "global",
+              entity_id: null,
+              baseline_on: "2026-06-11",
+            },
+          ] as never),
+        // 75 days since contact — stale under *either* window, so the old raw
+        // read (60-day, no baseline) would have flagged g1. The 10-day-old reset
+        // floors the effective contact inside the window and clears it.
+        fetchShepherdCareDirectory: async (options) =>
+          ok(
+            buildCareDirectoryEntries(
+              [{ id: "p1" }] as never,
+              [careRow({ last_contact_at: "2026-04-07" })] as never,
+              options
+            )
+          ),
+        fetchAllGroupLeaders: async () =>
+          ok([{ group_id: "g1", profile_id: "p1", active: true }] as never),
+      }),
+      { todayIso: TODAY }
+    );
+
+    // No concern, no follow-up, absent from the overview → never stamped.
+    expect(data.healthSignalsByGroupId.g1).toBeUndefined();
   });
 
   it("stamps a group that has only a follow-up (not in the health overview)", async () => {
