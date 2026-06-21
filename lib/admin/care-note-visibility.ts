@@ -16,6 +16,13 @@
 // that the UI uses to decide what to even attempt to render, and that the unit
 // test pins against the full truth table so the two can never silently diverge.
 //
+// SEC-1 pin (audit 2026-06-21): the fitness check
+// tests/fitness/care-note-visibility-divergence.test.ts asserts that THIS
+// resolver and the `care_notes_author_or_granted_select` policy USING clause in
+// 20260608090000_phase_pivot9_care_notes.sql keep the same three arms (author /
+// grant-gated ladder / sealed), so a change here without the matching migration
+// (or vice versa) fails the build instead of drifting silently.
+//
 // Visibility truth table (default = SEALED):
 //
 //   | Viewer                        | grant OFF | grant ON |
