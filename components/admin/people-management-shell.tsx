@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useValueChange } from "@/lib/hooks/use-value-change";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
 import { cn } from "@/lib/utils";
@@ -77,13 +78,42 @@ export function PeopleManagementShell({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const active = resolvePeopleTab(searchParams.get("tab"));
+
+  // Optimistic local tab state so a click flips the visible tab (highlight +
+  // panel visibility) on the urgent render. Seed from the URL and re-sync when
+  // it changes externally (back/forward, a deep-link), matching
+  // groups-directory's useValueChange pattern.
+  const urlTab = resolvePeopleTab(searchParams.get("tab"));
+  const [active, setActive] = useState(urlTab);
+  useValueChange(urlTab, setActive);
+
+  // Mirror the active tab into the URL's `?tab=` AFTER paint. The write lives
+  // here (not in the click handler) and is scheduled on a macrotask, because an
+  // effect caused by a discrete interaction (the tab click) can otherwise run
+  // before the browser repaints — which would leave `replaceState` and Next's
+  // history/search-param bookkeeping on the interaction (INP) frame. The timer
+  // hands the urgent tab paint to the browser first. Reads the live URL so an
+  // externally-driven change (back/forward) is a no-op rather than a redundant
+  // rewrite, and clears on re-run so only the latest selection is written.
+  useEffect(() => {
+    if (
+      resolvePeopleTab(
+        new URLSearchParams(window.location.search).get("tab")
+      ) === active
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      params.set("tab", active);
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [active, pathname]);
 
   function selectTab(key: PeopleTabKey) {
     if (key === active) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", key);
-    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    setActive(key); // urgent: tab highlight + panel visibility flip now
   }
 
   // The Add person drawer (the standard Editing Pattern, like Groups' New
