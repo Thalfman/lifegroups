@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { measureReadBundle } from "@/lib/observability/read-timing";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveShepherdCoverageAssignmentByShepherdId,
@@ -269,29 +270,31 @@ async function buildDetailCore(
   // valid-profile path. Validation still runs first against the resolved
   // profile below; on an invalid id the extra reads are harmless RLS-scoped
   // results that are simply discarded. Private-note key slots are per-creator
-  // (not per care profile), so they load here too.
-  const [
-    profile,
-    careResult,
-    overShepherdsRes,
-    coverageRes,
-    genericCountRes,
-    ledGroupsRes,
-    keySlotsRes,
-  ] = await Promise.all([
-    reads.fetchProfile(profileId),
-    reads.fetchCareProfile(profileId),
-    reads.fetchOverShepherds({ includeArchived: false }),
-    reads.fetchActiveCoverage(profileId),
-    reads.fetchGenericFollowUpCount(profileId),
-    reads.fetchLedGroups(profileId),
-    canReadPrivateNotes
-      ? reads.fetchPrivateNoteKeySlots(creatorProfileId)
-      : Promise.resolve({
-          data: [] as PrivateNoteKeySlot[],
-          error: null as Error | null,
-        }),
-  ]);
+  // (not per care profile), so they load here too — gated to admins through the
+  // conditional thunk (SC.4: no read path on a super_admin request).
+  //
+  // Declaration order is the error precedence (see the fail-closed chain below);
+  // `profile` / `careProfile` errors are consumed by the early-return branches,
+  // so they sit outside that chain.
+  const batch = await readBatch({
+    profile: () => reads.fetchProfile(profileId),
+    careProfile: () => reads.fetchCareProfile(profileId),
+    overShepherds: () => reads.fetchOverShepherds({ includeArchived: false }),
+    coverage: () => reads.fetchActiveCoverage(profileId),
+    genericCount: () => reads.fetchGenericFollowUpCount(profileId),
+    ledGroups: () => reads.fetchLedGroups(profileId),
+    keySlots: () =>
+      canReadPrivateNotes
+        ? reads.fetchPrivateNoteKeySlots(creatorProfileId)
+        : Promise.resolve({ data: [] as PrivateNoteKeySlot[], error: null }),
+  });
+  const profile = batch.results.profile;
+  const careResult = batch.results.careProfile;
+  const overShepherdsRes = batch.results.overShepherds;
+  const coverageRes = batch.results.coverage;
+  const genericCountRes = batch.results.genericCount;
+  const ledGroupsRes = batch.results.ledGroups;
+  const keySlotsRes = batch.results.keySlots;
 
   if (profile.error) {
     return {
@@ -343,22 +346,25 @@ async function buildDetailCore(
   let privateNote: PrivateNoteCiphertext | null = null;
   let childError: string | null = null;
   if (careResult.data) {
-    const [inter, fus, note] = await Promise.all([
-      reads.fetchInteractions(careResult.data.id),
-      reads.fetchFollowUps(careResult.data.id),
-      canReadPrivateNotes
-        ? reads.fetchPrivateNoteCiphertext(careResult.data.id, creatorProfileId)
-        : Promise.resolve({
-            data: null as PrivateNoteCiphertext | null,
-            error: null as Error | null,
-          }),
-    ]);
-    if (inter.error) childError = inter.error.message;
-    else interactions = inter.data;
-    if (fus.error) childError = childError ?? fus.error.message;
-    else followUps = fus.data;
-    if (note.error) childError = childError ?? note.error.message;
-    else privateNote = note.data;
+    const careProfileId = careResult.data.id;
+    // Declaration order is the error precedence; `firstError` reproduces the
+    // former `inter ?? fus ?? note` accumulation exactly. Each section degrades
+    // to its empty value on its own read failure.
+    const childBatch = await readBatch({
+      interactions: () => reads.fetchInteractions(careProfileId),
+      followUps: () => reads.fetchFollowUps(careProfileId),
+      privateNote: () =>
+        canReadPrivateNotes
+          ? reads.fetchPrivateNoteCiphertext(careProfileId, creatorProfileId)
+          : Promise.resolve({
+              data: null as PrivateNoteCiphertext | null,
+              error: null,
+            }),
+    });
+    interactions = childBatch.results.interactions.data ?? [];
+    followUps = childBatch.results.followUps.data ?? [];
+    privateNote = childBatch.results.privateNote.data ?? null;
+    childError = childBatch.firstError;
   }
 
   return {
@@ -376,11 +382,11 @@ async function buildDetailCore(
     privateNoteKeySlots: keySlotsRes.data ?? [],
     error:
       childError ??
-      overShepherdsRes.error?.message ??
-      coverageRes.error?.message ??
-      genericCountRes.error?.message ??
-      ledGroupsRes.error?.message ??
-      keySlotsRes.error?.message ??
+      batch.errors.overShepherds ??
+      batch.errors.coverage ??
+      batch.errors.genericCount ??
+      batch.errors.ledGroups ??
+      batch.errors.keySlots ??
       null,
   };
 }
@@ -403,38 +409,42 @@ export async function buildShepherdCareDetailData(
   if (core.kind === "not_found") return { kind: "not_found" };
 
   // Leader-Health Grade (#378): the symmetric per-leader rubric grade, keyed to
-  // the current Ministry Year. Loaded (admin-only by RLS) for the distinct
-  // "Leader Health" tab; failures block the editor rather than degrading to
-  // empty scores — saving from a blank seed would overwrite an existing grade
-  // (#377/#378 read-failure guard).
-  const [leaderRubricRes, leaderGradeRes] = await Promise.all([
-    reads.fetchLeaderHealthRubric(),
-    ministryYear !== null
-      ? reads.fetchLeaderRubricGrade(profileId, ministryYear)
-      : Promise.resolve({ data: null, error: null as Error | null }),
-  ]);
-  const leaderRubricCriteria = leaderRubricRes.data?.criteria ?? [];
-  const leaderGrade = leaderGradeRes.data ?? null;
+  // the current Ministry Year, loaded (admin-only by RLS) for the distinct
+  // "Leader Health" tab.
+  // The Leader-Health rubric/grade and the Group-Health rubric all gate their
+  // editors on a per-section fail-closed flag composed from this batch's errors
+  // bag (#377/#378 read-failure guard): a failed read blocks the editor rather
+  // than seeding empty scores that could overwrite an existing grade. The leader
+  // grade is keyed to the Ministry Year; the group rubric only loads when the
+  // leader leads at least one group in-season — both express that conditionality
+  // as fallback thunks so no read fires off-season / group-less (parity).
+  const loadGroupGrades = ministryYear !== null && core.ledGroups.length > 0;
+  const gradeBatch = await readBatch({
+    leaderRubric: () => reads.fetchLeaderHealthRubric(),
+    leaderGrade: () =>
+      ministryYear !== null
+        ? reads.fetchLeaderRubricGrade(profileId, ministryYear)
+        : Promise.resolve({ data: null, error: null }),
+    groupRubric: () =>
+      loadGroupGrades
+        ? reads.fetchGroupHealthRubric("group")
+        : Promise.resolve({ data: null, error: null }),
+  });
+  const leaderRubricCriteria =
+    gradeBatch.results.leaderRubric.data?.criteria ?? [];
+  const leaderGrade = gradeBatch.results.leaderGrade.data ?? null;
   const leaderGradeReadFailed = Boolean(
-    leaderRubricRes.error || leaderGradeRes.error
+    gradeBatch.errors.leaderRubric || gradeBatch.errors.leaderGrade
   );
 
-  // Group-Health Grade by rubric (#377): for each group this leader leads, load
-  // the configured group rubric criteria + the group's grade for the current
-  // ministry year. Off-season (ministryYear null) and group-less leaders skip
-  // these reads entirely.
-  const loadGroupGrades = ministryYear !== null && core.ledGroups.length > 0;
-  const groupRubricRes = loadGroupGrades
-    ? await reads.fetchGroupHealthRubric("group")
-    : null;
+  // Group-Health Grade by rubric (#377): the configured group rubric criteria,
+  // plus (below) each led group's grade for the current ministry year.
   const groupRubricCriteria = decodeRubricCriteria(
-    groupRubricRes?.data?.criteria ?? null
+    gradeBatch.results.groupRubric.data?.criteria ?? null
   );
   // A failed group-rubric read taints every group's editor (empty criteria); a
-  // failed per-group grade read taints just that group. Either way the page
-  // blocks the affected editor instead of seeding empty scores that could
-  // overwrite a grade.
-  const groupRubricReadFailed = Boolean(groupRubricRes?.error);
+  // failed per-group grade read taints just that group.
+  const groupRubricReadFailed = Boolean(gradeBatch.errors.groupRubric);
   const gradeByGroupId = new Map<string, GroupRubricGradeView>();
   const gradeReadFailedGroupIds = new Set<string>();
   if (ministryYear !== null && core.ledGroups.length > 0) {
@@ -456,21 +466,20 @@ export async function buildShepherdCareDetailData(
   // gates them on the SAME per-leader grant (the leader is their author), so
   // they come back only when the toggle is on — sealed by default, exactly like
   // the OS-authored notes about this leader.
-  const [grantRes, notesRes, prayersRes, groupNotesRes, groupPrayersRes] =
-    await Promise.all([
-      reads.fetchNoteTransparencyGrant(profileId),
-      reads.fetchCareNotesForSubject(profileId),
-      reads.fetchPrayerRequestsForSubject(profileId),
-      reads.fetchAuthoredGroupCareNotes(profileId),
-      reads.fetchAuthoredGroupPrayerRequests(profileId),
-    ]);
-  const transparencyGranted = grantRes.data?.granted ?? false;
-  const careNotes = notesRes.data ?? [];
-  const prayerRequests = prayersRes.data ?? [];
+  const notesBatch = await readBatch({
+    grant: () => reads.fetchNoteTransparencyGrant(profileId),
+    notes: () => reads.fetchCareNotesForSubject(profileId),
+    prayers: () => reads.fetchPrayerRequestsForSubject(profileId),
+    groupNotes: () => reads.fetchAuthoredGroupCareNotes(profileId),
+    groupPrayers: () => reads.fetchAuthoredGroupPrayerRequests(profileId),
+  });
+  const transparencyGranted = notesBatch.results.grant.data?.granted ?? false;
+  const careNotes = notesBatch.results.notes.data ?? [];
+  const prayerRequests = notesBatch.results.prayers.data ?? [];
 
   // Resolve the group name for each authored group note for display context.
-  const groupNoteRows = groupNotesRes.data ?? [];
-  const groupPrayerRows = groupPrayersRes.data ?? [];
+  const groupNoteRows = notesBatch.results.groupNotes.data ?? [];
+  const groupPrayerRows = notesBatch.results.groupPrayers.data ?? [];
   const groupIds = Array.from(
     new Set(
       [...groupNoteRows, ...groupPrayerRows]
