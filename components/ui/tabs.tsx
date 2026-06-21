@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useRef,
-  useState,
-  useTransition,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 // Thin, accessible Tabs primitive — the shared shape behind surface tab rails
@@ -54,24 +48,11 @@ export function Tabs({
     defaultTabId && tabs.some((t) => t.id === defaultTabId)
       ? defaultTabId
       : (tabs[0]?.id ?? "");
-  // `activeId` is the urgent selection — it drives the tab highlight and
-  // `aria-selected`, so selecting a tab repaints the selected state
-  // immediately. `panelId` is which panel is actually mounted: pointer clicks
-  // defer it (a heavy panel — e.g. Settings' ssr:false editors — mounts at low
-  // priority, off the interaction frame, keeping INP low), while keyboard
-  // activation moves it synchronously so the focused tab's `aria-controls`
-  // target is always mounted (the automatic-activation ARIA tabs pattern).
   const [activeId, setActiveId] = useState(initial);
-  const [panelId, setPanelId] = useState(initial);
-  const [, startTransition] = useTransition();
   const tabRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
 
   function focusTab(id: string) {
-    // Keyboard automatic activation: the selection AND the mounted panel move
-    // together, synchronously, so focus never lands on a tab whose panel hasn't
-    // rendered (a11y).
     setActiveId(id);
-    setPanelId(id);
     // Move DOM focus to the newly selected tab so keyboard navigation tracks
     // the selection (roving tabindex).
     requestAnimationFrame(() => {
@@ -96,9 +77,7 @@ export function Tabs({
     if (next) focusTab(next.id);
   }
 
-  // The mounted panel follows `panelId` (deferred for pointer, synchronous for
-  // keyboard); the tablist highlight above stays on the urgent `activeId`.
-  const activeTab = tabs.find((t) => t.id === panelId) ?? tabs[0];
+  const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
 
   return (
     <div className={cn("grid gap-6", className)}>
@@ -124,13 +103,7 @@ export function Tabs({
               aria-selected={selected}
               aria-controls={`${idPrefix}-panel-${tab.id}`}
               tabIndex={selected ? 0 : -1}
-              // Pointer selection: flip the highlight urgently (immediate
-              // feedback) but mount the panel as a low-priority transition, so a
-              // heavy panel doesn't build on the interaction frame (low INP).
-              onClick={() => {
-                setActiveId(tab.id);
-                startTransition(() => setPanelId(tab.id));
-              }}
+              onClick={() => setActiveId(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
                 "inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-pill border px-4 font-sans text-base font-medium leading-tight transition-colors duration-150",
