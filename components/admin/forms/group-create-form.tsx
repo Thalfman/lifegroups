@@ -37,8 +37,9 @@ export function GroupCreateForm({
   onDirty,
   onCancel,
   onPendingChange,
-  // The admin-managed free-text group-type list. The picker offers these plus an
-  // empty "Untyped" option; any value is accepted server-side (free text).
+  // The admin-managed free-text group-type list. The creatable picker offers
+  // these plus an in-place "add new type" affordance (#776 OPP-3); leaving it at
+  // "—" creates the group Untyped. Any value is accepted server-side (free text).
   groupTypes = [],
 }: {
   defaultCapacity: number | null;
