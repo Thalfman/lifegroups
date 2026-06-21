@@ -84,7 +84,11 @@ describe("CareAccordion", () => {
     expect(html).not.toContain("need attention");
   });
 
-  it("marks the individual Leader a roll-up points at", () => {
+  it("keeps a collapsed pane lazy: the roll-up renders but leader panels do not (#777 WS3)", () => {
+    // Mount-on-first-open — a collapsed pane (the default) hydrates only its
+    // summary roll-up, deferring the form-heavy leader panels until it is
+    // opened in the browser. renderToStaticMarkup is the closed state, so the
+    // per-pane roll-up is present while no leader body is.
     const html = renderToStaticMarkup(
       <CareAccordion
         panes={[
@@ -102,7 +106,11 @@ describe("CareAccordion", () => {
       />
     );
 
-    expect(html).toContain("Needs attention");
+    // The roll-up that signals where the work is stays server-rendered.
+    expect(html).toContain("1 needs attention");
+    // The leader panel (its summary + body) is gated until the pane is opened.
+    expect(html).not.toContain("Flagged Fran");
+    expect(html).not.toContain("Open leader care");
   });
 
   it("renders the shared disclosure affordance on every pane", () => {
