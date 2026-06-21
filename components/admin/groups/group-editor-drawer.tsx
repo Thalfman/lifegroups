@@ -3,6 +3,7 @@ import { GroupCreateForm } from "@/components/admin/forms/group-create-form";
 import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { fieldLabelTextClassName } from "@/components/admin/forms/field-styles";
+import type { FormDraft } from "@/lib/nav/draft-store";
 import type { GroupsRow } from "@/types/database";
 import type { GroupEditorState } from "./types";
 
@@ -14,6 +15,9 @@ export function GroupEditorDrawer({
   onPendingChange,
   onRequestClose,
   onSaved,
+  // OPP-3b (#781) — a restored form draft to seed the open form with, when the
+  // drawer was reopened by the "Manage group types" return round trip.
+  draft,
 }: {
   editor: GroupEditorState | null;
   defaultCapacity: number | null;
@@ -22,6 +26,7 @@ export function GroupEditorDrawer({
   onPendingChange: (pending: boolean) => void;
   onRequestClose: () => void;
   onSaved: () => void;
+  draft?: FormDraft;
 }) {
   const group = editor?.mode === "edit" ? editor.group : null;
 
@@ -45,6 +50,7 @@ export function GroupEditorDrawer({
           <GroupEditForm
             group={editor.group}
             groupTypes={groupTypes}
+            draft={draft}
             onCancel={onRequestClose}
             onDirty={onDirty}
             onPendingChange={onPendingChange}
@@ -60,6 +66,7 @@ export function GroupEditorDrawer({
         <GroupCreateForm
           defaultCapacity={defaultCapacity}
           groupTypes={groupTypes}
+          draft={draft}
           onCancel={onRequestClose}
           onDirty={onDirty}
           onPendingChange={onPendingChange}

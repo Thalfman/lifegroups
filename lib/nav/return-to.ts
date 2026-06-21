@@ -20,7 +20,11 @@ export type ReturnParams = { get(name: string): string | null };
 // Closed union of return origins. Add a key here (with its config below) when a
 // new redirect-and-return flow lands — keeping the set typed means a banner or
 // reader can never reference an origin that has no return target.
-export type ReturnOrigin = "setup" | "group-health";
+export type ReturnOrigin = "setup" | "group-health" | "groups";
+
+// The query param carrying the draft id through a redirect-and-return that needs
+// to restore unsaved form input (OPP-3b). Only the `groups` origin uses it.
+export const DRAFT_PARAM = "draft";
 
 type ReturnOriginConfig = {
   // The marker value written as `from=<value>` (kept distinct from the key so a
@@ -57,6 +61,21 @@ const RETURN_ORIGINS: Record<ReturnOrigin, ReturnOriginConfig> = {
         params.get("origin_setup") === "1" ? "&origin_setup=1" : ""
       }`,
     label: "← Back to group health",
+  },
+  // OPP-3b (#781) — "Manage group types" from a half-filled group create/edit
+  // form routes to the Settings › Groups editor and returns to the Groups list,
+  // carrying the draft id (`?draft=<id>`) so the list can reopen the same drawer
+  // with every field restored from sessionStorage. The marker tells the list it
+  // is a return, not a fresh visit; the draft id rides through unchanged.
+  groups: {
+    value: "groups",
+    returnHref: (params: ReturnParams) => {
+      const draft = params.get(DRAFT_PARAM);
+      return `/admin/groups?${RETURN_PARAM}=groups${
+        draft ? `&${DRAFT_PARAM}=${draft}` : ""
+      }`;
+    },
+    label: "← Back to the group you were editing",
   },
 };
 

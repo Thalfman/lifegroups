@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useDeferredValue,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -65,6 +66,12 @@ import { effectiveGroupsViewMode } from "@/components/admin/groups/view-mode";
 import { isTaskListTab } from "@/lib/dashboard/group-list-tabs";
 import { GroupCard } from "@/components/admin/groups/group-card";
 import { GroupEditorDrawer } from "@/components/admin/groups/group-editor-drawer";
+import {
+  clearFormDraft,
+  readFormDraft,
+  type FormDraft,
+} from "@/lib/nav/draft-store";
+import { DRAFT_PARAM } from "@/lib/nav/return-to";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { GroupsTable } from "@/components/admin/groups/groups-table";
 import {
@@ -235,6 +242,12 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   // Refs, not state, so neither typing nor an in-flight save re-renders the
   // list behind the drawer.
   const [editor, setEditor] = useState<GroupEditorState | null>(null);
+  // OPP-3b (#781) — the form draft to seed the open drawer with, set only when
+  // the drawer was reopened by the "Manage group types" return round trip.
+  // Cleared on any fresh open so a later manual open never inherits stale input.
+  const [draftValues, setDraftValues] = useState<FormDraft | undefined>(
+    undefined
+  );
   // Whether the non-blocking "discard unsaved changes?" prompt is open. State
   // (the rendered dialog reads it), replacing the old blocking `window.confirm`
   // so the dismissal click paints immediately.
@@ -244,10 +257,12 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
 
   const openCreate = useCallback(() => {
     dirtyRef.current = false;
+    setDraftValues(undefined);
     setEditor({ mode: "create" });
   }, []);
   const openEdit = useCallback((group: GroupsRow) => {
     dirtyRef.current = false;
+    setDraftValues(undefined);
     setEditor({ mode: "edit", group });
   }, []);
   const markDirty = useCallback(() => {
@@ -274,6 +289,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   const confirmDiscard = useCallback(() => {
     setDiscardOpen(false);
     dirtyRef.current = false;
+    setDraftValues(undefined);
     setEditor(null);
   }, []);
   // Close after a successful save / create / archive and refresh so the list
@@ -281,9 +297,50 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   const handleSaved = useCallback(() => {
     dirtyRef.current = false;
     submittingRef.current = false;
+    setDraftValues(undefined);
     setEditor(null);
     router.refresh();
   }, [router]);
+
+  // OPP-3b (#781) — reopen the editor from a returning "Manage group types" round
+  // trip. The Settings return banner lands the user here with `?draft=<id>`; we
+  // read the snapshot from sessionStorage, reopen the matching drawer (edit when
+  // the draft carries a group_id, else create) with every field restored, then
+  // clear the draft + strip the param so a refresh can't re-trigger it. One-shot.
+  const restoredRef = useRef(false);
+  const searchParams = useSearchParams();
+  const groupsById = useMemo(
+    () => new Map(props.groups.map((g) => [g.id, g])),
+    [props.groups]
+  );
+  useEffect(() => {
+    if (restoredRef.current) return;
+    const draftId = searchParams.get(DRAFT_PARAM);
+    if (!draftId) return;
+    restoredRef.current = true;
+    const draft = readFormDraft(draftId);
+    clearFormDraft(draftId);
+    if (draft) {
+      const targetGroup = draft.group_id
+        ? groupsById.get(draft.group_id)
+        : undefined;
+      dirtyRef.current = false;
+      // Restoring a client-only sessionStorage draft must happen post-hydration
+      // (the server can't read it, so doing it in render would mismatch) — the
+      // same one-shot storage-restore exception use-persisted-view-state takes.
+      /* eslint-disable react-hooks/set-state-in-effect --
+         one-shot restore from a URL marker + sessionStorage; see above */
+      setDraftValues(draft);
+      // A draft with a group_id reopens that group's edit drawer; one without
+      // (or whose group has since gone) reopens the create drawer.
+      setEditor(
+        targetGroup ? { mode: "edit", group: targetGroup } : { mode: "create" }
+      );
+      /* eslint-enable react-hooks/set-state-in-effect */
+    }
+    // Strip the draft marker so a manual refresh doesn't reopen from a stale id.
+    router.replace(window.location.pathname, { scroll: false });
+  }, [searchParams, groupsById, router]);
 
   const profilesById = useMemo(
     () => new Map(props.profiles.map((p) => [p.id, p])),
@@ -614,6 +671,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         editor={editor}
         defaultCapacity={props.metricDefaults.default_group_capacity}
         groupTypes={props.groupTypes ?? []}
+        draft={draftValues}
         onDirty={markDirty}
         onPendingChange={reportPending}
         onRequestClose={requestClose}

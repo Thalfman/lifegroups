@@ -113,4 +113,43 @@ describe("returnTo convention", () => {
       expect(returnOriginConfig("setup").label).toBe("← Back to setup");
     });
   });
+
+  // #781 OPP-3b — the groups origin: "Manage group types" round trip from a
+  // half-filled group form to the Settings list editor and back to the Groups
+  // list, carrying the draft id so the form can be restored.
+  describe("groups origin", () => {
+    it("resolveReturnHref carries the draft id back to the Groups list", () => {
+      const params = new URLSearchParams("tab=groups&from=groups&draft=abc123");
+      expect(resolveReturnHref("groups", params)).toBe(
+        "/admin/groups?from=groups&draft=abc123"
+      );
+    });
+
+    it("returns to the list even when no draft id is present", () => {
+      const params = new URLSearchParams("tab=groups&from=groups");
+      expect(resolveReturnHref("groups", params)).toBe(
+        "/admin/groups?from=groups"
+      );
+    });
+
+    it("the outbound decorated href round-trips the draft + marker", () => {
+      const outbound = decorateReturn(
+        "/admin/settings?tab=groups&draft=abc123",
+        "groups"
+      );
+      const params = new URL(outbound, "https://x").searchParams;
+      expect(isReturning("groups", params.get(RETURN_PARAM) ?? undefined)).toBe(
+        true
+      );
+      expect(resolveReturnHref("groups", params)).toBe(
+        "/admin/groups?from=groups&draft=abc123"
+      );
+    });
+
+    it("labels the return affordance for the group being edited", () => {
+      expect(returnOriginConfig("groups").label).toBe(
+        "← Back to the group you were editing"
+      );
+    });
+  });
 });

@@ -20,6 +20,7 @@ import {
 } from "./meeting-schedule-options";
 import type { MeetingFrequency } from "@/types/enums";
 import { GroupTypePicker } from "./group-type-picker";
+import type { FormDraft } from "@/lib/nav/draft-store";
 import { useActionForm, FormStatus } from "./action-form";
 
 export function GroupCreateForm({
@@ -41,6 +42,10 @@ export function GroupCreateForm({
   // these plus an in-place "add new type" affordance (#776 OPP-3); leaving it at
   // "—" creates the group Untyped. Any value is accepted server-side (free text).
   groupTypes = [],
+  // OPP-3b (#781) — a restored form draft from the "Manage group types" round
+  // trip. When present, every field seeds from it (and More details opens) so the
+  // operator lands back exactly where they left off. Absent on a fresh open.
+  draft,
 }: {
   defaultCapacity: number | null;
   onSaved?: () => void;
@@ -48,14 +53,19 @@ export function GroupCreateForm({
   onCancel?: () => void;
   onPendingChange?: (pending: boolean) => void;
   groupTypes?: readonly string[];
+  draft?: FormDraft;
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateGroup,
     { resetOnSuccess: true }
   );
-  const [frequency, setFrequency] = useState<MeetingFrequency>("weekly");
-  const [showMore, setShowMore] = useState(false);
-  const [groupName, setGroupName] = useState("");
+  const [frequency, setFrequency] = useState<MeetingFrequency>(
+    (draft?.meeting_frequency as MeetingFrequency) ?? "weekly"
+  );
+  // Open "More details" when restoring a draft so any restored optional field is
+  // visible (and not silently hidden behind the collapsed section).
+  const [showMore, setShowMore] = useState(draft != null);
+  const [groupName, setGroupName] = useState(draft?.name ?? "");
 
   // useActionForm resets the <form> element on success; the local UI state
   // (frequency select, expanded "More details") lives in React, so reset it too.
@@ -120,7 +130,7 @@ export function GroupCreateForm({
           <select
             id="group-meeting_day"
             name="meeting_day"
-            defaultValue=""
+            defaultValue={draft?.meeting_day ?? ""}
             className={fieldSelectClassName}
           >
             <option value="">Not set</option>
@@ -139,6 +149,7 @@ export function GroupCreateForm({
             id="group-meeting_time"
             name="meeting_time"
             type="time"
+            defaultValue={draft?.meeting_time ?? ""}
             autoComplete="off"
             className={fieldInputClassName}
           />
@@ -188,7 +199,7 @@ export function GroupCreateForm({
             <select
               id="group-meeting_week_parity"
               name="meeting_week_parity"
-              defaultValue=""
+              defaultValue={draft?.meeting_week_parity ?? ""}
               className={fieldSelectClassName}
             >
               <option value="">Choose weeks</option>
@@ -212,6 +223,7 @@ export function GroupCreateForm({
             id="group-location_area"
             name="location_area"
             type="text"
+            defaultValue={draft?.location_area ?? ""}
             autoComplete="off"
             className={fieldInputClassName}
             placeholder="Westside"
@@ -228,6 +240,7 @@ export function GroupCreateForm({
             id="group-address_optional"
             name="address_optional"
             type="text"
+            defaultValue={draft?.address_optional ?? ""}
             autoComplete="off"
             className={fieldInputClassName}
             placeholder="123 Vine St."
@@ -257,8 +270,9 @@ export function GroupCreateForm({
             // starts with a sensible capacity rather than Unknown. The field
             // stays mounted while collapsed, so the default submits even when
             // the operator never opens "More details". Clear it to leave the
-            // group's capacity Unknown.
-            defaultValue={defaultCapacity ?? ""}
+            // group's capacity Unknown. A restored draft (#781 OPP-3b) wins —
+            // including a deliberately-cleared "" — so the round trip is exact.
+            defaultValue={draft?.capacity ?? defaultCapacity ?? ""}
             placeholder={
               defaultCapacity != null ? String(defaultCapacity) : "Unknown"
             }
@@ -279,6 +293,8 @@ export function GroupCreateForm({
             name="group_type"
             id="group-group_type"
             label="Group type (optional)"
+            initialValue={draft?.group_type}
+            enableManageTypes
           />
           <p className={fieldHintClassName}>
             Choose a type from the admin-managed list, add a new one, or leave
@@ -293,6 +309,7 @@ export function GroupCreateForm({
             id="group-launched_on"
             name="launched_on"
             type="date"
+            defaultValue={draft?.launched_on ?? ""}
             className={fieldInputClassName}
           />
         </div>
@@ -304,6 +321,7 @@ export function GroupCreateForm({
             id="group-description"
             name="description"
             rows={3}
+            defaultValue={draft?.description ?? ""}
             className={cn(fieldInputClassName, "min-h-20 resize-y")}
             placeholder="Who this group is for, what makes it tick."
           />
