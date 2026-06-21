@@ -36,11 +36,12 @@ the work. But when the app moves them, it **owns the round trip**:
 > trip and return them to the exact context they came from.
 
 The good news (see §3a/§3c): the repo **already has this pattern** — ADR 0027's
-`?from=setup` / `?from=plan` markers, the reusable `BackToSetupLink` /
-`isFromSetup` reader (`lib/dashboard/setup-recovery.ts`), the `GroupsReturnBanner`
-return affordance, and `SetupReturnFocus` (scroll + focus restoration on return).
-It is bespoke per-origin today; this plan generalizes it into one `returnTo`
-convention rather than inventing a new mechanism.
+`?from=setup` marker (the one live origin), the reusable `BackToSetupLink` /
+`isFromSetup` reader (`lib/dashboard/setup-recovery.ts`), and `SetupReturnFocus`
+(scroll + focus restoration on return). An older `?from=plan` round-trip has
+decayed to an orphaned reader (`GroupsReturnBanner`, no emitter). It is bespoke
+today; this plan generalizes it into one `returnTo` convention (and cleans up the
+dead `from=plan` reader) rather than inventing a new mechanism.
 
 **Constraints inherited from the repo (must hold):** every write still flows
 `validate → guard → RPC → revalidatePath → log` through the narrow
@@ -131,7 +132,8 @@ dashboard / candidate card."
 
 - **Groups** (`admin/groups/actions.ts`): `adminCreateGroup`, `adminUpdateGroup`, `adminCloseGroup`, `adminReopenGroup`.
 - **People** (`admin/people/actions.ts`): `adminCreate{LeaderProfile,Member}`, `adminAssign{Leader,Member}ToGroup`, `adminAddPersonToGroup` (atomic create-and-assign), `adminUnassignLeaderFromGroup`, `adminEndGroupMembership`, `adminChangeLeaderRole`, `adminDeactivate{Profile,Member}`.
-- **Shepherd Care** (`admin/shepherd-care/actions.ts`): `adminUpsertShepherdCareProfile`, `adminLogShepherdCareInteraction`, `adminCreateShepherdCareFollowUp`, `adminUpdate/ArchiveShepherdCareFollowUp(+Status)`, `adminUpsertShepherdCarePrivateNote`, coverage + over-shepherd actions.
+- **Shepherd Care** (`admin/shepherd-care/actions.ts`): `adminUpsertShepherdCareProfile`, `adminLogShepherdCareInteraction`, `adminCreateShepherdCareFollowUp`, `adminUpdate/ArchiveShepherdCareFollowUp(+Status)`, `adminUpsertShepherdCarePrivateNote` (the **encrypted SC.4 Private Care Note** — distinct lane), coverage + over-shepherd actions.
+- **Care Notes** (`admin/shepherd-care/care-notes-actions.ts`): `adminWriteCareNote`, `adminWritePrayerRequest` — the **author-private** Care Note / Prayer Request lane (this is what OPP-1's "Add Care Note / Prayer" uses, **not** the encrypted private-note action above).
 - **Plan** (`admin/plan/actions.ts`): `adminCreateProspect`, `adminTransitionProspect`, `adminUpdateProspect`, `adminSetProspectNextStep`, `adminArchiveProspect`, `adminAddGroupType`.
 - **Multiply / Launch / Pipeline**: `adminSetGroupTypeInPipeline` (`multiply/actions.ts`); `adminCreate/UpdateMultiplicationCandidate`, `adminSetGroupCapacityTarget` (`launch-planning/actions.ts`); `adminCreate/Advance/Archive Apprentice` (`leader-pipeline/actions.ts`).
 - **Settings** (`admin/settings/actions.ts`): `adminSetGroupTypes`, `adminSetHealthRubric`, `adminUpdateMetricDefaults`, `adminSetReadinessRule`, etc.
@@ -161,17 +163,33 @@ referenced already exist unless noted.
   contextual drawer pre-bound to that leader: "Add Care Note", "Add Prayer
   Request", "Log interaction", "Set touchpoint", "New follow-up", and the
   transparency toggle (admin-only; never on leader routes).
-- **Likely repo location:** `components/admin/care/*`,
-  `components/admin/shepherd-care/care-actions.tsx` (already a multi-action
-  drawer body — reuse it as the contextual body).
-- **Actions:** `adminUpsertShepherdCarePrivateNote`,
-  `adminLogShepherdCareInteraction`, `adminUpsertShepherdCareProfile`,
-  `adminCreateShepherdCareFollowUp`, `set_note_transparency_grant` wrapper.
+- **Likely repo location:** `components/admin/care/*`; the note/prayer body lives
+  in `components/admin/shepherd-care/care-notes-section.tsx`, the log/status/
+  summary body in `components/admin/shepherd-care/care-actions.tsx` — reuse both
+  as contextual drawer bodies.
+- **Actions (use the correct lanes — these are distinct):**
+  - **Care Note / Prayer Request** → `adminWriteCareNote` /
+    `adminWritePrayerRequest` (`app/(protected)/admin/shepherd-care/care-notes-actions.ts`),
+    the **author-private** lane gated by `auth_is_admin()` + the transparency
+    grant. **Not** `adminUpsertShepherdCarePrivateNote`, which is the **separate
+    encrypted Private Care Note** (SC.4) lane and must stay out of this flow.
+  - **Log interaction** → `adminLogShepherdCareInteraction`; **Set touchpoint /
+    status / summary** → `adminUpsertShepherdCareProfile`; **New follow-up** →
+    `adminCreateShepherdCareFollowUp`; transparency → `set_note_transparency_grant`
+    wrapper.
 - **Priority:** P0 · **Complexity:** M · **Dependencies:** Phase-0 host +
   registry. **Unknown:** which actions belong on the _aggregate_ Notes feed item
   vs. the leader row (feed items reference a note's author/subject).
-- **Invariant watch:** `admin_private_note` and author-private notes must stay
-  RLS-gated; do not expose transparency UI on `/leader`.
+- **Hard dependency — care profile id:** the note, follow-up, and touchpoint
+  writes key on `care_profile_id`, but the Care accordion model exposes the
+  leader `profileId`. The contextual layer must **resolve (or lazily create) the
+  care profile** for that leader before offering these actions — never post the
+  subject `profileId` as the `care_profile_id`, or the write fails
+  validation/RPC. Treat care-profile resolution as a precondition gate on the
+  affordance.
+- **Invariant watch:** `admin_private_note` (the encrypted SC.4 note) and
+  author-private notes must stay RLS-gated; do not expose transparency UI or the
+  private-note lane on `/leader`.
 
 ### OPP-2 — Edit & Archive a group from its detail page ★ P0
 
@@ -202,33 +220,35 @@ referenced already exist unless noted.
   consumers in `group-create-form.tsx`, `group-edit-form.tsx`.
 - **Priority:** P0 · **Complexity:** S · **Dependencies:** none (action exists).
 
-### OPP-4 — Create-and-assign a person from the group roster ★ P1
+### OPP-4 — Create-and-assign a person from the group roster — ALREADY SHIPPED
 
-- **Current experience:** `group-roster-manager.tsx` assigns only _existing_
-  people; a new person means leaving to `/admin/people`, creating, returning.
-- **User friction:** Common onboarding flow forces a two-page detour even though
-  an atomic action exists.
-- **Recommended contextual behavior:** Add "Add new person" to the roster
-  manager's assign control, opening a small create-and-assign form bound to the
-  group via `adminAddPersonToGroup`.
-- **Likely repo location:** `components/admin/group-detail/group-roster-manager.tsx`.
-- **Actions:** `adminAddPersonToGroup`.
-- **Priority:** P1 · **Complexity:** M · **Dependencies:** Phase-0 host.
+- **Status:** **Already implemented — not a net-new opportunity.**
+  `components/admin/group-detail/group-roster-manager.tsx` already opens an
+  "Add person" drawer that renders `LeaderProfileForm` / `MemberForm` with
+  `assignToGroup={{ groupId, groupName }}`, and those forms call
+  `adminAddPersonToGroup` for the atomic create-and-assign write. No work
+  required; listed here only so implementers recognize the shipped pattern (it
+  is the model to mirror for OPP-1's care-profile create-on-the-fly). Moved to
+  the **already-solved exemplars** list below.
 
-### OPP-5 — Readiness toggles & "add as candidate" on Multiply cards ★ P1
+### OPP-5 — Inline readiness toggle on Multiply candidate cards ★ P1
 
-- **Current experience:** The readiness checklist exists only inside the full
-  candidate editor; potential-candidate cards
-  (`pipeline-potential-candidates.tsx`) show matches with no create action.
-- **User friction:** Marking a candidate ready, or promoting a spotted potential
-  leader into the pipeline, requires opening the full editor / switching to
-  launch-planning.
+- **Already shipped (do not rebuild):** promoting a potential leader **is**
+  done — `pipeline-potential-candidates.tsx` renders a **"Lock in"** button that
+  expands `ReadinessChecklist` (status + target year + the five readiness boxes)
+  and calls `adminCreateMultiplicationCandidate`. The "add as candidate" /
+  lock-in path is complete; mirror it, don't duplicate it.
+- **Genuinely missing (the only scope here):** editing readiness on an **already
+  locked-in** candidate requires opening the full candidate edit form. There is
+  no **inline, optimistic** readiness toggle on the locked-in candidate card.
+- **Current experience:** `pipeline-locked-in-candidates.tsx` shows readiness as
+  read-only; changing a box means opening the editor.
+- **User friction:** A one-checkbox change costs a full drawer round-trip.
 - **Recommended contextual behavior:** Inline readiness checkboxes on the
-  candidate card (optimistic, → `adminUpdateMultiplicationCandidate`) and an
-  "Add to pipeline" action on potential cards
-  (`adminCreateMultiplicationCandidate` / `adminCreateApprentice`).
-- **Likely repo location:** `components/admin/multiply/*`, `launch-planning/*`.
-- **Priority:** P1 · **Complexity:** M · **Dependencies:** Phase-0 host;
+  locked-in candidate card (optimistic, → `adminUpdateMultiplicationCandidate`,
+  reconcile + roll back on failure).
+- **Likely repo location:** `components/admin/multiply/pipeline-locked-in-candidates.tsx`.
+- **Priority:** P1 · **Complexity:** S (narrowed) · **Dependencies:**
   optimistic-update pattern. **Unknown:** whether inline readiness edits should
   confirm before persisting (review with Julian).
 
@@ -264,21 +284,30 @@ referenced already exist unless noted.
   of thresholds/rubrics, but the config lives in `/admin/settings`.
 - **User friction:** To understand or adjust why something is flagged, the user
   leaves to Settings and loses the row.
-- **Recommended contextual behavior:** A lightweight "view/edit rule" popover
-  next to the badge (read-only peek for most roles; edit for admins) deep-linking
-  or inline-editing `adminSetHealthRubric` / `adminUpdateMetricDefaults`. Start
-  read-only to limit blast radius.
+- **Recommended contextual behavior (two cleanly separated parts):**
+  1. **Read-only peek** — a lightweight popover next to the badge that _explains_
+     the governing rule (no inline editing of global config).
+  2. **"Edit rule" → redirect-and-return** — routes to the **existing Settings
+     rubric/threshold editor** (`adminSetHealthRubric` / `adminUpdateMetricDefaults`
+     on `/admin/settings`), edits happen on that audited page, then returns to
+     the origin. Editing global config from an inline popover is a **non-goal**
+     (§6); the only sanctioned edit path is the round-trip to Settings.
 - **Likely repo location:** group detail health/overview tabs, care grade UI.
-- **Priority:** P2 · **Complexity:** M/L · **Dependencies:** menu primitive;
-  decide read-only vs. editable. **Unknown:** appetite for editing global config
-  from a single group's context (could surprise — recommend read-only peek +
-  deep link first).
+- **Priority:** P2 · **Complexity:** M/L · **Dependencies:** menu primitive +
+  `returnTo` convention. **Unknown:** none material now that the edit path is the
+  Settings round-trip, not inline global-config editing.
 
 ### Already-solved exemplars (do not rebuild — mirror them)
 
-- Inline group-roster assign/remove (`group-roster-manager.tsx`).
+- Inline group-roster assign/remove **and create-and-assign** (`group-roster-manager.tsx`
+  → `LeaderProfileForm`/`MemberForm` with `assignToGroup` → `adminAddPersonToGroup`)
+  — this is OPP-4, already shipped.
 - Inline "add group type" in prospect form (`adminAddGroupType`).
 - Group health grade edit from group detail (`group-health-edit-button.tsx`).
+- Multiply "Lock in" — promote a potential leader to a locked-in candidate
+  (`pipeline-potential-candidates.tsx` → `ReadinessChecklist` →
+  `adminCreateMultiplicationCandidate`) — the "add as candidate" half of OPP-5,
+  already shipped.
 
 ---
 
@@ -288,17 +317,17 @@ Each opportunity gets the _lightest_ model that keeps the user in context. Most
 are inline/drawer (because the host + actions already exist); redirect-and-return
 is reserved for actions that genuinely belong on a dedicated config/admin route.
 
-| Opp                                        | Recommended model                                                               | Why this model (not the others)                                                                |
-| ------------------------------------------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| OPP-1 Care notes/prayer/log/follow-up      | **Drawer** (shared host) + **object-specific action menu** on the row           | Multi-field forms (`care-actions.tsx`) already render in a drawer; per-leader menu picks which |
-| OPP-2 Group edit / archive from detail     | **Drawer** (edit) + **action menu** (archive via `ConfirmDialog`)               | Reuse `group-editor-drawer.tsx`; archive is a confirm, not a page                              |
-| OPP-3 Create group type in form            | **Inline action** (`CreatablePicker`)                                           | Single value append — never worth leaving the form                                             |
-| OPP-3b _Manage/rename/remove_ group types  | **Redirect-and-return** → Settings › Groups                                     | List management is destructive/bulk; belongs on the real editor, then return                   |
-| OPP-4 Create-and-assign person to roster   | **Inline action** expanding to a small **popout** form                          | One atomic action (`adminAddPersonToGroup`); stays on the roster                               |
-| OPP-5 Readiness toggles / add-as-candidate | **Inline action** (optimistic) + **action menu** ("Add to pipeline")            | Toggles are single-field; promotion opens the candidate drawer                                 |
-| OPP-6 Person/group detail header actions   | **Object-specific action menu** (registry-driven) + drawer/confirm bodies       | One consistent menu per entity; bodies reuse existing forms                                    |
-| OPP-7 Dashboard attention-queue actions    | **Action menu** → drawer body, **in place**                                     | Triage must not bounce off the dashboard                                                       |
-| OPP-8 Config "why?" from a badge           | **Popover** (read-only peek) + **redirect-and-return** ("Edit rule" → Settings) | Peek answers "why"; editing global config belongs on Settings, then return                     |
+| Opp                                       | Recommended model                                                               | Why this model (not the others)                                                                                                                                             |
+| ----------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OPP-1 Care notes/prayer/log/follow-up     | **Drawer** (shared host) + **object-specific action menu** on the row           | Note/prayer body (`care-notes-section.tsx`) + log/status body (`care-actions.tsx`) already render in drawers; per-leader menu picks which (resolve `care_profile_id` first) |
+| OPP-2 Group edit / archive from detail    | **Drawer** (edit) + **action menu** (archive via `ConfirmDialog`)               | Reuse `group-editor-drawer.tsx`; archive is a confirm, not a page                                                                                                           |
+| OPP-3 Create group type in form           | **Inline action** (`CreatablePicker`)                                           | Single value append — never worth leaving the form                                                                                                                          |
+| OPP-3b _Manage/rename/remove_ group types | **Redirect-and-return** → Settings › Groups                                     | List management is destructive/bulk; belongs on the real editor, then return                                                                                                |
+| OPP-4 Create-and-assign person to roster  | _(already shipped — inline popout form)_                                        | Done: `group-roster-manager.tsx` add-person drawer → `adminAddPersonToGroup`                                                                                                |
+| OPP-5 Inline readiness toggle (locked-in) | **Inline action** (optimistic)                                                  | Single-checkbox edit; "Lock in" promotion already exists, so only the inline toggle is new                                                                                  |
+| OPP-6 Person/group detail header actions  | **Object-specific action menu** (registry-driven) + drawer/confirm bodies       | One consistent menu per entity; bodies reuse existing forms                                                                                                                 |
+| OPP-7 Dashboard attention-queue actions   | **Action menu** → drawer body, **in place**                                     | Triage must not bounce off the dashboard                                                                                                                                    |
+| OPP-8 Config "why?" from a badge          | **Popover** (read-only peek) + **redirect-and-return** ("Edit rule" → Settings) | Peek answers "why"; editing global config belongs on Settings, then return                                                                                                  |
 
 **Guided flow / command-palette models** are intentionally _not_ assigned to any
 opportunity in this plan (see §6 non-goals); the registry built here is what
@@ -312,8 +341,11 @@ are modeled on the existing `?from=` convention.
 
 **OPP-3b — Manage group types from a group form**
 
-- **Origin route:** `/admin/groups` (group create/edit drawer) — or `/admin/plan`
-  (already wired with `from=plan`).
+- **Origin route:** `/admin/groups` (group create/edit drawer). _Note: an older
+  `from=plan` round-trip is now orphaned — `GroupsReturnBanner` still reads the
+  marker but no surface emits it anymore (the Plan prospect form moved to the
+  inline `GroupTypePicker`). This flow introduces a fresh `from=groups` origin
+  rather than reviving the dead `from=plan` path._
 - **Destination route:** `/admin/settings?tab=groups&from=groups`.
 - **Context to preserve:** the originating route + that the user came to _manage
   types_; **any half-filled group form must survive the trip** (the one real
@@ -363,25 +395,28 @@ restored focus on arrival — not a transient toast (a toaster is a non-goal, §
 
 The redirect-and-return pattern is **already implemented, just not generalized**:
 
-| Capability                          | Exists?              | Where                                                                                                                                                                   |
-| ----------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `from`/`returnTo` param convention  | **Yes (per-origin)** | `?from=setup`, `?from=plan`; `FROM_SETUP_PARAM`/`FROM_SETUP_VALUE` + `isFromSetup()` in `lib/dashboard/setup-recovery.ts`, `components/lg/admin/back-to-setup-link.tsx` |
-| Return affordance/banner            | **Yes (bespoke)**    | `BackToSetupLink`, `components/admin/settings/groups-return-banner.tsx` (`from=plan`), `SetupReturnBanner`                                                              |
-| Scroll/focus restoration on return  | **Yes**              | `components/lg/admin/dashboard/SetupReturnFocus.tsx`, `SetupRecoveryChecklist` (re-focus next step)                                                                     |
-| Deep-link decoration helper         | **Yes**              | `lib/dashboard/setup-recovery.ts` (decorates step hrefs with `from=setup`)                                                                                              |
-| Query-param UI state                | **Yes (pervasive)**  | `?tab=` (Settings, Multiply), Care `?view=/?filter=/?coverage=`, Home `?period=`, Groups `?tab=&from=setup`                                                             |
-| State persistence across nav        | **Partial**          | `lib/hooks/use-persisted-view-state.ts` (localStorage for filters/view); **no draft-form persistence yet**                                                              |
-| Route guards                        | **Yes**              | `requireAdmin`/`requireOverShepherd`/`requireLeader` (`lib/auth/*`) — destinations stay gated                                                                           |
-| Existing config destinations        | **Yes**              | `/admin/settings?tab={care,groups,multiply,thresholds,system}` already deep-linkable                                                                                    |
-| Modal routes / layout-level drawers | **No**               | drawers are component-state (`EditingSurface`), not URL-addressable routes                                                                                              |
-| Toast / completion message          | **No**               | inline `FormStatus` only; ADR 0027 chose return-affordance + focus over toasts                                                                                          |
-| Wizard / multi-step flows           | **No**               | none                                                                                                                                                                    |
+| Capability                          | Exists?                   | Where                                                                                                                                                                                                    |
+| ----------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `from`/`returnTo` param convention  | **Yes (one live origin)** | `?from=setup` is the only **live** marker (emitter + reader); `FROM_SETUP_PARAM`/`FROM_SETUP_VALUE` + `isFromSetup()` in `lib/dashboard/setup-recovery.ts`, `components/lg/admin/back-to-setup-link.tsx` |
+| Return affordance/banner            | **Yes (bespoke)**         | `BackToSetupLink`; `components/admin/settings/groups-return-banner.tsx` reads `from=plan` but is **orphaned** (no emitter — Plan moved to inline `GroupTypePicker`)                                      |
+| Scroll/focus restoration on return  | **Yes**                   | `components/lg/admin/dashboard/SetupReturnFocus.tsx`, `SetupRecoveryChecklist` (re-focus next step)                                                                                                      |
+| Deep-link decoration helper         | **Yes**                   | `lib/dashboard/setup-recovery.ts` (decorates step hrefs with `from=setup`)                                                                                                                               |
+| Query-param UI state                | **Yes (pervasive)**       | `?tab=` (Settings, Multiply), Care `?view=/?filter=/?coverage=`, Home `?period=`, Groups `?tab=&from=setup`                                                                                              |
+| State persistence across nav        | **Partial**               | `lib/hooks/use-persisted-view-state.ts` (localStorage for filters/view); **no draft-form persistence yet**                                                                                               |
+| Route guards                        | **Yes**                   | `requireAdmin`/`requireOverShepherd`/`requireLeader` (`lib/auth/*`) — destinations stay gated                                                                                                            |
+| Existing config destinations        | **Yes**                   | `/admin/settings?tab={care,groups,multiply,thresholds,system}` already deep-linkable                                                                                                                     |
+| Modal routes / layout-level drawers | **No**                    | drawers are component-state (`EditingSurface`), not URL-addressable routes                                                                                                                               |
+| Toast / completion message          | **No**                    | inline `FormStatus` only; ADR 0027 chose return-affordance + focus over toasts                                                                                                                           |
+| Wizard / multi-step flows           | **No**                    | none                                                                                                                                                                                                     |
 
-**Verdict:** the repo **already supports redirect-and-return** for two origins
-(setup chain, plan→group-types) with reusable focus-restoration. The gap is that
-each origin **hand-rolls** its marker value and its own return banner. The plan
-should **generalize this into one `returnTo` convention + one return-banner
-component**, not introduce a new mechanism. The only net-new capability needed is
+**Verdict:** the repo **already supports redirect-and-return** — the setup chain
+(`from=setup`) is the one fully-live origin, with reusable focus-restoration
+(`SetupReturnFocus`); the `from=plan` round-trip has decayed to an orphaned
+reader (`GroupsReturnBanner`) with no emitter. The gap is that the live origin
+**hand-rolls** its marker value and its own return banner. The plan should
+**generalize this into one `returnTo` convention + one return-banner component**,
+either retiring or re-homing the dead `from=plan` reader as part of Phase 0 — not
+introduce a new mechanism. The only net-new capability needed is
 **unsaved-form-draft persistence** (sessionStorage) for OPP-3b — and only there.
 
 ---
@@ -425,8 +460,9 @@ admin-managed list can append a value in place (initially group types via
 `adminAddGroupType`). Resolves the config dead-ends without a new write path.
 
 **E. Reusable redirect-and-return convention — generalize ADR 0027.** Promote
-the per-origin `from=setup`/`from=plan` markers into one convention so any
-surface can hand off and get the user back. Concretely:
+the live `from=setup` marker into one convention so any surface can hand off and
+get the user back, and clean up the orphaned `from=plan` reader in the same pass.
+Concretely:
 
 - **One `returnTo` param convention** in `lib/nav/return-to.ts` (sibling to the
   existing `setup-recovery.ts`): an encoder/decoder for `from=<originKey>` plus
@@ -469,16 +505,18 @@ unchanged.
 (B) wrapping one shared `EditingSurface`, the registry skeleton (C),
 `CreatablePicker` (D), and the **`returnTo` convention (E)** —
 `lib/nav/return-to.ts` + generic `<ReturnBanner>` + `ReturnFocus`, refactoring
-the existing `from=setup`/`from=plan` callers onto it with no behavior change.
+the live `from=setup` callers onto it with no behavior change and retiring the
+orphaned `from=plan` reader (`GroupsReturnBanner`).
 **Acceptance:**
 
 - New `ui/dropdown-menu` + `ui/popover` exist; the two prior hand-rolled menus
   use them with byte-equivalent behavior (open/close, keyboard, positioning).
 - `ContextualActionProvider` mounted in the admin shell; a throwaway demo button
   can open a registered action drawer for a sample entity.
-- `BackToSetupLink` and `GroupsReturnBanner` are reimplemented on the generic
-  `returnTo` convention; their existing tests (`back-to-setup-link.test.tsx`,
-  `setup-recovery.test.ts`) stay green.
+- `BackToSetupLink` is reimplemented on the generic `returnTo` convention and its
+  existing tests (`back-to-setup-link.test.tsx`, `setup-recovery.test.ts`) stay
+  green; the dead `from=plan` reader is removed (or re-homed onto the new
+  convention if Phase 1's `from=groups` flow is brought forward).
 - `npm run lint`, `npm run typecheck`, `npm run test:run`, and `npm run
 test:a11y` all green; fitness suite unchanged.
 
@@ -486,9 +524,15 @@ test:a11y` all green; fitness suite unchanged.
 
 **Scope:** OPP-1 (Care list/feed actions), OPP-2 (group detail edit/archive),
 OPP-3 (creatable group-type in group forms), and **one low-risk
-redirect-and-return flow: "Edit rubric/threshold" from the group detail health
-tab → Settings → back** (OPP-8's editable path, chosen because it needs **no
-draft persistence** — the origin is a navigational position, not unsaved input).
+redirect-and-return flow: "Edit rubric" from the group detail health tab →
+Settings → back**. This is OPP-8's **edit half** and is deliberately _not_ the
+risky inline-edit: the link routes to the **existing, audited Settings rubric
+editor** (the legitimate place to change global config), edits happen there, and
+the user is returned — it never edits global config from an inline popover (that
+stays a non-goal). It is chosen as the Phase-1 return-flow demonstrator because
+it needs **no draft persistence** (the origin is a navigational position, not
+unsaved input). OPP-8's **read-only inline peek** lands later in Phase 3; the two
+halves are complementary, not contradictory.
 **Acceptance (contextual actions):**
 
 - From the Care accordion row and a Notes-feed item, a user can add a Care Note,
@@ -513,17 +557,18 @@ draft persistence** — the origin is a navigational position, not unsaved input
 - All four CI lanes green; new component tests colocated under `__tests__/`,
   including a test asserting the return href round-trips the origin context.
 
-### Phase 2 — Roster create-and-assign, Multiply card actions, detail parity, draft-return
+### Phase 2 — Inline readiness toggle, detail parity, draft-return
 
-**Scope:** OPP-4, OPP-5, OPP-6, and **OPP-3b** (manage group types via
-redirect-and-return _with_ unsaved-form-draft persistence — the harder return
-flow, deferred here so the draft store lands once and is proven).
+**Scope:** OPP-5 (inline readiness toggle on locked-in candidate cards — note
+OPP-4 and the OPP-5 "Lock in" promotion are **already shipped**, so neither is in
+scope), OPP-6, and **OPP-3b** (manage group types via redirect-and-return _with_
+unsaved-form-draft persistence — the harder return flow, deferred here so the
+draft store lands once and is proven).
 **Acceptance:**
 
-- Roster manager can create-and-assign a new person to the group via
-  `adminAddPersonToGroup` in one step.
-- Candidate cards toggle readiness inline; potential cards can "Add to pipeline";
-  both persist through existing actions with optimistic UI + error rollback.
+- Locked-in candidate cards (`pipeline-locked-in-candidates.tsx`) toggle
+  readiness inline via `adminUpdateMultiplicationCandidate` with optimistic UI +
+  error rollback — without opening the candidate editor.
 - Person and group detail headers render `EntityActionMenu` from the registry;
   role gating matches `lib/auth/roles.ts`.
 - From a half-filled group create/edit form, "Manage group types" routes to
@@ -534,13 +579,16 @@ flow, deferred here so the draft store lands once and is proven).
 
 ### Phase 3 — Cross-surface triage + config peeks
 
-**Scope:** OPP-7 (dashboard attention-queue actions), OPP-8 (read-only config
-peek + deep link; editable only if §7 resolves that way).
+**Scope:** OPP-7 (dashboard attention-queue actions), OPP-8 **read-only peek
+half** (the inline popover that explains the rule; the **edit** round-trip
+already shipped in Phase 1, so this phase adds only the read-only peek + deep
+link reusing the Phase-1 return flow).
 **Acceptance:**
 
 - Dashboard attention items expose their most-likely next action in place.
 - A capacity/health badge offers a "why?" peek showing the governing
-  threshold/rubric (read-only) with a deep link to the Settings tab.
+  threshold/rubric (read-only) with a deep link that reuses the Phase-1
+  `returnTo` round-trip to the Settings editor.
 - CI green; measure DOM-node/perf deltas via the existing
   `tests/a11y/perf-harness.spec.ts` to confirm the shared host didn't bloat
   surfaces.
