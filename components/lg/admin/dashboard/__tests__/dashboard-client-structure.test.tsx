@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ComponentProps } from "react";
 import { DashboardClient } from "../DashboardClient";
+import { MinistrySnapshotSection } from "../MinistrySnapshotSection";
 import {
   ADMIN_FALLBACK,
   INTEREST_FUNNEL_FALLBACK,
@@ -22,15 +23,51 @@ import type {
 // These assertions key off section anchors (aria-labelledby ids) and the cards'
 // own eyebrow labels rather than styling, so they stay robust to re-skins.
 
-function render(over: Partial<ComponentProps<typeof DashboardClient>> = {}) {
+// #777 WS2: the snapshot body (vital-signs band + overview cards) is now passed
+// to DashboardClient as `snapshotSlot` (the page streams it in its own Suspense
+// boundary). The structure test renders it synchronously via the presentational
+// MinistrySnapshotSection, so the `interestFunnel` / `multiplyReadiness`
+// overrides still flow into the band + cards, and showLaunchPlanning /
+// showLeaderPipeline are derived from `hiddenNavAreas` exactly as the page does.
+type RenderOverrides = Partial<
+  Omit<ComponentProps<typeof DashboardClient>, "snapshotSlot">
+> & {
+  interestFunnel?: InterestFunnelDashboardSummary;
+  multiplyReadiness?: MultiplyReadinessDashboardSummary;
+};
+
+function render(over: RenderOverrides = {}) {
+  const {
+    interestFunnel = INTEREST_FUNNEL_FALLBACK,
+    multiplyReadiness = MULTIPLY_READINESS_FALLBACK,
+    data = ADMIN_FALLBACK,
+    guestsLive = false,
+    scopeId = "p1",
+    hiddenNavAreas,
+    degraded,
+    ...rest
+  } = over;
+  const hidden = new Set(hiddenNavAreas ?? []);
   return renderToStaticMarkup(
     <DashboardClient
-      data={ADMIN_FALLBACK}
-      interestFunnel={INTEREST_FUNNEL_FALLBACK}
-      multiplyReadiness={MULTIPLY_READINESS_FALLBACK}
-      guestsLive={false}
-      scopeId="p1"
-      {...over}
+      data={data}
+      guestsLive={guestsLive}
+      scopeId={scopeId}
+      hiddenNavAreas={hiddenNavAreas}
+      degraded={degraded}
+      {...rest}
+      snapshotSlot={
+        <MinistrySnapshotSection
+          data={data}
+          interestFunnel={interestFunnel}
+          multiplyReadiness={multiplyReadiness}
+          showLaunchPlanning={!hidden.has("/admin/planning")}
+          showLeaderPipeline={!hidden.has("/admin/people")}
+          guestsLive={guestsLive}
+          scopeId={scopeId}
+          degraded={degraded}
+        />
+      }
     />
   );
 }
@@ -65,9 +102,7 @@ const DASHBOARD_MODE_DATA: AdminDashboardData = {
   },
 };
 
-function renderDashboardMode(
-  over: Partial<ComponentProps<typeof DashboardClient>> = {}
-) {
+function renderDashboardMode(over: RenderOverrides = {}) {
   return render({ data: DASHBOARD_MODE_DATA, ...over });
 }
 

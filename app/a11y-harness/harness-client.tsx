@@ -61,6 +61,7 @@ import {
   type SettingsShellData,
 } from "@/components/admin/settings-shell";
 import { DashboardClient } from "@/components/lg/admin/dashboard/DashboardClient";
+import { MinistrySnapshotSection } from "@/components/lg/admin/dashboard/MinistrySnapshotSection";
 import {
   ADMIN_FALLBACK,
   INTEREST_FUNNEL_FALLBACK,
@@ -1458,17 +1459,32 @@ export function A11yHarnessClient() {
         <DashboardClient
           key={`${homeQuiet ? "quiet" : "demo"}-${homeSetupVariant ? "setup" : "default"}`}
           data={homeQuiet ? HOME_QUIET_DATA : ADMIN_FALLBACK}
-          interestFunnel={
-            homeQuiet ? HOME_QUIET_FUNNEL : INTEREST_FUNNEL_FALLBACK
-          }
-          multiplyReadiness={
-            homeQuiet ? HOME_QUIET_READINESS : MULTIPLY_READINESS_FALLBACK
-          }
           guestsLive={false}
           scopeId={null}
           canResetActivity
           isSuperAdmin
           hiddenNavAreas={homeHiddenNavAreas}
+          // #777 WS2: the real page streams the Ministry-snapshot body in its own
+          // Suspense boundary; the harness renders it synchronously via the
+          // presentational MinistrySnapshotSection so the a11y assertions still
+          // cover the band + overview cards.
+          snapshotSlot={
+            <MinistrySnapshotSection
+              data={homeQuiet ? HOME_QUIET_DATA : ADMIN_FALLBACK}
+              interestFunnel={
+                homeQuiet ? HOME_QUIET_FUNNEL : INTEREST_FUNNEL_FALLBACK
+              }
+              multiplyReadiness={
+                homeQuiet ? HOME_QUIET_READINESS : MULTIPLY_READINESS_FALLBACK
+              }
+              showLaunchPlanning={
+                !homeHiddenNavAreas.includes("/admin/planning")
+              }
+              showLeaderPipeline={!homeHiddenNavAreas.includes("/admin/people")}
+              guestsLive={false}
+              scopeId={null}
+            />
+          }
         />
       </Surface>
 
