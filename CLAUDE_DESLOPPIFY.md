@@ -6,10 +6,13 @@ security · migrations, the `components/` tree, and route/config/doc hygiene.
 Each finding was cross-checked against source; several reviewer "criticals" were
 demoted or discarded after verification (see _Notes_ at the bottom).
 
-**Headline:** the repo is in genuinely good shape. The security invariants hold
-— no service-role key in Next runtime, no hardcoded identity, every mutating RPC
-pairs an `audit_events` row, 0 broad write-RLS policies, no `select("*")`. There
-are **no security CRITICALs**. The real debt is **correctness traps from
+**Headline:** the repo is in genuinely good shape. The **machine-checked** security
+invariants hold — no service-role key in Next runtime, no hardcoded identity, no
+broad write-RLS policies, no `select("*")` — and at the DB layer every mutating RPC
+pairs an `audit_events` row. The **one** audit-integrity exception is **C6**: an
+app-code path (`account-actions.ts`) can issue a password reset while swallowing
+its audit-RPC result, so a reset can land without a paired audit row — the single
+Critical security item below. The rest of the debt is **correctness traps from
 inconsistent handling of the same concept in multiple places**, **duplicated
 form/confirmation UI**, and **parallel/orphaned documentation**.
 
@@ -248,9 +251,9 @@ the next selection.
 
 > **Correction:** the original `calendar-occurrence-editor.tsx` "unknown `eventType` silently mapped to `study`" example was **removed**. The `defaultValue` ternary (`components/calendar/calendar-occurrence-editor.tsx:269-274`) only substitutes `"study"` when the value is the valid non-scheduled types `"off"`/`"cancelled"` (a legal default for the scheduled-only select), and `coerceEventType` (`lib/calendar/payload.ts:133-142`) does the same for valid types — unknown `event_type` values are rejected by `validateWritable` upstream, not coerced. No bad-data path.
 
-- **Where:** `settings/multiply-trigger-editor.tsx` (96-111, 145-146) — `parseInt(v) || 0`, no `required`, so an empty input silently becomes `0`. `check-in-review-shell.tsx:211` — `Object.values(errors).some(Boolean)` misses a falsy-but-present error value (e.g. an empty-string error).
+- **Where:** `settings/multiply-trigger-editor.tsx` (96-111, 145-146) — `parseInt(v) || 0`, no `required`, so an empty input silently becomes `0`. The `Object.values(data.errors).some(Boolean)` predicate (which misses a falsy-but-present error value, e.g. an empty-string error) appears in **three** degraded-read banners: `check-in-review-shell.tsx:211`, `check-in-detail-shell.tsx:101`, and `group-management-shell.tsx:87` _(the latter two added after PR #798 review — fix all three, not just one)_.
 - **Why it matters:** the number input silently accepts/coerces bad data instead of surfacing it; the error predicate can under-report.
-- **Recommend:** add `required`/client validation on the number inputs; use `.some(e => e != null)` for the error check.
+- **Recommend:** add `required`/client validation on the number inputs; replace `.some(Boolean)` with `.some(e => e != null)` in **all three** shells.
 - **Safe now?** ✅
 
 ### M18 — ~~Missing error/empty boundaries on recovery + follow-up reads~~ **WITHDRAWN**
@@ -277,9 +280,9 @@ the next selection.
 
 ### N2 — Small UX / a11y polish bundle
 
-- **Where:** `admin-master-calendar-drawer.tsx:50` (`aria-describedby={undefined}` disables the dialog description — remove it / supply a real id); `forms/invite-workflow-form.tsx` copy button (~434) and `planning-by-leader-list.tsx` (185-203) missing `aria-label`s on icon-only controls; `guests-shell.tsx` / `follow-ups-shell.tsx` hand-roll near-identical empty-state text while `EmptyState` is already imported; index-as-key in `lg/DetailPageSkeleton.tsx:56` and `scenarios-panel.tsx:494`.
+- **Where:** `admin-master-calendar-drawer.tsx:50` (`aria-describedby={undefined}` disables the dialog description — remove it / supply a real id); `guests-shell.tsx:258` hand-rolls a `<div style={emptyStyle}>` empty state while the `EmptyState` primitive exists; index-as-key in `lg/DetailPageSkeleton.tsx:56` and `scenarios-panel.tsx:494`. _(Corrected after PR #798 review — the icon-only `aria-label` examples were dropped: the invite copy button renders visible "Copy"/"Copied!" text, and `planning-by-leader-list.tsx:187` already has an `aria-label`; `follow-ups-shell.tsx:367` already uses `EmptyState`.)_
 - **Why it matters:** small but real accessibility + consistency gaps.
-- **Recommend:** remove the description-disabling prop, add the aria-labels, standardize on the `EmptyState` primitive, use stable keys.
+- **Recommend:** remove the description-disabling prop, migrate the `guests-shell` empty state to the `EmptyState` primitive, use stable keys.
 - **Safe now?** ✅
 
 ### N3 — Duplicated small helpers
@@ -297,7 +300,7 @@ the next selection.
 
 ### N5 — Dead props, magic numbers, raw `<button>` vs `Button`
 
-- **Where:** unused props — `group-health-editor.tsx:45` (`onRequestClose` never called), `settings-shell.tsx:202` (`isSuperAdmin` to `SystemPanel`); magic numbers — `maxLength={2000}` hardcoded in `scenario-form.tsx` & `multiplication-planner.tsx`, spacing literals in `group-assignments-manager.tsx`, `NOTES_PREVIEW_CHARS=140` local to `guest-card.tsx`; **39 files** still use raw `<button>` instead of the `Button` primitive (e.g. `group-assignments-manager.tsx:438` raw vs `:441` helper).
+- **Where:** unused prop — `settings-shell.tsx:202` (`isSuperAdmin` passed to `SystemPanel` but unused); magic numbers — `maxLength={2000}` hardcoded in `scenario-form.tsx` & `multiplication-planner.tsx`, spacing literals in `group-assignments-manager.tsx`, `NOTES_PREVIEW_CHARS=140` local to `guest-card.tsx`; **39 files** still use raw `<button>` instead of the `Button` primitive (e.g. `group-assignments-manager.tsx:438` raw vs `:441` helper). _(Corrected after PR #798 review — the `group-health-editor.tsx:45` `onRequestClose` example was dropped: it is forwarded to `<EditingSurface onRequestClose=…>` at `:66` and fires on dialog/button close, so it is not dead.)_
 - **Recommend:** remove/wire dead props; hoist magic numbers to constants/validation modules; converge raw `<button>` on `Button` per-file.
 - **Safe now?** ✅
 
@@ -316,9 +319,9 @@ the next selection.
 
 ### N8 — Migrate hand-rolled pages onto the `adminPage()` runner
 
-- **Where:** `care`, `group-health`, `calendar`, `launch-planning`, `planning` hand-roll guards/banners and miss the standardized `measureReadBundle` read-timing; `plan`, `multiply`, `leader-pipeline`, `guests`, `check-ins`, `groups`, `people` use the ADR-0028 `adminPage()` runner.
-- **Why it matters:** five surfaces drift from the standardized page construction (`frozenBanner`, header streaming, read-timing).
-- **Recommend:** migrate the manual pages onto `adminPage()` where they fit; document the intentional exceptions otherwise. Incremental.
+- **Where:** `group-health`, `calendar`, `launch-planning`, `planning` hand-roll guards/banners outside the ADR-0028 `adminPage()` runner used by `plan`, `multiply`, `leader-pipeline`, `guests`, `check-ins`, `groups`, `people`. _(Corrected after PR #798 review — `care` was removed: `app/(protected)/admin/care/page.tsx:181` already wraps its load in `measureReadBundle("care_page", …)`, so it does not lack read-timing.)_
+- **Why it matters:** these surfaces drift from the standardized page construction (`frozenBanner`, header streaming, read-timing).
+- **Recommend:** migrate the manual pages onto `adminPage()` where they fit; verify each one's actual gaps first (e.g. some may already wrap `measureReadBundle`), and document the intentional exceptions otherwise. Incremental.
 - **Safe now?** ✅
 
 ---
@@ -342,9 +345,10 @@ re-checked against the code and the backlog corrected:
   real gap (no try/catch around the thrown-action path).
 - **M14 retire `/admin/planning` — reframed.** Retirement contradicts the accepted
   ADR 0033 ("keep, off-nav"); changed to "document the distinction / raise a new ADR."
-- **M18 attention-reset example — removed.** It already renders "Impact preview
-  unavailable…" on `state === null` (`attention-reset-card.tsx:95-97`); only the
-  follow-ups shell remains.
+- **M18 — fully withdrawn** (see Round 2). The attention-reset card already renders
+  "Impact preview unavailable…" on `state === null` (`attention-reset-card.tsx:95-97`),
+  and the follow-ups shell already surfaces read errors too — so the item has no
+  remaining target.
 
 **Round 2** (re-review of the corrections commit) caught four more, all verified:
 
@@ -361,6 +365,23 @@ re-checked against the code and the backlog corrected:
   `validateWritable`. Kept the real number-input + error-predicate items.
 - **M3 — expanded (not a correction).** Broadened to cover all four unbounded
   `full_name` validators (`people.ts:28,49,74,176`), not just the first two.
+
+**Round 3** (re-review of `e277dc8`) caught seven more, all verified and applied:
+
+- **Headline qualified.** "No security CRITICALs" contradicted C6; the headline now
+  explicitly calls out C6 as the one audit-integrity exception.
+- **M17 predicate — expanded.** The `.some(Boolean)` under-report also lives in
+  `check-in-detail-shell.tsx:101` and `group-management-shell.tsx:87`; fix all three.
+- **N2 — trimmed.** The "icon-only missing `aria-label`" examples were false (the
+  invite copy button has visible "Copy"/"Copied!" text; `planning-by-leader-list.tsx:187`
+  already has an `aria-label`), and `follow-ups-shell.tsx:367` already uses `EmptyState`
+  — narrowed to the `guests-shell` empty state + the real `aria-describedby` / key items.
+- **N5 — trimmed.** `group-health-editor.tsx:45` `onRequestClose` is **not** dead — it's
+  forwarded to `<EditingSurface>` at `:66`; example removed.
+- **N8 — trimmed.** `care` already wraps `measureReadBundle("care_page", …)`
+  (`care/page.tsx:181`); removed from the migration list.
+- **Stale M18 note fixed.** A Round-1 note still said "only the follow-ups shell
+  remains"; reconciled with the Round-2 full withdrawal.
 
 ### From the original scan
 
