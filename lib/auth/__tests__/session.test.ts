@@ -101,6 +101,14 @@ type ClientState = {
 function makeClient(state: ClientState) {
   return {
     auth: {
+      // getCurrentSession reads claims first to obtain the user id (`sub`) so the
+      // getUser revocation check and the profile read can run in parallel. Mirror
+      // that: claims carry the user's id when signed in, and resolve to no claims
+      // when anonymous so the session short-circuits before getUser.
+      getClaims: async () => ({
+        data: state.user ? { claims: { sub: state.user.id } } : null,
+        error: null,
+      }),
       getUser: async () => ({ data: { user: state.user }, error: null }),
     },
     from(table: string) {

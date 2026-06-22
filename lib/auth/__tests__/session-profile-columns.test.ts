@@ -57,6 +57,10 @@ const PROFILE_FIXTURE = {
 function makeSelectCapturingClient(selectCalls: Map<string, unknown[]>) {
   return {
     auth: {
+      getClaims: async () => ({
+        data: { claims: { sub: PROFILE_FIXTURE.auth_user_id } },
+        error: null,
+      }),
       getUser: async () => ({
         data: {
           user: { id: PROFILE_FIXTURE.auth_user_id, email: null },

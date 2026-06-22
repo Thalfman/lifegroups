@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ProfilesRow } from "@/types/database";
 import { log } from "@/lib/observability/logger";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { isUserRole, type UserRole } from "./roles";
 import { isUuid } from "@/lib/shared/uuid";
 import { readFrozenSurfaceFlagForLeader } from "./leader-surface-flag";
@@ -93,24 +94,49 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
   const client = await createSupabaseServerClient();
   if (!client) return { kind: "anonymous" };
 
-  // This is the authorization gate for every protected route, so it must catch
-  // a revoked/deleted Auth user immediately. getUser() validates the access
-  // token against the Auth server on each request; a locally-verified JWT
-  // (getClaims) would keep admitting requireAdmin()/requireLeader() callers
-  // until the token expires (see PR #236 review). Cookie rotation in middleware
-  // uses the cheaper getClaims() since it performs no authorization.
-  const {
-    data: { user },
-  } = await client.auth.getUser();
+  // Resolve the access-token claims first. getClaims() verifies the JWT locally
+  // via the Web Crypto API on asymmetric-key projects (the default), so it is a
+  // cheap local decode that yields the caller's user id (`sub`) WITHOUT an
+  // auth-server round trip; it falls back to a getUser() network call only on
+  // symmetric-key projects (never slower than getUser). Having `sub` up front
+  // lets the authorization gate (getUser) and the profile read run CONCURRENTLY
+  // below instead of in series — collapsing two sequential round-trips into one
+  // and removing seconds from FCP on every protected request. We still need the
+  // id to scope the profile read: profiles RLS lets an admin read every row, so
+  // a bare select would not self-scope to the caller.
+  const { data: claimsData } = await measureReadBundle(
+    "session_get_claims",
+    () => client.auth.getClaims()
+  );
+  const claimsSub = claimsData?.claims?.sub;
+  if (!claimsSub || typeof claimsSub !== "string") {
+    return { kind: "anonymous" };
+  }
+
+  // getUser() stays the authorization gate for every protected route: it
+  // validates the access token against the Auth server on each request, so a
+  // revoked/deleted Auth user is rejected immediately rather than lingering
+  // until token expiry (a locally-verified JWT would keep admitting
+  // requireAdmin()/requireLeader() callers — see PR #236 review). It now runs in
+  // PARALLEL with the profile read keyed by the claims `sub`; the profile result
+  // is trusted only once getUser confirms a live user just below, so a revoked
+  // user is still fully rejected (fail-closed) — the read is simply discarded.
+  const [userResult, profileQuery] = await Promise.all([
+    measureReadBundle("session_get_user", () => client.auth.getUser()),
+    measureReadBundle("session_profile", async () =>
+      client
+        .from("profiles")
+        .select(SESSION_PROFILE_SELECT)
+        .eq("auth_user_id", claimsSub)
+        .maybeSingle()
+    ),
+  ]);
+
+  const user = userResult.data.user;
   if (!user) return { kind: "anonymous" };
 
   const authUser: AuthUser = { id: user.id, email: user.email ?? null };
 
-  const profileQuery = await client
-    .from("profiles")
-    .select(SESSION_PROFILE_SELECT)
-    .eq("auth_user_id", authUser.id)
-    .maybeSingle();
   if (profileQuery.error) {
     log.error({
       event: "session_lookup_failed",

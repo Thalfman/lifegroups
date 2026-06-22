@@ -61,6 +61,15 @@ but stay hidden behind Super-Admin nav flags (turned off, not deleted).
   `measureReadBundle` wrappers (`lib/observability/read-timing.ts`) emit
   `read_bundle` lines collectable from the log drain — authed `/admin/*` routes
   can't be timed locally (they redirect to `/login` without Supabase env).
+- **Keep blocking reads off the first-paint path.** A protected **layout** wraps
+  the whole shell, so any `await` it makes before returning withholds _all_ chrome
+  HTML — that latency lands directly on FCP. Don't `await` non-essential,
+  slowly-changing data (e.g. nav-visibility flags) in a layout: pass the promise
+  down and resolve it inside a `<Suspense>` boundary with a fail-safe fallback, so
+  the frame streams immediately (see `LgAppShell` + `app/(protected)/admin/layout.tsx`).
+  In `getCurrentSession`, the `getUser()` revocation gate and the `profiles` read
+  run in **parallel** (keyed by the local `getClaims()` `sub`) — keep them
+  concurrent; don't reintroduce a sequential auth waterfall.
 
 ## Repo map
 

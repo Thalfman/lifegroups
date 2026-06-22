@@ -10,10 +10,17 @@ export default async function AdminLayout({
   children: ReactNode;
 }) {
   const session = await requireAdmin();
-  // Resolve the Super-Admin nav-visibility flags once for the whole admin shell
-  // (ADR 0016), so the sidebar + mobile drawer hide the same tabs the operator
-  // retired. Defaults to Groups/People/Planning hidden when unconfigured.
-  const hiddenNavAreas = await loadHiddenNavAreas();
+  // Resolve the Super-Admin nav-visibility flags for the admin shell (ADR 0016),
+  // so the sidebar + mobile drawer hide the same tabs the operator retired.
+  // Defaults to Groups/People/Planning hidden when unconfigured.
+  //
+  // Kicked off but deliberately NOT awaited here: passing the promise to
+  // LgAppShell keeps this RPC round-trip OFF the shell's first-paint path. The
+  // chrome (frame, top bar, main) streams immediately and the nav items fill in
+  // when the flag resolves, instead of withholding the entire admin shell behind
+  // the read on every admin navigation. The shared React.cache wrapper still
+  // makes it a single RPC for the request.
+  const hiddenNavAreas = loadHiddenNavAreas();
   return (
     <LgAppShell
       user={{
