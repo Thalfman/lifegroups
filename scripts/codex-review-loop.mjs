@@ -652,6 +652,28 @@ async function loadPullData(pr) {
   };
 }
 
+
+async function dispatchCiWorkflow(prNumber, headRef, headSha, issueComments) {
+  const dispatchMarker = marker('ci-dispatch', prNumber, headSha);
+  if (hasMarker(issueComments, dispatchMarker)) return false;
+
+  await mutate(
+    'POST',
+    apiPath('/actions/workflows/ci.yml/dispatches'),
+    { ref: headRef },
+    `dispatch CI for PR #${prNumber} (${headRef})`,
+  );
+  await postIssueComment(
+    prNumber,
+    [
+      `Dispatched CI for PR #${prNumber} on branch \`${headRef}\` because no checks existed for head \`${headSha}\` yet.`,
+      '',
+      dispatchMarker,
+    ].join('\n'),
+  );
+  return true;
+}
+
 async function requestCodexReview(prNumber, headSha, issueComments) {
   const requestMarker = marker('review-request', prNumber, headSha);
   if (hasMarker(issueComments, requestMarker)) return false;
@@ -812,7 +834,12 @@ async function processPull(prSummary) {
   }
 
   if (!checks.passed) {
-    reasons.push(checks.reason);
+    if (checks.total === 0) {
+      const dispatched = await dispatchCiWorkflow(prNumber, pr.head.ref, headSha, issueComments);
+      reasons.push(dispatched ? `${checks.reason} Dispatched CI for this PR branch.` : checks.reason);
+    } else {
+      reasons.push(checks.reason);
+    }
   }
 
   if (pr.mergeable !== true) {

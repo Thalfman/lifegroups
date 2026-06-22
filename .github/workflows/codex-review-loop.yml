@@ -43,6 +43,7 @@ permissions:
   issues: write
   checks: read
   statuses: read
+  actions: write
 
 concurrency:
   group: codex-review-loop-${{ github.repository }}
