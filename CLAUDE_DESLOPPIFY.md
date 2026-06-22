@@ -10,11 +10,17 @@ demoted or discarded after verification (see _Notes_ at the bottom).
 — no service-role key in Next runtime, no hardcoded identity, every mutating RPC
 pairs an `audit_events` row, 0 broad write-RLS policies, no `select("*")`. There
 are **no security CRITICALs**. The real debt is **correctness traps from
-inconsistent handling of the same concept in multiple places**, **destructive-flow
-UX that's been copy-pasted**, and **parallel/orphaned documentation**.
+inconsistent handling of the same concept in multiple places**, **duplicated
+form/confirmation UI**, and **parallel/orphaned documentation**.
 
 This overlaps with the existing top-level `plans/` (001–007) backlog — that one
 is older and narrower; reconcile, don't double-track.
+
+> **Revision (PR #798 review):** the Codex reviewer correctly challenged three
+> of the original "Critical" findings. After re-verifying against source, **C2,
+> C3, and C4 were downgraded** (the danger-zone confirm/error handling and the
+> grade-resolver numeric guard already exist). The genuine Criticals are now
+> **C1, C5, C6**. M14 and M18 were also corrected. Details inline and in _Notes_.
 
 ## How to use this
 
@@ -29,9 +35,9 @@ the next selection.
 | ID  | Tier     | Task                                                                                               | Safe now?            |
 | --- | -------- | -------------------------------------------------------------------------------------------------- | -------------------- |
 | C1  | Critical | `ProspectsRow` type is missing `desired_group_type` (trust-boundary lie)                           | ✅ now               |
-| C2  | Critical | Group rubric grade skips `decodeNumericRecord` (latent NaN in Group-Health letter)                 | ✅ now               |
-| C3  | Critical | Danger-zone typed-confirmation hand-rolled 8× + tombstone restore reuses stale confirm             | ✅ now               |
-| C4  | Critical | Destructive/admin panels swallow write errors & allow double-submit                                | ✅ now               |
+| C2  | Medium ↓ | Group rubric read skips the `decodeNumericRecord` its siblings run (consistency, not a NaN bug)    | ✅ now               |
+| C3  | Medium ↓ | Danger-zone typed-confirmation UI hand-rolled across cards (extract a primitive)                   | ✅ now               |
+| C4  | Nice ↓   | `test-accounts-panel` `run()` has no catch for a thrown/rejected action                            | ✅ now               |
 | C5  | Critical | Boolean-flag parser drift — `"yes"` = true on leader, false on admin                               | ✅ now               |
 | C6  | Critical | Password-reset audit RPC: unvalidated `profile_id` + swallowed result → possible missing audit row | ✅ now               |
 | M1  | Medium   | Silent fallback on invalid follow-up `priority`                                                    | ✅ now               |
@@ -47,11 +53,11 @@ the next selection.
 | M11 | Medium   | Dead read exports + unused `member-care-reads.ts`                                                  | mixed                |
 | M12 | Medium   | `okf/` is an orphaned parallel doc tree (and ADR range is stale)                                   | mixed                |
 | M13 | Medium   | Top-level `plans/` collides with `docs/plans/` and is stale                                        | ⏳ wait              |
-| M14 | Medium   | `/admin/plan` vs `/admin/planning` — confusing route pair; retire `planning`                       | ⏳ wait              |
+| M14 | Medium   | `/admin/plan` vs `/admin/planning` — confusing pair; document distinction (ADR 0033 keeps it)      | ⏳ wait              |
 | M15 | Medium   | Over-Shepherd test user is unprovisionable; `findAuthUserByEmail` duped 3×                         | ✅ now (test)        |
 | M16 | Medium   | Form field-clusters duplicated across 3 forms; no shared `FormField` primitive                     | ✅ now               |
 | M17 | Medium   | Number inputs coerce empty → 0; enum fallback masks bad data; weak error predicate                 | ✅ now               |
-| M18 | Medium   | Missing error/empty boundaries on recovery + follow-up reads                                       | mixed                |
+| M18 | Medium   | `follow-ups-shell` assumes `data` is always present (no skeleton/error state)                      | ⏳ wait              |
 | N1  | Nice     | Inline-style sprawl + dual `pastoral`→`ui` styling systems                                         | ⏳ wait (large)      |
 | N2  | Nice     | Small UX/a11y polish bundle (dialog desc, aria-labels, empty states, keys)                         | ✅ now               |
 | N3  | Nice     | Duplicated small helpers (`formatDate`, `todayLocalIso`, tab→URL)                                  | ✅ now               |
@@ -65,6 +71,10 @@ the next selection.
 
 ## 1. Critical issues
 
+> The genuine Criticals are **C1, C5, C6**. **C2, C3, and C4 remain here under
+> their original IDs but are downgraded** (Medium/Nice) after the PR #798 review —
+> each is marked "↓ corrected" with the verification details.
+
 ### C1 — `ProspectsRow` type is missing `desired_group_type` (trust-boundary lie)
 
 - **Where:** `lib/supabase/prospect-reads.ts:24-58` pins `PROSPECT_BOARD_COLUMNS = columns<ProspectBoardEntry>()(…"desired_group_type")` to a hand-written local type; `types/database.ts:678-692` (`ProspectsRow`) has **no** `desired_group_type` field. The column exists in the DB (migration `20260710000000`).
@@ -72,26 +82,32 @@ the next selection.
 - **Recommend:** add `desired_group_type: string | null` to `ProspectsRow`, then change `ProspectBoardEntry`/`ProspectRawRow` to `Pick<ProspectsRow, …>` so the pin is real.
 - **Safe now?** ✅ Additive type field + `Pick`; no runtime change.
 
-### C2 — Group rubric grade skips the `decodeNumericRecord` its siblings perform
+### C2 — Group rubric read skips the `decodeNumericRecord` its siblings run _(Medium ↓ — corrected after PR #798 review)_
 
-- **Where:** `lib/supabase/group-rubric-grade-reads.ts:24-62` casts raw jsonb `criterion_scores` straight through `.maybeSingle<GroupRubricGradeRow>()` with **no decode**. The leader sibling (`leader-rubric-grade-reads.ts:62-90`) and the accordion reads (`care-accordion-reads.ts:67,104`) **do** call `decodeNumericRecord` for the identical column. Downstream (`lib/admin/group-rubric-grade-read.ts:63`) feeds the values as `number` into `resolveGroupRubricGrade`.
-- **Why it matters:** optimistic cast at the trust boundary. A malformed/non-numeric jsonb value (`"42"`, a null entry) flows in untyped as `number` where `decodeNumericRecord` would have dropped it — a latent NaN / wrong-letter bug in the Group-Health grade, and an inconsistency across three readers of the same shape.
-- **Recommend:** type the raw row's `criterion_scores` as `unknown` and run `decodeNumericRecord` in `fetchGroupRubricGradeRow`, mirroring the leader reader.
-- **Safe now?** ✅
+> **Correction:** the original "latent NaN / wrong-letter production bug" rationale was **not accurate** and has been removed. `computeGrade` (`lib/admin/health-rubric.ts:252`) already filters to `typeof scores[c.key] === "number" && Number.isFinite(scores[c.key])`, so a malformed jsonb value (`"42"`, `null`) is **dropped at compute time**, not fed into the resolver as `NaN`. This is a **consistency / defense-in-depth** gap, not a Critical correctness bug — downgraded to Medium.
 
-### C3 — Danger-zone typed-confirmation hand-rolled 8×; tombstone restore reuses stale confirm
+- **Where:** `lib/supabase/group-rubric-grade-reads.ts:24-62` casts raw jsonb `criterion_scores` straight through `.maybeSingle<GroupRubricGradeRow>()` with **no decode**. The leader sibling (`leader-rubric-grade-reads.ts:62-90`) and the accordion reads (`care-accordion-reads.ts:67,104`) **do** call `decodeNumericRecord` for the identical column.
+- **Why it matters:** three readers of the same jsonb shape handle it two different ways. The downstream `computeGrade` guard saves correctness today, but the divergence is a maintenance trap — a future reader of this code can't tell whether the decode is load-bearing, and a refactor of `computeGrade` could remove the only thing currently dropping bad values.
+- **Recommend:** type the raw row's `criterion_scores` as `unknown` and run `decodeNumericRecord` in `fetchGroupRubricGradeRow`, mirroring the leader reader, so the trust-boundary decode is consistent across all three. (Fold into **M8**, which already groups the three rubric read paths.)
+- **Safe now?** ✅ Behavior-preserving.
 
-- **Where:** typed-confirmation UI re-declared in `permanent-delete-card.tsx` (183-199, 349-355), `clean-slate-card.tsx` (121-137, 264-279, 330-346), `attention-reset-card.tsx` (182-199, 243-259, 290-299) — each with its own `useState("")`, phrase-match, label, and input styling. Separately, **tombstone restore shares one confirm state across all rows** (`permanent-delete-card.tsx:309-377`): a failed restore leaves the typed confirm in place, so clicking restore on a _different_ tombstone can submit with a stale confirm.
-- **Why it matters:** destructive flows are exactly where inconsistency is dangerous — a single UX/aria fix must be made in 8 places, and the shared-confirm-state bug can permanently restore the wrong record.
-- **Recommend:** extract a `<ConfirmPhraseInput phrase value onChange />` primitive and reuse it; add `resetOnError` to `useActionForm` (or key the restore form per tombstone id) so confirm state can't leak between rows.
-- **Safe now?** ✅
+### C3 — Danger-zone typed-confirmation UI hand-rolled across cards _(Medium ↓ — corrected after PR #798 review)_
 
-### C4 — Destructive/admin panels swallow write errors & allow double-submit
+> **Correction:** the original "tombstone restore reuses stale confirm across rows" claim was **false** and has been removed. `permanent-delete-card.tsx:300-324` renders each row as `<TombstoneRow key={t.id}>`, and `TombstoneRow` owns its own `useState("")` plus a `useValueChange` that clears the field on success — confirm state cannot leak between tombstones. With the (real but minor) duplication being the only remaining concern, this is a dedup item, not a Critical destructive-flow bug.
 
-- **Where:** `components/admin/test-accounts-panel.tsx` (107-124, 204-264) — `run()` only handles the returned-result path; a thrown/rejected action gives **no feedback**, and the `ConfirmDialog` trigger isn't disabled during the in-flight transition (double-submit possible). `components/admin/capacity-board/capacity-board.tsx` (80-106) — `adminSetGroupCapacityTarget` has **no visible error surface**; the operator gets no feedback on failure.
-- **Why it matters:** silent failure on account provisioning / capacity targets means an admin believes a write succeeded when it didn't; double-submit on a destructive trigger can fire an action twice.
-- **Recommend:** wrap the action calls in try/catch and render the error via `FormStatus`; disable the trigger while `pending`.
-- **Safe now?** ✅
+- **Where:** the typed-confirmation pattern (a `useState("")` + phrase-match + label + bounded-width input) is re-declared in `permanent-delete-card.tsx`, `clean-slate-card.tsx`, and `attention-reset-card.tsx`.
+- **Why it matters:** a future UX/aria change to the confirm affordance has to be made in several places, and the copies have already drifted in input width.
+- **Recommend:** extract a `<ConfirmPhraseInput phrase value onChange />` primitive and reuse it across the danger-zone cards.
+- **Safe now?** ✅ Pure refactor; each card already has working confirm + `FormStatus` wiring.
+
+### C4 — `test-accounts-panel` `run()` has no catch for a thrown action _(Nice ↓ — corrected after PR #798 review)_
+
+> **Correction:** the original "swallow errors & allow double-submit" framing was **mostly inaccurate** and has been narrowed. Both `TestAccountsPanel` triggers already pass `disabled={pending !== null}` (no double-submit), and `capacity-board.tsx`'s `TargetEditor` already renders `<FormStatus state={state} />` with `disabled={pending}` (errors are surfaced). The capacity-board example was dropped entirely. Only one minor gap remains.
+
+- **Where:** `components/admin/test-accounts-panel.tsx:107-124`. `run()` awaits the action inside `startTransition` and handles the returned `{ok}`/`{errors}` result, but has **no try/catch** — if the action itself _throws/rejects_ (unexpected/network error, not the normal discriminated result), the user gets no feedback and `pending` is never cleared (`setPending(null)` is skipped), leaving the buttons stuck disabled.
+- **Why it matters:** a rare but real dead-end — on a thrown action the panel locks up with no error shown. Low severity because the server actions normally return a result object rather than throwing.
+- **Recommend:** wrap the `await` in try/catch; on catch, set an error and `setPending(null)` in a `finally`.
+- **Safe now?** ✅ Small, localized.
 
 ### C5 — Boolean-flag parser drift: `"yes"` = true on leader, false on admin
 
@@ -203,10 +219,10 @@ the next selection.
 
 ### M14 — `/admin/plan` vs `/admin/planning` — confusing route pair
 
-- **Where:** `app/(protected)/admin/plan/page.tsx` (Interest Funnel, active spine, ADR 0016) vs `app/(protected)/admin/planning/page.tsx` (Job-2 launch/calendar entry, off-nav, ADR 0013). `lib/nav/route-registry.ts` itself flags `/admin/planning` as `"PRODUCT REVIEW: candidate to retire into Multiply"`; ADR 0033 froze it "Keep, off-nav."
-- **Why it matters:** one letter apart, completely different surfaces; `/admin/planning` duplicates the launch-planning/calendar surfaces it hosts as tabs. The single most confusing pair in the route tree.
-- **Recommend:** execute the registry's own note — retire `/admin/planning` into Multiply (per ADR 0022, which already moved Plan/Readiness/Leaders into `/admin/multiply`), leaving `/admin/plan` unambiguous. At minimum, document the distinction loudly.
-- **Safe now?** ⏳ Wait — product decision (already tracked).
+- **Where:** `app/(protected)/admin/plan/page.tsx` (Interest Funnel, active spine, ADR 0016) vs `app/(protected)/admin/planning/page.tsx` (Job-2 launch/calendar entry, off-nav, ADR 0013). `lib/nav/route-registry.ts` carries a "candidate to retire into Multiply" product-review note, **but the accepted decision `docs/adr/0033-keep-off-nav-pre-pivot-surfaces.md` explicitly keeps `/admin/planning`** (it's the canonical Planning host / shared loader for its aliases) and makes no route deletions.
+- **Why it matters:** one letter apart, completely different surfaces — the single most confusing pair in the route tree. The confusion is a documentation/naming problem, **not** a license to delete: a future agent acting on a "retire" instruction would violate ADR 0033.
+- **Recommend (corrected after PR #798 review):** do **not** retire `/admin/planning` against ADR 0033. Instead, **document the `plan` vs `planning` distinction loudly** (in the route registry and/or a short note), and if consolidation is genuinely wanted, raise a **new ADR superseding 0033** rather than acting on the stale registry comment.
+- **Safe now?** ⏳ Wait — documentation change is safe; any consolidation needs a new ADR first.
 
 ### M15 — Over-Shepherd test user unprovisionable; `findAuthUserByEmail` duped 3×
 
@@ -229,12 +245,14 @@ the next selection.
 - **Recommend:** add `required`/client validation on the number inputs; type-guard + log on the enum fallback; use `.some(e => e != null)` for the error check.
 - **Safe now?** ✅
 
-### M18 — Missing error/empty boundaries on recovery + follow-up reads
+### M18 — `follow-ups-shell` assumes `data` is always present _(corrected after PR #798 review)_
 
-- **Where:** `attention-reset-card.tsx` (279-331) shows an empty list whether there are no resets _or_ the read failed; `follow-ups/follow-ups-shell.tsx` assumes `data` is always present (no skeleton).
-- **Why it matters:** a failed read is indistinguishable from "nothing to show" — the false-zero trap the read layer is designed to avoid, surfacing in the UI.
+> **Correction:** the original `attention-reset-card.tsx` example was **removed** — it already handles the failure case, rendering "Impact preview unavailable — the reset state couldn't be loaded." and disabling resets when its `state` prop is `null` (`attention-reset-card.tsx:95-97`). Only the follow-ups shell remains.
+
+- **Where:** `follow-ups/follow-ups-shell.tsx` assumes its `data` prop is always present (no skeleton/error branch), unlike the recovery cards which distinguish "nothing to show" from "read failed."
+- **Why it matters:** if the upstream read degrades, a failed read is indistinguishable from "no follow-ups" — the false-zero trap the read layer is designed to avoid, surfacing in the UI.
 - **Recommend:** thread an `errors.*` prop and render the `CouldNotLoad`/`ErrorBanner` pattern used elsewhere.
-- **Safe now?** ✅ for the card; ⏳ wait for the shell (needs data-layer context).
+- **Safe now?** ⏳ Wait — needs data-layer context to thread the error through.
 
 ---
 
@@ -297,8 +315,31 @@ the next selection.
 
 ## Notes — reviewer claims verified false / demoted (not in backlog)
 
-These were flagged by a reviewer and **discarded after checking source**, recorded
-so they aren't re-raised:
+### Corrections from the PR #798 (Codex) review — verified against source
+
+The PR review caught four inaccuracies in the original draft. Each was
+re-checked against the code and the backlog corrected:
+
+- **C2 latent-NaN rationale — removed.** `computeGrade` (`lib/admin/health-rubric.ts:252`)
+  already filters to `typeof === "number" && Number.isFinite`, so malformed jsonb is
+  dropped, not fed as `NaN`. C2 downgraded Critical → Medium (consistency only).
+- **C3 stale-confirm restore bug — removed.** `permanent-delete-card.tsx:300-324`
+  keys each `TombstoneRow` by id with its own `useState` + `useValueChange` reset;
+  confirm state can't leak between rows. C3 downgraded to a Medium dedup item.
+- **C4 swallow-errors / double-submit — narrowed.** Both `TestAccountsPanel`
+  triggers already use `disabled={pending !== null}`, and `capacity-board.tsx`
+  already renders `<FormStatus>`. C4 downgraded to Nice and narrowed to the one
+  real gap (no try/catch around the thrown-action path).
+- **M14 retire `/admin/planning` — reframed.** Retirement contradicts the accepted
+  ADR 0033 ("keep, off-nav"); changed to "document the distinction / raise a new ADR."
+- **M18 attention-reset example — removed.** It already renders "Impact preview
+  unavailable…" on `state === null` (`attention-reset-card.tsx:95-97`); only the
+  follow-ups shell remains.
+
+### From the original scan
+
+These were flagged by a sub-reviewer and **discarded after checking source**,
+recorded so they aren't re-raised:
 
 - **"Missing `okFields` breaks the audit trail"** — false. `okFields` adds _log_
   fields only; the paired `audit_events` row is written inside the RPC regardless.
