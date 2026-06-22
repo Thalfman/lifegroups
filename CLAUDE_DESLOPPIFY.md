@@ -16,11 +16,15 @@ form/confirmation UI**, and **parallel/orphaned documentation**.
 This overlaps with the existing top-level `plans/` (001–007) backlog — that one
 is older and narrower; reconcile, don't double-track.
 
-> **Revision (PR #798 review):** the Codex reviewer correctly challenged three
-> of the original "Critical" findings. After re-verifying against source, **C2,
-> C3, and C4 were downgraded** (the danger-zone confirm/error handling and the
-> grade-resolver numeric guard already exist). The genuine Criticals are now
-> **C1, C5, C6**. M14 and M18 were also corrected. Details inline and in _Notes_.
+> **Revision (PR #798 review, two rounds):** the Codex reviewer correctly
+> challenged several original findings; each was re-verified against source and
+> corrected. **C2, C3, C4, and C5 were downgraded** out of Critical (the
+> danger-zone confirm/error handling, the grade-resolver numeric guard, and the
+> intentional per-surface boolean vocabulary all already exist/are deliberate).
+> **M18 was withdrawn** (error boundaries already exist), **M17** lost its false
+> calendar example, **M3** was expanded to all four validators, and **M14** was
+> reframed to respect ADR 0033. **The two genuine Criticals are now C1 and C6.**
+> Details inline (each marked "↓ corrected") and in _Notes_.
 
 ## How to use this
 
@@ -38,11 +42,11 @@ the next selection.
 | C2  | Medium ↓ | Group rubric read skips the `decodeNumericRecord` its siblings run (consistency, not a NaN bug)    | ✅ now               |
 | C3  | Medium ↓ | Danger-zone typed-confirmation UI hand-rolled across cards (extract a primitive)                   | ✅ now               |
 | C4  | Nice ↓   | `test-accounts-panel` `run()` has no catch for a thrown/rejected action                            | ✅ now               |
-| C5  | Critical | Boolean-flag parser drift — `"yes"` = true on leader, false on admin                               | ✅ now               |
+| C5  | Nice ↓   | Boolean-flag parser duplicated 3× (leader `"yes"` vocab is intentional + tested, not drift)        | ✅ now (low value)   |
 | C6  | Critical | Password-reset audit RPC: unvalidated `profile_id` + swallowed result → possible missing audit row | ✅ now               |
 | M1  | Medium   | Silent fallback on invalid follow-up `priority`                                                    | ✅ now               |
 | M2  | Medium   | Two divergent `isIsoDate` implementations                                                          | ✅ now               |
-| M3  | Medium   | Missing `full_name` length bound in people validators                                              | ✅ now               |
+| M3  | Medium   | Missing `full_name` length bound in **all four** people validators                                 | ✅ now               |
 | M4  | Medium   | `group_health` action fabricates an error token, discards the real read error                      | ✅ now               |
 | M5  | Medium   | Calendar action silently revalidates nothing on missing `group_id`                                 | ✅ now               |
 | M6  | Medium   | Duplicated FormData-extraction idiom across ~8 action files                                        | ✅ now (plain cases) |
@@ -56,8 +60,8 @@ the next selection.
 | M14 | Medium   | `/admin/plan` vs `/admin/planning` — confusing pair; document distinction (ADR 0033 keeps it)      | ⏳ wait              |
 | M15 | Medium   | Over-Shepherd test user is unprovisionable; `findAuthUserByEmail` duped 3×                         | ✅ now (test)        |
 | M16 | Medium   | Form field-clusters duplicated across 3 forms; no shared `FormField` primitive                     | ✅ now               |
-| M17 | Medium   | Number inputs coerce empty → 0; enum fallback masks bad data; weak error predicate                 | ✅ now               |
-| M18 | Medium   | `follow-ups-shell` assumes `data` is always present (no skeleton/error state)                      | ⏳ wait              |
+| M17 | Medium   | Number input coerces empty → 0; weak error predicate (`.some(Boolean)`)                            | ✅ now               |
+| M18 | ~~Med~~  | **Withdrawn** — error/empty boundaries already exist (verified in PR #798 review)                  | — no action          |
 | N1  | Nice     | Inline-style sprawl + dual `pastoral`→`ui` styling systems                                         | ⏳ wait (large)      |
 | N2  | Nice     | Small UX/a11y polish bundle (dialog desc, aria-labels, empty states, keys)                         | ✅ now               |
 | N3  | Nice     | Duplicated small helpers (`formatDate`, `todayLocalIso`, tab→URL)                                  | ✅ now               |
@@ -71,7 +75,7 @@ the next selection.
 
 ## 1. Critical issues
 
-> The genuine Criticals are **C1, C5, C6**. **C2, C3, and C4 remain here under
+> The genuine Criticals are **C1 and C6**. **C2, C3, C4, and C5 remain here under
 > their original IDs but are downgraded** (Medium/Nice) after the PR #798 review —
 > each is marked "↓ corrected" with the verification details.
 
@@ -109,12 +113,14 @@ the next selection.
 - **Recommend:** wrap the `await` in try/catch; on catch, set an error and `setPending(null)` in a `finally`.
 - **Safe now?** ✅ Small, localized.
 
-### C5 — Boolean-flag parser drift: `"yes"` = true on leader, false on admin
+### C5 — Boolean-flag parser duplicated across surfaces _(Nice ↓ — corrected after PR #798 review)_
 
-- **Where:** three copies of the same parser — `lib/admin/validation/shared.ts:113` (`readBooleanFlag`, the canonical export), `lib/leader/validation.ts:59` (`readBool`), `app/(protected)/admin/super-admin/feature-flag-actions.ts:27` (`readBool`). The leader copy also treats `"yes"` as `true`; the others don't.
-- **Why it matters:** a form value of `"yes"` means `true` on the leader surface and `false` on admin — a latent correctness trap that depends on which copy runs.
-- **Recommend:** import `readBooleanFlag` everywhere; delete the two local copies (or deliberately document the `"yes"` divergence).
-- **Safe now?** ✅
+> **Correction:** the original "latent correctness trap — `"yes"` true on leader, false on admin" framing was **wrong**. The leader surface accepting `"yes"` is **intentional and documented**: `lib/shared/validation-primitives.ts:4-7` explicitly leaves "boolean-flag vocabularies" in their per-surface modules, and `lib/leader/__tests__/validation.test.ts:154-160` asserts `"yes"` is truthy for `follow_up_needed`. So this is **not** a correctness bug — downgraded to a Nice dedup item, and any consolidation must **preserve the leader `"yes"` vocabulary**.
+
+- **Where:** the boolean-flag parser exists as `readBooleanFlag` (`lib/admin/validation/shared.ts:113`), `readBool` (`lib/leader/validation.ts:59`, which additionally accepts `"yes"`), and `readBool` (`app/(protected)/admin/super-admin/feature-flag-actions.ts:27`).
+- **Why it matters:** purely a small dedup opportunity — three copies of near-identical parsing logic. The leader copy is a deliberate vocabulary variant, not drift.
+- **Recommend:** if consolidating, extract a single core that takes the accepted-truthy set as a parameter, so the leader surface keeps `"yes"` and the admin copies share one implementation. Do **not** collapse them to one fixed vocabulary (that would break the tested leader contract). Low priority.
+- **Safe now?** ✅ but low value; only worth doing as part of a broader validation-primitives consolidation.
 
 ### C6 — Password-reset audit RPC: unvalidated `profile_id` + swallowed result
 
@@ -143,9 +149,9 @@ the next selection.
 
 ### M3 — Missing `full_name` length bound in people validators
 
-- **Where:** `lib/admin/validation/people.ts:28, 49`. `validateCreateMinistryAdminPayload` / `validateCreateLeaderProfilePayload` check only `length === 0`, while guest/prospect/group validators cap names at 120 chars.
+- **Where:** **all four** `full_name`-accepting people validators check only `length === 0`, never an upper bound, while guest/prospect/group validators cap names at 120 chars: `validateCreateMinistryAdminPayload` (`lib/admin/validation/people.ts:28`), `validateCreateLeaderProfilePayload` (`:49`), `validateCreateMemberPayload` (`:74`), and `validateAddPersonToGroupPayload` (`:176`). _(Expanded after PR #798 review — the original item named only the first two; member/add-person would otherwise stay unbounded.)_
 - **Why it matters:** an unbounded name reaches the RPC — inconsistent with every sibling validator.
-- **Recommend:** add a `> 120` check for parity.
+- **Recommend:** add a `> 120` check to **all four** validators for parity (don't stop at the first two).
 - **Safe now?** ✅
 
 ### M4 — `group_health` action fabricates an error token, discards the real read error
@@ -238,21 +244,25 @@ the next selection.
 - **Recommend:** extract `<MeetingScheduleFields>`, `<CapacityField>`, and a `<FormField>` wrapper; swap the hex literals for palette tokens. Adopt incrementally.
 - **Safe now?** ✅
 
-### M17 — Input coercion / enum-fallback / error-predicate traps
+### M17 — Number-input coercion + weak error-predicate _(calendar example removed after PR #798 review)_
 
-- **Where:** `settings/multiply-trigger-editor.tsx` (96-111, 145-146) — `parseInt(v) || 0`, no `required`, empty silently becomes 0. `calendar/calendar-occurrence-editor.tsx` (269-274) — unknown `eventType` silently mapped to `"study"`. `check-in-review-shell.tsx:211` — `Object.values(errors).some(Boolean)` misses falsy-but-present error values.
-- **Why it matters:** each silently accepts/masks bad data instead of surfacing it.
-- **Recommend:** add `required`/client validation on the number inputs; type-guard + log on the enum fallback; use `.some(e => e != null)` for the error check.
+> **Correction:** the original `calendar-occurrence-editor.tsx` "unknown `eventType` silently mapped to `study`" example was **removed**. The `defaultValue` ternary (`components/calendar/calendar-occurrence-editor.tsx:269-274`) only substitutes `"study"` when the value is the valid non-scheduled types `"off"`/`"cancelled"` (a legal default for the scheduled-only select), and `coerceEventType` (`lib/calendar/payload.ts:133-142`) does the same for valid types — unknown `event_type` values are rejected by `validateWritable` upstream, not coerced. No bad-data path.
+
+- **Where:** `settings/multiply-trigger-editor.tsx` (96-111, 145-146) — `parseInt(v) || 0`, no `required`, so an empty input silently becomes `0`. `check-in-review-shell.tsx:211` — `Object.values(errors).some(Boolean)` misses a falsy-but-present error value (e.g. an empty-string error).
+- **Why it matters:** the number input silently accepts/coerces bad data instead of surfacing it; the error predicate can under-report.
+- **Recommend:** add `required`/client validation on the number inputs; use `.some(e => e != null)` for the error check.
 - **Safe now?** ✅
 
-### M18 — `follow-ups-shell` assumes `data` is always present _(corrected after PR #798 review)_
+### M18 — ~~Missing error/empty boundaries on recovery + follow-up reads~~ **WITHDRAWN**
 
-> **Correction:** the original `attention-reset-card.tsx` example was **removed** — it already handles the failure case, rendering "Impact preview unavailable — the reset state couldn't be loaded." and disabling resets when its `state` prop is `null` (`attention-reset-card.tsx:95-97`). Only the follow-ups shell remains.
-
-- **Where:** `follow-ups/follow-ups-shell.tsx` assumes its `data` prop is always present (no skeleton/error branch), unlike the recovery cards which distinguish "nothing to show" from "read failed."
-- **Why it matters:** if the upstream read degrades, a failed read is indistinguishable from "no follow-ups" — the false-zero trap the read layer is designed to avoid, surfacing in the UI.
-- **Recommend:** thread an `errors.*` prop and render the `CouldNotLoad`/`ErrorBanner` pattern used elsewhere.
-- **Safe now?** ⏳ Wait — needs data-layer context to thread the error through.
+> **Withdrawn after PR #798 review — both examples were already handled.** The
+> `attention-reset-card.tsx` renders "Impact preview unavailable…" on `state === null`
+> (`:95-97`); and the follow-ups path already threads read errors —
+> `buildAdminFollowUpsData` fills `errors.followUps` from `readBatch`
+> (`components/admin/follow-ups/follow-ups-data.ts:84-89`) and `AdminFollowUpsShell`
+> renders a `role="alert"` block with the specific follow-up error before the queue
+> (`components/admin/follow-ups/follow-ups-shell.tsx:197-218`). A failed read is
+> already distinguishable from an empty queue, so there is nothing to fix. No action.
 
 ---
 
@@ -335,6 +345,22 @@ re-checked against the code and the backlog corrected:
 - **M18 attention-reset example — removed.** It already renders "Impact preview
   unavailable…" on `state === null` (`attention-reset-card.tsx:95-97`); only the
   follow-ups shell remains.
+
+**Round 2** (re-review of the corrections commit) caught four more, all verified:
+
+- **C5 boolean "drift" — reframed.** The leader `"yes"` vocabulary is intentional
+  and tested (`lib/shared/validation-primitives.ts:4-7` documents per-surface
+  boolean vocabularies; `lib/leader/__tests__/validation.test.ts:154-160` asserts
+  it). Not a correctness trap — downgraded to a low-value dedup that must preserve
+  the leader vocabulary.
+- **M18 — withdrawn.** The follow-ups shell already renders a `role="alert"` error
+  block fed by `errors.followUps` (`follow-ups-data.ts:84-89`,
+  `follow-ups-shell.tsx:197-218`); nothing to fix.
+- **M17 calendar example — removed.** The editor only maps the valid `off`/`cancelled`
+  types to a `"study"` select default; unknown types are rejected upstream by
+  `validateWritable`. Kept the real number-input + error-predicate items.
+- **M3 — expanded (not a correction).** Broadened to cover all four unbounded
+  `full_name` validators (`people.ts:28,49,74,176`), not just the first two.
 
 ### From the original scan
 
