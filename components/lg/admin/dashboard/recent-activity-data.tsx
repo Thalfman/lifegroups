@@ -32,15 +32,22 @@ export async function RecentActivityData({
   grain,
   guestsLive,
   canResetActivity,
+  degraded = false,
   now = new Date(),
 }: {
   grain: OverviewGrain;
   guestsLive: boolean;
   canResetActivity?: boolean;
+  // True when the dashboard read degraded to demo fallback (a gated read
+  // failed). Activity used to ride that same fallback object; now that it reads
+  // independently, honour the degrade here too — otherwise a degraded Home would
+  // show live (or false-zero) activity beside demo data. Skip the live reads and
+  // render the same demo summary the rest of the degraded page shows.
+  degraded?: boolean;
   now?: Date;
 }) {
   const client = await createSupabaseServerClient();
-  if (!client) {
+  if (!client || degraded) {
     return (
       <RecentActivitySection
         activity={fallbackActivity}

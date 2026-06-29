@@ -143,6 +143,10 @@ async function AdminHomeData({
             grain={grain}
             guestsLive={guestsLive}
             canResetActivity={session.profile.role === "super_admin"}
+            // Honour the dashboard's degraded fallback: when a gated read failed,
+            // show the demo activity summary the rest of the page shows rather
+            // than reading live (and risking false zeroes from failed inputs).
+            degraded={degraded}
           />
         </Suspense>
       }
