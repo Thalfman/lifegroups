@@ -10,6 +10,10 @@ import {
   MinistrySnapshotSkeleton,
   MultiplyOverviewSection,
 } from "@/components/lg/admin/dashboard/MultiplyOverviewSection";
+import {
+  RecentActivityData,
+  RecentActivitySkeleton,
+} from "@/components/lg/admin/dashboard/RecentActivitySection";
 import { resolveOverviewGrain } from "@/lib/admin/overview-period";
 import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
 import { firstParam } from "@/lib/shared/search-params";
@@ -125,14 +129,25 @@ async function AdminHomeData({
   return (
     <DashboardClient
       data={data}
-      guestsLive={guestsLive}
       degraded={degraded}
       scopeId={session.profile.id}
       mutedKeys={mutedKeys}
-      canResetActivity={session.profile.role === "super_admin"}
       hiddenNavAreas={[...hiddenNavAreas]}
       isSuperAdmin={session.profile.role === "super_admin"}
       fromSetup={fromSetup}
+      // Boundary C — the Recent-activity section streams in its own boundary
+      // after the main paint: its async child does the activity-reset baseline +
+      // period-scoped counts reads (the second serial round trip) so they no
+      // longer gate the above-the-fold Needs-attention / This-week paint.
+      activitySlot={
+        <Suspense fallback={<RecentActivitySkeleton />}>
+          <RecentActivityData
+            grain={grain}
+            guestsLive={guestsLive}
+            canResetActivity={session.profile.role === "super_admin"}
+          />
+        </Suspense>
+      }
       // Boundary B — the Ministry-snapshot body streams in after the main paint:
       // its async server child does the two slow reads, then renders the band +
       // overview cards. `data` is reused from Boundary A (no re-fetch).

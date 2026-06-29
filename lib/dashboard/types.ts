@@ -317,7 +317,10 @@ export interface AdminDashboardData {
   launchPlanning: LaunchPlanningDashboardSnapshot;
   leaderPipeline: LeaderPipelineDashboardSummary;
   multiplication: MultiplicationDashboardSummary;
-  activity: OverviewActivitySummary;
+  // NOTE: the "Recent activity" rollup is NOT part of this object. It is read
+  // and rendered in its own streamed Suspense boundary (RecentActivitySection)
+  // so its period-scoped activity-counts read stays off the above-the-fold LCP
+  // path. See components/lg/admin/dashboard/RecentActivitySection.tsx.
 }
 
 // Leader dashboard model is untouched by Phase 6.0.
