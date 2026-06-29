@@ -101,8 +101,21 @@ describe("RecentActivityData", () => {
     })) as ReactElement;
 
     expect(mockFetchCounts).toHaveBeenCalledTimes(1);
+    expect(mockFetchGuests).toHaveBeenCalledTimes(1); // guestsLive ⇒ tile shown
     const activity = (el.props as { activity: { grain: string } }).activity;
     expect(activity.grain).toBe("month");
+  });
+
+  it("skips the guests read when the Guests surface is frozen", async () => {
+    // guestsLive=false ⇒ the "Guests welcomed" tile is not rendered, so the
+    // boundary must not issue fetchGuests (avoidable Supabase work + guest PII
+    // pulled into this hot path for a value that is never shown).
+    await RecentActivityData({ grain: "all", guestsLive: false, now: NOW });
+
+    expect(mockFetchGuests).not.toHaveBeenCalled();
+    // The other live reads still run.
+    expect(mockLoadGroups).toHaveBeenCalledTimes(1);
+    expect(mockFetchCounts).toHaveBeenCalledTimes(1);
   });
 
   it("marks Guests welcomed unavailable (not a false zero / not demo) when the independent guests read fails", async () => {

@@ -13,6 +13,7 @@ import {
 import { fallbackActivity } from "@/lib/dashboard/fallback-data";
 import type { OverviewActivitySummary } from "@/lib/dashboard/types";
 import type { OverviewGrain } from "@/lib/admin/overview-period";
+import type { ReadResult } from "@/lib/supabase/read-core";
 import { RecentActivitySection } from "./RecentActivitySection";
 
 // Async data child for Home's "Recent activity" boundary (#802 follow-up). Kept
@@ -33,7 +34,7 @@ export async function RecentActivityData({
   guestsLive,
   canResetActivity,
   degraded = false,
-  now = new Date(),
+  now,
 }: {
   grain: OverviewGrain;
   guestsLive: boolean;
@@ -44,7 +45,12 @@ export async function RecentActivityData({
   // show live (or false-zero) activity beside demo data. Skip the live reads and
   // render the same demo summary the rest of the degraded page shows.
   degraded?: boolean;
-  now?: Date;
+  // The SINGLE request clock, pinned by AdminHomeData and shared with
+  // getAdminDashboardData. Required (not defaulted) so this streamed boundary
+  // never samples a second `new Date()` — a cold render crossing a church-local
+  // day/month boundary must compute the activity window against the same date as
+  // the dashboard data above it.
+  now: Date;
 }) {
   const client = await createSupabaseServerClient();
   if (!client || degraded) {
@@ -70,9 +76,20 @@ export async function RecentActivityData({
         baselineOn
       );
 
+      // The "Guests welcomed" tile only renders while the Guests surface is
+      // live, so skip the guests read entirely when it's frozen (the default
+      // path): reading it would be avoidable Supabase work and would pull guest
+      // PII into this boundary for a value that is never shown. The empty result
+      // leaves the hidden tile a harmless 0.
+      const guestsRead: Promise<
+        ReadResult<readonly { first_attended_date: string | null }[]>
+      > = guestsLive
+        ? fetchGuests(client)
+        : Promise.resolve({ data: [], error: null });
+
       const [groupsRes, guestsRes, activityRes] = await Promise.all([
         loadAllGroupsForAdmin(),
-        fetchGuests(client),
+        guestsRead,
         fetchOverviewActivityCounts(client, {
           fromIso: floorIso,
           toExclusiveIso: period.toExclusiveIso,
@@ -93,7 +110,19 @@ export async function RecentActivityData({
         activityRes
       );
     },
-    (a) => ({ result_kind: a.extendedAvailable ? "ok" : "degraded" })
+    // Report a partial failure as degraded for telemetry: a null groups/guests
+    // tile (its read failed) must not be logged as "ok" just because the counts
+    // read succeeded. extendedAvailable covers the counts read; the null checks
+    // cover the array-derived tiles. (A hidden guests tile is an empty 0, not
+    // null, so a frozen-guests Home still logs "ok".)
+    (a) => ({
+      result_kind:
+        a.extendedAvailable &&
+        a.groupsLaunched !== null &&
+        a.guestsWelcomed !== null
+          ? "ok"
+          : "degraded",
+    })
   );
 
   return (

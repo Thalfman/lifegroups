@@ -72,6 +72,12 @@ async function AdminHomeData({
 }) {
   const session = await requireAdmin();
 
+  // One request clock, pinned here and shared by the dashboard read and the
+  // streamed Recent-activity boundary, so a cold render that crosses a
+  // church-local day/month boundary can't compute the two against different
+  // dates (the activity boundary resolves after the dashboard).
+  const now = new Date();
+
   const client = await createSupabaseServerClient();
   // The guest pipeline is frozen by default (ADR 0002 / 0009). Resolve the flag
   // alongside the dashboard read — not after it — so the dashboard never
@@ -96,7 +102,7 @@ async function AdminHomeData({
   const [dashboard, guestsLive, mutedKeys, hiddenNavAreas] = await Promise.all([
     measureReadBundle(
       "admin_home_dashboard",
-      () => getAdminDashboardData(client, { grain }),
+      () => getAdminDashboardData(client, { grain, now }),
       (d) => ({
         result_kind: d.source,
         degraded: d.source === "fallback" && d.error != null,
@@ -142,6 +148,7 @@ async function AdminHomeData({
           <RecentActivityData
             grain={grain}
             guestsLive={guestsLive}
+            now={now}
             canResetActivity={session.profile.role === "super_admin"}
             // Honour the dashboard's degraded fallback: when a gated read failed,
             // show the demo activity summary the rest of the page shows rather
