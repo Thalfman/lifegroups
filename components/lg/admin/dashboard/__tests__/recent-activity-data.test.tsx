@@ -104,4 +104,38 @@ describe("RecentActivityData", () => {
     const activity = (el.props as { activity: { grain: string } }).activity;
     expect(activity.grain).toBe("month");
   });
+
+  it("renders the demo summary (no false zero) when the independent guests read fails", async () => {
+    // The activity guests read is independent of the dashboard's (uncached), so
+    // it can fail while the dashboard succeeded (degraded=false). guestsRes.data
+    // ?? [] would render "Guests welcomed: 0" — a false zero. Instead the section
+    // shows the demo summary, matching the pre-split gated-read fallback.
+    mockFetchGuests.mockResolvedValue({
+      data: null,
+      error: new Error("guests read failed"),
+    });
+
+    const el = (await RecentActivityData({
+      grain: "all",
+      guestsLive: true,
+      now: NOW,
+    })) as ReactElement;
+
+    expect((el.props as { activity: unknown }).activity).toBe(fallbackActivity);
+  });
+
+  it("renders the demo summary when the groups read fails", async () => {
+    mockLoadGroups.mockResolvedValue({
+      data: null,
+      error: new Error("groups read failed"),
+    });
+
+    const el = (await RecentActivityData({
+      grain: "all",
+      guestsLive: false,
+      now: NOW,
+    })) as ReactElement;
+
+    expect((el.props as { activity: unknown }).activity).toBe(fallbackActivity);
+  });
 });
