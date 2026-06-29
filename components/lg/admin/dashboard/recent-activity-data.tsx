@@ -79,23 +79,17 @@ export async function RecentActivityData({
         }),
       ]);
 
-      // groupsLaunched / guestsWelcomed are array-derived: substituting `?? []`
-      // on a failed read would render a false zero (e.g. "Guests welcomed: 0"
-      // when the count is actually unavailable). Before activity moved to its own
-      // boundary these were gated reads whose failure fell the whole page back to
-      // demo data; preserve that — a failed groups/guests read renders the demo
-      // summary rather than a false zero. (groups rides the shared cache so its
-      // failure already degraded the dashboard; guests is independent here, which
-      // is the gap Codex flagged. The extended counts keep their own
-      // extendedAvailable degrade — they show "—", never a zero.)
-      if (groupsRes.error || guestsRes.error) return fallbackActivity;
-
+      // buildActivitySummary degrades each tile independently: a failed groups /
+      // guests / counts read renders that tile as "—", never a false zero and
+      // never demo counts (the whole-page demo states are the no-client /
+      // degraded-dashboard short-circuits above). So a transient per-tile read
+      // failure on an otherwise-live Home shows just that tile unavailable.
       return buildActivitySummary(
         period,
         floorIso,
         baselineOn,
-        groupsRes.data ?? [],
-        guestsRes.data ?? [],
+        groupsRes,
+        guestsRes,
         activityRes
       );
     },

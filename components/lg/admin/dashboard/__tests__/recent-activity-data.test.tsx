@@ -105,11 +105,11 @@ describe("RecentActivityData", () => {
     expect(activity.grain).toBe("month");
   });
 
-  it("renders the demo summary (no false zero) when the independent guests read fails", async () => {
+  it("marks Guests welcomed unavailable (not a false zero / not demo) when the independent guests read fails", async () => {
     // The activity guests read is independent of the dashboard's (uncached), so
-    // it can fail while the dashboard succeeded (degraded=false). guestsRes.data
-    // ?? [] would render "Guests welcomed: 0" — a false zero. Instead the section
-    // shows the demo summary, matching the pre-split gated-read fallback.
+    // it can fail while the dashboard succeeded (degraded=false). The tile must
+    // show "—" (null) — neither a false zero (guestsRes.data ?? []) nor the demo
+    // count. The rest of the live page stays live.
     mockFetchGuests.mockResolvedValue({
       data: null,
       error: new Error("guests read failed"),
@@ -121,10 +121,14 @@ describe("RecentActivityData", () => {
       now: NOW,
     })) as ReactElement;
 
-    expect((el.props as { activity: unknown }).activity).toBe(fallbackActivity);
+    const activity = (
+      el.props as { activity: { guestsWelcomed: number | null } }
+    ).activity;
+    expect(activity).not.toBe(fallbackActivity);
+    expect(activity.guestsWelcomed).toBeNull();
   });
 
-  it("renders the demo summary when the groups read fails", async () => {
+  it("marks Groups launched unavailable when the groups read fails", async () => {
     mockLoadGroups.mockResolvedValue({
       data: null,
       error: new Error("groups read failed"),
@@ -136,6 +140,10 @@ describe("RecentActivityData", () => {
       now: NOW,
     })) as ReactElement;
 
-    expect((el.props as { activity: unknown }).activity).toBe(fallbackActivity);
+    const activity = (
+      el.props as { activity: { groupsLaunched: number | null } }
+    ).activity;
+    expect(activity).not.toBe(fallbackActivity);
+    expect(activity.groupsLaunched).toBeNull();
   });
 });

@@ -56,6 +56,18 @@ describe("resolveActivityWindow", () => {
   });
 });
 
+// Groups / guests reads are passed as ReadResults so a failed read (→ "—") is
+// distinguishable from a genuinely-empty one (→ 0). These helpers keep the calls
+// readable.
+const okGroups = (data: { launched_on: string | null }[] = []) => ({
+  data,
+  error: null,
+});
+const okGuests = (data: { first_attended_date: string | null }[] = []) => ({
+  data,
+  error: null,
+});
+
 describe("buildActivitySummary", () => {
   it("defaults to all-time and stays available when the counts read succeeds", () => {
     const { period, floorIso } = resolveActivityWindow("all", NOW, null);
@@ -63,8 +75,8 @@ describe("buildActivitySummary", () => {
       period,
       floorIso,
       null,
-      [],
-      [],
+      okGroups(),
+      okGuests(),
       OK_COUNTS
     );
 
@@ -80,8 +92,8 @@ describe("buildActivitySummary", () => {
       period,
       floorIso,
       null,
-      [],
-      [],
+      okGroups(),
+      okGuests(),
       OK_COUNTS
     );
 
@@ -99,8 +111,8 @@ describe("buildActivitySummary", () => {
       period,
       floorIso,
       "2026-05-10",
-      [],
-      [],
+      okGroups(),
+      okGuests(),
       OK_COUNTS
     );
     expect(summary.resetBaselineOn).toBe("2026-05-10");
@@ -108,15 +120,15 @@ describe("buildActivitySummary", () => {
 
   it("degrades the four productivity counts to null when the counts read errors", () => {
     // The extended counts ride one read; a failure leaves extendedAvailable
-    // false and every count null — never a false zero — while the array-derived
-    // tiles still resolve to numbers.
+    // false and every count null — never a false zero — while the (successfully
+    // read) array-derived tiles still resolve to numbers.
     const { period, floorIso } = resolveActivityWindow("all", NOW, null);
     const summary = buildActivitySummary(
       period,
       floorIso,
       null,
-      [{ launched_on: "2026-05-15" }],
-      [{ first_attended_date: "2026-05-15" }],
+      okGroups([{ launched_on: "2026-05-15" }]),
+      okGuests([{ first_attended_date: "2026-05-15" }]),
       { data: null, error: new Error("activity counts unavailable") }
     );
 
@@ -125,6 +137,39 @@ describe("buildActivitySummary", () => {
     expect(summary.prospectsAdded).toBeNull();
     expect(summary.groupsLaunched).toBe(1);
     expect(summary.guestsWelcomed).toBe(1);
+  });
+
+  it("marks Groups launched unavailable (null, not zero) when the groups read errors", () => {
+    const { period, floorIso } = resolveActivityWindow("all", NOW, null);
+    const summary = buildActivitySummary(
+      period,
+      floorIso,
+      null,
+      { data: null, error: new Error("groups read failed") },
+      okGuests([{ first_attended_date: "2026-05-15" }]),
+      OK_COUNTS
+    );
+
+    expect(summary.groupsLaunched).toBeNull();
+    // Other tiles, whose reads succeeded, stay live.
+    expect(summary.guestsWelcomed).toBe(1);
+    expect(summary.extendedAvailable).toBe(true);
+  });
+
+  it("marks Guests welcomed unavailable (null, not zero) when the guests read errors", () => {
+    const { period, floorIso } = resolveActivityWindow("all", NOW, null);
+    const summary = buildActivitySummary(
+      period,
+      floorIso,
+      null,
+      okGroups([{ launched_on: "2026-05-15" }]),
+      { data: null, error: new Error("guests read failed") },
+      OK_COUNTS
+    );
+
+    expect(summary.guestsWelcomed).toBeNull();
+    expect(summary.groupsLaunched).toBe(1);
+    expect(summary.extendedAvailable).toBe(true);
   });
 
   it("counts only array rows inside the [floorIso, toExclusiveIso) window", () => {
@@ -137,12 +182,12 @@ describe("buildActivitySummary", () => {
       period,
       floorIso,
       "2026-05-10",
-      [
+      okGroups([
         { launched_on: "2026-05-09" }, // before floor (day-after = 05-11) → excluded
         { launched_on: "2026-05-12" }, // in range
         { launched_on: null }, // no date → excluded
-      ],
-      [{ first_attended_date: "2026-05-15" }],
+      ]),
+      okGuests([{ first_attended_date: "2026-05-15" }]),
       OK_COUNTS
     );
     expect(summary.groupsLaunched).toBe(1);
@@ -151,15 +196,22 @@ describe("buildActivitySummary", () => {
 
   it("surfaces Prospects added from the counts read (#471)", () => {
     const { period, floorIso } = resolveActivityWindow("month", NOW, null);
-    const summary = buildActivitySummary(period, floorIso, null, [], [], {
-      data: {
-        membersJoined: 0,
-        followUpsCompleted: 0,
-        careTouchpoints: 0,
-        prospectsAdded: 4,
-      },
-      error: null,
-    });
+    const summary = buildActivitySummary(
+      period,
+      floorIso,
+      null,
+      okGroups(),
+      okGuests(),
+      {
+        data: {
+          membersJoined: 0,
+          followUpsCompleted: 0,
+          careTouchpoints: 0,
+          prospectsAdded: 4,
+        },
+        error: null,
+      }
+    );
     expect(summary.prospectsAdded).toBe(4);
   });
 });

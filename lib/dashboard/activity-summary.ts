@@ -1,4 +1,5 @@
 import type { fetchOverviewActivityCounts } from "@/lib/supabase/read-models";
+import type { ReadResult } from "@/lib/supabase/read-core";
 import {
   overviewPeriodRange,
   type OverviewGrain,
@@ -42,21 +43,22 @@ export function resolveActivityWindow(
   return { period, floorIso: laterIso(period.fromIso, resetFloorIso) };
 }
 
-// "Activity this period" rollup. groupsLaunched + guestsWelcomed come from the
-// already-fetched group/guest arrays — no extra read — while the four
-// productivity counts (incl. Prospects added, #471) come from
-// fetchOverviewActivityCounts and degrade to null if that read fails
-// (extendedAvailable=false). Date columns are YYYY-MM-DD, so lexicographic
-// comparison against the half-open [floorIso, toExclusiveIso) window is correct.
-// `floorIso` is the period start already folded with the activity-reset baseline
-// (see resolveActivityWindow); `baselineOn` is surfaced raw so the Home control
-// can show "since {date}" / offer Undo.
+// "Activity this period" rollup. groupsLaunched + guestsWelcomed are derived
+// from the groups / guests reads; the four productivity counts (incl. Prospects
+// added, #471) come from fetchOverviewActivityCounts. EVERY tile degrades to
+// null on its read's failure so it renders "—", never a false zero — the groups
+// and guests reads are now passed as ReadResults (not arrays) so a failed one is
+// distinguishable from a genuinely-empty one. Date columns are YYYY-MM-DD, so
+// lexicographic comparison against the half-open [floorIso, toExclusiveIso)
+// window is correct. `floorIso` is the period start already folded with the
+// activity-reset baseline (see resolveActivityWindow); `baselineOn` is surfaced
+// raw so the Home control can show "since {date}" / offer Undo.
 export function buildActivitySummary(
   period: OverviewPeriodRange,
   floorIso: string | null,
   baselineOn: string | null,
-  groups: readonly { launched_on: string | null }[],
-  guests: readonly { first_attended_date: string | null }[],
+  groupsRes: ReadResult<readonly { launched_on: string | null }[]>,
+  guestsRes: ReadResult<readonly { first_attended_date: string | null }[]>,
   activityRes: Awaited<ReturnType<typeof fetchOverviewActivityCounts>>
 ): OverviewActivitySummary {
   const inRange = (iso: string | null): boolean => {
@@ -69,8 +71,13 @@ export function buildActivitySummary(
   return {
     grain: period.grain,
     label: period.label,
-    groupsLaunched: groups.filter((g) => inRange(g.launched_on)).length,
-    guestsWelcomed: guests.filter((g) => inRange(g.first_attended_date)).length,
+    groupsLaunched: groupsRes.error
+      ? null
+      : (groupsRes.data ?? []).filter((g) => inRange(g.launched_on)).length,
+    guestsWelcomed: guestsRes.error
+      ? null
+      : (guestsRes.data ?? []).filter((g) => inRange(g.first_attended_date))
+          .length,
     prospectsAdded: extended ? extended.prospectsAdded : null,
     membersJoined: extended ? extended.membersJoined : null,
     followUpsCompleted: extended ? extended.followUpsCompleted : null,
