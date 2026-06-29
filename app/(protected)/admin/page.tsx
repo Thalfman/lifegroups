@@ -10,10 +10,8 @@ import {
   MinistrySnapshotSkeleton,
   MultiplyOverviewSection,
 } from "@/components/lg/admin/dashboard/MultiplyOverviewSection";
-import {
-  RecentActivityData,
-  RecentActivitySkeleton,
-} from "@/components/lg/admin/dashboard/RecentActivitySection";
+import { RecentActivityData } from "@/components/lg/admin/dashboard/recent-activity-data";
+import { RecentActivitySkeleton } from "@/components/lg/admin/dashboard/RecentActivitySection";
 import { resolveOverviewGrain } from "@/lib/admin/overview-period";
 import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
 import { firstParam } from "@/lib/shared/search-params";
