@@ -198,6 +198,21 @@ export type ShepherdCareDirectoryEntry = {
   needs_attention: boolean;
 };
 
+// The raw rows the directory is assembled from: the active leader/co_leader
+// profiles and their care rows, BEFORE the pure needs_attention stamping. Split
+// out so callers that already compute the stamping inputs (windows / delegated
+// set / baselines) on their own request can fetch these rows in their main read
+// batch and stamp in memory afterwards — the two DB reads here depend on none of
+// those inputs (only buildCareDirectoryEntries does). See
+// fetchShepherdCareDirectoryRowsForAdmin / buildCareDirectoryEntries.
+export type ShepherdCareDirectoryRaw = {
+  profiles: Pick<
+    ProfilesRow,
+    "id" | "full_name" | "email" | "role" | "status"
+  >[];
+  careRows: ShepherdCareDirectorySummary[];
+};
+
 /**
  * Join a set of directory profiles with their care rows in TS (so a profile
  * with no care row still appears as "needs first contact") and stamp each
@@ -283,23 +298,13 @@ export function computeNeedsAttention(
  * yet). The join is computed in TS so leaders with no care row still
  * appear in the directory as "needs first contact".
  */
-export async function fetchShepherdCareDirectoryForAdmin(
-  client: ReadClient,
-  options: {
-    todayIso?: string;
-    windows?: CareCadenceWindows;
-    // Julian Q5: the shepherds with an active over-shepherd assignment (the
-    // delegated tier, longer window); anyone else is directly-overseen
-    // (shorter window). The caller passes the SAME active-coverage set the
-    // dashboard uses, so the directory's needs_attention can never disagree
-    // with the queue. Omitted => every shepherd is treated as delegated (the
-    // conservative longer window), which is also exactly right for callers
-    // where every shepherd is delegated by definition.
-    delegatedShepherdIds?: ReadonlySet<string>;
-    // health-checks-reset: care reset baselines, threaded into needs_attention.
-    baselines?: AttentionBaselines;
-  } = {}
-): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
+// The two raw DB reads behind the admin directory: active leader/co_leader
+// profiles, then their care rows (scoped to those shepherd ids). Returns the raw
+// rows so a caller can stamp needs_attention itself. Neither read depends on the
+// stamping inputs, so this can ride a caller's main parallel read batch.
+export async function fetchShepherdCareDirectoryRowsForAdmin(
+  client: ReadClient
+): Promise<ReadResult<ShepherdCareDirectoryRaw>> {
   const profilesQuery = await client
     .from("profiles")
     .select("id, full_name, email, role, status")
@@ -316,9 +321,11 @@ export async function fetchShepherdCareDirectoryForAdmin(
     };
   }
 
-  const shepherdIds = (profilesQuery.data ?? []).map(
-    (p) => (p as { id: string }).id
-  );
+  const profiles = (profilesQuery.data ?? []) as Pick<
+    ProfilesRow,
+    "id" | "full_name" | "email" | "role" | "status"
+  >[];
+  const shepherdIds = profiles.map((p) => p.id);
 
   // Filter care rows down to the visible shepherd ids so the response
   // doesn't ship every care row in the database to the directory page.
@@ -342,13 +349,31 @@ export async function fetchShepherdCareDirectoryForAdmin(
     careRows = (careQuery.data ?? []) as ShepherdCareDirectorySummary[];
   }
 
-  const profiles = (profilesQuery.data ?? []) as Pick<
-    ProfilesRow,
-    "id" | "full_name" | "email" | "role" | "status"
-  >[];
+  return { data: { profiles, careRows }, error: null };
+}
+
+export async function fetchShepherdCareDirectoryForAdmin(
+  client: ReadClient,
+  options: {
+    todayIso?: string;
+    windows?: CareCadenceWindows;
+    // Julian Q5: the shepherds with an active over-shepherd assignment (the
+    // delegated tier, longer window); anyone else is directly-overseen
+    // (shorter window). The caller passes the SAME active-coverage set the
+    // dashboard uses, so the directory's needs_attention can never disagree
+    // with the queue. Omitted => every shepherd is treated as delegated (the
+    // conservative longer window), which is also exactly right for callers
+    // where every shepherd is delegated by definition.
+    delegatedShepherdIds?: ReadonlySet<string>;
+    // health-checks-reset: care reset baselines, threaded into needs_attention.
+    baselines?: AttentionBaselines;
+  } = {}
+): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
+  const raw = await fetchShepherdCareDirectoryRowsForAdmin(client);
+  if (raw.error) return { data: null, error: raw.error };
 
   return {
-    data: buildCareDirectoryEntries(profiles, careRows, {
+    data: buildCareDirectoryEntries(raw.data.profiles, raw.data.careRows, {
       todayIso: options.todayIso,
       windows: options.windows,
       delegatedShepherdIds: options.delegatedShepherdIds,

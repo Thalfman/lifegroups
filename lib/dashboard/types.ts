@@ -274,8 +274,11 @@ export interface MultiplyReadinessDashboardSummary {
 export interface OverviewActivitySummary {
   grain: OverviewGrain;
   label: string;
-  groupsLaunched: number;
-  guestsWelcomed: number;
+  // null when the underlying read (groups / guests) failed — the tile shows "—"
+  // rather than a false zero, matching the extended counts below. Demo fallback
+  // data carries concrete numbers.
+  groupsLaunched: number | null;
+  guestsWelcomed: number | null;
   prospectsAdded: number | null;
   membersJoined: number | null;
   followUpsCompleted: number | null;
@@ -317,7 +320,10 @@ export interface AdminDashboardData {
   launchPlanning: LaunchPlanningDashboardSnapshot;
   leaderPipeline: LeaderPipelineDashboardSummary;
   multiplication: MultiplicationDashboardSummary;
-  activity: OverviewActivitySummary;
+  // NOTE: the "Recent activity" rollup is NOT part of this object. It is read
+  // and rendered in its own streamed Suspense boundary (RecentActivitySection)
+  // so its period-scoped activity-counts read stays off the above-the-fold LCP
+  // path. See components/lg/admin/dashboard/RecentActivitySection.tsx.
 }
 
 // Leader dashboard model is untouched by Phase 6.0.

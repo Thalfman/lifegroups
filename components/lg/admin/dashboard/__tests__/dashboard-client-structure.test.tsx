@@ -3,10 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ComponentProps } from "react";
 import { DashboardClient } from "../DashboardClient";
 import { MinistrySnapshotSection } from "../MinistrySnapshotSection";
+import { RecentActivitySection } from "../RecentActivitySection";
 import {
   ADMIN_FALLBACK,
   INTEREST_FUNNEL_FALLBACK,
   MULTIPLY_READINESS_FALLBACK,
+  fallbackActivity,
 } from "@/lib/dashboard/fallback-data";
 import type {
   AdminDashboardData,
@@ -30,10 +32,14 @@ import type {
 // overrides still flow into the band + cards, and showLaunchPlanning /
 // showLeaderPipeline are derived from `hiddenNavAreas` exactly as the page does.
 type RenderOverrides = Partial<
-  Omit<ComponentProps<typeof DashboardClient>, "snapshotSlot">
+  Omit<ComponentProps<typeof DashboardClient>, "snapshotSlot" | "activitySlot">
 > & {
   interestFunnel?: InterestFunnelDashboardSummary;
   multiplyReadiness?: MultiplyReadinessDashboardSummary;
+  // guestsLive / canResetActivity feed the streamed snapshot + activity slots
+  // (no longer DashboardClient props), so they are declared here explicitly.
+  guestsLive?: boolean;
+  canResetActivity?: boolean;
 };
 
 function render(over: RenderOverrides = {}) {
@@ -42,6 +48,7 @@ function render(over: RenderOverrides = {}) {
     multiplyReadiness = MULTIPLY_READINESS_FALLBACK,
     data = ADMIN_FALLBACK,
     guestsLive = false,
+    canResetActivity = false,
     scopeId = "p1",
     hiddenNavAreas,
     degraded,
@@ -51,7 +58,6 @@ function render(over: RenderOverrides = {}) {
   return renderToStaticMarkup(
     <DashboardClient
       data={data}
-      guestsLive={guestsLive}
       scopeId={scopeId}
       hiddenNavAreas={hiddenNavAreas}
       degraded={degraded}
@@ -66,6 +72,15 @@ function render(over: RenderOverrides = {}) {
           guestsLive={guestsLive}
           scopeId={scopeId}
           degraded={degraded}
+        />
+      }
+      // The structure test renders the presentational section with demo activity
+      // (the live app streams RecentActivityData here), mirroring snapshotSlot.
+      activitySlot={
+        <RecentActivitySection
+          activity={fallbackActivity}
+          guestsLive={guestsLive}
+          canResetActivity={canResetActivity}
         />
       }
     />

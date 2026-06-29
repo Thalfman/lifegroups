@@ -10,6 +10,8 @@ import {
   MinistrySnapshotSkeleton,
   MultiplyOverviewSection,
 } from "@/components/lg/admin/dashboard/MultiplyOverviewSection";
+import { RecentActivityData } from "@/components/lg/admin/dashboard/recent-activity-data";
+import { RecentActivitySkeleton } from "@/components/lg/admin/dashboard/RecentActivitySection";
 import { resolveOverviewGrain } from "@/lib/admin/overview-period";
 import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
 import { firstParam } from "@/lib/shared/search-params";
@@ -70,6 +72,12 @@ async function AdminHomeData({
 }) {
   const session = await requireAdmin();
 
+  // One request clock, pinned here and shared by the dashboard read and the
+  // streamed Recent-activity boundary, so a cold render that crosses a
+  // church-local day/month boundary can't compute the two against different
+  // dates (the activity boundary resolves after the dashboard).
+  const now = new Date();
+
   const client = await createSupabaseServerClient();
   // The guest pipeline is frozen by default (ADR 0002 / 0009). Resolve the flag
   // alongside the dashboard read — not after it — so the dashboard never
@@ -94,7 +102,7 @@ async function AdminHomeData({
   const [dashboard, guestsLive, mutedKeys, hiddenNavAreas] = await Promise.all([
     measureReadBundle(
       "admin_home_dashboard",
-      () => getAdminDashboardData(client, { grain }),
+      () => getAdminDashboardData(client, { grain, now }),
       (d) => ({
         result_kind: d.source,
         degraded: d.source === "fallback" && d.error != null,
@@ -125,14 +133,30 @@ async function AdminHomeData({
   return (
     <DashboardClient
       data={data}
-      guestsLive={guestsLive}
       degraded={degraded}
       scopeId={session.profile.id}
       mutedKeys={mutedKeys}
-      canResetActivity={session.profile.role === "super_admin"}
       hiddenNavAreas={[...hiddenNavAreas]}
       isSuperAdmin={session.profile.role === "super_admin"}
       fromSetup={fromSetup}
+      // Boundary C — the Recent-activity section streams in its own boundary
+      // after the main paint: its async child does the activity-reset baseline +
+      // period-scoped counts reads (the second serial round trip) so they no
+      // longer gate the above-the-fold Needs-attention / This-week paint.
+      activitySlot={
+        <Suspense fallback={<RecentActivitySkeleton />}>
+          <RecentActivityData
+            grain={grain}
+            guestsLive={guestsLive}
+            now={now}
+            canResetActivity={session.profile.role === "super_admin"}
+            // Honour the dashboard's degraded fallback: when a gated read failed,
+            // show the demo activity summary the rest of the page shows rather
+            // than reading live (and risking false zeroes from failed inputs).
+            degraded={degraded}
+          />
+        </Suspense>
+      }
       // Boundary B — the Ministry-snapshot body streams in after the main paint:
       // its async server child does the two slow reads, then renders the band +
       // overview cards. `data` is reused from Boundary A (no re-fetch).

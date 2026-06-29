@@ -21,16 +21,16 @@ import {
   fetchOpenFollowUps,
   fetchOpenFollowUpsDueCount,
   fetchOverShepherdsForAdmin,
-  fetchOverviewActivityCounts,
   fetchProfilesForAdmin,
-  fetchShepherdCareDirectoryForAdmin,
+  fetchShepherdCareDirectoryRowsForAdmin,
+  buildCareDirectoryEntries,
+  type ShepherdCareDirectoryEntry,
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
-import {
-  fetchActivityResetBaseline,
-  fetchAttentionResetBaselines,
-} from "@/lib/supabase/maintenance-reads";
+import { loadAllGroupsForAdmin } from "@/lib/admin/groups-read";
+import type { ReadResult } from "@/lib/supabase/read-core";
+import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
 import {
   buildSurfaceBaselines,
   type AttentionBaselines,
@@ -46,18 +46,13 @@ import type {
   LeaderGroupDashboard,
   LeaderPipelineDashboardSummary,
   MultiplicationDashboardSummary,
-  OverviewActivitySummary,
   ShepherdCareDashboardSummary,
 } from "./types";
 import { buildAdminGroupModel, toFollowUpItem } from "./admin-group-model";
 import { buildLaunchPlanningSnapshot } from "./launch-planning-snapshot";
 import { buildShepherdCareSummary } from "./shepherd-care-summary";
 import { LEADER_READINESS_STAGES } from "@/lib/admin/leader-pipeline";
-import {
-  overviewPeriodRange,
-  type OverviewGrain,
-  type OverviewPeriodRange,
-} from "@/lib/admin/overview-period";
+import type { OverviewGrain } from "@/lib/admin/overview-period";
 import { ADMIN_FALLBACK, LEADER_FALLBACK } from "./fallback-data";
 // Phase 5B.0 swapped the dashboard's UTC isoWeekStart for a
 // church-timezone-aware version so the leader workflow and the
@@ -199,56 +194,6 @@ function buildMultiplicationSummary(
   };
 }
 
-// The later of two ISO date / week-start strings (null = unbounded). Dates are
-// YYYY-MM-DD, so lexicographic order is date order. Used to fold the activity-
-// reset baseline into the period's lower bound: a reset floors EVERY grain at
-// max(period start, baseline), so the band reads zero right after a reset and
-// the chosen period can never reach back before it.
-function laterIso(a: string | null, b: string | null): string | null {
-  if (a == null) return b;
-  if (b == null) return a;
-  return a >= b ? a : b;
-}
-
-// "Activity this period" rollup. groupsLaunched + guestsWelcomed come from the
-// already-fetched (gated) group/guest arrays — no extra read — while the four
-// productivity counts (incl. Prospects added, #471) come from
-// fetchOverviewActivityCounts and degrade to null
-// if that read fails (extendedAvailable=false). Date columns are YYYY-MM-DD, so
-// lexicographic comparison against the half-open [floorIso, toExclusiveIso)
-// window is correct. `floorIso` is the period start already folded with the
-// activity-reset baseline (see laterIso); `baselineOn` is surfaced raw so the
-// Home control can show "since {date}" / offer Undo.
-function buildActivitySummary(
-  period: OverviewPeriodRange,
-  floorIso: string | null,
-  baselineOn: string | null,
-  groups: readonly { launched_on: string | null }[],
-  guests: readonly { first_attended_date: string | null }[],
-  activityRes: Awaited<ReturnType<typeof fetchOverviewActivityCounts>>
-): OverviewActivitySummary {
-  const inRange = (iso: string | null): boolean => {
-    if (!iso) return false;
-    if (iso >= period.toExclusiveIso) return false;
-    if (floorIso && iso < floorIso) return false;
-    return true;
-  };
-  const extended = activityRes.error ? null : activityRes.data;
-  return {
-    grain: period.grain,
-    label: period.label,
-    groupsLaunched: groups.filter((g) => inRange(g.launched_on)).length,
-    guestsWelcomed: guests.filter((g) => inRange(g.first_attended_date)).length,
-    prospectsAdded: extended ? extended.prospectsAdded : null,
-    membersJoined: extended ? extended.membersJoined : null,
-    followUpsCompleted: extended ? extended.followUpsCompleted : null,
-    careTouchpoints: extended ? extended.careTouchpoints : null,
-    extendedAvailable: activityRes.error === null,
-    error: activityRes.error?.message ?? null,
-    resetBaselineOn: baselineOn,
-  };
-}
-
 // The reads the admin dashboard orchestration depends on, as one interface —
 // the seam between the orchestration (the error-gate, the graceful-degrade
 // branches, the pure-model wiring) and Supabase. The orchestration is a
@@ -281,16 +226,14 @@ export type AdminDashboardReads = {
   fetchLaunchPlanningAssumptions: OmitClient<
     typeof fetchLaunchPlanningAssumptions
   >;
-  fetchShepherdCareDirectoryForAdmin: OmitClient<
-    typeof fetchShepherdCareDirectoryForAdmin
+  fetchShepherdCareDirectoryRowsForAdmin: OmitClient<
+    typeof fetchShepherdCareDirectoryRowsForAdmin
   >;
   fetchLeaderPipelineForAdmin: OmitClient<typeof fetchLeaderPipelineForAdmin>;
   fetchMultiplicationCandidatesForAdmin: OmitClient<
     typeof fetchMultiplicationCandidatesForAdmin
   >;
-  fetchOverviewActivityCounts: OmitClient<typeof fetchOverviewActivityCounts>;
   fetchAttentionResetBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
-  fetchActivityResetBaseline: OmitClient<typeof fetchActivityResetBaseline>;
 };
 
 // The production adapter at the reads seam: binds the live Supabase client to
@@ -298,31 +241,35 @@ export type AdminDashboardReads = {
 export function supabaseAdminDashboardReads(
   client: AppSupabaseClient
 ): AdminDashboardReads {
-  return bindReads(client, {
-    fetchMetricDefaults: fetchMetricDefaultsCached,
-    fetchAllGroups,
-    fetchActiveGroupCount,
-    fetchGuests,
-    fetchOpenFollowUps,
-    fetchOpenFollowUpsDueCount,
-    fetchActiveMemberships,
-    fetchLatestHealthUpdates,
-    fetchGroupHealthAssessmentRatings,
-    fetchAttendanceSessions,
-    fetchAllGroupLeaders,
-    fetchProfilesForAdmin,
-    fetchAllGroupMetricSettings,
-    fetchGroupCalendarEvents,
-    fetchOverShepherdsForAdmin,
-    fetchActiveShepherdCoverageAssignmentsForAdmin,
-    fetchLaunchPlanningAssumptions,
-    fetchShepherdCareDirectoryForAdmin,
-    fetchLeaderPipelineForAdmin,
-    fetchMultiplicationCandidatesForAdmin,
-    fetchOverviewActivityCounts,
-    fetchAttentionResetBaselines,
-    fetchActivityResetBaseline,
-  });
+  return {
+    ...bindReads(client, {
+      fetchMetricDefaults: fetchMetricDefaultsCached,
+      fetchActiveGroupCount,
+      fetchGuests,
+      fetchOpenFollowUps,
+      fetchOpenFollowUpsDueCount,
+      fetchActiveMemberships,
+      fetchLatestHealthUpdates,
+      fetchGroupHealthAssessmentRatings,
+      fetchAttendanceSessions,
+      fetchAllGroupLeaders,
+      fetchProfilesForAdmin,
+      fetchAllGroupMetricSettings,
+      fetchGroupCalendarEvents,
+      fetchOverShepherdsForAdmin,
+      fetchActiveShepherdCoverageAssignmentsForAdmin,
+      fetchLaunchPlanningAssumptions,
+      fetchShepherdCareDirectoryRowsForAdmin,
+      fetchLeaderPipelineForAdmin,
+      fetchMultiplicationCandidatesForAdmin,
+      fetchAttentionResetBaselines,
+    }),
+    // Share the per-request cached groups read with Boundary B's Multiply grid
+    // (lib/admin/groups-read.ts) so a first /admin launch reads the full groups
+    // table once across both Suspense boundaries. The seam type is unchanged
+    // (OmitClient<typeof fetchAllGroups>), so in-memory test adapters are too.
+    fetchAllGroups: () => loadAllGroupsForAdmin(),
+  };
 }
 
 export async function getAdminDashboardData(
@@ -346,9 +293,6 @@ export async function buildAdminDashboardData(
   const currentWeek = isoWeekStart(now);
   const selectedWeek = options.selectedWeek ?? currentWeek;
   const periodMonth = currentPeriodMonthIso(now);
-  // Period for the "activity this period" band (default all-time). Only the
-  // activity rollup is period-scoped; everything else is current-state.
-  const period = overviewPeriodRange(options.grain ?? "all", now);
 
   try {
     // Phase 5A.6: batch-fetch calendar events for the selected week so
@@ -395,9 +339,9 @@ export async function buildAdminDashboardData(
       launchAssumptionsResult,
       leaderPipelineResult,
       multiplicationResult,
-      activityBaselineResult,
       metricDefaultsResult,
       attentionBaselinesResult,
+      shepherdDirectoryRowsResult,
     ] = await Promise.all([
       reads.fetchAllGroups(),
       reads.fetchActiveGroupCount(),
@@ -429,18 +373,18 @@ export async function buildAdminDashboardData(
       // card rather than failing the page, so they stay out of firstError.
       reads.fetchLeaderPipelineForAdmin(),
       reads.fetchMultiplicationCandidatesForAdmin(),
-      // activity-reset: the global "as-of" reset date the Recent-activity tiles
-      // floor at. Read here (cheap, admin-readable) so the activity-counts read
-      // in the second wave can be scoped to it; the actual counts read moves
-      // below, where the floor is known. A failure degrades to "no baseline"
-      // (all-time counts), so it stays out of the firstError gate.
-      reads.fetchActivityResetBaseline(),
       reads.fetchMetricDefaults(),
       // health-checks-reset: the reset baselines so both "Needs attention"
       // cards honour a reset. Like the spine reads, a failure degrades to
       // "no baselines" (today's behaviour) rather than failing the page, so it
       // stays out of firstError below.
       reads.fetchAttentionResetBaselines(),
+      // Shepherd-care directory RAW rows (active leader/co_leader profiles +
+      // their care rows). The two DB reads depend on nothing computed below, so
+      // they ride this parallel batch; the pure needs_attention stamping happens
+      // after, once windows / delegated set / baselines are derived. This keeps
+      // the above-the-fold "Needs attention" off a second serial round trip.
+      reads.fetchShepherdCareDirectoryRowsForAdmin(),
     ]);
 
     const defaultsForRead = decodeMetricDefaults(
@@ -475,42 +419,29 @@ export async function buildAdminDashboardData(
           )
         );
 
-    // activity-reset: fold the global reset baseline into the period's lower
-    // bound. A failed baseline read degrades to null (all-time — today's
-    // behaviour). The reset must drop the band to zero immediately, so the reset
-    // DAY itself is excluded: the effective floor is the day AFTER the baseline,
-    // applied inclusively. baseline_on is a church-local date and the tiles span
-    // both date columns (launched_on, first_attended_date) and timestamptz
-    // columns — none of which can distinguish time-of-day against a same-day
-    // floor — so a whole-day exclusion is the one cutoff that zeroes every tile
-    // uniformly (rather than leaving earlier-today rows counted). The activity-
-    // counts read below uses this floor so the SQL tiles measure from the SAME
-    // "as-of" as the TS-side tiles in buildActivitySummary. The raw baseline is
-    // kept separately for display ("Reset {date}" + Undo on Home).
-    const activityBaselineOn = activityBaselineResult.error
-      ? null
-      : (activityBaselineResult.data ?? null);
-    const activityResetFloorIso = activityBaselineOn
-      ? addDaysIso(activityBaselineOn, 1)
-      : null;
-    const activityFloorIso = laterIso(period.fromIso, activityResetFloorIso);
-
-    // Second wave: the shepherd-care directory (depends on the assignments read
-    // above) and the period-scoped activity counts (depend on the reset floor
-    // just computed) are independent, so they run in parallel — no extra round
-    // trip beyond the directory read that was already sequenced here.
-    const [shepherdDirectoryResult, activityResult] = await Promise.all([
-      reads.fetchShepherdCareDirectoryForAdmin({
-        todayIso,
-        windows: careCadenceWindowsFromDefaults(defaultsForRead),
-        delegatedShepherdIds: shepherdDelegatedIds,
-        baselines: careBaselines,
-      }),
-      reads.fetchOverviewActivityCounts({
-        fromIso: activityFloorIso,
-        toExclusiveIso: period.toExclusiveIso,
-      }),
-    ]);
+    // Stamp the shepherd-care directory's needs_attention in memory from the raw
+    // rows fetched in the batch above, using the SAME windows / delegated set /
+    // baselines the dashboard model uses (so the directory chip can't disagree
+    // with the attention queue, Codex review on #138). This is the exact pure
+    // computation the old fetchShepherdCareDirectoryForAdmin did internally —
+    // moved here so its two DB reads no longer cost a second serial round trip
+    // on the above-the-fold path. A raw-read failure degrades exactly as before.
+    const shepherdDirectoryResult: ReadResult<ShepherdCareDirectoryEntry[]> =
+      shepherdDirectoryRowsResult.error
+        ? { data: null, error: shepherdDirectoryRowsResult.error }
+        : {
+            data: buildCareDirectoryEntries(
+              shepherdDirectoryRowsResult.data.profiles,
+              shepherdDirectoryRowsResult.data.careRows,
+              {
+                todayIso,
+                windows: careCadenceWindowsFromDefaults(defaultsForRead),
+                delegatedShepherdIds: shepherdDelegatedIds,
+                baselines: careBaselines,
+              }
+            ),
+            error: null,
+          };
 
     const firstError =
       groupsResult.error ||
@@ -575,14 +506,6 @@ export async function buildAdminDashboardData(
     );
     const leaderPipeline = buildLeaderPipelineSummary(leaderPipelineResult);
     const multiplication = buildMultiplicationSummary(multiplicationResult);
-    const activity = buildActivitySummary(
-      period,
-      activityFloorIso,
-      activityBaselineOn,
-      groupsResult.data ?? [],
-      guestsResult.data ?? [],
-      activityResult
-    );
 
     const { derivedRows: _derivedRows, ...modelPayload } = model;
     return live({
@@ -596,7 +519,6 @@ export async function buildAdminDashboardData(
       launchPlanning,
       leaderPipeline,
       multiplication,
-      activity,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -64,10 +64,12 @@ import {
 } from "@/components/admin/settings-shell";
 import { DashboardClient } from "@/components/lg/admin/dashboard/DashboardClient";
 import { MinistrySnapshotSection } from "@/components/lg/admin/dashboard/MinistrySnapshotSection";
+import { RecentActivitySection } from "@/components/lg/admin/dashboard/RecentActivitySection";
 import {
   ADMIN_FALLBACK,
   INTEREST_FUNNEL_FALLBACK,
   MULTIPLY_READINESS_FALLBACK,
+  fallbackActivity,
 } from "@/lib/dashboard/fallback-data";
 import type {
   AdminDashboardData,
@@ -1494,9 +1496,7 @@ export function A11yHarnessClient() {
         <DashboardClient
           key={`${homeQuiet ? "quiet" : "demo"}-${homeSetupVariant ? "setup" : "default"}`}
           data={homeQuiet ? HOME_QUIET_DATA : ADMIN_FALLBACK}
-          guestsLive={false}
           scopeId={null}
-          canResetActivity
           isSuperAdmin
           hiddenNavAreas={homeHiddenNavAreas}
           // #777 WS2: the real page streams the Ministry-snapshot body in its own
@@ -1518,6 +1518,17 @@ export function A11yHarnessClient() {
               showLeaderPipeline={!homeHiddenNavAreas.includes("/admin/people")}
               guestsLive={false}
               scopeId={null}
+            />
+          }
+          // The real page streams Recent activity in its own Suspense boundary;
+          // the harness renders the presentational section synchronously (demo
+          // activity) so the a11y assertions still cover the reset control,
+          // period slicer, and activity band.
+          activitySlot={
+            <RecentActivitySection
+              activity={fallbackActivity}
+              guestsLive={false}
+              canResetActivity
             />
           }
         />

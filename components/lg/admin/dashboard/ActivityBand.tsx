@@ -1,11 +1,12 @@
 import type { OverviewActivitySummary } from "@/lib/dashboard/types";
 
 // Activity within the selected period, as ONE summary row — figure + label
-// pairs in a single quiet band, not a wall of stat cards. Groups launched is
-// always present; Prospects added (#471, live Interest Funnel intake) /
-// members joined / follow-ups completed / care touchpoints come from the
-// activity-counts read and show "—" when it's unavailable. The frozen-guests
-// "Guests welcomed" figure renders only while that surface's flag is live.
+// pairs in a single quiet band, not a wall of stat cards. Every figure shows
+// "—" when its underlying read is unavailable: Groups launched / Guests welcomed
+// from the groups / guests reads, and Prospects added (#471, live Interest
+// Funnel intake) / members joined / follow-ups completed / care touchpoints from
+// the activity-counts read. The frozen-guests "Guests welcomed" figure renders
+// only while that surface's flag is live.
 export function ActivityBand({
   activity,
   guestsLive,
@@ -16,10 +17,10 @@ export function ActivityBand({
   const value = (n: number | null) => (n == null ? "—" : String(n));
 
   const figures: { label: string; value: string }[] = [
-    { label: "Groups launched", value: String(activity.groupsLaunched) },
+    { label: "Groups launched", value: value(activity.groupsLaunched) },
     { label: "Prospects added", value: value(activity.prospectsAdded) },
     ...(guestsLive
-      ? [{ label: "Guests welcomed", value: String(activity.guestsWelcomed) }]
+      ? [{ label: "Guests welcomed", value: value(activity.guestsWelcomed) }]
       : []),
     { label: "Members joined", value: value(activity.membersJoined) },
     {

@@ -16,6 +16,7 @@ import {
   fetchGroupTypes,
   fetchGroupTypeConfigs,
 } from "@/lib/supabase/read-models";
+import { loadAllGroupsForAdmin } from "@/lib/admin/groups-read";
 
 // The Multiply by-type surface's data. The old per-cell (Audience × Category)
 // grid is gone (collapsed to the free-text group_type model): rows are now group
@@ -62,12 +63,19 @@ export type MultiplyGridReads = {
 export function supabaseMultiplyGridReads(
   client: AppSupabaseClient
 ): MultiplyGridReads {
-  return bindReads(client, {
-    fetchGroupTypes,
-    fetchGroupTypeConfigs,
-    fetchAllGroups,
-    fetchReadinessRule,
-  });
+  return {
+    ...bindReads(client, {
+      fetchGroupTypes,
+      fetchGroupTypeConfigs,
+      fetchReadinessRule,
+    }),
+    // Share the per-request cached groups read with Boundary A's dashboard batch
+    // (lib/admin/groups-read.ts) so a first /admin launch reads the full groups
+    // table once, not once per Suspense boundary. The seam type is unchanged
+    // (OmitClient<typeof fetchAllGroups> === () => Promise<ReadResult<GroupsRow[]>>),
+    // so tests still inject their own in-memory fetchAllGroups.
+    fetchAllGroups: () => loadAllGroupsForAdmin(),
+  };
 }
 
 // Pure assembly: gather the reads through the batch combinator, then build the

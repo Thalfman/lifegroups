@@ -123,8 +123,10 @@ export const MULTIPLY_READINESS_FALLBACK: MultiplyReadinessDashboardSummary = {
 };
 
 // Default-grain (all-time) activity for the period band when no Supabase client
-// is configured (e.g. /admin-preview sketches).
-const fallbackActivity: OverviewActivitySummary = {
+// is configured (e.g. /admin-preview sketches). Exported because the
+// "Recent activity" section is now its own streamed boundary
+// (RecentActivitySection) and renders this demo summary on the no-client path.
+export const fallbackActivity: OverviewActivitySummary = {
   grain: "all",
   label: "All time",
   groupsLaunched: 6,
@@ -156,7 +158,6 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
   launchPlanning: DEMO_LAUNCH_PLANNING,
   leaderPipeline: fallbackLeaderPipeline,
   multiplication: fallbackMultiplication,
-  activity: fallbackActivity,
   attentionItems: DEMO_ATTENTION_ITEMS,
   capacitySummary: DEMO_CAPACITY_SUMMARY,
   healthSummary: DEMO_HEALTH_SUMMARY,

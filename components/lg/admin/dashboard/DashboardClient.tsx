@@ -5,10 +5,6 @@ import { NeedsAttentionArea } from "./NeedsAttentionArea";
 import { SetupRecoveryChecklist } from "./SetupRecoveryChecklist";
 import { buildSetupRecoveryChecklist } from "@/lib/dashboard/setup-recovery";
 import { ThisWeekCard } from "./ThisWeekCard";
-import { ActivityBand } from "./ActivityBand";
-import { ActivityResetControl } from "./ActivityResetControl";
-import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
-import { PeriodSlicer } from "./PeriodSlicer";
 
 // Home — the /admin triage page (#299). It answers "what needs my attention
 // first?" by ranking urgent work above everything else, then stepping out to
@@ -52,11 +48,10 @@ function SectionHeading({
 export function DashboardClient({
   data,
   snapshotSlot,
-  guestsLive,
+  activitySlot,
   degraded,
   scopeId,
   mutedKeys,
-  canResetActivity,
   hiddenNavAreas,
   isSuperAdmin,
   fromSetup = false,
@@ -68,16 +63,17 @@ export function DashboardClient({
   // reads. The non-page call sites (structure test, a11y harness) pass a
   // synchronously-rendered MinistrySnapshotSection instead.
   snapshotSlot: ReactNode;
-  guestsLive: boolean;
+  // The "Recent activity" section (#802 follow-up), streamed in its own
+  // <Suspense> boundary by the page so its period-scoped activity-counts read
+  // stays off the above-the-fold LCP path. Non-page call sites pass a
+  // synchronously-rendered RecentActivitySection with demo data.
+  activitySlot: ReactNode;
   // True when the dashboard read failed and `data` is demo fallback.
   degraded?: boolean;
   // Signed-in profile id, scoping the collapsible-overview saved default (#292).
   scopeId?: string | null;
   // "Needs attention" category keys a Super Admin has muted (launch optics).
   mutedKeys?: string[];
-  // activity-reset: true for a super_admin, gating the Recent-activity reset
-  // control. The server action is hard-gated too; this only hides the affordance.
-  canResetActivity?: boolean;
   // Top-level area hrefs hidden from nav (ADR 0016). Home must not present stats
   // for a tab the operator retired, so the Ministry-snapshot overview cards that
   // drill into a now-hidden surface are dropped here too (the Care/Plan/Multiply
@@ -172,30 +168,10 @@ export function DashboardClient({
 
         {/* 4 — Recent activity. Metadata only (counts + period), never note or
             summary bodies — those stay on the guarded care surfaces (ADR 0002).
-            There is no /admin/activity route; the period slicer scopes these
-            counts in place. */}
-        <section
-          aria-labelledby="home-recent-activity"
-          className="grid gap-2.5"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <SectionHeading>
-              <span id="home-recent-activity">Recent activity</span>
-            </SectionHeading>
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              {canResetActivity ? (
-                <div className="flex items-center gap-2">
-                  <SuperAdminOnlyMark />
-                  <ActivityResetControl
-                    baselineOn={data.activity.resetBaselineOn}
-                  />
-                </div>
-              ) : null}
-              <PeriodSlicer current={data.activity.grain} />
-            </div>
-          </div>
-          <ActivityBand activity={data.activity} guestsLive={guestsLive} />
-        </section>
+            Streamed in its own <Suspense> boundary (#802 follow-up) so its
+            period-scoped activity-counts read stays off the LCP path; the page
+            passes the resolved section as `activitySlot`. */}
+        {activitySlot}
       </div>
     </PageBody>
   );
