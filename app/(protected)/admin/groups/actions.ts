@@ -12,7 +12,8 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import { adminRpc, type GroupRpcArgs } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 
 const REVALIDATE_PATH = "/admin/groups";
 
@@ -24,6 +25,8 @@ function groupLifecyclePaths(groupId: string): string[] {
   return [REVALIDATE_PATH, `/admin/groups/${groupId}`];
 }
 
+// Doubles as the toRpcArgs key list: the RPC args are exactly these fields,
+// p_-prefixed (checked against GroupRpcArgs at the adminRpc call sites).
 const GROUP_KEYS = [
   "name",
   "description",
@@ -38,22 +41,6 @@ const GROUP_KEYS = [
   "launched_on",
 ] as const;
 
-function payloadToRpcArgs(payload: GroupWritablePayload): GroupRpcArgs {
-  return {
-    p_name: payload.name,
-    p_description: payload.description ?? null,
-    p_meeting_day: payload.meeting_day ?? null,
-    p_meeting_time: payload.meeting_time ?? null,
-    p_location_area: payload.location_area ?? null,
-    p_address_optional: payload.address_optional ?? null,
-    p_capacity: payload.capacity ?? null,
-    p_meeting_frequency: payload.meeting_frequency,
-    p_meeting_week_parity: payload.meeting_week_parity,
-    p_group_type: payload.group_type ?? null,
-    p_launched_on: payload.launched_on ?? null,
-  };
-}
-
 // ----- adminCreateGroup ----------------------------------------------------
 
 const CREATE_GROUP_SPEC: AdminWriteActionSpec<
@@ -65,7 +52,7 @@ const CREATE_GROUP_SPEC: AdminWriteActionSpec<
   validate: validateCreateGroupPayload,
   okFields: (_value, id) => ({ new_group_id: id }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_group", payloadToRpcArgs(value)),
+    adminRpc(client, "admin_create_group", toRpcArgs(value, GROUP_KEYS)),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The group was not created. Please try again.",
 };
@@ -94,7 +81,7 @@ const UPDATE_GROUP_SPEC: AdminWriteActionSpec<
   rpc: (client, value) =>
     adminRpc(client, "admin_update_group", {
       p_group_id: value.group_id,
-      ...payloadToRpcArgs(value),
+      ...toRpcArgs(value, GROUP_KEYS),
     }),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The group was not updated. Please try again.",

@@ -21,7 +21,8 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import { adminRpc, type AdminUuidRpcArgs } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 
 const REVALIDATE_PATH = "/admin/people";
 
@@ -29,33 +30,28 @@ const REVALIDATE_PATH = "/admin/people";
 
 type CreateLeaderPayload = { full_name: string; email: string; phone?: string };
 
-// Type-pinned RPC-args mapping (issue #636): the input is pinned to the
-// validator's output type (CreateLeaderPayload) and the return to the RPC's
-// declared p_* args, so a validator field rename that desyncs from the args
-// fails `npm run typecheck` instead of silently shipping the wrong shape to the
-// SECURITY DEFINER RPC. The explicit per-field spelling stays the eyeball-able
-// write-side trust boundary — this only pins its two ends.
-const createLeaderRpcArgs = (
-  value: CreateLeaderPayload
-): AdminUuidRpcArgs["admin_create_leader_profile"] => ({
-  p_full_name: value.full_name,
-  p_email: value.email,
-  p_phone: value.phone ?? null,
-});
+// Doubles as the toRpcArgs key list for the two person-create RPCs, whose
+// args are exactly these fields p_-prefixed (an absent optional phone/email
+// becomes an explicit null, as the old `?? null` spelling did).
+const CREATE_PERSON_KEYS = ["full_name", "email", "phone"] as const;
 
 const CREATE_LEADER_SPEC: AdminWriteActionSpec<
   CreateLeaderPayload,
   { id: string }
 > = {
   name: "admin.people.create_leader",
-  keys: ["full_name", "email", "phone"],
+  keys: CREATE_PERSON_KEYS,
   validate: validateCreateLeaderProfilePayload,
   fields: async (_actor, value) => ({
     target_email_hash: await hashEmail(value.email),
   }),
   okFields: (_value, id) => ({ new_profile_id: id }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_leader_profile", createLeaderRpcArgs(value)),
+    adminRpc(
+      client,
+      "admin_create_leader_profile",
+      toRpcArgs(value, CREATE_PERSON_KEYS)
+    ),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The shepherd was not created. Please try again.",
 };
@@ -80,18 +76,18 @@ const CREATE_MEMBER_SPEC: AdminWriteActionSpec<
   { id: string }
 > = {
   name: "admin.people.create_member",
-  keys: ["full_name", "email", "phone"],
+  keys: CREATE_PERSON_KEYS,
   validate: validateCreateMemberPayload,
   fields: async (_actor, value) => ({
     target_email_hash: value.email ? await hashEmail(value.email) : null,
   }),
   okFields: (_value, id) => ({ new_profile_id: id }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_member", {
-      p_full_name: value.full_name,
-      p_email: value.email ?? null,
-      p_phone: value.phone ?? null,
-    }),
+    adminRpc(
+      client,
+      "admin_create_member",
+      toRpcArgs(value, CREATE_PERSON_KEYS)
+    ),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The member was not created. Please try again.",
 };
@@ -194,6 +190,16 @@ export async function adminAssignMemberToGroup(
 // the admin_add_person_to_group SECURITY DEFINER RPC (one transaction, one
 // paired audit row) rather than chaining the create + assign actions.
 
+// p_role is cross-field (leaders send their in-group role, members send null),
+// so it stays literal; the rest is the mechanical copy.
+const ADD_PERSON_TO_GROUP_ARG_KEYS = [
+  "group_id",
+  "kind",
+  "full_name",
+  "email",
+  "phone",
+] as const;
+
 const ADD_PERSON_TO_GROUP_SPEC: AdminWriteActionSpec<
   AddPersonToGroupPayload,
   { id: string }
@@ -209,11 +215,7 @@ const ADD_PERSON_TO_GROUP_SPEC: AdminWriteActionSpec<
   okFields: (value, id) => ({ new_person_id: id, person_kind: value.kind }),
   rpc: (client, value) =>
     adminRpc(client, "admin_add_person_to_group", {
-      p_group_id: value.group_id,
-      p_kind: value.kind,
-      p_full_name: value.full_name,
-      p_email: value.email ?? null,
-      p_phone: value.phone ?? null,
+      ...toRpcArgs(value, ADD_PERSON_TO_GROUP_ARG_KEYS),
       p_role: value.kind === "leader" ? value.role : null,
     }),
   // The new person shows up both in People and on this group's roster, so

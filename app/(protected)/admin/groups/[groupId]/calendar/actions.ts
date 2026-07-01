@@ -16,6 +16,7 @@ import {
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
 import { readFormPayload } from "@/lib/shared/form-data";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 
 // Calendar forms may post arbitrary entries, so the runner lifts the whole
 // FormData rather than a fixed key list. The id-keyed actions (update,
@@ -50,6 +51,29 @@ type CreateEventValue = CalendarEventCreatePayload;
 type UpdateEventValue = CalendarEventUpdatePayload;
 type EventIdValue = CalendarEventArchivePayload;
 
+// toRpcArgs key lists: the event RPC args are these payload fields,
+// p_-prefixed, PLUS the deliberately-null inherited meeting times, which stay
+// literal at the call sites (Phase 5A.6 correction: meeting time is always
+// inherited from the group schedule; the calendar editor never sets a
+// per-event time).
+const CREATE_EVENT_ARG_KEYS = [
+  "group_id",
+  "event_date",
+  "event_type",
+  "status",
+  "title",
+  "description",
+] as const;
+
+const UPDATE_EVENT_ARG_KEYS = [
+  "event_id",
+  "event_date",
+  "event_type",
+  "status",
+  "title",
+  "description",
+] as const;
+
 // ----- adminCreateCalendarEvent -------------------------------------------
 
 const CREATE_EVENT_SPEC: AdminWriteActionSpec<
@@ -63,16 +87,9 @@ const CREATE_EVENT_SPEC: AdminWriteActionSpec<
   okFields: (value, id) => ({ event_type: value.event_type, new_event_id: id }),
   rpc: (client, value) =>
     adminRpc(client, "admin_create_group_calendar_event", {
-      p_group_id: value.group_id,
-      p_event_date: value.event_date,
-      // Phase 5A.6 correction: meeting time is always inherited from the
-      // group schedule. The calendar editor never sets a per-event time.
       p_start_time: null,
       p_end_time: null,
-      p_event_type: value.event_type,
-      p_status: value.status,
-      p_title: value.title,
-      p_description: value.description,
+      ...toRpcArgs(value, CREATE_EVENT_ARG_KEYS),
     }),
   revalidate: (value) => calendarPaths(value.group_id),
   noDataError: "The calendar event was not created. Please try again.",
@@ -98,14 +115,9 @@ const UPDATE_EVENT_SPEC: AdminWriteActionSpec<
   okFields: (_value, _id, raw) => ({ target_group_id: groupIdFromRaw(raw) }),
   rpc: (client, value) =>
     adminRpc(client, "admin_update_group_calendar_event", {
-      p_event_id: value.event_id,
-      p_event_date: value.event_date,
       p_start_time: null,
       p_end_time: null,
-      p_event_type: value.event_type,
-      p_status: value.status,
-      p_title: value.title,
-      p_description: value.description,
+      ...toRpcArgs(value, UPDATE_EVENT_ARG_KEYS),
     }),
   revalidate: (_value, raw) => {
     const groupId = groupIdFromRaw(raw);

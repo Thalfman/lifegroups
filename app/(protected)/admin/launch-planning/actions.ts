@@ -26,6 +26,7 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 const REVALIDATE_PATH_ADMIN = "/admin";
@@ -222,6 +223,30 @@ export async function adminRecordChurchAttendanceSnapshot(
 
 // ----- Julian P4: multiplication candidate actions ------------------------
 
+// toRpcArgs key lists: the candidate RPC args are exactly these payload
+// fields, p_-prefixed (checked against the args map at the adminRpc call
+// sites).
+const CANDIDATE_FIELD_ARG_KEYS = [
+  "group_id",
+  "target_year",
+  "status",
+  "shepherd_willing",
+  "needs_similar_stage",
+  "notes",
+  "successor_designate",
+  "meeting_time",
+  "leader_pipeline_id",
+  "manual_member_count",
+  "enough_members",
+  "established_long_enough",
+  "co_shepherd_tenured",
+] as const;
+
+const UPDATE_CANDIDATE_ARG_KEYS = [
+  "candidate_id",
+  ...CANDIDATE_FIELD_ARG_KEYS,
+] as const;
+
 const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
   CreateMultiplicationCandidatePayload,
   { id: string }
@@ -230,21 +255,11 @@ const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
   read: readCandidateForm,
   validate: validateCreateMultiplicationCandidatePayload,
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_multiplication_candidate", {
-      p_group_id: value.group_id,
-      p_target_year: value.target_year,
-      p_status: value.status,
-      p_shepherd_willing: value.shepherd_willing,
-      p_needs_similar_stage: value.needs_similar_stage,
-      p_notes: value.notes,
-      p_successor_designate: value.successor_designate,
-      p_meeting_time: value.meeting_time,
-      p_leader_pipeline_id: value.leader_pipeline_id,
-      p_manual_member_count: value.manual_member_count,
-      p_enough_members: value.enough_members,
-      p_established_long_enough: value.established_long_enough,
-      p_co_shepherd_tenured: value.co_shepherd_tenured,
-    }),
+    adminRpc(
+      client,
+      "admin_create_multiplication_candidate",
+      toRpcArgs(value, CANDIDATE_FIELD_ARG_KEYS)
+    ),
   revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",
 };
@@ -264,22 +279,11 @@ const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
   read: readCandidateForm,
   validate: validateUpdateMultiplicationCandidatePayload,
   rpc: (client, value) =>
-    adminRpc(client, "admin_update_multiplication_candidate", {
-      p_candidate_id: value.candidate_id,
-      p_target_year: value.target_year,
-      p_status: value.status,
-      p_shepherd_willing: value.shepherd_willing,
-      p_needs_similar_stage: value.needs_similar_stage,
-      p_notes: value.notes,
-      p_successor_designate: value.successor_designate,
-      p_meeting_time: value.meeting_time,
-      p_leader_pipeline_id: value.leader_pipeline_id,
-      p_manual_member_count: value.manual_member_count,
-      p_group_id: value.group_id,
-      p_enough_members: value.enough_members,
-      p_established_long_enough: value.established_long_enough,
-      p_co_shepherd_tenured: value.co_shepherd_tenured,
-    }),
+    adminRpc(
+      client,
+      "admin_update_multiplication_candidate",
+      toRpcArgs(value, UPDATE_CANDIDATE_ARG_KEYS)
+    ),
   revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",
 };

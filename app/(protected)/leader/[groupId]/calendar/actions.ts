@@ -13,8 +13,9 @@ import {
   runLeaderWriteAction,
   type LeaderWriteActionSpec,
 } from "@/lib/leader/run-action";
-import { leaderRpc, type LeaderUuidRpcArgs } from "@/lib/leader/rpc";
+import { leaderRpc } from "@/lib/leader/rpc";
 import { readFormPayload } from "@/lib/shared/form-data";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 
 type ActionInput<T> = T | FormData;
 
@@ -63,26 +64,28 @@ function requireOwnedGroupId(
 
 // ----- leaderCreateCalendarEvent ------------------------------------------
 
-// Type-pinned RPC-args mapping (issue #636): input pinned to the validator's
-// output type, return pinned to the RPC's declared p_* args, so a validator
-// field rename that desyncs from the args fails `npm run typecheck` rather than
-// silently shipping the wrong shape to the SECURITY DEFINER RPC. The explicit
-// per-field spelling — including the deliberately-null inherited meeting times —
-// stays the eyeball-able write-side trust boundary.
-const createCalendarEventRpcArgs = (
-  value: CalendarEventCreatePayload
-): LeaderUuidRpcArgs["leader_create_group_calendar_event"] => ({
-  p_group_id: value.group_id,
-  p_event_date: value.event_date,
-  // Phase 5A.6 correction: meeting time is always inherited from the group
-  // schedule. The calendar editor never sets a per-event time.
-  p_start_time: null,
-  p_end_time: null,
-  p_event_type: value.event_type,
-  p_status: value.status,
-  p_title: value.title,
-  p_description: value.description,
-});
+// toRpcArgs key lists: the event RPC args are these payload fields,
+// p_-prefixed, PLUS the deliberately-null inherited meeting times, which stay
+// literal at the call sites (Phase 5A.6 correction: meeting time is always
+// inherited from the group schedule; the calendar editor never sets a
+// per-event time).
+const CREATE_EVENT_ARG_KEYS = [
+  "group_id",
+  "event_date",
+  "event_type",
+  "status",
+  "title",
+  "description",
+] as const;
+
+const UPDATE_EVENT_ARG_KEYS = [
+  "event_id",
+  "event_date",
+  "event_type",
+  "status",
+  "title",
+  "description",
+] as const;
 
 const CREATE_EVENT_SPEC: LeaderWriteActionSpec<
   CalendarEventCreatePayload,
@@ -105,11 +108,11 @@ const CREATE_EVENT_SPEC: LeaderWriteActionSpec<
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   okFields: (value, id) => ({ event_type: value.event_type, new_event_id: id }),
   rpc: (client, value) =>
-    leaderRpc(
-      client,
-      "leader_create_group_calendar_event",
-      createCalendarEventRpcArgs(value)
-    ),
+    leaderRpc(client, "leader_create_group_calendar_event", {
+      p_start_time: null,
+      p_end_time: null,
+      ...toRpcArgs(value, CREATE_EVENT_ARG_KEYS),
+    }),
   revalidate: (value) => leaderCalendarPaths(value.group_id),
   noDataError: "The calendar event was not created. Please try again.",
 };
@@ -146,14 +149,9 @@ const UPDATE_EVENT_SPEC: LeaderWriteActionSpec<
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
   rpc: (client, value) =>
     leaderRpc(client, "leader_update_group_calendar_event", {
-      p_event_id: value.event_id,
-      p_event_date: value.event_date,
       p_start_time: null,
       p_end_time: null,
-      p_event_type: value.event_type,
-      p_status: value.status,
-      p_title: value.title,
-      p_description: value.description,
+      ...toRpcArgs(value, UPDATE_EVENT_ARG_KEYS),
     }),
   revalidate: (_value, raw) => leaderCalendarPaths(rawGroupId(raw)),
   noDataError: "The calendar event was not updated. Please try again.",

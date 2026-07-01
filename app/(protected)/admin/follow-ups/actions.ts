@@ -21,6 +21,7 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 
 const REVALIDATE_PATHS = [
   "/admin/follow-ups",
@@ -71,20 +72,12 @@ const CREATE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
   }),
   rpc: (client, value) =>
     adminRpc(client, "admin_create_follow_up", {
-      p_type: value.type,
-      p_title: value.title,
-      p_related_group_id: value.related_group_id,
-      p_related_member_id: value.related_member_id,
       // The Add-Follow-up form no longer offers a "Related guest" link to the
       // retired legacy guests pipeline (#639). The column and RPC arg stay so
       // existing legacy data and the frozen Guests surface are unaffected; new
       // follow-ups simply never set it.
       p_related_guest_id: null,
-      p_assigned_to: value.assigned_to,
-      p_priority: value.priority,
-      p_due_date: value.due_date,
-      p_leader_visible_note: value.leader_visible_note,
-      p_admin_private_note: value.admin_private_note,
+      ...toRpcArgs(value, CREATE_FOLLOW_UP_KEYS),
     }),
   revalidate: () => REVALIDATE_PATHS,
   noDataError: "The follow-up wasn't saved. Please try again.",
@@ -109,14 +102,11 @@ const UPDATE_STATUS_SPEC: AdminWriteActionSpec<
   fields: (_actor, value) => ({ target_follow_up_id: value.follow_up_id }),
   okFields: (value) => ({ new_status: value.status }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_update_follow_up_status", {
-      p_follow_up_id: value.follow_up_id,
-      p_status: value.status,
-      p_set_leader_visible_note: value.set_leader_visible_note,
-      p_leader_visible_note: value.leader_visible_note,
-      p_set_admin_private_note: value.set_admin_private_note,
-      p_admin_private_note: value.admin_private_note,
-    }),
+    adminRpc(
+      client,
+      "admin_update_follow_up_status",
+      toRpcArgs(value, UPDATE_STATUS_KEYS)
+    ),
   revalidate: () => REVALIDATE_PATHS,
   noDataError: "The status wasn't updated. Please try again.",
 };
