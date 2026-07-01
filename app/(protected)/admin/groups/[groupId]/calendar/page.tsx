@@ -12,10 +12,8 @@ import { ArchivedRestoreButton } from "@/components/calendar/calendar-archived-a
 import { cn } from "@/lib/utils";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  fetchGroupCalendarEvents,
-  fetchGroupsByIds,
-} from "@/lib/supabase/read-models";
+import { fetchGroupsByIds } from "@/lib/supabase/group-reads";
+import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
 import {
   generateMonthOccurrences,
   mergeOverrides,

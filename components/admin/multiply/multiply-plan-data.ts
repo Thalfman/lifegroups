@@ -2,13 +2,15 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import { fetchGroupRefs } from "@/lib/supabase/group-reads";
 import {
   fetchApprenticePickerRefs,
-  fetchGroupRefs,
+  fetchMultiplicationCandidatesForAdmin,
+} from "@/lib/supabase/multiplication-reads";
+import {
   fetchGroupTypes,
   fetchGroupTypeConfigs,
-  fetchMultiplicationCandidatesForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/settings-reads";
 import {
   buildMultiplicationView,
   type MultiplicationView,

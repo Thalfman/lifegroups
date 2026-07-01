@@ -8,7 +8,7 @@ import type {
   CareFollowUpCompletedRow,
   CareFollowUpDashboardRow,
   ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 
 // #334 P1 — "Keep shepherd-care follow-ups visible". The re-key folded the old
 // Due Soon / Completed Care tabs into a single Follow-ups tab. But that tab's

@@ -1,12 +1,12 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import { fetchGroupRefs } from "@/lib/supabase/group-reads";
 import {
   fetchActiveMemberships,
   fetchAllMembers,
-  fetchGroupRefs,
-  fetchLeaderPipelineForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/membership-reads";
+import { fetchLeaderPipelineForAdmin } from "@/lib/supabase/multiplication-reads";
 import {
   buildPipelineRollup,
   type ApprenticeView,

@@ -30,7 +30,7 @@ export async function readFrozenSurfaceFlagForLeader(
   if (!client) return false;
   // The RPC is not in the generated DB types yet, so the name + args are cast
   // through `never` exactly as the other hand-pinned RPC calls do
-  // (lib/shared/rpc.ts, lib/supabase/read-models.ts).
+  // (lib/shared/rpc.ts, the lib/supabase/*-reads modules).
   const { data, error } = await client.rpc(
     "read_frozen_surface_flag" as never,
     {

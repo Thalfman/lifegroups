@@ -7,9 +7,9 @@ import {
 } from "@/components/admin/launch-planning/launch-planning-data";
 import type {
   CapacityBoardExtras,
-  LaunchPlanningInputsBundle,
   MultiplicationCandidateEntry,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/multiplication-reads";
+import type { LaunchPlanningInputsBundle } from "@/lib/supabase/settings-reads";
 import type { ReadResult } from "@/lib/supabase/read-core";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });

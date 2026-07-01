@@ -1,10 +1,8 @@
 import type { ReadClient } from "@/lib/supabase/read-core";
 import { currentUtcDateIso } from "@/lib/supabase/read-core";
-import {
-  fetchActiveGroupCount,
-  fetchActiveMemberships,
-  fetchOpenFollowUpsDueCount,
-} from "@/lib/supabase/read-models";
+import { fetchActiveGroupCount } from "@/lib/supabase/group-reads";
+import { fetchActiveMemberships } from "@/lib/supabase/membership-reads";
+import { fetchOpenFollowUpsDueCount } from "@/lib/supabase/overview-reads";
 
 // One at-a-glance figure on the Home Hub. Kept intentionally tiny — a label and
 // a count — because the hub orients, it doesn't operate (the operating surfaces
@@ -18,7 +16,7 @@ export interface HubStat {
 // tiles plus at-a-glance live stats"). Deliberately resilient: each read runs
 // independently via allSettled and a failure simply omits its stat — the hub
 // never surfaces an error, matching the calm "soften, don't alarm" posture of
-// the rest of these surfaces. Reuses the cheap, already-RLS-scoped read-models
+// the rest of these surfaces. Reuses the cheap, already-RLS-scoped read models
 // the admin dashboard relies on, so no new query shapes are introduced.
 export async function loadHubStats(client: ReadClient): Promise<HubStat[]> {
   const todayIso = currentUtcDateIso();

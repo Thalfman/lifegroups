@@ -9,7 +9,7 @@ import {
   formGridStyle,
   formNoteStyle,
 } from "@/components/admin/forms/field-styles";
-import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
+import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/guest-reads";
 import { pipelineStageLabel } from "@/lib/dashboard/labels";
 import {
   useActionForm,

@@ -3,22 +3,22 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import { fetchAllGroups } from "@/lib/supabase/group-reads";
 import {
   fetchAllGroupMetricSettings,
-  fetchAllGroups,
   fetchGroupTypes,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/settings-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import {
   BUILT_IN_METRIC_DEFAULTS,
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
-import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
+import { fetchHealthRubric } from "@/lib/supabase/rubric-grade-reads";
 import {
   decodeRubricCriteria,
   DEFAULT_GROUP_RUBRIC_CRITERIA,
 } from "@/lib/admin/health-rubric";
-import { fetchReadinessRule } from "@/lib/supabase/readiness-reads";
+import { fetchReadinessRule } from "@/lib/supabase/multiplication-reads";
 import {
   BUILT_IN_READINESS_RULE,
   decodeReadinessRuleWithReport,

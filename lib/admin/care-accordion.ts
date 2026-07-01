@@ -12,7 +12,7 @@ import type {
   ActiveShepherdCoverageAssignmentSummary,
   OverShepherdListRow,
   ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 
 // Pure model for the canonical Care accordion (#373, ADR 0016). Care is now an
 // accordion grouped by Over-Shepherd, collapsed by default: each pane lists the
@@ -23,7 +23,7 @@ import type {
 // they are now filled from optional enrichment maps the page injects.
 //
 // This stays READ-ONLY consolidation: it reuses the existing column-allowlisted
-// read-models (over-shepherds, active coverage assignments, the care directory,
+// read models (over-shepherds, active coverage assignments, the care directory,
 // group_leaders, groups) plus the enrichment maps. Coverage assignments are the
 // backbone — there are deliberately NO headcounts / member counts here. An
 // Unassigned pane mirrors the Coverage card's Unassigned bucket so a Leader with
@@ -96,7 +96,7 @@ export type CareAccordionLeader = {
   careStatus: ShepherdCareStatus | null;
   // Whether the care directory flags this Leader for attention this week — the
   // SAME per-tier staleness + status signal the All-leaders roster filters on
-  // (read-models' computeNeedsAttention), passed straight through. Surfaced so
+  // (shepherd-care-reads' computeNeedsAttention), passed straight through. Surfaced so
   // the collapsed-by-default accordion can roll up "N need attention" per
   // Over-Shepherd, and mark the individual Leaders, without expanding a pane.
   needsAttention: boolean;

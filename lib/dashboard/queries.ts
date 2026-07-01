@@ -1,32 +1,48 @@
 import {
-  fetchActiveGroupCount,
-  fetchActiveMemberships,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
-  fetchAllGroupLeaders,
-  fetchAllGroupMetricSettings,
-  fetchAllGroups,
-  fetchAttendanceRecordsForSessions,
-  fetchAttendanceSessions,
-  fetchGroupCalendarEvents,
-  fetchGroupHealthAssessmentRatings,
-  fetchGroupsByIds,
-  fetchGuests,
-  fetchLatestHealthUpdates,
-  fetchLaunchPlanningAssumptions,
-  fetchLeaderPipelineForAdmin,
-  fetchMembersByIds,
-  fetchMetricDefaults,
-  fetchMultiplicationCandidatesForAdmin,
-  fetchNewGuestsForGroupSince,
-  fetchOpenFollowUps,
-  fetchOpenFollowUpsDueCount,
   fetchOverShepherdsForAdmin,
-  fetchProfilesForAdmin,
   fetchShepherdCareDirectoryRowsForAdmin,
   buildCareDirectoryEntries,
   type ShepherdCareDirectoryEntry,
-  type LeaderFollowUpRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
+import { type LeaderFollowUpRow } from "@/lib/supabase/follow-up-reads";
+import {
+  fetchActiveGroupCount,
+  fetchAllGroupLeaders,
+  fetchAllGroups,
+  fetchGroupsByIds,
+} from "@/lib/supabase/group-reads";
+import {
+  fetchActiveMemberships,
+  fetchMembersByIds,
+  fetchProfilesForAdmin,
+} from "@/lib/supabase/membership-reads";
+import {
+  fetchGuests,
+  fetchNewGuestsForGroupSince,
+} from "@/lib/supabase/guest-reads";
+import {
+  fetchAttendanceRecordsForSessions,
+  fetchAttendanceSessions,
+} from "@/lib/supabase/attendance-reads";
+import {
+  fetchGroupHealthAssessmentRatings,
+  fetchLatestHealthUpdates,
+} from "@/lib/supabase/health-reads";
+import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
+import {
+  fetchOpenFollowUps,
+  fetchOpenFollowUpsDueCount,
+} from "@/lib/supabase/overview-reads";
+import {
+  fetchLeaderPipelineForAdmin,
+  fetchMultiplicationCandidatesForAdmin,
+} from "@/lib/supabase/multiplication-reads";
+import {
+  fetchAllGroupMetricSettings,
+  fetchLaunchPlanningAssumptions,
+  fetchMetricDefaults,
+} from "@/lib/supabase/settings-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { measureReadBundle } from "@/lib/observability/read-timing";
 import { loadAllGroupsForAdmin } from "@/lib/admin/groups-read";

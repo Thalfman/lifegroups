@@ -27,9 +27,12 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("@/lib/admin/groups-read", () => ({
   loadAllGroupsForAdmin: mockLoadGroups,
 }));
-vi.mock("@/lib/supabase/read-models", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/supabase/read-models")>()),
+vi.mock("@/lib/supabase/guest-reads", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/supabase/guest-reads")>()),
   fetchGuests: mockFetchGuests,
+}));
+vi.mock("@/lib/supabase/overview-reads", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/supabase/overview-reads")>()),
   fetchOverviewActivityCounts: mockFetchCounts,
 }));
 vi.mock("@/lib/supabase/maintenance-reads", () => ({

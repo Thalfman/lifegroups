@@ -6,7 +6,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
-import type { AdminFollowUpEntry } from "@/lib/supabase/read-models";
+import type { AdminFollowUpEntry } from "@/lib/supabase/follow-up-reads";
 import type { FollowUpStatus } from "@/types/enums";
 
 type Action = {

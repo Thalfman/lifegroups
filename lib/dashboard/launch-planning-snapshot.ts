@@ -24,7 +24,7 @@ import {
 } from "@/lib/admin/launch-planning";
 import type { MetricDefaults } from "@/lib/admin/metrics";
 import type { AppSettingsRow } from "@/types/database";
-import type { ReadResult } from "@/lib/supabase/read-models";
+import type { ReadResult } from "@/lib/supabase/read-core";
 
 export function buildLaunchPlanningSnapshot(
   assumptionsRes: ReadResult<AppSettingsRow | null>,

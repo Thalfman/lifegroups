@@ -6,7 +6,7 @@ import {
   fetchOverShepherdByIdForAdmin,
   fetchShepherdsCoveredByOverShepherdForAdmin,
   type ShepherdCoveredByOverShepherd,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 import type { OverShepherdsRow } from "@/types/database";
 
 // The Over-Shepherd detail page's read-orchestration, as a pure function of a

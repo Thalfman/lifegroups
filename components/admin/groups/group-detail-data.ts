@@ -3,20 +3,24 @@ import { measureReadBundle } from "@/lib/observability/read-timing";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import { type LeaderFollowUpRow } from "@/lib/supabase/follow-up-reads";
+import {
+  fetchAllGroupLeaders,
+  fetchGroupsByIds,
+} from "@/lib/supabase/group-reads";
 import {
   fetchActiveMemberships,
-  fetchAllGroupLeaders,
   fetchAllMembers,
-  fetchAttendanceSessions,
-  fetchGroupCalendarEvents,
-  fetchGroupMetricSettings,
-  fetchGroupsByIds,
   fetchMembersByIds,
-  fetchOpenFollowUps,
-  fetchPlatformConfig,
   fetchProfilesForAdmin,
-  type LeaderFollowUpRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/membership-reads";
+import { fetchAttendanceSessions } from "@/lib/supabase/attendance-reads";
+import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
+import { fetchOpenFollowUps } from "@/lib/supabase/overview-reads";
+import {
+  fetchGroupMetricSettings,
+  fetchPlatformConfig,
+} from "@/lib/supabase/settings-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import {
   fetchGroupHealthRatings,

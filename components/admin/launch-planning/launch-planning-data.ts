@@ -1,13 +1,15 @@
 import {
   fetchCapacityBoardExtras,
-  fetchLaunchPlanningAssumptions,
-  fetchLaunchPlanningInputsForAdmin,
-  fetchLaunchPlanningScenariosForAdmin,
   fetchLeaderPipelineForAdmin,
   fetchMultiplicationCandidatesForAdmin,
   type ApprenticePickerRef,
+} from "@/lib/supabase/multiplication-reads";
+import {
+  fetchLaunchPlanningAssumptions,
+  fetchLaunchPlanningInputsForAdmin,
+  fetchLaunchPlanningScenariosForAdmin,
   type LaunchPlanningInputsBundle,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/settings-reads";
 import {
   BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
   applyBaselineSilentDefaults,

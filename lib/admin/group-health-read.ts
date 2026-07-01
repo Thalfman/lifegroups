@@ -16,14 +16,13 @@ import {
   BUILT_IN_GROUP_HEALTH_RUBRIC,
 } from "@/lib/admin/group-health";
 import { decodeMetricDefaults } from "@/lib/admin/metrics";
+import { type ReadResult } from "@/lib/supabase/read-core";
+import { fetchAllGroups, fetchGroupsByIds } from "@/lib/supabase/group-reads";
 import {
-  fetchAllGroups,
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
-  fetchGroupHealthRubricSetting,
-  fetchGroupsByIds,
-  type ReadResult,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/attendance-reads";
+import { fetchGroupHealthRubricSetting } from "@/lib/supabase/settings-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 
@@ -39,7 +38,7 @@ import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 // months (and the home of #129's override); the manual Recompute action writes
 // the same numbers through the audited RPC.
 
-export type { ReadResult } from "@/lib/supabase/read-models";
+export type { ReadResult } from "@/lib/supabase/read-core";
 
 function wrapError(prefix: string, err: unknown): Error {
   if (err instanceof Error) return new Error(`${prefix}: ${err.message}`);

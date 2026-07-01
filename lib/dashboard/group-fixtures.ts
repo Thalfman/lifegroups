@@ -14,7 +14,7 @@ import type {
   GroupsRow,
   ProfilesRow,
 } from "@/types/database";
-import type { LeaderFollowUpRow } from "@/lib/supabase/read-models";
+import type { LeaderFollowUpRow } from "@/lib/supabase/follow-up-reads";
 
 // Shared fixed timestamp for demo/test rows. Exported so the demo seed
 // (lib/dashboard/demo-seed.ts) stamps its app_settings rows from the same

@@ -23,7 +23,7 @@
 
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchAdminFeatureFlags } from "@/lib/supabase/read-models";
+import { fetchAdminFeatureFlags } from "@/lib/supabase/settings-reads";
 import { decodeFeatureFlags } from "@/lib/admin/app-config-decode";
 import type { FeatureFlagsConfig } from "@/lib/admin/feature-flags";
 

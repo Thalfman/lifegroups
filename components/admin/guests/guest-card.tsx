@@ -7,7 +7,7 @@ import { adminUpdateGuestPipeline } from "@/app/(protected)/admin/guests/actions
 import {
   GUEST_PIPELINE_STAGES,
   type GuestDirectoryEntry,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/guest-reads";
 import { pipelineStageLabel } from "@/lib/dashboard/labels";
 import { P, fontBody, fontDisplay, fontMono, fontSans } from "@/lib/pastoral";
 import {

@@ -10,12 +10,12 @@ import {
   type GroupTypeCoverage,
 } from "@/lib/admin/group-type-coverage";
 import { decodeReadinessRuleWithReport } from "@/lib/admin/cell-readiness";
-import { fetchReadinessRule } from "@/lib/supabase/readiness-reads";
+import { fetchReadinessRule } from "@/lib/supabase/multiplication-reads";
+import { fetchAllGroups } from "@/lib/supabase/group-reads";
 import {
-  fetchAllGroups,
   fetchGroupTypes,
   fetchGroupTypeConfigs,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/settings-reads";
 import { loadAllGroupsForAdmin } from "@/lib/admin/groups-read";
 
 // The Multiply by-type surface's data. The old per-cell (Audience × Category)

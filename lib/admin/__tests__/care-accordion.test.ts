@@ -24,7 +24,7 @@ import type {
   ActiveShepherdCoverageAssignmentSummary,
   OverShepherdListRow,
   ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 
 // #373 — the Care accordion model. Pure grouping of Leaders under their
 // Over-Shepherd (coverage assignments are the backbone), with group-name

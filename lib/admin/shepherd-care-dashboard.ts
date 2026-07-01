@@ -1,11 +1,11 @@
+import { differenceInDaysIso } from "@/lib/supabase/read-core";
 import {
-  differenceInDaysIso,
   type ActiveShepherdCoverageAssignmentSummary,
   type CareFollowUpDashboardRow,
   type OverShepherdListRow,
   type ShepherdCareDirectoryEntry,
   type ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 import { isFollowUpOverdue } from "@/lib/admin/shepherd-care-follow-ups";
 import {
   BUILT_IN_CARE_CADENCE_WINDOWS,

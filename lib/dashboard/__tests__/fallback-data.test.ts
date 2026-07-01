@@ -10,7 +10,7 @@ import {
   LEADER_FALLBACK,
   MULTIPLY_READINESS_FALLBACK,
 } from "@/lib/dashboard/fallback-data";
-import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
+import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/guest-reads";
 import { ACTIVE_BOARD_STATES } from "@/lib/supabase/prospect-reads";
 import {
   DEMO_CARE_PROFILES,

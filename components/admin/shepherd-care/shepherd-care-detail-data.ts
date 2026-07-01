@@ -6,15 +6,9 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveShepherdCoverageAssignmentByShepherdId,
   fetchAdminShepherdProfileById,
-  fetchAuthoredGroupCareNotes,
-  fetchAuthoredGroupPrayerRequests,
-  fetchCareNotesForSubject,
   fetchGenericFollowUpCountForAssignee,
-  fetchGroupsByIds,
   fetchLedGroupSummariesForProfile,
-  fetchNoteTransparencyGrant,
   fetchOverShepherdsForAdmin,
-  fetchPrayerRequestsForSubject,
   fetchPrivateNoteKeySlotsForCreator,
   fetchShepherdCareFollowUpsForProfile,
   fetchShepherdCareInteractionsForAdmin,
@@ -25,13 +19,21 @@ import {
   type OverShepherdListRow,
   type PrivateNoteCiphertext,
   type PrivateNoteKeySlot,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
+import {
+  fetchAuthoredGroupCareNotes,
+  fetchAuthoredGroupPrayerRequests,
+  fetchCareNotesForSubject,
+  fetchNoteTransparencyGrant,
+  fetchPrayerRequestsForSubject,
+} from "@/lib/supabase/care-note-reads";
+import { fetchGroupsByIds } from "@/lib/supabase/group-reads";
 import {
   fetchLeaderHealthRubric,
   fetchLeaderRubricGrade,
   type LeaderRubricGradeRow,
 } from "@/lib/admin/leader-health-read";
-import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
+import { fetchHealthRubric } from "@/lib/supabase/rubric-grade-reads";
 import {
   getGroupRubricGrade,
   type GroupRubricGradeView,

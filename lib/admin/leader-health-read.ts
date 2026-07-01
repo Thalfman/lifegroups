@@ -2,7 +2,7 @@ import "server-only";
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { wrapError, type ReadResult } from "@/lib/supabase/read-core";
-import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
+import { fetchHealthRubric } from "@/lib/supabase/rubric-grade-reads";
 import { decodeRubricCriteria, type Rubric } from "@/lib/admin/health-rubric";
 
 // Read side for the Leader-Health Grade (#378 / ADR 0018, pivot slice 5).
@@ -34,10 +34,10 @@ export async function fetchLeaderHealthRubric(
 }
 
 // The persisted Leader-Health Grade row read moved to the column-allowlisted
-// reads seam (lib/supabase/leader-rubric-grade-reads), so it is typed I/O behind
+// reads seam (lib/supabase/rubric-grade-reads), so it is typed I/O behind
 // the seam rather than an `as never` cast. Re-exported here so the shepherd-care
 // detail surface keeps its existing import and seam binding unchanged.
 export {
   fetchLeaderRubricGradeRow as fetchLeaderRubricGrade,
   type LeaderRubricGradeRow,
-} from "@/lib/supabase/leader-rubric-grade-reads";
+} from "@/lib/supabase/rubric-grade-reads";

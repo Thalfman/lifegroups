@@ -26,7 +26,7 @@ import {
   type MatchedShepherd,
   type ShepherdMatchInput,
 } from "@/lib/admin/leader-pipeline";
-import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
+import type { MultiplicationCandidateEntry } from "@/lib/supabase/multiplication-reads";
 
 export type MultiplicationCriterion =
   | "enough_members"

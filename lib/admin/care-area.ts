@@ -1,11 +1,11 @@
+import { differenceInDaysIso } from "@/lib/supabase/read-core";
 import {
-  differenceInDaysIso,
-  type AdminFollowUpEntry,
   type CareFollowUpCompletedRow,
   type CareFollowUpDashboardRow,
   type ShepherdCareDirectoryEntry,
   type ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
+import { type AdminFollowUpEntry } from "@/lib/supabase/follow-up-reads";
 import type { CareAttentionItem } from "@/lib/admin/shepherd-care-dashboard";
 import { formatDueLabel } from "@/lib/admin/care-temporal";
 import { shepherdCareInteractionTypeLabel } from "@/lib/dashboard/labels";

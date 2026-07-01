@@ -4,7 +4,7 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { listGroupHealthOverview } from "@/lib/admin/group-health-read";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import { resolveGroupGradeBoard } from "@/lib/admin/group-health-grades";
-import { fetchPlatformConfig } from "@/lib/supabase/read-models";
+import { fetchPlatformConfig } from "@/lib/supabase/settings-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { decodeMetricDefaults } from "@/lib/admin/metrics";
 import { decodeAppConfig } from "@/lib/admin/app-config-decode";

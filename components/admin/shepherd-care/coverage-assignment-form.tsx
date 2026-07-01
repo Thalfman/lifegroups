@@ -14,7 +14,7 @@ import {
   fieldLabelClassName as FIELD_LABEL,
   formNoteClassName,
 } from "@/components/admin/forms/field-styles";
-import type { OverShepherdListRow } from "@/lib/supabase/read-models";
+import type { OverShepherdListRow } from "@/lib/supabase/shepherd-care-reads";
 
 // Form anatomy comes from the canonical field styles (design direction §4);
 // only the lede spacing below it is local.

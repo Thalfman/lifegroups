@@ -27,7 +27,7 @@ import {
   currentMinistryYear,
   currentPeriodMonthIso,
 } from "@/lib/admin/ministry-year";
-import { currentUtcDateIso } from "@/lib/supabase/read-models";
+import { currentUtcDateIso } from "@/lib/supabase/read-core";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
 import { firstParam } from "@/lib/shared/search-params";

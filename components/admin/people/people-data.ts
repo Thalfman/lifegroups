@@ -7,16 +7,20 @@ import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
-  fetchActiveMemberships,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchShepherdCareDirectoryForAdmin,
+} from "@/lib/supabase/shepherd-care-reads";
+import {
   fetchAllGroupLeaders,
   fetchAllGroups,
-  fetchAllMembers,
   fetchGroupRefs,
-  fetchLeaderPipelineForAdmin,
+} from "@/lib/supabase/group-reads";
+import {
+  fetchActiveMemberships,
+  fetchAllMembers,
   fetchProfilesForAdmin,
-  fetchShepherdCareDirectoryForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/membership-reads";
+import { fetchLeaderPipelineForAdmin } from "@/lib/supabase/multiplication-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
 import {

@@ -4,7 +4,6 @@ import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveShepherdCoverageAssignmentsForAdmin,
-  fetchAllGroupLeaders,
   fetchOutstandingCareFollowUpsForAdmin,
   fetchOverShepherdsForAdmin,
   fetchRecentShepherdCareInteractionsForAdmin,
@@ -16,7 +15,8 @@ import {
   type OverShepherdListRow,
   type ShepherdCareDirectoryEntry,
   type ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
+import { fetchAllGroupLeaders } from "@/lib/supabase/group-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
 import {

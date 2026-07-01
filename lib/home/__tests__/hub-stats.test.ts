@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // loadHubStats composes three independent reads via Promise.allSettled and must
 // degrade gracefully: a failed read omits its stat (the hub never surfaces an
-// error). Mock the read-models layer so the test pins that composition + the
+// error). Mock the read-model layer so the test pins that composition + the
 // resilience contract without a live database.
 
 const { mockGroupCount, mockMemberships, mockDueFollowUps } = vi.hoisted(
@@ -13,9 +13,13 @@ const { mockGroupCount, mockMemberships, mockDueFollowUps } = vi.hoisted(
   })
 );
 
-vi.mock("@/lib/supabase/read-models", () => ({
+vi.mock("@/lib/supabase/group-reads", () => ({
   fetchActiveGroupCount: mockGroupCount,
+}));
+vi.mock("@/lib/supabase/membership-reads", () => ({
   fetchActiveMemberships: mockMemberships,
+}));
+vi.mock("@/lib/supabase/overview-reads", () => ({
   fetchOpenFollowUpsDueCount: mockDueFollowUps,
 }));
 

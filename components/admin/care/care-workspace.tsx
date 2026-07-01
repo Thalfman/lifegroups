@@ -26,7 +26,7 @@ import {
 import { buildCareAccordion } from "@/lib/admin/care-accordion";
 import { PEOPLE_IMPORT_HREF } from "@/lib/admin/people-import";
 import type { CareAccordionEnrichment } from "@/lib/supabase/care-accordion-reads";
-import type { ActiveShepherdCoverageAssignmentSummary } from "@/lib/supabase/read-models";
+import type { ActiveShepherdCoverageAssignmentSummary } from "@/lib/supabase/shepherd-care-reads";
 import type { UserRole } from "@/lib/auth/roles";
 import type { GroupsRow } from "@/types/database";
 

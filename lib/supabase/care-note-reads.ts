@@ -12,9 +12,8 @@ import {
 } from "./read-core";
 
 // Pivot slice 9 (#381 / ADR 0017) — Care Notes + Prayer Requests + the
-// per-subject transparency grant reads. Extracted from read-models so this
-// privacy-sensitive read domain has its own home; read-models re-exports it
-// wholesale, so every name stays importable from there unchanged.
+// per-subject transparency grant reads. Extracted from the retired read-models
+// barrel so this privacy-sensitive read domain has its own home.
 //
 // Column-allowlisted reads (never select("*")). RLS is the real boundary: the
 // author reads their own rows, and the oversight ladder reads a subject's rows

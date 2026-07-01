@@ -1,4 +1,4 @@
-import type { fetchOverviewActivityCounts } from "@/lib/supabase/read-models";
+import type { fetchOverviewActivityCounts } from "@/lib/supabase/overview-reads";
 import type { ReadResult } from "@/lib/supabase/read-core";
 import {
   overviewPeriodRange,

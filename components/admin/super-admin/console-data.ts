@@ -25,20 +25,22 @@ import {
   BUILT_IN_APP_CONFIG,
   decodeAppConfig,
 } from "@/lib/admin/app-config-decode";
+import { fetchRecentAuditEvents } from "@/lib/supabase/follow-up-reads";
 import {
   fetchAllGroupLeaders,
   fetchAllGroups,
+} from "@/lib/supabase/group-reads";
+import {
   fetchAllMembers,
-  fetchPlatformConfig,
   fetchProfilesForAdmin,
-  fetchRecentAuditEvents,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/membership-reads";
+import { fetchPlatformConfig } from "@/lib/supabase/settings-reads";
 import {
   fetchActiveOverShepherds,
   fetchCoverageAssignableLeaders,
   fetchCurrentCoverageAssignments,
+  fetchRecentUsageEvents,
 } from "@/lib/supabase/super-admin-console-reads";
-import { fetchRecentUsageEvents } from "@/lib/supabase/usage-reads";
 import {
   fetchCleanSlateImpact,
   fetchAuditEventCount,

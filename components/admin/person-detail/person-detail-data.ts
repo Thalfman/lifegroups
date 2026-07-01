@@ -2,16 +2,20 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { measureReadBundle } from "@/lib/observability/read-timing";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import { currentUtcDateIso } from "@/lib/supabase/read-core";
 import {
-  currentUtcDateIso,
-  fetchActiveMemberships,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchShepherdCareDirectoryForAdmin,
+} from "@/lib/supabase/shepherd-care-reads";
+import {
   fetchAllGroupLeaders,
   fetchAllGroups,
+} from "@/lib/supabase/group-reads";
+import {
+  fetchActiveMemberships,
   fetchMembersByIds,
   fetchProfilesForAdmin,
-  fetchShepherdCareDirectoryForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/membership-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
 import {

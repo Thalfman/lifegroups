@@ -1,6 +1,6 @@
 // Phase 5B.1 page-level read models for the admin weekly check-in
 // review. Every helper here composes existing single-table readers from
-// lib/supabase/read-models.ts; no new RPC, no new RLS policy, no
+// the lib/supabase/*-reads modules; no new RPC, no new RLS policy, no
 // service-role escape hatch. RLS already permits super_admin /
 // ministry_admin SELECT on every table referenced below via the Phase 4
 // auth_is_admin_or_staff() policies.
@@ -15,18 +15,22 @@
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import {
-  fetchActiveMemberships,
   fetchAllGroupLeaders,
-  fetchAllGroupMetricSettings,
   fetchAllGroups,
-  fetchAttendanceRecordsForSessions,
-  fetchAttendanceSessions,
-  fetchGroupCalendarEvents,
   fetchGroupsByIds,
-  fetchLatestHealthUpdates,
+} from "@/lib/supabase/group-reads";
+import {
+  fetchActiveMemberships,
   fetchMembersByIds,
   fetchProfilesForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/membership-reads";
+import {
+  fetchAttendanceRecordsForSessions,
+  fetchAttendanceSessions,
+} from "@/lib/supabase/attendance-reads";
+import { fetchLatestHealthUpdates } from "@/lib/supabase/health-reads";
+import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
+import { fetchAllGroupMetricSettings } from "@/lib/supabase/settings-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import {
   addDaysIso,

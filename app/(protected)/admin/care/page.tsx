@@ -25,7 +25,7 @@ import {
   EMPTY_ENRICHMENT,
   type CareAccordionEnrichment,
 } from "@/lib/supabase/care-accordion-reads";
-import { currentUtcDateIso } from "@/lib/supabase/read-models";
+import { currentUtcDateIso } from "@/lib/supabase/read-core";
 import { loadCareData } from "@/components/admin/care/care-data";
 import {
   buildNotesFeedData,

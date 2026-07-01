@@ -35,12 +35,12 @@ import type {
   SetupGapRow,
   SetupGaps,
 } from "./types";
+import { type LeaderFollowUpRow } from "@/lib/supabase/follow-up-reads";
 import {
   GUEST_PIPELINE_STAGES,
-  type GroupHealthAssessmentRatingRow,
   type GuestDirectoryEntry,
-  type LeaderFollowUpRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/guest-reads";
+import { type GroupHealthAssessmentRatingRow } from "@/lib/supabase/health-reads";
 import { pipelineStageLabel, isActivePipelineStage } from "./labels";
 import {
   resolveAttentionBaseline,

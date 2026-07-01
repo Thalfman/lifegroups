@@ -19,14 +19,14 @@ import type {
   ShepherdCareInteractionsRow,
   ShepherdCareProfilesRow,
 } from "@/types/database";
+import { type ReadResult } from "@/lib/supabase/read-core";
 import {
-  type ReadResult,
   type ShepherdCareDirectoryEntry,
   type ShepherdCareDirectorySummary,
   SHEPHERD_CARE_DIRECTORY_COLUMNS,
   buildCareDirectoryEntries,
   fetchShepherdCareInteractionsForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
 
 type ReadClient = AppSupabaseClient;

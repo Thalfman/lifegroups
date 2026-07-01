@@ -1,40 +1,54 @@
 import { describe, expect, it } from "vitest";
 import type { ReadClient } from "@/lib/supabase/read-core";
 import {
-  APP_SETTINGS_COLUMNS,
-  ATTENDANCE_RECORD_COLUMNS,
-  ATTENDANCE_SESSION_COLUMNS,
   AUDIT_EVENT_COLUMNS,
-  fetchActiveMemberships,
+  fetchRecentAuditEvents,
+} from "@/lib/supabase/follow-up-reads";
+import {
   fetchAllGroupLeaders,
   fetchAllGroups,
-  fetchAllMembers,
-  fetchAttendanceRecordsForSessions,
-  fetchAttendanceSessions,
-  fetchGroupCalendarEvents,
-  fetchGroupHealthAssessmentRatings,
-  fetchGroupHealthRubricSetting,
-  fetchGroupMetricSettings,
   fetchGroupsByIds,
-  fetchLatestHealthUpdates,
-  fetchLaunchPlanningAssumptions,
-  fetchMembersByIds,
-  fetchMetricDefaults,
-  fetchNewGuestsForGroupSince,
-  fetchProfilesForAdmin,
-  fetchAllGroupMetricSettings,
-  fetchRecentAuditEvents,
-  GROUP_CALENDAR_EVENT_COLUMNS,
   GROUP_COLUMNS,
-  GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS,
-  GROUP_HEALTH_UPDATE_COLUMNS,
   GROUP_LEADER_COLUMNS,
+} from "@/lib/supabase/group-reads";
+import {
+  fetchActiveMemberships,
+  fetchAllMembers,
+  fetchMembersByIds,
+  fetchProfilesForAdmin,
   GROUP_MEMBERSHIP_COLUMNS,
-  GROUP_METRIC_SETTINGS_COLUMNS,
-  GUEST_COLUMNS,
   MEMBER_COLUMNS,
   PROFILE_COLUMNS,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/membership-reads";
+import {
+  fetchNewGuestsForGroupSince,
+  GUEST_COLUMNS,
+} from "@/lib/supabase/guest-reads";
+import {
+  ATTENDANCE_RECORD_COLUMNS,
+  ATTENDANCE_SESSION_COLUMNS,
+  fetchAttendanceRecordsForSessions,
+  fetchAttendanceSessions,
+} from "@/lib/supabase/attendance-reads";
+import {
+  fetchGroupHealthAssessmentRatings,
+  fetchLatestHealthUpdates,
+  GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS,
+  GROUP_HEALTH_UPDATE_COLUMNS,
+} from "@/lib/supabase/health-reads";
+import {
+  fetchGroupCalendarEvents,
+  GROUP_CALENDAR_EVENT_COLUMNS,
+} from "@/lib/supabase/calendar-reads";
+import {
+  APP_SETTINGS_COLUMNS,
+  fetchGroupHealthRubricSetting,
+  fetchGroupMetricSettings,
+  fetchLaunchPlanningAssumptions,
+  fetchMetricDefaults,
+  fetchAllGroupMetricSettings,
+  GROUP_METRIC_SETTINGS_COLUMNS,
+} from "@/lib/supabase/settings-reads";
 
 // Pins the shared read-model column allowlists (#495), following the shape of
 // the session profile pinning test (#492). These fetchers are the high-fan-out

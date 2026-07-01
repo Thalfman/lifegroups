@@ -4,14 +4,15 @@ import { bytesToBase64 } from "@/lib/crypto/encoding";
 import {
   fetchPrivateNoteKeySlotsForCreator,
   fetchShepherdCarePrivateNoteCiphertextForCreator,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 
 const CARE = "11111111-1111-1111-1111-111111111111";
 const CREATOR = "22222222-2222-2222-2222-222222222222";
 
 const b64 = (bytes: number[]) => bytesToBase64(Uint8Array.from(bytes));
-const hex = (bytes: number[]) => "\\x" + bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+const hex = (bytes: number[]) =>
+  "\\x" + bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
 
 // Records the filter chain and resolves to fixture rows. Mirrors the thenable
 // query-builder mock used across the read-model tests (no DB).
@@ -53,7 +54,11 @@ describe("fetchShepherdCarePrivateNoteCiphertextForCreator", () => {
       },
     });
 
-    const result = await fetchShepherdCarePrivateNoteCiphertextForCreator(client, CARE, CREATOR);
+    const result = await fetchShepherdCarePrivateNoteCiphertextForCreator(
+      client,
+      CARE,
+      CREATOR
+    );
     expect(result.error).toBeNull();
     expect(result.data?.ciphertext).toBe(b64([1, 2, 3, 4]));
     expect(result.data?.iv).toBe(b64([5, 6, 7]));
@@ -64,7 +69,11 @@ describe("fetchShepherdCarePrivateNoteCiphertextForCreator", () => {
 
   it("returns { data: null } when the creator has no note yet", async () => {
     const { client } = makeClient({ single: null });
-    const result = await fetchShepherdCarePrivateNoteCiphertextForCreator(client, CARE, CREATOR);
+    const result = await fetchShepherdCarePrivateNoteCiphertextForCreator(
+      client,
+      CARE,
+      CREATOR
+    );
     expect(result).toEqual({ data: null, error: null });
   });
 });

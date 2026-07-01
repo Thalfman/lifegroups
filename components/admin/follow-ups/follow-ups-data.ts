@@ -3,13 +3,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import { fetchFollowUpsForAdmin } from "@/lib/supabase/follow-up-reads";
+import { fetchAllGroups } from "@/lib/supabase/group-reads";
 import {
-  fetchAllGroups,
   fetchAllMembers,
-  fetchFollowUpsForAdmin,
-  fetchGuests,
   fetchProfilesForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/membership-reads";
+import { fetchGuests } from "@/lib/supabase/guest-reads";
 
 // The generic admin oversight follow-up queue's data, shared by the frozen
 // /admin/follow-ups route and the Care area's Follow-ups tab (#301) so the two

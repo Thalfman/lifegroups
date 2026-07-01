@@ -58,10 +58,8 @@ import type {
   SetupGaps,
   ShepherdCareDashboardSummary,
 } from "./types";
-import type {
-  GroupHealthAssessmentRatingRow,
-  LeaderFollowUpRow,
-} from "@/lib/supabase/read-models";
+import type { LeaderFollowUpRow } from "@/lib/supabase/follow-up-reads";
+import type { GroupHealthAssessmentRatingRow } from "@/lib/supabase/health-reads";
 import type {
   AppSettingsRow,
   AttendanceSessionsRow,
