@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin/group-health";
 import { decodeMetricDefaults } from "@/lib/admin/metrics";
 import { type ReadResult } from "@/lib/supabase/read-core";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { fetchAllGroups, fetchGroupsByIds } from "@/lib/supabase/group-reads";
 import {
   fetchAttendanceRecordsForSessions,
@@ -37,6 +38,12 @@ import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 // group_health_assessments table is the audit trail + frozen-history of closed
 // months (and the home of #129's override); the manual Recompute action writes
 // the same numbers through the audited RPC.
+//
+// ADR 0015: the orchestration is split into pure `build*` functions over the
+// `GroupHealthReads` seam, so the grading fold, error precedence, and fallback
+// rules are testable through an in-memory adapter. The exported client-bound
+// entry points (`fetchGroupHealthRubric`, `listGroupHealthOverview`, …) keep
+// their signatures and are thin bindings of the live client onto those builds.
 
 export type { ReadResult } from "@/lib/supabase/read-core";
 
@@ -45,92 +52,14 @@ function wrapError(prefix: string, err: unknown): Error {
   return new Error(`${prefix}: ${String(err)}`);
 }
 
-// Build the live rubric from the audited settings: the admin-tuned weights /
-// cut-lines / attendance window (group_health_rubric, decoded with per-field
-// defaults + validation), with the healthy-attendance threshold overlaid from
-// its canonical home (metric_defaults.default_healthy_attendance_pct). A missing
-// row on either side decodes to the documented defaults; read failures propagate
-// rather than silently falling back, so a transient error can't quietly grade on
-// the wrong rubric.
-export async function fetchGroupHealthRubric(
-  client: AppSupabaseClient
-): Promise<ReadResult<GroupHealthRubricConfig>> {
-  const rubricRes = await fetchGroupHealthRubricSetting(client);
-  if (rubricRes.error)
-    return {
-      data: null,
-      error: wrapError("fetchGroupHealthRubric", rubricRes.error),
-    };
-
-  const defaultsRes = await fetchMetricDefaultsCached(client);
-  if (defaultsRes.error)
-    return {
-      data: null,
-      error: wrapError("fetchGroupHealthRubric", defaultsRes.error),
-    };
-
-  const tuned = decodeGroupHealthRubric(rubricRes.data?.setting_value ?? null);
-  const metricDefaults = decodeMetricDefaults(defaultsRes.data);
-  return {
-    data: {
-      ...tuned,
-      healthy_attendance_pct: metricDefaults.default_healthy_attendance_pct,
-    },
-    error: null,
-  };
-}
-
-// Aggregate the most-recent `limitWeeks` attendance sessions for a group into
-// per-week present/absent/excused tallies the pure module can grade. Read
-// failures propagate: a caller must not treat an errored read as "no
-// attendance" and overwrite a previously valid grade.
-export async function fetchGroupAttendanceWeeks(
-  client: AppSupabaseClient,
-  groupId: string,
-  limitWeeks: number = BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks
-): Promise<ReadResult<AttendanceWeekTally[]>> {
-  const sessionsRes = await fetchAttendanceSessions(client, {
-    groupId,
-    limit: limitWeeks,
-  });
-  if (sessionsRes.error) {
-    return {
-      data: null,
-      error: wrapError("fetchGroupAttendanceWeeks/sessions", sessionsRes.error),
-    };
-  }
-  const sessions = sessionsRes.data;
-  if (sessions.length === 0) return { data: [], error: null };
-
-  const byId = new Map<string, AttendanceWeekTally>();
-  for (const session of sessions) {
-    byId.set(session.id, {
-      meeting_week: session.meeting_week,
-      present: 0,
-      absent: 0,
-      excused: 0,
-    });
-  }
-
-  const recordsRes = await fetchAttendanceRecordsForSessions(client, [
-    ...byId.keys(),
-  ]);
-  if (recordsRes.error) {
-    return {
-      data: null,
-      error: wrapError("fetchGroupAttendanceWeeks/records", recordsRes.error),
-    };
-  }
-
-  for (const record of recordsRes.data) {
-    const tally = byId.get(record.session_id);
-    if (!tally) continue;
-    if (record.attendance_status === "present") tally.present += 1;
-    else if (record.attendance_status === "absent") tally.absent += 1;
-    else if (record.attendance_status === "excused") tally.excused += 1;
-  }
-
-  return { data: [...byId.values()], error: null };
+// Normalize a raw PostgREST error to an Error at the leaf, so every seam
+// fetcher returns the ReadResult shape. The build functions add their
+// call-site prefix via wrapError; because an Error instance passes through
+// unchanged, the wrapped messages are byte-identical to the pre-seam inline
+// reads.
+function toError(err: unknown): Error {
+  if (err instanceof Error) return err;
+  return new Error(String(err));
 }
 
 export type GroupHealthOverviewRow = {
@@ -205,17 +134,202 @@ export type GroupHealthRatings = {
   group_question_score: number | null;
 };
 
-export async function fetchGroupHealthRatings(
+// ---------------------------------------------------------------------------
+// Leaf fetchers for this module's own tables.
+//
+// The new group_health_assessments table is not in the generated supabase
+// schema types, so its select is cast in this one place — the same trust seam
+// callUuidRpc uses for admin RPCs. The group_health_latest_follow_up view read
+// sits behind the same cast for the same reason.
+// ---------------------------------------------------------------------------
+
+// The persisted assessment for one group + period (the ratings + last-saved
+// audit row), or null when nothing has been saved for the month yet.
+async function fetchGroupHealthAssessment(
   client: AppSupabaseClient,
   groupId: string,
-  periodMonthIso: string = currentPeriodMonthIso()
-): Promise<ReadResult<GroupHealthRatings>> {
+  periodMonthIso: string
+): Promise<ReadResult<PersistedAssessment | null>> {
   const { data, error } = await (client as AppSupabaseClient)
     .from("group_health_assessments" as never)
     .select(ASSESSMENT_COLUMNS as never)
     .eq("group_id" as never, groupId as never)
     .eq("period_month" as never, periodMonthIso as never)
     .maybeSingle<PersistedAssessment>();
+  if (error) return { data: null, error: toError(error) };
+  return { data: data ?? null, error: null };
+}
+
+// Every group's persisted assessment for one period — the overview's
+// last-known-good fallback and the source of the month's saved ratings.
+async function fetchGroupHealthAssessmentsForPeriod(
+  client: AppSupabaseClient,
+  periodMonthIso: string
+): Promise<ReadResult<PersistedAssessment[]>> {
+  const { data, error } = await (client as AppSupabaseClient)
+    .from("group_health_assessments" as never)
+    .select(ASSESSMENT_COLUMNS as never)
+    .eq("period_month" as never, periodMonthIso as never)
+    .returns<PersistedAssessment[]>();
+  if (error) return { data: null, error: toError(error) };
+  return { data: data ?? [], error: null };
+}
+
+// Every group's latest follow-up flag from the group_health_latest_follow_up
+// view (one row per group; see the carry-across-months note in the overview
+// build).
+async function fetchLatestFollowUpFlags(
+  client: AppSupabaseClient
+): Promise<ReadResult<LatestFollowUpRow[]>> {
+  const { data, error } = await (client as AppSupabaseClient)
+    .from("group_health_latest_follow_up" as never)
+    .select("group_id, needs_follow_up" as never)
+    .returns<LatestFollowUpRow[]>();
+  if (error) return { data: null, error: toError(error) };
+  return { data: data ?? [], error: null };
+}
+
+// The cross-month "needs follow-up" flag for just one group (its latest
+// assessment of any month), via the same view the bulk read uses.
+async function fetchLatestFollowUpFlagForGroup(
+  client: AppSupabaseClient,
+  groupId: string
+): Promise<ReadResult<LatestFollowUpRow | null>> {
+  const { data, error } = await (client as AppSupabaseClient)
+    .from("group_health_latest_follow_up" as never)
+    .select("group_id, needs_follow_up" as never)
+    .eq("group_id" as never, groupId as never)
+    .maybeSingle<LatestFollowUpRow>();
+  if (error) return { data: null, error: toError(error) };
+  return { data: data ?? null, error: null };
+}
+
+// ---------------------------------------------------------------------------
+// The reads seam (ADR 0015): every leaf read this module's orchestration
+// consumes, in one fetcher map. Production binds the live client below; a test
+// binds an in-memory adapter satisfying GroupHealthReads.
+// ---------------------------------------------------------------------------
+
+const GROUP_HEALTH_READ_FETCHERS = {
+  fetchAllGroups,
+  fetchGroupsByIds,
+  fetchAttendanceSessions,
+  fetchAttendanceRecordsForSessions,
+  fetchGroupHealthRubricSetting,
+  fetchMetricDefaultsCached,
+  fetchGroupHealthAssessment,
+  fetchGroupHealthAssessmentsForPeriod,
+  fetchLatestFollowUpFlags,
+  fetchLatestFollowUpFlagForGroup,
+};
+
+export type GroupHealthReads = BoundReads<typeof GROUP_HEALTH_READ_FETCHERS>;
+
+function bindGroupHealthReads(client: AppSupabaseClient): GroupHealthReads {
+  return bindReads(client, GROUP_HEALTH_READ_FETCHERS, "group_health_read");
+}
+
+// ---------------------------------------------------------------------------
+// Pure builds: the orchestration as functions of the seam.
+// ---------------------------------------------------------------------------
+
+// Build the live rubric from the audited settings: the admin-tuned weights /
+// cut-lines / attendance window (group_health_rubric, decoded with per-field
+// defaults + validation), with the healthy-attendance threshold overlaid from
+// its canonical home (metric_defaults.default_healthy_attendance_pct). A missing
+// row on either side decodes to the documented defaults; read failures propagate
+// rather than silently falling back, so a transient error can't quietly grade on
+// the wrong rubric.
+export async function buildGroupHealthRubric(
+  reads: GroupHealthReads
+): Promise<ReadResult<GroupHealthRubricConfig>> {
+  const rubricRes = await reads.fetchGroupHealthRubricSetting();
+  if (rubricRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchGroupHealthRubric", rubricRes.error),
+    };
+
+  const defaultsRes = await reads.fetchMetricDefaultsCached();
+  if (defaultsRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchGroupHealthRubric", defaultsRes.error),
+    };
+
+  const tuned = decodeGroupHealthRubric(rubricRes.data?.setting_value ?? null);
+  const metricDefaults = decodeMetricDefaults(defaultsRes.data);
+  return {
+    data: {
+      ...tuned,
+      healthy_attendance_pct: metricDefaults.default_healthy_attendance_pct,
+    },
+    error: null,
+  };
+}
+
+// Aggregate the most-recent `limitWeeks` attendance sessions for a group into
+// per-week present/absent/excused tallies the pure module can grade. Read
+// failures propagate: a caller must not treat an errored read as "no
+// attendance" and overwrite a previously valid grade.
+export async function buildGroupAttendanceWeeks(
+  reads: GroupHealthReads,
+  groupId: string,
+  limitWeeks: number = BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks
+): Promise<ReadResult<AttendanceWeekTally[]>> {
+  const sessionsRes = await reads.fetchAttendanceSessions({
+    groupId,
+    limit: limitWeeks,
+  });
+  if (sessionsRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchGroupAttendanceWeeks/sessions", sessionsRes.error),
+    };
+  }
+  const sessions = sessionsRes.data;
+  if (sessions.length === 0) return { data: [], error: null };
+
+  const byId = new Map<string, AttendanceWeekTally>();
+  for (const session of sessions) {
+    byId.set(session.id, {
+      meeting_week: session.meeting_week,
+      present: 0,
+      absent: 0,
+      excused: 0,
+    });
+  }
+
+  const recordsRes = await reads.fetchAttendanceRecordsForSessions([
+    ...byId.keys(),
+  ]);
+  if (recordsRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchGroupAttendanceWeeks/records", recordsRes.error),
+    };
+  }
+
+  for (const record of recordsRes.data) {
+    const tally = byId.get(record.session_id);
+    if (!tally) continue;
+    if (record.attendance_status === "present") tally.present += 1;
+    else if (record.attendance_status === "absent") tally.absent += 1;
+    else if (record.attendance_status === "excused") tally.excused += 1;
+  }
+
+  return { data: [...byId.values()], error: null };
+}
+
+export async function buildGroupHealthRatings(
+  reads: GroupHealthReads,
+  groupId: string,
+  periodMonthIso: string = currentPeriodMonthIso()
+): Promise<ReadResult<GroupHealthRatings>> {
+  const { data, error } = await reads.fetchGroupHealthAssessment(
+    groupId,
+    periodMonthIso
+  );
 
   if (error) {
     return { data: null, error: wrapError("fetchGroupHealthRatings", error) };
@@ -233,28 +347,24 @@ export async function fetchGroupHealthRatings(
 // Overview for the admin surface: every active group with its current-month
 // grade, recomputed live from the configured rubric. On a per-group attendance
 // read error we fall back to the last persisted assessment and flag it stale.
-//
-// The new group_health_assessments table is not in the generated supabase
-// schema types, so its select is cast in this one place — the same trust seam
-// callUuidRpc uses for admin RPCs.
-export async function listGroupHealthOverview(
-  client: AppSupabaseClient,
+export async function buildGroupHealthOverview(
+  reads: GroupHealthReads,
   periodMonthIso: string = currentPeriodMonthIso()
 ): Promise<ReadResult<GroupHealthOverviewRow[]>> {
-  const groupsRes = await fetchAllGroups(client);
+  const groupsRes = await reads.fetchAllGroups();
   if (groupsRes.error) return { data: null, error: groupsRes.error };
   // Active groups only; fetchAllGroups already sorts by name.
   const groups = groupsRes.data.filter((g) => g.lifecycle_status !== "closed");
   if (groups.length === 0) return { data: [], error: null };
 
-  const rubricRes = await fetchGroupHealthRubric(client);
+  const rubricRes = await buildGroupHealthRubric(reads);
   if (rubricRes.error) return { data: null, error: rubricRes.error };
   const rubric = rubricRes.data;
 
   // The attendance-decline margin (Admin IM 05 / #265) is a director-tuned
   // metric default, sourced here rather than hard-coded. A read failure
   // propagates rather than silently grading the trend on a wrong margin.
-  const defaultsRes = await fetchMetricDefaultsCached(client);
+  const defaultsRes = await reads.fetchMetricDefaultsCached();
   if (defaultsRes.error)
     return {
       data: null,
@@ -267,13 +377,8 @@ export async function listGroupHealthOverview(
     defaultsRes.data
   ).group_health_attendance_decline_margin_pct;
 
-  const { data: assessments, error: assessmentsError } = await (
-    client as AppSupabaseClient
-  )
-    .from("group_health_assessments" as never)
-    .select(ASSESSMENT_COLUMNS as never)
-    .eq("period_month" as never, periodMonthIso as never)
-    .returns<PersistedAssessment[]>();
+  const { data: assessments, error: assessmentsError } =
+    await reads.fetchGroupHealthAssessmentsForPeriod(periodMonthIso);
 
   if (assessmentsError) {
     return {
@@ -297,10 +402,7 @@ export async function listGroupHealthOverview(
   // current-month row, being the max period_month, naturally supersedes (its
   // unchecked box clears a prior flag). Independent of the attendance fan-out,
   // so run them concurrently.
-  const latestFollowUpPromise = (client as AppSupabaseClient)
-    .from("group_health_latest_follow_up" as never)
-    .select("group_id, needs_follow_up" as never)
-    .returns<LatestFollowUpRow[]>();
+  const latestFollowUpPromise = reads.fetchLatestFollowUpFlags();
 
   // Each group's attendance read is independent (2 round-trips: sessions then
   // records), so fan them out concurrently rather than serializing one group at
@@ -314,7 +416,7 @@ export async function listGroupHealthOverview(
   );
   const weeksByGroup = await Promise.all(
     groups.map((group) =>
-      fetchGroupAttendanceWeeks(client, group.id, weeksToFetch)
+      buildGroupAttendanceWeeks(reads, group.id, weeksToFetch)
     )
   );
 
@@ -445,12 +547,12 @@ function buildOverviewRow(args: {
 // attendance window — instead of fetching every active group and fanning out an
 // attendance read per group just to keep one row. The bulk overview keeps using
 // the list path; this is the targeted variant for a single record.
-export async function getGroupHealthOverviewForGroup(
-  client: AppSupabaseClient,
+export async function buildGroupHealthOverviewForGroup(
+  reads: GroupHealthReads,
   groupId: string,
   periodMonthIso: string = currentPeriodMonthIso()
 ): Promise<ReadResult<GroupHealthOverviewRow | null>> {
-  const groupRes = await fetchGroupsByIds(client, [groupId]);
+  const groupRes = await reads.fetchGroupsByIds([groupId]);
   if (groupRes.error)
     return {
       data: null,
@@ -461,11 +563,11 @@ export async function getGroupHealthOverviewForGroup(
   if (!group || group.lifecycle_status === "closed")
     return { data: null, error: null };
 
-  const rubricRes = await fetchGroupHealthRubric(client);
+  const rubricRes = await buildGroupHealthRubric(reads);
   if (rubricRes.error) return { data: null, error: rubricRes.error };
   const rubric = rubricRes.data;
 
-  const defaultsRes = await fetchMetricDefaultsCached(client);
+  const defaultsRes = await reads.fetchMetricDefaultsCached();
   if (defaultsRes.error)
     return {
       data: null,
@@ -480,14 +582,8 @@ export async function getGroupHealthOverviewForGroup(
 
   // The persisted assessment for this group + period (the ratings + last-saved
   // audit row), scoped to the one group instead of the whole month.
-  const { data: assessment, error: assessmentError } = await (
-    client as AppSupabaseClient
-  )
-    .from("group_health_assessments" as never)
-    .select(ASSESSMENT_COLUMNS as never)
-    .eq("group_id" as never, groupId as never)
-    .eq("period_month" as never, periodMonthIso as never)
-    .maybeSingle<PersistedAssessment>();
+  const { data: assessment, error: assessmentError } =
+    await reads.fetchGroupHealthAssessment(groupId, periodMonthIso);
   if (assessmentError)
     return {
       data: null,
@@ -499,13 +595,8 @@ export async function getGroupHealthOverviewForGroup(
 
   // The cross-month "needs follow-up" flag for just this group (its latest
   // assessment of any month), via the same view the bulk read uses.
-  const { data: followUpRow, error: followUpError } = await (
-    client as AppSupabaseClient
-  )
-    .from("group_health_latest_follow_up" as never)
-    .select("group_id, needs_follow_up" as never)
-    .eq("group_id" as never, groupId as never)
-    .maybeSingle<LatestFollowUpRow>();
+  const { data: followUpRow, error: followUpError } =
+    await reads.fetchLatestFollowUpFlagForGroup(groupId);
   if (followUpError)
     return {
       data: null,
@@ -519,8 +610,8 @@ export async function getGroupHealthOverviewForGroup(
     rubric.attendance_window_weeks,
     ATTENDANCE_TREND_WINDOW_WEEKS
   );
-  const weeksRes = await fetchGroupAttendanceWeeks(
-    client,
+  const weeksRes = await buildGroupAttendanceWeeks(
+    reads,
     groupId,
     weeksToFetch
   );
@@ -536,4 +627,58 @@ export async function getGroupHealthOverviewForGroup(
     }),
     error: null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Client-bound entry points. Signatures are unchanged (client first); each
+// binds the live client onto the seam and delegates to its pure build above.
+// ---------------------------------------------------------------------------
+
+export async function fetchGroupHealthRubric(
+  client: AppSupabaseClient
+): Promise<ReadResult<GroupHealthRubricConfig>> {
+  return buildGroupHealthRubric(bindGroupHealthReads(client));
+}
+
+export async function fetchGroupAttendanceWeeks(
+  client: AppSupabaseClient,
+  groupId: string,
+  limitWeeks: number = BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks
+): Promise<ReadResult<AttendanceWeekTally[]>> {
+  return buildGroupAttendanceWeeks(
+    bindGroupHealthReads(client),
+    groupId,
+    limitWeeks
+  );
+}
+
+export async function fetchGroupHealthRatings(
+  client: AppSupabaseClient,
+  groupId: string,
+  periodMonthIso: string = currentPeriodMonthIso()
+): Promise<ReadResult<GroupHealthRatings>> {
+  return buildGroupHealthRatings(
+    bindGroupHealthReads(client),
+    groupId,
+    periodMonthIso
+  );
+}
+
+export async function listGroupHealthOverview(
+  client: AppSupabaseClient,
+  periodMonthIso: string = currentPeriodMonthIso()
+): Promise<ReadResult<GroupHealthOverviewRow[]>> {
+  return buildGroupHealthOverview(bindGroupHealthReads(client), periodMonthIso);
+}
+
+export async function getGroupHealthOverviewForGroup(
+  client: AppSupabaseClient,
+  groupId: string,
+  periodMonthIso: string = currentPeriodMonthIso()
+): Promise<ReadResult<GroupHealthOverviewRow | null>> {
+  return buildGroupHealthOverviewForGroup(
+    bindGroupHealthReads(client),
+    groupId,
+    periodMonthIso
+  );
 }
