@@ -13,7 +13,7 @@
 // page's count silently disagreeing.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import {
   fetchAllGroupLeaders,
   fetchAllGroups,
@@ -673,34 +673,25 @@ export async function fetchAdminWeeklyCheckInReview(
 // of this interface: production binds the live client through
 // `supabaseCheckInDetailReads`; a test binds an in-memory adapter satisfying
 // the same interface. Two adapters, one seam.
-export type CheckInDetailReads = {
-  fetchGroupsByIds: OmitClient<typeof fetchGroupsByIds>;
-  fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
-  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
-  fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
-  fetchLatestHealthUpdates: OmitClient<typeof fetchLatestHealthUpdates>;
-  fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
-  fetchMembersByIds: OmitClient<typeof fetchMembersByIds>;
-  fetchAttendanceRecordsForSessions: OmitClient<
-    typeof fetchAttendanceRecordsForSessions
-  >;
+const CHECK_IN_DETAIL_FETCHERS = {
+  fetchGroupsByIds,
+  fetchAllGroupLeaders,
+  fetchProfilesForAdmin,
+  fetchAttendanceSessions,
+  fetchLatestHealthUpdates,
+  fetchActiveMemberships,
+  fetchMembersByIds,
+  fetchAttendanceRecordsForSessions,
 };
+
+export type CheckInDetailReads = BoundReads<typeof CHECK_IN_DETAIL_FETCHERS>;
 
 // Production adapter: binds the live Supabase client to every read this
 // surface needs. The underlying fetchers keep their column selections.
 export function supabaseCheckInDetailReads(
   client: ReadClient
 ): CheckInDetailReads {
-  return bindReads(client, {
-    fetchGroupsByIds,
-    fetchAllGroupLeaders,
-    fetchProfilesForAdmin,
-    fetchAttendanceSessions,
-    fetchLatestHealthUpdates,
-    fetchActiveMemberships,
-    fetchMembersByIds,
-    fetchAttendanceRecordsForSessions,
-  });
+  return bindReads(client, CHECK_IN_DETAIL_FETCHERS, "check_in_detail");
 }
 
 // Subject resolution decides 404 vs render: a group read that *succeeded* but

@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { measureReadBundle } from "@/lib/observability/read-timing";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { currentUtcDateIso } from "@/lib/supabase/read-core";
 import {
@@ -80,39 +80,27 @@ export type PersonBody = {
   availableGroups: { id: string; name: string }[];
 };
 
-export type PersonDetailReads = {
-  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
-  fetchMembersByIds: OmitClient<typeof fetchMembersByIds>;
-  fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
-  fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
-  fetchActiveShepherdCoverageAssignments: OmitClient<
-    typeof fetchActiveShepherdCoverageAssignmentsForAdmin
-  >;
-  fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
-  fetchAttentionBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
-  fetchShepherdCareDirectory: OmitClient<
-    typeof fetchShepherdCareDirectoryForAdmin
-  >;
+const PERSON_DETAIL_FETCHERS = {
+  fetchProfilesForAdmin,
+  fetchMembersByIds,
+  fetchAllGroupLeaders,
+  fetchAllGroups,
+  fetchActiveMemberships,
+  fetchActiveShepherdCoverageAssignments:
+    fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchMetricDefaults: fetchMetricDefaultsCached,
+  fetchAttentionBaselines: fetchAttentionResetBaselines,
+  fetchShepherdCareDirectory: fetchShepherdCareDirectoryForAdmin,
 };
+
+export type PersonDetailReads = BoundReads<typeof PERSON_DETAIL_FETCHERS>;
 
 // Production adapter: binds the live Supabase client to every read this surface
 // needs. The underlying fetchers keep their column selections.
 export function supabasePersonDetailReads(
   client: AppSupabaseClient
 ): PersonDetailReads {
-  return bindReads(client, {
-    fetchProfilesForAdmin,
-    fetchMembersByIds,
-    fetchAllGroupLeaders,
-    fetchAllGroups,
-    fetchActiveMemberships,
-    fetchActiveShepherdCoverageAssignments:
-      fetchActiveShepherdCoverageAssignmentsForAdmin,
-    fetchMetricDefaults: fetchMetricDefaultsCached,
-    fetchAttentionBaselines: fetchAttentionResetBaselines,
-    fetchShepherdCareDirectory: fetchShepherdCareDirectoryForAdmin,
-  });
+  return bindReads(client, PERSON_DETAIL_FETCHERS, "person_detail");
 }
 
 // Every non-closed group is a valid placement target: the assignment RPC only

@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { measureReadBundle } from "@/lib/observability/read-timing";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
@@ -130,69 +130,43 @@ export type ShepherdCareDetailOptions = {
   ministryYear: number | null;
 };
 
-export type ShepherdCareDetailReads = {
-  fetchProfile: OmitClient<typeof fetchAdminShepherdProfileById>;
-  fetchCareProfile: OmitClient<typeof fetchShepherdCareProfileByShepherdId>;
-  fetchOverShepherds: OmitClient<typeof fetchOverShepherdsForAdmin>;
-  fetchActiveCoverage: OmitClient<
-    typeof fetchActiveShepherdCoverageAssignmentByShepherdId
-  >;
-  fetchGenericFollowUpCount: OmitClient<
-    typeof fetchGenericFollowUpCountForAssignee
-  >;
-  fetchLedGroups: OmitClient<typeof fetchLedGroupSummariesForProfile>;
-  fetchPrivateNoteKeySlots: OmitClient<
-    typeof fetchPrivateNoteKeySlotsForCreator
-  >;
-  fetchInteractions: OmitClient<typeof fetchShepherdCareInteractionsForAdmin>;
-  fetchFollowUps: OmitClient<typeof fetchShepherdCareFollowUpsForProfile>;
-  fetchPrivateNoteCiphertext: OmitClient<
-    typeof fetchShepherdCarePrivateNoteCiphertextForCreator
-  >;
-  fetchLeaderHealthRubric: OmitClient<typeof fetchLeaderHealthRubric>;
-  fetchLeaderRubricGrade: OmitClient<typeof fetchLeaderRubricGrade>;
-  fetchGroupHealthRubric: OmitClient<typeof fetchHealthRubric>;
-  fetchGroupRubricGrade: OmitClient<typeof getGroupRubricGrade>;
-  fetchNoteTransparencyGrant: OmitClient<typeof fetchNoteTransparencyGrant>;
-  fetchCareNotesForSubject: OmitClient<typeof fetchCareNotesForSubject>;
-  fetchPrayerRequestsForSubject: OmitClient<
-    typeof fetchPrayerRequestsForSubject
-  >;
-  fetchAuthoredGroupCareNotes: OmitClient<typeof fetchAuthoredGroupCareNotes>;
-  fetchAuthoredGroupPrayerRequests: OmitClient<
-    typeof fetchAuthoredGroupPrayerRequests
-  >;
-  fetchGroupsByIds: OmitClient<typeof fetchGroupsByIds>;
+const SHEPHERD_CARE_DETAIL_FETCHERS = {
+  fetchProfile: fetchAdminShepherdProfileById,
+  fetchCareProfile: fetchShepherdCareProfileByShepherdId,
+  fetchOverShepherds: fetchOverShepherdsForAdmin,
+  fetchActiveCoverage: fetchActiveShepherdCoverageAssignmentByShepherdId,
+  fetchGenericFollowUpCount: fetchGenericFollowUpCountForAssignee,
+  fetchLedGroups: fetchLedGroupSummariesForProfile,
+  fetchPrivateNoteKeySlots: fetchPrivateNoteKeySlotsForCreator,
+  fetchInteractions: fetchShepherdCareInteractionsForAdmin,
+  fetchFollowUps: fetchShepherdCareFollowUpsForProfile,
+  fetchPrivateNoteCiphertext: fetchShepherdCarePrivateNoteCiphertextForCreator,
+  fetchLeaderHealthRubric,
+  fetchLeaderRubricGrade,
+  fetchGroupHealthRubric: fetchHealthRubric,
+  fetchGroupRubricGrade: getGroupRubricGrade,
+  fetchNoteTransparencyGrant,
+  fetchCareNotesForSubject,
+  fetchPrayerRequestsForSubject,
+  fetchAuthoredGroupCareNotes,
+  fetchAuthoredGroupPrayerRequests,
+  fetchGroupsByIds,
 };
+
+export type ShepherdCareDetailReads = BoundReads<
+  typeof SHEPHERD_CARE_DETAIL_FETCHERS
+>;
 
 // Production adapter: binds the live Supabase client to every read this surface
 // needs. The underlying fetchers keep their explicit column allowlists.
 export function supabaseShepherdCareDetailReads(
   client: AppSupabaseClient
 ): ShepherdCareDetailReads {
-  return bindReads(client, {
-    fetchProfile: fetchAdminShepherdProfileById,
-    fetchCareProfile: fetchShepherdCareProfileByShepherdId,
-    fetchOverShepherds: fetchOverShepherdsForAdmin,
-    fetchActiveCoverage: fetchActiveShepherdCoverageAssignmentByShepherdId,
-    fetchGenericFollowUpCount: fetchGenericFollowUpCountForAssignee,
-    fetchLedGroups: fetchLedGroupSummariesForProfile,
-    fetchPrivateNoteKeySlots: fetchPrivateNoteKeySlotsForCreator,
-    fetchInteractions: fetchShepherdCareInteractionsForAdmin,
-    fetchFollowUps: fetchShepherdCareFollowUpsForProfile,
-    fetchPrivateNoteCiphertext:
-      fetchShepherdCarePrivateNoteCiphertextForCreator,
-    fetchLeaderHealthRubric,
-    fetchLeaderRubricGrade,
-    fetchGroupHealthRubric: fetchHealthRubric,
-    fetchGroupRubricGrade: getGroupRubricGrade,
-    fetchNoteTransparencyGrant,
-    fetchCareNotesForSubject,
-    fetchPrayerRequestsForSubject,
-    fetchAuthoredGroupCareNotes,
-    fetchAuthoredGroupPrayerRequests,
-    fetchGroupsByIds,
-  });
+  return bindReads(
+    client,
+    SHEPHERD_CARE_DETAIL_FETCHERS,
+    "shepherd_care_detail"
+  );
 }
 
 // The header spine: the identity that titles the page and decides 404, resolved

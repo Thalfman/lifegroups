@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { measureReadBundle } from "@/lib/observability/read-timing";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
@@ -53,22 +53,20 @@ export const EMPTY_MULTIPLY_GRID_DATA: MultiplyGridData = {
 // The reads this surface assembles, as one interface (ADR 0015). `loadX` binds
 // the live client; a test binds an in-memory adapter satisfying the same
 // interface.
-export type MultiplyGridReads = {
-  fetchGroupTypes: OmitClient<typeof fetchGroupTypes>;
-  fetchGroupTypeConfigs: OmitClient<typeof fetchGroupTypeConfigs>;
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
-  fetchReadinessRule: OmitClient<typeof fetchReadinessRule>;
+const MULTIPLY_GRID_FETCHERS = {
+  fetchGroupTypes,
+  fetchGroupTypeConfigs,
+  fetchAllGroups,
+  fetchReadinessRule,
 };
+
+export type MultiplyGridReads = BoundReads<typeof MULTIPLY_GRID_FETCHERS>;
 
 export function supabaseMultiplyGridReads(
   client: AppSupabaseClient
 ): MultiplyGridReads {
   return {
-    ...bindReads(client, {
-      fetchGroupTypes,
-      fetchGroupTypeConfigs,
-      fetchReadinessRule,
-    }),
+    ...bindReads(client, MULTIPLY_GRID_FETCHERS, "multiply_grid"),
     // Share the per-request cached groups read with Boundary A's dashboard batch
     // (lib/admin/groups-read.ts) so a first /admin launch reads the full groups
     // table once, not once per Suspense boundary. The seam type is unchanged

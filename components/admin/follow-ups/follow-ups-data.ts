@@ -1,6 +1,6 @@
 import type { AdminFollowUpsData } from "@/components/admin/follow-ups/follow-ups-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { fetchFollowUpsForAdmin } from "@/lib/supabase/follow-up-reads";
@@ -20,26 +20,22 @@ import { fetchGuests } from "@/lib/supabase/guest-reads";
 // Assembly is a pure function of the reads seam (ADR 0015): `loadX` binds the
 // live client; tests bind an in-memory adapter satisfying `AdminFollowUpsReads`.
 
-export type AdminFollowUpsReads = {
-  fetchFollowUpsForAdmin: OmitClient<typeof fetchFollowUpsForAdmin>;
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
-  fetchAllMembers: OmitClient<typeof fetchAllMembers>;
-  fetchGuests: OmitClient<typeof fetchGuests>;
-  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
+const ADMIN_FOLLOW_UPS_FETCHERS = {
+  fetchFollowUpsForAdmin,
+  fetchAllGroups,
+  fetchAllMembers,
+  fetchGuests,
+  fetchProfilesForAdmin,
 };
+
+export type AdminFollowUpsReads = BoundReads<typeof ADMIN_FOLLOW_UPS_FETCHERS>;
 
 // Production adapter: binds the live Supabase client to every read this surface
 // needs.
 export function supabaseAdminFollowUpsReads(
   client: AppSupabaseClient
 ): AdminFollowUpsReads {
-  return bindReads(client, {
-    fetchFollowUpsForAdmin,
-    fetchAllGroups,
-    fetchAllMembers,
-    fetchGuests,
-    fetchProfilesForAdmin,
-  });
+  return bindReads(client, ADMIN_FOLLOW_UPS_FETCHERS, "admin_follow_ups");
 }
 
 export const EMPTY_ADMIN_FOLLOW_UPS_DATA: AdminFollowUpsData = {

@@ -40,7 +40,7 @@ import {
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type { ApprenticeOption } from "@/components/admin/multiplication/multiplication-planner";
 
@@ -49,34 +49,21 @@ import type { ApprenticeOption } from "@/components/admin/multiplication/multipl
 // (inputs, capacity extras) carry bespoke per-section error shapes the
 // assembly's precedence depends on, so they stay raw rather than flattening
 // through the readBatch combinator.
-export type LaunchPlanningReads = {
-  fetchLaunchPlanningAssumptions: OmitClient<
-    typeof fetchLaunchPlanningAssumptions
-  >;
-  fetchLaunchPlanningInputsForAdmin: OmitClient<
-    typeof fetchLaunchPlanningInputsForAdmin
-  >;
-  fetchLaunchPlanningScenariosForAdmin: OmitClient<
-    typeof fetchLaunchPlanningScenariosForAdmin
-  >;
-  fetchLeaderPipelineForAdmin: OmitClient<typeof fetchLeaderPipelineForAdmin>;
-  fetchMultiplicationCandidatesForAdmin: OmitClient<
-    typeof fetchMultiplicationCandidatesForAdmin
-  >;
-  fetchCapacityBoardExtras: OmitClient<typeof fetchCapacityBoardExtras>;
+const LAUNCH_PLANNING_FETCHERS = {
+  fetchLaunchPlanningAssumptions,
+  fetchLaunchPlanningInputsForAdmin,
+  fetchLaunchPlanningScenariosForAdmin,
+  fetchLeaderPipelineForAdmin,
+  fetchMultiplicationCandidatesForAdmin,
+  fetchCapacityBoardExtras,
 };
+
+export type LaunchPlanningReads = BoundReads<typeof LAUNCH_PLANNING_FETCHERS>;
 
 export function supabaseLaunchPlanningReads(
   client: AppSupabaseClient
 ): LaunchPlanningReads {
-  return bindReads(client, {
-    fetchLaunchPlanningAssumptions,
-    fetchLaunchPlanningInputsForAdmin,
-    fetchLaunchPlanningScenariosForAdmin,
-    fetchLeaderPipelineForAdmin,
-    fetchMultiplicationCandidatesForAdmin,
-    fetchCapacityBoardExtras,
-  });
+  return bindReads(client, LAUNCH_PLANNING_FETCHERS, "launch_planning");
 }
 
 // ADR 0010 surface-budget consolidation: this single data set answers one job —

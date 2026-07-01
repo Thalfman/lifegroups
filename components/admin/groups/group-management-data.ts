@@ -3,7 +3,7 @@ import type {
   GroupManagementData,
 } from "@/components/admin/group-management-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { currentUtcDateIso } from "@/lib/supabase/read-core";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { fetchActiveShepherdCoverageAssignmentsForAdmin } from "@/lib/supabase/shepherd-care-reads";
@@ -45,50 +45,33 @@ import type { GroupHealthLetter } from "@/types/enums";
 // real branching, and it is now reachable from a test through an in-memory
 // `reads` adapter instead of a live client.
 
-export type GroupManagementReads = {
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
-  fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
-  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
-  fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
-  fetchLatestMeetingWeek: OmitClient<typeof fetchLatestMeetingWeek>;
-  fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
-  fetchAllGroupMetricSettings: OmitClient<typeof fetchAllGroupMetricSettings>;
-  listGroupHealthOverview: OmitClient<typeof listGroupHealthOverview>;
-  fetchOpenFollowUps: OmitClient<typeof fetchOpenFollowUps>;
-  fetchShepherdCareDirectory: OmitClient<
-    typeof fetchShepherdCareDirectoryForAdmin
-  >;
+const GROUP_MANAGEMENT_FETCHERS = {
+  fetchAllGroups,
+  fetchAllGroupLeaders,
+  fetchProfilesForAdmin,
+  fetchActiveMemberships,
+  fetchLatestMeetingWeek,
+  fetchMetricDefaults: fetchMetricDefaultsCached,
+  fetchAllGroupMetricSettings,
+  listGroupHealthOverview,
+  fetchOpenFollowUps,
+  fetchShepherdCareDirectory: fetchShepherdCareDirectoryForAdmin,
   // The active-coverage and care attention-reset reads the shared needs-contact
   // resolver waterfalls over the directory (windows + coverage + baselines), so
   // Groups answers "needs care contact" identically to Care/People/person-detail.
-  fetchActiveAssignments: OmitClient<
-    typeof fetchActiveShepherdCoverageAssignmentsForAdmin
-  >;
-  fetchAttentionBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
-  fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
+  fetchActiveAssignments: fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchAttentionBaselines: fetchAttentionResetBaselines,
+  fetchAttendanceSessions,
   // The admin-managed free-text group-type list for the create/edit forms.
-  fetchGroupTypes: OmitClient<typeof fetchGroupTypesCached>;
+  fetchGroupTypes: fetchGroupTypesCached,
 };
+
+export type GroupManagementReads = BoundReads<typeof GROUP_MANAGEMENT_FETCHERS>;
 
 export function supabaseGroupManagementReads(
   client: AppSupabaseClient
 ): GroupManagementReads {
-  return bindReads(client, {
-    fetchAllGroups,
-    fetchAllGroupLeaders,
-    fetchProfilesForAdmin,
-    fetchActiveMemberships,
-    fetchLatestMeetingWeek,
-    fetchMetricDefaults: fetchMetricDefaultsCached,
-    fetchAllGroupMetricSettings,
-    listGroupHealthOverview,
-    fetchOpenFollowUps,
-    fetchShepherdCareDirectory: fetchShepherdCareDirectoryForAdmin,
-    fetchActiveAssignments: fetchActiveShepherdCoverageAssignmentsForAdmin,
-    fetchAttentionBaselines: fetchAttentionResetBaselines,
-    fetchAttendanceSessions,
-    fetchGroupTypes: fetchGroupTypesCached,
-  });
+  return bindReads(client, GROUP_MANAGEMENT_FETCHERS, "group_management");
 }
 
 export const EMPTY_GROUP_MANAGEMENT_DATA: GroupManagementData = {

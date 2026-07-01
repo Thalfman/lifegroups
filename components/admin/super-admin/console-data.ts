@@ -19,7 +19,7 @@ import type {
   UsageEventsRow,
 } from "@/types/database";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   BUILT_IN_APP_CONFIG,
@@ -124,58 +124,36 @@ export type SuperAdminConsoleData = {
 // the same interface. Two adapters, one seam — the seam (not a live Supabase
 // client) becomes the unit-test surface for the console's checklist + degrade
 // rules, the most consequential surface in the app.
-export type SuperAdminConsoleReads = {
-  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
-  fetchAllMembers: OmitClient<typeof fetchAllMembers>;
-  fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
-  fetchRecentAuditEvents: OmitClient<typeof fetchRecentAuditEvents>;
-  fetchPlatformConfig: OmitClient<typeof fetchPlatformConfig>;
-  fetchActiveOverShepherds: OmitClient<typeof fetchActiveOverShepherds>;
-  fetchCoverageAssignableLeaders: OmitClient<
-    typeof fetchCoverageAssignableLeaders
-  >;
-  fetchCurrentCoverageAssignments: OmitClient<
-    typeof fetchCurrentCoverageAssignments
-  >;
-  fetchCleanSlateImpact: OmitClient<typeof fetchCleanSlateImpact>;
-  fetchAuditEventCount: OmitClient<typeof fetchAuditEventCount>;
-  fetchLatestCleanSlateSnapshot: OmitClient<
-    typeof fetchLatestCleanSlateSnapshot
-  >;
-  fetchHistoryResetState: OmitClient<typeof fetchHistoryResetState>;
-  fetchAttentionResetState: OmitClient<typeof fetchAttentionResetState>;
-  fetchPermanentDeletionTargets: OmitClient<
-    typeof fetchPermanentDeletionTargets
-  >;
-  fetchRecentTombstones: OmitClient<typeof fetchRecentTombstones>;
-  fetchRecentUsageEvents: OmitClient<typeof fetchRecentUsageEvents>;
+const SUPER_ADMIN_CONSOLE_FETCHERS = {
+  fetchProfilesForAdmin,
+  fetchAllGroups,
+  fetchAllMembers,
+  fetchAllGroupLeaders,
+  fetchRecentAuditEvents,
+  fetchPlatformConfig,
+  fetchActiveOverShepherds,
+  fetchCoverageAssignableLeaders,
+  fetchCurrentCoverageAssignments,
+  fetchCleanSlateImpact,
+  fetchAuditEventCount,
+  fetchLatestCleanSlateSnapshot,
+  fetchHistoryResetState,
+  fetchAttentionResetState,
+  fetchPermanentDeletionTargets,
+  fetchRecentTombstones,
+  fetchRecentUsageEvents,
 };
+
+export type SuperAdminConsoleReads = BoundReads<
+  typeof SUPER_ADMIN_CONSOLE_FETCHERS
+>;
 
 // Production adapter: binds the live Supabase client to every read the console
 // needs.
 export function supabaseSuperAdminConsoleReads(
   client: AppSupabaseClient
 ): SuperAdminConsoleReads {
-  return bindReads(client, {
-    fetchProfilesForAdmin,
-    fetchAllGroups,
-    fetchAllMembers,
-    fetchAllGroupLeaders,
-    fetchRecentAuditEvents,
-    fetchPlatformConfig,
-    fetchActiveOverShepherds,
-    fetchCoverageAssignableLeaders,
-    fetchCurrentCoverageAssignments,
-    fetchCleanSlateImpact,
-    fetchAuditEventCount,
-    fetchLatestCleanSlateSnapshot,
-    fetchHistoryResetState,
-    fetchAttentionResetState,
-    fetchPermanentDeletionTargets,
-    fetchRecentTombstones,
-    fetchRecentUsageEvents,
-  });
+  return bindReads(client, SUPER_ADMIN_CONSOLE_FETCHERS, "super_admin_console");
 }
 
 // Every active profile except super_admin is reassignable through the console's

@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { measureReadBundle } from "@/lib/observability/read-timing";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { type LeaderFollowUpRow } from "@/lib/supabase/follow-up-reads";
@@ -209,22 +209,25 @@ export type GroupDetailOptions = {
   todayIso: string;
 };
 
-export type GroupDetailReads = {
-  fetchGroupsByIds: OmitClient<typeof fetchGroupsByIds>;
-  fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
-  fetchAllMembers: OmitClient<typeof fetchAllMembers>;
-  fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
-  fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
-  fetchGroupMetricSettings: OmitClient<typeof fetchGroupMetricSettings>;
-  fetchGroupHealthOverview: OmitClient<typeof getGroupHealthOverviewForGroup>;
-  fetchPlatformConfig: OmitClient<typeof fetchPlatformConfig>;
-  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
-  fetchMembersByIds: OmitClient<typeof fetchMembersByIds>;
-  fetchGroupHealthRatings: OmitClient<typeof fetchGroupHealthRatings>;
-  fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
-  fetchOpenFollowUps: OmitClient<typeof fetchOpenFollowUps>;
-  fetchGroupCalendarEvents: OmitClient<typeof fetchGroupCalendarEvents>;
-  fetchProspectSignalsForGroup: OmitClient<typeof fetchProspectSignalsForGroup>;
+const GROUP_DETAIL_FETCHERS = {
+  fetchGroupsByIds,
+  fetchAllGroupLeaders,
+  fetchAllMembers,
+  fetchActiveMemberships,
+  fetchMetricDefaults: fetchMetricDefaultsCached,
+  fetchGroupMetricSettings,
+  fetchGroupHealthOverview: getGroupHealthOverviewForGroup,
+  fetchPlatformConfig,
+  fetchProfilesForAdmin,
+  fetchMembersByIds,
+  fetchGroupHealthRatings,
+  fetchAttendanceSessions,
+  fetchOpenFollowUps,
+  fetchGroupCalendarEvents,
+  fetchProspectSignalsForGroup,
+};
+
+export type GroupDetailReads = BoundReads<typeof GROUP_DETAIL_FETCHERS> & {
   // Not a client-bound read-model fetcher: the ADR-0009 frozen-surface flag
   // for weekly check-ins (it fails safe to false on its own).
   fetchCheckInsLive: () => Promise<boolean>;
@@ -236,23 +239,7 @@ export function supabaseGroupDetailReads(
   client: AppSupabaseClient
 ): GroupDetailReads {
   return {
-    ...bindReads(client, {
-      fetchGroupsByIds,
-      fetchAllGroupLeaders,
-      fetchAllMembers,
-      fetchActiveMemberships,
-      fetchMetricDefaults: fetchMetricDefaultsCached,
-      fetchGroupMetricSettings,
-      fetchGroupHealthOverview: getGroupHealthOverviewForGroup,
-      fetchPlatformConfig,
-      fetchProfilesForAdmin,
-      fetchMembersByIds,
-      fetchGroupHealthRatings,
-      fetchAttendanceSessions,
-      fetchOpenFollowUps,
-      fetchGroupCalendarEvents,
-      fetchProspectSignalsForGroup,
-    }),
+    ...bindReads(client, GROUP_DETAIL_FETCHERS, "group_detail"),
     fetchCheckInsLive: () => isFrozenSurfaceLive("check_ins"),
   };
 }

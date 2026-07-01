@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { measureReadBundle } from "@/lib/observability/read-timing";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveShepherdCoverageAssignmentsForAdmin,
@@ -64,40 +64,24 @@ export type CareData = {
   error: string | null;
 };
 
-export type CareReads = {
-  fetchOverShepherds: OmitClient<typeof fetchOverShepherdsForAdmin>;
-  fetchActiveAssignments: OmitClient<
-    typeof fetchActiveShepherdCoverageAssignmentsForAdmin
-  >;
-  fetchRecentInteractions: OmitClient<
-    typeof fetchRecentShepherdCareInteractionsForAdmin
-  >;
-  fetchOutstandingFollowUps: OmitClient<
-    typeof fetchOutstandingCareFollowUpsForAdmin
-  >;
-  fetchCompletedFollowUps: OmitClient<
-    typeof fetchRecentlyCompletedCareFollowUpsForAdmin
-  >;
-  fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
-  fetchGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
-  fetchAttentionBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
-  fetchCareDirectory: OmitClient<typeof fetchShepherdCareDirectoryForAdmin>;
+const CARE_FETCHERS = {
+  fetchOverShepherds: fetchOverShepherdsForAdmin,
+  fetchActiveAssignments: fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchRecentInteractions: fetchRecentShepherdCareInteractionsForAdmin,
+  fetchOutstandingFollowUps: fetchOutstandingCareFollowUpsForAdmin,
+  fetchCompletedFollowUps: fetchRecentlyCompletedCareFollowUpsForAdmin,
+  fetchMetricDefaults: fetchMetricDefaultsCached,
+  fetchGroupLeaders: fetchAllGroupLeaders,
+  fetchAttentionBaselines: fetchAttentionResetBaselines,
+  fetchCareDirectory: fetchShepherdCareDirectoryForAdmin,
 };
+
+export type CareReads = BoundReads<typeof CARE_FETCHERS>;
 
 // Production adapter: binds the live Supabase client to every read this surface
 // needs.
 export function supabaseCareReads(client: AppSupabaseClient): CareReads {
-  return bindReads(client, {
-    fetchOverShepherds: fetchOverShepherdsForAdmin,
-    fetchActiveAssignments: fetchActiveShepherdCoverageAssignmentsForAdmin,
-    fetchRecentInteractions: fetchRecentShepherdCareInteractionsForAdmin,
-    fetchOutstandingFollowUps: fetchOutstandingCareFollowUpsForAdmin,
-    fetchCompletedFollowUps: fetchRecentlyCompletedCareFollowUpsForAdmin,
-    fetchMetricDefaults: fetchMetricDefaultsCached,
-    fetchGroupLeaders: fetchAllGroupLeaders,
-    fetchAttentionBaselines: fetchAttentionResetBaselines,
-    fetchCareDirectory: fetchShepherdCareDirectoryForAdmin,
-  });
+  return bindReads(client, CARE_FETCHERS, "care");
 }
 
 export function emptyCareData(error: string): CareData {

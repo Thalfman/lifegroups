@@ -1,6 +1,6 @@
 import type { SettingsShellData } from "@/components/admin/settings-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { fetchAllGroups } from "@/lib/supabase/group-reads";
@@ -30,10 +30,15 @@ import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
 // System tab gates bulk people import on it); it crosses no Super-Admin-only
 // read here.
 
-export type SettingsReads = {
-  fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
-  fetchAllGroupMetricSettings: OmitClient<typeof fetchAllGroupMetricSettings>;
+const SETTINGS_FETCHERS = {
+  fetchMetricDefaults: fetchMetricDefaultsCached,
+  fetchAllGroups,
+  fetchAllGroupMetricSettings,
+  // Settings > Groups: the admin-managed free-text group-type list.
+  fetchGroupTypes,
+};
+
+export type SettingsReads = BoundReads<typeof SETTINGS_FETCHERS> & {
   // The current group rubric (Ministry-Admin-owned). Bound to the "group" kind
   // here so the seam exposes a zero-arg read like the rest.
   fetchGroupHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
@@ -43,20 +48,13 @@ export type SettingsReads = {
   // The symmetric per-leader rubric, bound to the "leader" kind. Same shared
   // reader, filtered to the other rubric row.
   fetchLeaderHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
-  // Settings > Groups: the admin-managed free-text group-type list.
-  fetchGroupTypes: OmitClient<typeof fetchGroupTypes>;
 };
 
 export function supabaseSettingsReads(
   client: AppSupabaseClient
 ): SettingsReads {
   return {
-    ...bindReads(client, {
-      fetchMetricDefaults: fetchMetricDefaultsCached,
-      fetchAllGroups,
-      fetchAllGroupMetricSettings,
-      fetchGroupTypes,
-    }),
+    ...bindReads(client, SETTINGS_FETCHERS, "settings"),
     fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
     fetchReadinessRule: () =>
       fetchReadinessRule(client, currentMinistryYear(new Date())),
