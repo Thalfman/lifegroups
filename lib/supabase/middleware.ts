@@ -79,50 +79,68 @@ export async function updateSupabaseSession(
   // The marker outlives the Supabase session window (idle-timeout.ts), so a
   // long-idle request still carries a STALE marker to detect rather than an
   // absent one. Two carve-outs:
-  //   - auth email-link callbacks (code / token_hash) ON their landing paths are
-  //     waived so a just-verified session isn't bounced mid-flow; scoping to
-  //     those paths also stops a stale session opting out by appending `?code=`
-  //     to an arbitrary protected route (e.g. `/admin?code=x`). NOTE the waiver
-  //     deliberately does NOT include `/reset-password`: that page renders the
-  //     password form for ANY existing session (getUser() runs before the link
-  //     token is consumed), so a stale session must be signed out first — else a
-  //     shared-browser link could change the stale account's password. The legit
-  //     post-verify session there is a fresh session (recovery) or carries the
-  //     pw-setup marker (invite, exempted below), so it never needed the waiver.
-  //     `/auth/confirm` stays waived because it runs the verifyOtp handshake
-  //     (replacing any stale session with the link's account) and must not be
-  //     interrupted.
+  //   - the /auth/confirm verify handshake is waived: it runs verifyOtp, which
+  //     replaces any stale session with the link's account, so it must not be
+  //     interrupted. Every OTHER path is enforced — including `/` and
+  //     `/reset-password` with a link token — so a stale session can't opt out by
+  //     appending `?code=` to a route, and can't reach the reset form (which
+  //     renders for ANY existing session, before the token is consumed) with the
+  //     stale account still live. A link token on those paths is carried through
+  //     the sign-out below so the flow still completes.
   //   - password-setup-pending sessions are waived: password-setup.ts keeps that
   //     single-use, passwordless session alive on purpose (it is the only session
   //     that can finish setup), so timing it out would strand the account.
   // Session lifecycle only: no DB write, no audit event.
   const pathname = request.nextUrl.pathname;
-  const isAuthCallbackLanding =
-    (request.nextUrl.searchParams.has("code") ||
-      request.nextUrl.searchParams.has("token_hash")) &&
-    (pathname === "/" || pathname === "/auth/confirm");
-  if (claimsData?.claims && !isAuthCallbackLanding && !pwSetupMarkerPresent) {
+  const hasAuthLinkToken =
+    request.nextUrl.searchParams.has("code") ||
+    request.nextUrl.searchParams.has("token_hash");
+  const isVerifyHandshake = hasAuthLinkToken && pathname === "/auth/confirm";
+  if (claimsData?.claims && !isVerifyHandshake && !pwSetupMarkerPresent) {
     const nowMs = Date.now();
     const lastActive = request.cookies.get(IDLE_COOKIE)?.value;
     if (isIdleExpired(lastActive, nowMs)) {
       // `local` scope mirrors logoutAction: end only this device's session. This
       // clears the Supabase session cookies through the client's setAll above
       // (rebuilding `response`), so getCurrentSession() resolves anonymous next.
-      await supabase.auth.signOut({ scope: "local" });
-      response.cookies.set(IDLE_COOKIE, "", idleCookieClearOptions());
+      // @supabase/auth-js only drops those cookies when sign-out SUCCEEDS, so gate
+      // the marker clear on it: on a transient GoTrue failure the session is still
+      // live, so PRESERVE the stale marker — clearing it would hand the still-
+      // authenticated browser a fresh idle window on the next request.
+      const { error: signOutError } = await supabase.auth.signOut({
+        scope: "local",
+      });
+      const signedOut = !signOutError;
+      if (signedOut) {
+        response.cookies.set(IDLE_COOKIE, "", idleCookieClearOptions());
+      }
       response.cookies.set(
         LANDING_HINT_COOKIE,
         "",
         landingHintCookieClearOptions()
       );
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = "/login";
-      loginUrl.search = "";
-      loginUrl.searchParams.set("reason", "timeout");
+      // Carry an auth email-link token through the sign-out so the flow can still
+      // complete: a successfully-ended session that landed on `/` or
+      // `/reset-password` with a token is forwarded to /reset-password KEEPING the
+      // params, so the now-anonymous browser shows the verify button instead of
+      // losing the token at /login. If sign-out FAILED the session is still live,
+      // so never route to the reset form (it renders for the live stale account) —
+      // send to /login and let the preserved marker re-fire the timeout next time.
+      const isAuthLinkLanding =
+        pathname === "/" || pathname === "/reset-password";
+      const target = request.nextUrl.clone();
+      if (signedOut && hasAuthLinkToken && isAuthLinkLanding) {
+        target.pathname = "/reset-password";
+        // keep the existing code / token_hash / type search params
+      } else {
+        target.pathname = "/login";
+        target.search = "";
+        target.searchParams.set("reason", "timeout");
+      }
       // 303 See Other so a timed-out POST (form / server action) follows the
-      // redirect as a GET instead of re-POSTing its body to /login (the default
-      // 307 would preserve the method and body).
-      const redirectResponse = NextResponse.redirect(loginUrl, 303);
+      // redirect as a GET instead of re-POSTing its body (the default 307 would
+      // preserve the method and body).
+      const redirectResponse = NextResponse.redirect(target, 303);
       // Carry the cleared session/marker cookies onto the redirect so none of
       // the Set-Cookie deletions are dropped.
       carryCookies(response, redirectResponse);

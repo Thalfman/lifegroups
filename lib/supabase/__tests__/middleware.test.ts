@@ -178,10 +178,12 @@ describe("updateSupabaseSession idle timeout", () => {
     }
   });
 
-  it("signs out a stale session landing on /reset-password with a link token", async () => {
+  it("signs out a stale session on /reset-password but carries the link token through", async () => {
     // /reset-password renders the password form for ANY existing session before
     // the link token is consumed, so a stale idle session must be signed out
-    // first — it is NOT waived like the other callback paths.
+    // first. The unconsumed token is preserved by forwarding back to
+    // /reset-password (now anonymous → verify button) rather than dropped at
+    // /login, so the user can still finish reset/setup.
     for (const qs of ["code=abc", "token_hash=xyz&type=recovery"]) {
       setSession(true);
       const res = await updateSupabaseSession(
@@ -192,9 +194,45 @@ describe("updateSupabaseSession idle timeout", () => {
       expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
       expect(res.status).toBe(303);
       expect(res.headers.get("location")).toBe(
-        `${ORIGIN}/login?reason=timeout`
+        `${ORIGIN}/reset-password?${qs}`
       );
     }
+  });
+
+  it("carries a root (/) reset-link token through the sign-out to /reset-password", async () => {
+    // Supabase can fall back to the site root with the link params. A stale
+    // authenticated `/` would otherwise render app/page.tsx and redirect by the
+    // stale role, dropping the token — so sign out and forward the token instead.
+    for (const qs of ["code=abc", "token_hash=xyz&type=recovery"]) {
+      setSession(true);
+      const res = await updateSupabaseSession(
+        request(`/?${qs}`, { cookies: { [IDLE_COOKIE]: expiredIdleValue() } })
+      );
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+      expect(res.status).toBe(303);
+      expect(res.headers.get("location")).toBe(
+        `${ORIGIN}/reset-password?${qs}`
+      );
+    }
+  });
+
+  it("preserves the marker and routes to /login when sign-out fails", async () => {
+    // A transient GoTrue error means the session may still be live, so don't
+    // clear the marker (else the next request gets a fresh idle window) and never
+    // route to the reset form.
+    setSession(true);
+    mockSignOut.mockResolvedValueOnce({ error: { message: "gotrue down" } });
+    const res = await updateSupabaseSession(
+      request("/reset-password?token_hash=xyz&type=recovery", {
+        cookies: { [IDLE_COOKIE]: expiredIdleValue() },
+      })
+    );
+
+    expect(mockSignOut).toHaveBeenCalled();
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
+    // Marker NOT cleared, so the timeout re-fires next request.
+    expect(res.cookies.get(IDLE_COOKIE)).toBeUndefined();
   });
 });
 
