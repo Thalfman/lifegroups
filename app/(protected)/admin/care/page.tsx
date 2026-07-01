@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { PageSkeleton } from "@/components/lg/PageSkeleton";
-import { loadAdminFollowUpsData } from "@/components/admin/follow-ups/follow-ups-data";
 import { CareShell, type CareTabKey } from "@/components/admin/care/care-shell";
+import type { CareWorkspace } from "@/components/admin/care/care-workspace";
 import {
-  buildCareWorkspace,
-  type CareWorkspace,
-} from "@/components/admin/care/care-workspace";
+  buildCarePageData,
+  carePageLoaders,
+} from "@/components/admin/care/care-page-data";
 import {
   resolveCareInitialTabFromParams,
   resolveDirectoryFilter,
@@ -15,58 +15,20 @@ import {
 import { requireAdmin } from "@/lib/auth/session";
 import { measureReadBundle } from "@/lib/observability/read-timing";
 import { isSuperAdminRole } from "@/lib/auth/roles";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   currentMinistryYear,
   currentPeriodMonthIso,
 } from "@/lib/admin/ministry-year";
-import {
-  loadCareAccordionEnrichment,
-  EMPTY_ENRICHMENT,
-  type CareAccordionEnrichment,
-} from "@/lib/supabase/care-accordion-reads";
 import { currentUtcDateIso } from "@/lib/supabase/read-core";
-import { loadCareData } from "@/components/admin/care/care-data";
-import {
-  buildNotesFeedData,
-  supabaseNotesFeedReads,
-  EMPTY_NOTES_FEED,
-  type NotesFeedContext,
-  type NotesFeedData,
-} from "@/components/admin/care/notes-feed-data";
 
 // Care area (ADR 0013, #301; re-keyed in #334; consolidated to the PRD Care
-// shell in #477). The route owns admin guarding, date resolution, and read
-// orchestration. Pure tab/badge/banner composition lives in
+// shell in #477). The route owns admin guarding and date resolution; read
+// orchestration lives in components/admin/care/care-page-data behind injected
+// loaders, and pure tab/badge/banner composition lives in
 // components/admin/care/care-workspace so the canonical page and its thin alias
 // entries keep one view model without reintroducing Supabase orchestration into
 // the route component.
 export const dynamic = "force-dynamic";
-
-// Load the accordion enrichment (grades + note presence) behind its own client,
-// degrading to empty maps when the DB is not configured so the Care surface
-// still renders (matching loadCareData's documented empty-shape behaviour).
-async function loadCareAccordionEnrichmentSafe(
-  ministryYear: number | null,
-  periodMonthIso: string
-): Promise<CareAccordionEnrichment> {
-  const client = await createSupabaseServerClient();
-  if (!client) return EMPTY_ENRICHMENT;
-  return loadCareAccordionEnrichment(client, { ministryYear, periodMonthIso });
-}
-
-// Load the Notes tab's feed (ADR 0023) behind its own client, seeded with the
-// names the page already resolved (leaders from the care directory, group
-// names from the follow-ups groups list) so the feed only fetches the author
-// names those maps don't cover. Degrades to the documented empty shape when
-// the DB is not configured.
-async function loadNotesFeedSafe(
-  context: NotesFeedContext
-): Promise<NotesFeedData> {
-  const client = await createSupabaseServerClient();
-  if (!client) return EMPTY_NOTES_FEED;
-  return buildNotesFeedData(supabaseNotesFeedReads(client), context);
-}
 
 // Shared loader for the canonical Care shell. /admin/care and the thin alias
 // entries (/admin/shepherd-care landing and /admin/follow-ups) all call this
@@ -87,41 +49,13 @@ export async function loadCarePageData({
   const ministryYear = currentMinistryYear();
   const periodMonthIso = currentPeriodMonthIso();
 
-  const batch = Promise.all([
-    loadAdminFollowUpsData(),
-    loadCareData(today),
-    loadCareAccordionEnrichmentSafe(ministryYear, periodMonthIso),
-  ]);
-
-  // The Notes feed starts now, concurrently with the batch: its content reads
-  // don't depend on the batch, only on the name seeds produced by the batch.
-  const notesFeedPromise = loadNotesFeedSafe({
-    viewerProfileId: session.profile.id,
-    nameByProfileId: batch.then(
-      ([, care]) =>
-        new Map(care.entries.map((e) => [e.profile.id, e.profile.full_name]))
-    ),
-    groupNameByGroupId: batch.then(
-      ([followUps]) => new Map(followUps.groups.map((g) => [g.id, g.name]))
-    ),
-  });
-  // If the batch itself throws, the page errors at the await below before the
-  // feed is consumed. Mark the feed promise handled so the mirrored rejection
-  // doesn't surface as unhandled.
-  void notesFeedPromise.catch(() => EMPTY_NOTES_FEED);
-
-  const [followUpsData, care, enrichment] = await batch;
-  const notesFeed = await notesFeedPromise;
-
-  return buildCareWorkspace({
+  return buildCarePageData(carePageLoaders, {
     viewerId: session.profile.id,
     isSuperAdmin,
     rosterFilter,
     todayIso: today,
-    followUpsData,
-    care,
-    enrichment,
-    notesFeed,
+    ministryYear,
+    periodMonthIso,
   });
 }
 

@@ -172,8 +172,21 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
       "utf8"
     );
 
+    const CARE_PAGE_DATA = readFileSync(
+      fileURLToPath(
+        new URL(
+          "../../../../components/admin/care/care-page-data.ts",
+          import.meta.url
+        )
+      ),
+      "utf8"
+    );
+
     expect(CARE_PAGE).toMatch(/initialTab = "over-shepherds"/);
-    expect(CARE_PAGE).toContain("buildCareWorkspace");
+    // The route delegates to the testable orchestration module, which is what
+    // assembles the canonical workspace (tabs incl. the accordion default).
+    expect(CARE_PAGE).toContain("buildCarePageData");
+    expect(CARE_PAGE_DATA).toContain("buildCareWorkspace");
     expect(CARE_WORKSPACE).toContain("<CareAccordion");
     expect(CARE_WORKSPACE).toContain("buildCareAccordion");
   });
