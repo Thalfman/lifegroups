@@ -82,7 +82,16 @@ export async function updateSupabaseSession(
   //   - auth email-link callbacks (code / token_hash) ON their landing paths are
   //     waived so a just-verified session isn't bounced mid-flow; scoping to
   //     those paths also stops a stale session opting out by appending `?code=`
-  //     to an arbitrary protected route (e.g. `/admin?code=x`).
+  //     to an arbitrary protected route (e.g. `/admin?code=x`). NOTE the waiver
+  //     deliberately does NOT include `/reset-password`: that page renders the
+  //     password form for ANY existing session (getUser() runs before the link
+  //     token is consumed), so a stale session must be signed out first — else a
+  //     shared-browser link could change the stale account's password. The legit
+  //     post-verify session there is a fresh session (recovery) or carries the
+  //     pw-setup marker (invite, exempted below), so it never needed the waiver.
+  //     `/auth/confirm` stays waived because it runs the verifyOtp handshake
+  //     (replacing any stale session with the link's account) and must not be
+  //     interrupted.
   //   - password-setup-pending sessions are waived: password-setup.ts keeps that
   //     single-use, passwordless session alive on purpose (it is the only session
   //     that can finish setup), so timing it out would strand the account.
@@ -91,9 +100,7 @@ export async function updateSupabaseSession(
   const isAuthCallbackLanding =
     (request.nextUrl.searchParams.has("code") ||
       request.nextUrl.searchParams.has("token_hash")) &&
-    (pathname === "/" ||
-      pathname === "/reset-password" ||
-      pathname === "/auth/confirm");
+    (pathname === "/" || pathname === "/auth/confirm");
   if (claimsData?.claims && !isAuthCallbackLanding && !pwSetupMarkerPresent) {
     const nowMs = Date.now();
     const lastActive = request.cookies.get(IDLE_COOKIE)?.value;

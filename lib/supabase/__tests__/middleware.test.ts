@@ -164,7 +164,24 @@ describe("updateSupabaseSession idle timeout", () => {
     expect(res.cookies.get(IDLE_COOKIE)).toBeUndefined();
   });
 
-  it("does not enforce the timeout on an auth callback (code / token_hash)", async () => {
+  it("does not enforce the timeout on the /auth/confirm verify handshake", async () => {
+    for (const qs of ["code=abc", "token_hash=xyz&type=recovery"]) {
+      setSession(true);
+      const res = await updateSupabaseSession(
+        request(`/auth/confirm?${qs}`, {
+          cookies: { [IDLE_COOKIE]: expiredIdleValue() },
+        })
+      );
+      expect(mockSignOut).not.toHaveBeenCalled();
+      // No timeout redirect: the verify handshake is left to its own flow.
+      expect(res.headers.get("location")).toBeNull();
+    }
+  });
+
+  it("signs out a stale session landing on /reset-password with a link token", async () => {
+    // /reset-password renders the password form for ANY existing session before
+    // the link token is consumed, so a stale idle session must be signed out
+    // first — it is NOT waived like the other callback paths.
     for (const qs of ["code=abc", "token_hash=xyz&type=recovery"]) {
       setSession(true);
       const res = await updateSupabaseSession(
@@ -172,9 +189,11 @@ describe("updateSupabaseSession idle timeout", () => {
           cookies: { [IDLE_COOKIE]: expiredIdleValue() },
         })
       );
-      expect(mockSignOut).not.toHaveBeenCalled();
-      // No timeout redirect: the auth-callback request is left to its own flow.
-      expect(res.headers.get("location")).toBeNull();
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+      expect(res.status).toBe(303);
+      expect(res.headers.get("location")).toBe(
+        `${ORIGIN}/login?reason=timeout`
+      );
     }
   });
 });
