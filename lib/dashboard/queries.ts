@@ -323,6 +323,7 @@ export async function buildAdminDashboardData(
     // directory fetch and the pure model.
     const [
       groupsResult,
+      activeGroupCountResult,
       guestsResult,
       followUpsResult,
       dueFollowUpsThisWeekCountResult,
@@ -344,6 +345,11 @@ export async function buildAdminDashboardData(
       shepherdDirectoryRowsResult,
     ] = await Promise.all([
       reads.fetchAllGroups(),
+      // Exact active-group total via a head/count query — kept as its own read
+      // (not derived from the groups array) so the headline count stays correct
+      // even if the full-groups read is ever capped/paged. It's a cheap count in
+      // this parallel batch, never the critical-path read.
+      reads.fetchActiveGroupCount(),
       reads.fetchGuests(),
       reads.fetchOpenFollowUps({ limit: 8 }),
       reads.fetchOpenFollowUpsDueCount({
@@ -451,6 +457,7 @@ export async function buildAdminDashboardData(
 
     const firstError =
       groupsResult.error ||
+      activeGroupCountResult.error ||
       guestsResult.error ||
       followUpsResult.error ||
       dueFollowUpsThisWeekCountResult.error ||
@@ -486,11 +493,7 @@ export async function buildAdminDashboardData(
       defaults,
       selectedWeek,
       now,
-      // Derived in-model from the active subset of the groups array already
-      // fetched above (the model's existing `activeGroupCount ?? activeRows.length`
-      // fallback), so the separate exact-count read is redundant and dropped
-      // from this hot batch — one fewer PostgREST request, same number.
-      activeGroupCount: null,
+      activeGroupCount: activeGroupCountResult.data ?? null,
       healthBaselines,
     });
 

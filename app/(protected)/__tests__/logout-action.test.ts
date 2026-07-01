@@ -54,5 +54,12 @@ describe("logoutAction", () => {
       "",
       expect.objectContaining({ maxAge: 0 })
     );
+    // Idle-timeout marker is cleared so its long-lived value can't outlive the
+    // session and bounce the next sign-in on this browser.
+    expect(mockCookieSet).toHaveBeenCalledWith(
+      "lg_last_active",
+      "",
+      expect.objectContaining({ maxAge: 0 })
+    );
   });
 });

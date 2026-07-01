@@ -123,6 +123,14 @@ describe("loginAction", () => {
 
     expect(mockCookieSet).toHaveBeenCalled();
     expect(mockLogUsage).toHaveBeenCalled();
+    // A fresh idle-timeout marker (numeric ms timestamp) is seeded for the new
+    // session so a stale marker from a prior session can't time it out on the
+    // first request.
+    expect(mockCookieSet).toHaveBeenCalledWith(
+      "lg_last_active",
+      expect.stringMatching(/^\d+$/),
+      expect.objectContaining({ path: "/", sameSite: "lax", httpOnly: true })
+    );
   });
 
   it.each([

@@ -13,6 +13,7 @@ import {
   LANDING_HINT_COOKIE,
   landingHintCookieClearOptions,
 } from "@/lib/auth/landing-hint";
+import { IDLE_COOKIE, idleCookieClearOptions } from "@/lib/auth/idle-timeout";
 
 export async function logoutAction(): Promise<void> {
   const ctx = startActionLog("auth.logout");
@@ -37,6 +38,11 @@ export async function logoutAction(): Promise<void> {
   cookieStore.set(PW_SETUP_COOKIE, "", passwordSetupCookieClearOptions());
   // Drop the landing-path hint so the next sign-in re-resolves it fresh.
   cookieStore.set(LANDING_HINT_COOKIE, "", landingHintCookieClearOptions());
+  // Clear the idle-timeout marker so it can't outlive this session: the marker
+  // is long-lived (idle-timeout.ts), so a stale value left behind would make the
+  // next sign-in on this browser look instantly idle and bounce the fresh session
+  // straight back out. loginAction re-seeds a fresh marker on the way in.
+  cookieStore.set(IDLE_COOKIE, "", idleCookieClearOptions());
 
   ctx.finish("ok", {
     actor_role,
