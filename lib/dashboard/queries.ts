@@ -28,6 +28,7 @@ import {
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { loadAllGroupsForAdmin } from "@/lib/admin/groups-read";
 import type { ReadResult } from "@/lib/supabase/read-core";
 import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
@@ -344,6 +345,10 @@ export async function buildAdminDashboardData(
       shepherdDirectoryRowsResult,
     ] = await Promise.all([
       reads.fetchAllGroups(),
+      // Exact active-group total via a head/count query — kept as its own read
+      // (not derived from the groups array) so the headline count stays correct
+      // even if the full-groups read is ever capped/paged. It's a cheap count in
+      // this parallel batch, never the critical-path read.
       reads.fetchActiveGroupCount(),
       reads.fetchGuests(),
       reads.fetchOpenFollowUps({ limit: 8 }),
@@ -380,11 +385,18 @@ export async function buildAdminDashboardData(
       // stays out of firstError below.
       reads.fetchAttentionResetBaselines(),
       // Shepherd-care directory RAW rows (active leader/co_leader profiles +
-      // their care rows). The two DB reads depend on nothing computed below, so
-      // they ride this parallel batch; the pure needs_attention stamping happens
+      // their care rows). Its two DB reads now run concurrently inside the
+      // reader (previously serial), so this whole entry is one round trip and
+      // rides the parallel batch; the pure needs_attention stamping happens
       // after, once windows / delegated set / baselines are derived. This keeps
       // the above-the-fold "Needs attention" off a second serial round trip.
-      reads.fetchShepherdCareDirectoryRowsForAdmin(),
+      // Isolated in its own read_bundle line — it was the slowest single read on
+      // this hot batch — so the serial→parallel win is measurable in prod.
+      measureReadBundle(
+        "admin_home_shepherd_directory",
+        () => reads.fetchShepherdCareDirectoryRowsForAdmin(),
+        (r) => ({ ok: r.error == null })
+      ),
     ]);
 
     const defaultsForRead = decodeMetricDefaults(

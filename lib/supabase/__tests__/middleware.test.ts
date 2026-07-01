@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 // Control the Supabase client getClaims() returns and pretend env is configured.
-const { mockCreateServerClient, mockGetClaims } = vi.hoisted(() => ({
-  mockCreateServerClient: vi.fn(),
-  mockGetClaims: vi.fn(),
-}));
+const { mockCreateServerClient, mockGetClaims, mockSignOut } = vi.hoisted(
+  () => ({
+    mockCreateServerClient: vi.fn(),
+    mockGetClaims: vi.fn(),
+    mockSignOut: vi.fn(),
+  })
+);
 
 vi.mock("@supabase/ssr", () => ({
   createServerClient: mockCreateServerClient,
@@ -17,6 +20,11 @@ vi.mock("@/lib/supabase/config", () => ({
 
 import { updateSupabaseSession } from "@/lib/supabase/middleware";
 import { LANDING_HINT_COOKIE } from "@/lib/auth/landing-hint";
+import { IDLE_COOKIE, IDLE_LIMIT_MS } from "@/lib/auth/idle-timeout";
+import {
+  PW_SETUP_COOKIE,
+  PW_SETUP_COOKIE_VALUE,
+} from "@/lib/auth/password-setup";
 
 const ORIGIN = "https://app.test";
 
@@ -27,7 +35,7 @@ function setSession(authed: boolean) {
     data: authed ? { claims: { sub: "user-1" } } : null,
   });
   mockCreateServerClient.mockReturnValue({
-    auth: { getClaims: mockGetClaims },
+    auth: { getClaims: mockGetClaims, signOut: mockSignOut },
   });
 }
 
@@ -50,6 +58,182 @@ function request(
 beforeEach(() => {
   mockCreateServerClient.mockReset();
   mockGetClaims.mockReset();
+  mockSignOut.mockReset();
+  mockSignOut.mockResolvedValue({ error: null });
+});
+
+// A last-active timestamp older than the idle window (definitely expired).
+function expiredIdleValue(): string {
+  return String(Date.now() - IDLE_LIMIT_MS - 1000);
+}
+
+describe("updateSupabaseSession idle timeout", () => {
+  it("force-signs-out an idle authenticated GET and redirects (303) to /login?reason=timeout", async () => {
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/admin", { cookies: { [IDLE_COOKIE]: expiredIdleValue() } })
+    );
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+    // 303 See Other (not 307) so a timed-out POST doesn't re-POST to /login.
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
+    // The last-active marker is cleared so a fresh sign-in starts a new window.
+    const cleared = res.cookies.get(IDLE_COOKIE);
+    expect(cleared?.value).toBe("");
+    expect(cleared?.maxAge).toBe(0);
+  });
+
+  it("uses a 303 (method-dropping) redirect for a timed-out POST", async () => {
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/admin", {
+        method: "POST",
+        cookies: { [IDLE_COOKIE]: expiredIdleValue() },
+      })
+    );
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
+  });
+
+  it("still enforces the timeout when ?code= is on a non-callback route (/admin?code=x)", async () => {
+    // The auth-callback waiver is scoped to callback landing paths, so a stale
+    // session can't opt out by appending ?code= to an arbitrary protected route.
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/admin?code=x", {
+        cookies: { [IDLE_COOKIE]: expiredIdleValue() },
+      })
+    );
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
+  });
+
+  it("does not sign out a password-setup-pending session (would strand the account)", async () => {
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/reset-password", {
+        cookies: {
+          [IDLE_COOKIE]: expiredIdleValue(),
+          [PW_SETUP_COOKIE]: PW_SETUP_COOKIE_VALUE,
+        },
+      })
+    );
+
+    expect(mockSignOut).not.toHaveBeenCalled();
+    // Not signed out, so no timeout redirect (the request proceeds normally).
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("slides the last-active marker forward on an active authenticated request", async () => {
+    setSession(true);
+    // A recent (non-expired) marker: no sign-out, just a bump.
+    const recent = String(Date.now() - 1000);
+    const res = await updateSupabaseSession(
+      request("/admin", { cookies: { [IDLE_COOKIE]: recent } })
+    );
+
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(res.headers.get("location")).toBeNull();
+    const bumped = res.cookies.get(IDLE_COOKIE);
+    expect(bumped?.value).toBeDefined();
+    expect(Number.isFinite(Number(bumped?.value))).toBe(true);
+    expect(Number(bumped?.value)).toBeGreaterThanOrEqual(Number(recent));
+  });
+
+  it("starts a window on a first authenticated request with no marker", async () => {
+    setSession(true);
+    const res = await updateSupabaseSession(request("/admin"));
+
+    expect(mockSignOut).not.toHaveBeenCalled();
+    const set = res.cookies.get(IDLE_COOKIE);
+    expect(Number.isFinite(Number(set?.value))).toBe(true);
+  });
+
+  it("never signs out or sets a marker for an anonymous request", async () => {
+    setSession(false);
+    const res = await updateSupabaseSession(
+      request("/admin", { cookies: { [IDLE_COOKIE]: expiredIdleValue() } })
+    );
+
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(res.cookies.get(IDLE_COOKIE)).toBeUndefined();
+  });
+
+  it("does not enforce the timeout on the /auth/confirm verify handshake", async () => {
+    for (const qs of ["code=abc", "token_hash=xyz&type=recovery"]) {
+      setSession(true);
+      const res = await updateSupabaseSession(
+        request(`/auth/confirm?${qs}`, {
+          cookies: { [IDLE_COOKIE]: expiredIdleValue() },
+        })
+      );
+      expect(mockSignOut).not.toHaveBeenCalled();
+      // No timeout redirect: the verify handshake is left to its own flow.
+      expect(res.headers.get("location")).toBeNull();
+    }
+  });
+
+  it("signs out a stale session on /reset-password but carries the link token through", async () => {
+    // /reset-password renders the password form for ANY existing session before
+    // the link token is consumed, so a stale idle session must be signed out
+    // first. The unconsumed token is preserved by forwarding back to
+    // /reset-password (now anonymous → verify button) rather than dropped at
+    // /login, so the user can still finish reset/setup.
+    for (const qs of ["code=abc", "token_hash=xyz&type=recovery"]) {
+      setSession(true);
+      const res = await updateSupabaseSession(
+        request(`/reset-password?${qs}`, {
+          cookies: { [IDLE_COOKIE]: expiredIdleValue() },
+        })
+      );
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+      expect(res.status).toBe(303);
+      expect(res.headers.get("location")).toBe(
+        `${ORIGIN}/reset-password?${qs}`
+      );
+    }
+  });
+
+  it("carries a root (/) reset-link token through the sign-out to /reset-password", async () => {
+    // Supabase can fall back to the site root with the link params. A stale
+    // authenticated `/` would otherwise render app/page.tsx and redirect by the
+    // stale role, dropping the token — so sign out and forward the token instead.
+    for (const qs of ["code=abc", "token_hash=xyz&type=recovery"]) {
+      setSession(true);
+      const res = await updateSupabaseSession(
+        request(`/?${qs}`, { cookies: { [IDLE_COOKIE]: expiredIdleValue() } })
+      );
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+      expect(res.status).toBe(303);
+      expect(res.headers.get("location")).toBe(
+        `${ORIGIN}/reset-password?${qs}`
+      );
+    }
+  });
+
+  it("preserves the marker and routes to /login when sign-out fails", async () => {
+    // A transient GoTrue error means the session may still be live, so don't
+    // clear the marker (else the next request gets a fresh idle window) and never
+    // route to the reset form.
+    setSession(true);
+    mockSignOut.mockResolvedValueOnce({ error: { message: "gotrue down" } });
+    const res = await updateSupabaseSession(
+      request("/reset-password?token_hash=xyz&type=recovery", {
+        cookies: { [IDLE_COOKIE]: expiredIdleValue() },
+      })
+    );
+
+    expect(mockSignOut).toHaveBeenCalled();
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
+    // Marker NOT cleared, so the timeout re-fires next request.
+    expect(res.cookies.get(IDLE_COOKIE)).toBeUndefined();
+  });
 });
 
 describe("updateSupabaseSession landing-hint fast path", () => {

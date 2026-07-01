@@ -42,6 +42,7 @@ export function LoginForm() {
   const [next, setNext] = useState<string | null>(null);
   const [resetOk, setResetOk] = useState(false);
   const [invitedOk, setInvitedOk] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -55,6 +56,7 @@ export function LoginForm() {
     setNext(nextValue && isSafeNextPath(nextValue) ? nextValue : null);
     setResetOk(params.get("reset") === "ok");
     setInvitedOk(params.get("invited") === "1");
+    setTimedOut(params.get("reason") === "timeout");
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
@@ -75,6 +77,12 @@ export function LoginForm() {
       {invitedOk && !resetOk && !state.error ? (
         <p role="status" className={statusToastClassName}>
           Account created. Sign in with your new email and password.
+        </p>
+      ) : null}
+
+      {timedOut && !resetOk && !invitedOk && !state.error ? (
+        <p role="status" className={statusToastClassName}>
+          Signed out after an hour of inactivity. Sign in to continue.
         </p>
       ) : null}
 

@@ -16,6 +16,7 @@ import {
   landingHintCookieSetOptions,
   landingHintForRole,
 } from "@/lib/auth/landing-hint";
+import { IDLE_COOKIE, idleCookieSetOptions } from "@/lib/auth/idle-timeout";
 import { rpcLogUsageEvent } from "@/lib/usage/rpc";
 import { isSafeNextPath } from "./next-path";
 import type { ProfileStatus } from "@/types/enums";
@@ -181,6 +182,13 @@ export async function loginAction(
   if (hint) {
     cookieStore.set(LANDING_HINT_COOKIE, hint, landingHintCookieSetOptions());
   }
+
+  // Seed a fresh idle-timeout window for the new session. The marker is
+  // long-lived (idle-timeout.ts), so any marker left over from a PRIOR session
+  // on this browser would be stale and make the first post-login request look
+  // idle — instantly signing the fresh session back out. Overwriting it here
+  // (and clearing it on logout) binds the window to this sign-in.
+  cookieStore.set(IDLE_COOKIE, String(Date.now()), idleCookieSetOptions());
 
   redirect(next ?? defaultLandingPathForRole(profile.role));
 }
