@@ -42,14 +42,17 @@ describe("isIdleExpired", () => {
 });
 
 describe("idle cookie options", () => {
-  it("sets an httpOnly, lax, root-path cookie that outlives the idle window", () => {
+  it("sets an httpOnly, lax, root-path cookie that FAR outlives the idle window", () => {
     const opts = idleCookieSetOptions();
     expect(opts.httpOnly).toBe(true);
     expect(opts.sameSite).toBe("lax");
     expect(opts.path).toBe("/");
-    // A buffer over the idle window so the cookie's own lifetime never expires
-    // out from under a session sitting at the boundary.
-    expect(opts.maxAge).toBeGreaterThan(IDLE_LIMIT_MS / 1000);
+    // The marker must still be present (just stale) when a long-idle request
+    // arrives — otherwise it lapses, isIdleExpired sees no marker, fails open to
+    // "fresh", and an overnight session is never signed out. So its lifetime must
+    // dwarf the idle window: assert at least a full day (it actually matches the
+    // 400-day Supabase session cookie).
+    expect(opts.maxAge).toBeGreaterThan((IDLE_LIMIT_MS / 1000) * 24);
   });
 
   it("clears the cookie with maxAge 0", () => {

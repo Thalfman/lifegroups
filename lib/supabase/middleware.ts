@@ -3,7 +3,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   PW_SETUP_COOKIE,
   PW_SETUP_COOKIE_VALUE,
-  passwordSetupCookieClearOptions,
   passwordSetupCookieSetOptions,
   shouldRedirectToPasswordSetup,
 } from "@/lib/auth/password-setup";
@@ -64,20 +63,38 @@ export async function updateSupabaseSession(
   // expiry.
   const { data: claimsData } = await supabase.auth.getClaims();
 
+  // Password-setup-pending marker. Read up here because the idle guard below
+  // must also consult it (as does the set-password gate further down). A session
+  // created by verifying an invite / password-reset email link (app/auth/confirm)
+  // is fully authenticated even when the account has no password yet.
+  const pwSetupAuthenticated = Boolean(claimsData?.claims);
+  const pwSetupMarkerPresent =
+    request.cookies.get(PW_SETUP_COOKIE)?.value === PW_SETUP_COOKIE_VALUE;
+
   // Idle (inactivity) sign-out. A "last active" cookie holds a millisecond
   // timestamp; every authenticated request slides it forward, and a request that
-  // arrives more than IDLE_LIMIT_MS after the last bump is treated as resuming an
-  // abandoned session and force-signed-out. A purely idle browser makes no
-  // requests, so its cookie is never bumped and the next request it does make
-  // trips the timeout. Runs before the password-setup gate so an idle setup
-  // session ends too, and is skipped when auth-callback params are present
-  // (code / token_hash) so a just-verified email-link session — whose cookie may
-  // not exist yet — is never bounced mid-flow. Session lifecycle only: no DB
-  // write, no audit event.
-  const isAuthCallback =
-    request.nextUrl.searchParams.has("code") ||
-    request.nextUrl.searchParams.has("token_hash");
-  if (claimsData?.claims && !isAuthCallback) {
+  // arrives more than IDLE_LIMIT_MS after the last bump resumes an abandoned
+  // session and is force-signed-out. A purely idle browser makes no requests, so
+  // its marker is never bumped and the next request it makes trips the timeout.
+  // The marker outlives the Supabase session window (idle-timeout.ts), so a
+  // long-idle request still carries a STALE marker to detect rather than an
+  // absent one. Two carve-outs:
+  //   - auth email-link callbacks (code / token_hash) ON their landing paths are
+  //     waived so a just-verified session isn't bounced mid-flow; scoping to
+  //     those paths also stops a stale session opting out by appending `?code=`
+  //     to an arbitrary protected route (e.g. `/admin?code=x`).
+  //   - password-setup-pending sessions are waived: password-setup.ts keeps that
+  //     single-use, passwordless session alive on purpose (it is the only session
+  //     that can finish setup), so timing it out would strand the account.
+  // Session lifecycle only: no DB write, no audit event.
+  const pathname = request.nextUrl.pathname;
+  const isAuthCallbackLanding =
+    (request.nextUrl.searchParams.has("code") ||
+      request.nextUrl.searchParams.has("token_hash")) &&
+    (pathname === "/" ||
+      pathname === "/reset-password" ||
+      pathname === "/auth/confirm");
+  if (claimsData?.claims && !isAuthCallbackLanding && !pwSetupMarkerPresent) {
     const nowMs = Date.now();
     const lastActive = request.cookies.get(IDLE_COOKIE)?.value;
     if (isIdleExpired(lastActive, nowMs)) {
@@ -87,11 +104,6 @@ export async function updateSupabaseSession(
       await supabase.auth.signOut({ scope: "local" });
       response.cookies.set(IDLE_COOKIE, "", idleCookieClearOptions());
       response.cookies.set(
-        PW_SETUP_COOKIE,
-        "",
-        passwordSetupCookieClearOptions()
-      );
-      response.cookies.set(
         LANDING_HINT_COOKIE,
         "",
         landingHintCookieClearOptions()
@@ -100,7 +112,10 @@ export async function updateSupabaseSession(
       loginUrl.pathname = "/login";
       loginUrl.search = "";
       loginUrl.searchParams.set("reason", "timeout");
-      const redirectResponse = NextResponse.redirect(loginUrl);
+      // 303 See Other so a timed-out POST (form / server action) follows the
+      // redirect as a GET instead of re-POSTing its body to /login (the default
+      // 307 would preserve the method and body).
+      const redirectResponse = NextResponse.redirect(loginUrl, 303);
       // Carry the cleared session/marker cookies onto the redirect so none of
       // the Set-Cookie deletions are dropped.
       carryCookies(response, redirectResponse);
@@ -110,17 +125,13 @@ export async function updateSupabaseSession(
     response.cookies.set(IDLE_COOKIE, String(nowMs), idleCookieSetOptions());
   }
 
-  // Pin a "password setup pending" session to the set-password screen. A session
-  // created by verifying an invite / password-reset email link (app/auth/confirm)
-  // is fully authenticated even when the account has no password yet, so without
+  // Pin a "password setup pending" session to the set-password screen. Without
   // this gate an invited user could navigate into the app and strand their
   // account with an empty password (every later sign-in then fails with the
   // generic "Invalid email or password"). The marker cookie is set by
   // /auth/confirm on a successful verify and cleared by resetPasswordAction once
-  // a password is saved.
-  const pwSetupAuthenticated = Boolean(claimsData?.claims);
-  const pwSetupMarkerPresent =
-    request.cookies.get(PW_SETUP_COOKIE)?.value === PW_SETUP_COOKIE_VALUE;
+  // a password is saved. (pwSetupAuthenticated / pwSetupMarkerPresent are read
+  // above so the idle guard can exempt setup-pending sessions.)
 
   // Keep the marker tracking the auth session. Supabase rotates its session
   // cookies on every request, so renew the marker on every authenticated request

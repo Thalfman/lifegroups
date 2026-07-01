@@ -305,58 +305,46 @@ export function computeNeedsAttention(
 export async function fetchShepherdCareDirectoryRowsForAdmin(
   client: ReadClient
 ): Promise<ReadResult<ShepherdCareDirectoryRaw>> {
-  // The active leader/co_leader profiles and their care rows depend on nothing
-  // computed here, so fetch them CONCURRENTLY rather than in series. The care
-  // read used to wait on the profiles read solely to filter by the resulting
-  // shepherd ids, which made this directory the only read on the /admin Home
-  // batch that costs two serial round trips — so it dominated that batch's
-  // critical path. shepherd_care_profiles is 1:1 with shepherds and already
-  // RLS-scoped to admin-readable rows, so fetching the full set in parallel and
-  // narrowing to the visible shepherd ids in memory below returns the same
-  // directory at one round trip instead of two.
-  const [profilesQuery, careQuery] = await Promise.all([
-    client
-      .from("profiles")
-      .select("id, full_name, email, role, status")
-      .in("role", ["leader", "co_leader"])
-      .eq("status", "active")
-      .order("full_name", { ascending: true }),
-    client
-      .from("shepherd_care_profiles")
-      .select(SHEPHERD_CARE_DIRECTORY_COLUMNS.select),
-  ]);
-  if (profilesQuery.error) {
+  // Active leader/co_leader profiles with their care row embedded, in ONE round
+  // trip. This used to be two SERIAL queries (profiles, then their care rows
+  // filtered by the resulting ids) — the only entry on the /admin Home batch that
+  // cost two round trips, so it dominated that batch's critical path. A single
+  // PostgREST embedded read collapses it to one round trip AND keeps the
+  // shepherd-id scoping in the DATABASE (bounded to the active leaders by the
+  // parent filter), so — unlike a fetch-all-then-filter-in-TS — it can't drop a
+  // matching shepherd's care row to an un-ranged row cap. The embed traverses the
+  // shepherd_care_profiles.shepherd_profile_id -> profiles.id FK.
+  const { data, error } = await client
+    .from("profiles")
+    .select(
+      `id, full_name, email, role, status, shepherd_care_profiles(${SHEPHERD_CARE_DIRECTORY_COLUMNS.select})`
+    )
+    .in("role", ["leader", "co_leader"])
+    .eq("status", "active")
+    .order("full_name", { ascending: true });
+  if (error) {
     return {
       data: null,
-      error: wrapError(
-        "fetchShepherdCareDirectoryForAdmin/profiles",
-        profilesQuery.error
-      ),
-    };
-  }
-  if (careQuery.error) {
-    return {
-      data: null,
-      error: wrapError(
-        "fetchShepherdCareDirectoryForAdmin/care",
-        careQuery.error
-      ),
+      error: wrapError("fetchShepherdCareDirectoryForAdmin", error),
     };
   }
 
-  const profiles = (profilesQuery.data ?? []) as Pick<
+  // Flatten the embedded rows back into the { profiles, careRows } contract
+  // buildCareDirectoryEntries consumes. Each shepherd has 0 or 1 care row, so the
+  // embedded array carries at most one element.
+  type EmbeddedRow = Pick<
     ProfilesRow,
     "id" | "full_name" | "email" | "role" | "status"
-  >[];
-  const shepherdIds = new Set(profiles.map((p) => p.id));
-
-  // Narrow the care rows to the visible shepherds in memory — the same scoping
-  // the serial `.in(shepherdIds)` used to do on the wire — so the directory
-  // still ships only the care rows it renders and buildCareDirectoryEntries
-  // sees an identical set.
-  const careRows = (
-    (careQuery.data ?? []) as ShepherdCareDirectorySummary[]
-  ).filter((row) => shepherdIds.has(row.shepherd_profile_id));
+  > & { shepherd_care_profiles: ShepherdCareDirectorySummary[] };
+  const rows = (data ?? []) as unknown as EmbeddedRow[];
+  const profiles = rows.map((row) => ({
+    id: row.id,
+    full_name: row.full_name,
+    email: row.email,
+    role: row.role,
+    status: row.status,
+  }));
+  const careRows = rows.flatMap((row) => row.shepherd_care_profiles ?? []);
 
   return { data: { profiles, careRows }, error: null };
 }

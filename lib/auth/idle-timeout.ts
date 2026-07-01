@@ -21,16 +21,24 @@
 // This module is intentionally free of Next.js imports so the decision logic
 // stays pure and unit-testable; callers do the cookie read/write and clock read.
 
+import { PW_SETUP_COOKIE_MAX_AGE_SECONDS } from "./password-setup";
+
 export const IDLE_COOKIE = "lg_last_active";
 
 // 1 hour of inactivity. Balanced default for an admin tool: long enough not to
 // interrupt an active working session, short enough to end an abandoned one.
 export const IDLE_LIMIT_MS = 60 * 60 * 1000;
 
-// A small buffer over the idle window so the cookie itself does not expire out
-// from under a session that is right at the boundary — the timestamp comparison,
-// not the cookie's own lifetime, is the authority on whether a session is idle.
-const IDLE_COOKIE_MAX_AGE_SECONDS = IDLE_LIMIT_MS / 1000 + 60;
+// The marker must OUTLIVE the idle window, not merely exceed it: the timestamp
+// comparison is the sole authority on idleness, so the cookie has to still be
+// PRESENT (just stale) when a long-idle request finally arrives. If the cookie
+// expired first — as it would with a max-age near IDLE_LIMIT_MS — that request
+// would carry no marker, `isIdleExpired(undefined)` would fail open to "fresh",
+// and an overnight / long-abandoned session would never be signed out (the exact
+// case this feature exists for). So match the Supabase session cookie's own
+// lifetime (the same 400-day constant the password-setup marker uses) — the
+// marker then never lapses before the session it guards.
+const IDLE_COOKIE_MAX_AGE_SECONDS = PW_SETUP_COOKIE_MAX_AGE_SECONDS;
 
 type IdleCookieOptions = {
   // httpOnly: the value is a session-lifecycle timestamp with no client consumer,

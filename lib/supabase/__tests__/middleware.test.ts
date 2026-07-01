@@ -21,6 +21,10 @@ vi.mock("@/lib/supabase/config", () => ({
 import { updateSupabaseSession } from "@/lib/supabase/middleware";
 import { LANDING_HINT_COOKIE } from "@/lib/auth/landing-hint";
 import { IDLE_COOKIE, IDLE_LIMIT_MS } from "@/lib/auth/idle-timeout";
+import {
+  PW_SETUP_COOKIE,
+  PW_SETUP_COOKIE_VALUE,
+} from "@/lib/auth/password-setup";
 
 const ORIGIN = "https://app.test";
 
@@ -64,19 +68,65 @@ function expiredIdleValue(): string {
 }
 
 describe("updateSupabaseSession idle timeout", () => {
-  it("force-signs-out an idle authenticated request and redirects to /login?reason=timeout", async () => {
+  it("force-signs-out an idle authenticated GET and redirects (303) to /login?reason=timeout", async () => {
     setSession(true);
     const res = await updateSupabaseSession(
       request("/admin", { cookies: { [IDLE_COOKIE]: expiredIdleValue() } })
     );
 
     expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
-    expect(res.status).toBe(307);
+    // 303 See Other (not 307) so a timed-out POST doesn't re-POST to /login.
+    expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
     // The last-active marker is cleared so a fresh sign-in starts a new window.
     const cleared = res.cookies.get(IDLE_COOKIE);
     expect(cleared?.value).toBe("");
     expect(cleared?.maxAge).toBe(0);
+  });
+
+  it("uses a 303 (method-dropping) redirect for a timed-out POST", async () => {
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/admin", {
+        method: "POST",
+        cookies: { [IDLE_COOKIE]: expiredIdleValue() },
+      })
+    );
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
+  });
+
+  it("still enforces the timeout when ?code= is on a non-callback route (/admin?code=x)", async () => {
+    // The auth-callback waiver is scoped to callback landing paths, so a stale
+    // session can't opt out by appending ?code= to an arbitrary protected route.
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/admin?code=x", {
+        cookies: { [IDLE_COOKIE]: expiredIdleValue() },
+      })
+    );
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
+  });
+
+  it("does not sign out a password-setup-pending session (would strand the account)", async () => {
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/reset-password", {
+        cookies: {
+          [IDLE_COOKIE]: expiredIdleValue(),
+          [PW_SETUP_COOKIE]: PW_SETUP_COOKIE_VALUE,
+        },
+      })
+    );
+
+    expect(mockSignOut).not.toHaveBeenCalled();
+    // Not signed out, so no timeout redirect (the request proceeds normally).
+    expect(res.headers.get("location")).toBeNull();
   });
 
   it("slides the last-active marker forward on an active authenticated request", async () => {
