@@ -28,6 +28,7 @@ import {
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { loadAllGroupsForAdmin } from "@/lib/admin/groups-read";
 import type { ReadResult } from "@/lib/supabase/read-core";
 import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
@@ -322,7 +323,6 @@ export async function buildAdminDashboardData(
     // directory fetch and the pure model.
     const [
       groupsResult,
-      activeGroupCountResult,
       guestsResult,
       followUpsResult,
       dueFollowUpsThisWeekCountResult,
@@ -344,7 +344,6 @@ export async function buildAdminDashboardData(
       shepherdDirectoryRowsResult,
     ] = await Promise.all([
       reads.fetchAllGroups(),
-      reads.fetchActiveGroupCount(),
       reads.fetchGuests(),
       reads.fetchOpenFollowUps({ limit: 8 }),
       reads.fetchOpenFollowUpsDueCount({
@@ -380,11 +379,18 @@ export async function buildAdminDashboardData(
       // stays out of firstError below.
       reads.fetchAttentionResetBaselines(),
       // Shepherd-care directory RAW rows (active leader/co_leader profiles +
-      // their care rows). The two DB reads depend on nothing computed below, so
-      // they ride this parallel batch; the pure needs_attention stamping happens
+      // their care rows). Its two DB reads now run concurrently inside the
+      // reader (previously serial), so this whole entry is one round trip and
+      // rides the parallel batch; the pure needs_attention stamping happens
       // after, once windows / delegated set / baselines are derived. This keeps
       // the above-the-fold "Needs attention" off a second serial round trip.
-      reads.fetchShepherdCareDirectoryRowsForAdmin(),
+      // Isolated in its own read_bundle line — it was the slowest single read on
+      // this hot batch — so the serial→parallel win is measurable in prod.
+      measureReadBundle(
+        "admin_home_shepherd_directory",
+        () => reads.fetchShepherdCareDirectoryRowsForAdmin(),
+        (r) => ({ ok: r.error == null })
+      ),
     ]);
 
     const defaultsForRead = decodeMetricDefaults(
@@ -445,7 +451,6 @@ export async function buildAdminDashboardData(
 
     const firstError =
       groupsResult.error ||
-      activeGroupCountResult.error ||
       guestsResult.error ||
       followUpsResult.error ||
       dueFollowUpsThisWeekCountResult.error ||
@@ -481,7 +486,11 @@ export async function buildAdminDashboardData(
       defaults,
       selectedWeek,
       now,
-      activeGroupCount: activeGroupCountResult.data ?? null,
+      // Derived in-model from the active subset of the groups array already
+      // fetched above (the model's existing `activeGroupCount ?? activeRows.length`
+      // fallback), so the separate exact-count read is redundant and dropped
+      // from this hot batch — one fewer PostgREST request, same number.
+      activeGroupCount: null,
       healthBaselines,
     });
 

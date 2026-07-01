@@ -305,12 +305,26 @@ export function computeNeedsAttention(
 export async function fetchShepherdCareDirectoryRowsForAdmin(
   client: ReadClient
 ): Promise<ReadResult<ShepherdCareDirectoryRaw>> {
-  const profilesQuery = await client
-    .from("profiles")
-    .select("id, full_name, email, role, status")
-    .in("role", ["leader", "co_leader"])
-    .eq("status", "active")
-    .order("full_name", { ascending: true });
+  // The active leader/co_leader profiles and their care rows depend on nothing
+  // computed here, so fetch them CONCURRENTLY rather than in series. The care
+  // read used to wait on the profiles read solely to filter by the resulting
+  // shepherd ids, which made this directory the only read on the /admin Home
+  // batch that costs two serial round trips — so it dominated that batch's
+  // critical path. shepherd_care_profiles is 1:1 with shepherds and already
+  // RLS-scoped to admin-readable rows, so fetching the full set in parallel and
+  // narrowing to the visible shepherd ids in memory below returns the same
+  // directory at one round trip instead of two.
+  const [profilesQuery, careQuery] = await Promise.all([
+    client
+      .from("profiles")
+      .select("id, full_name, email, role, status")
+      .in("role", ["leader", "co_leader"])
+      .eq("status", "active")
+      .order("full_name", { ascending: true }),
+    client
+      .from("shepherd_care_profiles")
+      .select(SHEPHERD_CARE_DIRECTORY_COLUMNS.select),
+  ]);
   if (profilesQuery.error) {
     return {
       data: null,
@@ -320,34 +334,29 @@ export async function fetchShepherdCareDirectoryRowsForAdmin(
       ),
     };
   }
+  if (careQuery.error) {
+    return {
+      data: null,
+      error: wrapError(
+        "fetchShepherdCareDirectoryForAdmin/care",
+        careQuery.error
+      ),
+    };
+  }
 
   const profiles = (profilesQuery.data ?? []) as Pick<
     ProfilesRow,
     "id" | "full_name" | "email" | "role" | "status"
   >[];
-  const shepherdIds = profiles.map((p) => p.id);
+  const shepherdIds = new Set(profiles.map((p) => p.id));
 
-  // Filter care rows down to the visible shepherd ids so the response
-  // doesn't ship every care row in the database to the directory page.
-  // Skipping the fetch entirely when there are no shepherd ids keeps
-  // the PostgREST `.in("col", [])` edge case off the wire.
-  let careRows: ShepherdCareDirectorySummary[] = [];
-  if (shepherdIds.length > 0) {
-    const careQuery = await client
-      .from("shepherd_care_profiles")
-      .select(SHEPHERD_CARE_DIRECTORY_COLUMNS.select)
-      .in("shepherd_profile_id", shepherdIds);
-    if (careQuery.error) {
-      return {
-        data: null,
-        error: wrapError(
-          "fetchShepherdCareDirectoryForAdmin/care",
-          careQuery.error
-        ),
-      };
-    }
-    careRows = (careQuery.data ?? []) as ShepherdCareDirectorySummary[];
-  }
+  // Narrow the care rows to the visible shepherds in memory — the same scoping
+  // the serial `.in(shepherdIds)` used to do on the wire — so the directory
+  // still ships only the care rows it renders and buildCareDirectoryEntries
+  // sees an identical set.
+  const careRows = (
+    (careQuery.data ?? []) as ShepherdCareDirectorySummary[]
+  ).filter((row) => shepherdIds.has(row.shepherd_profile_id));
 
   return { data: { profiles, careRows }, error: null };
 }
