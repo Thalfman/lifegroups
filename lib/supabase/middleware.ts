@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   PW_SETUP_COOKIE,
   PW_SETUP_COOKIE_VALUE,
+  passwordSetupCookieClearOptions,
   passwordSetupCookieSetOptions,
   shouldRedirectToPasswordSetup,
 } from "@/lib/auth/password-setup";
@@ -11,6 +12,12 @@ import {
   isValidLandingHint,
   landingHintCookieClearOptions,
 } from "@/lib/auth/landing-hint";
+import {
+  IDLE_COOKIE,
+  idleCookieClearOptions,
+  idleCookieSetOptions,
+  isIdleExpired,
+} from "@/lib/auth/idle-timeout";
 import { getSupabaseEnvSafe } from "./config";
 
 // Copy every Set-Cookie the working response accumulated (session cookies
@@ -56,6 +63,52 @@ export async function updateSupabaseSession(
   // revoked/deleted Auth user is rejected on the next request, not at token
   // expiry.
   const { data: claimsData } = await supabase.auth.getClaims();
+
+  // Idle (inactivity) sign-out. A "last active" cookie holds a millisecond
+  // timestamp; every authenticated request slides it forward, and a request that
+  // arrives more than IDLE_LIMIT_MS after the last bump is treated as resuming an
+  // abandoned session and force-signed-out. A purely idle browser makes no
+  // requests, so its cookie is never bumped and the next request it does make
+  // trips the timeout. Runs before the password-setup gate so an idle setup
+  // session ends too, and is skipped when auth-callback params are present
+  // (code / token_hash) so a just-verified email-link session — whose cookie may
+  // not exist yet — is never bounced mid-flow. Session lifecycle only: no DB
+  // write, no audit event.
+  const isAuthCallback =
+    request.nextUrl.searchParams.has("code") ||
+    request.nextUrl.searchParams.has("token_hash");
+  if (claimsData?.claims && !isAuthCallback) {
+    const nowMs = Date.now();
+    const lastActive = request.cookies.get(IDLE_COOKIE)?.value;
+    if (isIdleExpired(lastActive, nowMs)) {
+      // `local` scope mirrors logoutAction: end only this device's session. This
+      // clears the Supabase session cookies through the client's setAll above
+      // (rebuilding `response`), so getCurrentSession() resolves anonymous next.
+      await supabase.auth.signOut({ scope: "local" });
+      response.cookies.set(IDLE_COOKIE, "", idleCookieClearOptions());
+      response.cookies.set(
+        PW_SETUP_COOKIE,
+        "",
+        passwordSetupCookieClearOptions()
+      );
+      response.cookies.set(
+        LANDING_HINT_COOKIE,
+        "",
+        landingHintCookieClearOptions()
+      );
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.search = "";
+      loginUrl.searchParams.set("reason", "timeout");
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      // Carry the cleared session/marker cookies onto the redirect so none of
+      // the Set-Cookie deletions are dropped.
+      carryCookies(response, redirectResponse);
+      return redirectResponse;
+    }
+    // Active request: slide the window forward.
+    response.cookies.set(IDLE_COOKIE, String(nowMs), idleCookieSetOptions());
+  }
 
   // Pin a "password setup pending" session to the set-password screen. A session
   // created by verifying an invite / password-reset email link (app/auth/confirm)

@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 // Control the Supabase client getClaims() returns and pretend env is configured.
-const { mockCreateServerClient, mockGetClaims } = vi.hoisted(() => ({
-  mockCreateServerClient: vi.fn(),
-  mockGetClaims: vi.fn(),
-}));
+const { mockCreateServerClient, mockGetClaims, mockSignOut } = vi.hoisted(
+  () => ({
+    mockCreateServerClient: vi.fn(),
+    mockGetClaims: vi.fn(),
+    mockSignOut: vi.fn(),
+  })
+);
 
 vi.mock("@supabase/ssr", () => ({
   createServerClient: mockCreateServerClient,
@@ -17,6 +20,7 @@ vi.mock("@/lib/supabase/config", () => ({
 
 import { updateSupabaseSession } from "@/lib/supabase/middleware";
 import { LANDING_HINT_COOKIE } from "@/lib/auth/landing-hint";
+import { IDLE_COOKIE, IDLE_LIMIT_MS } from "@/lib/auth/idle-timeout";
 
 const ORIGIN = "https://app.test";
 
@@ -27,7 +31,7 @@ function setSession(authed: boolean) {
     data: authed ? { claims: { sub: "user-1" } } : null,
   });
   mockCreateServerClient.mockReturnValue({
-    auth: { getClaims: mockGetClaims },
+    auth: { getClaims: mockGetClaims, signOut: mockSignOut },
   });
 }
 
@@ -50,6 +54,79 @@ function request(
 beforeEach(() => {
   mockCreateServerClient.mockReset();
   mockGetClaims.mockReset();
+  mockSignOut.mockReset();
+  mockSignOut.mockResolvedValue({ error: null });
+});
+
+// A last-active timestamp older than the idle window (definitely expired).
+function expiredIdleValue(): string {
+  return String(Date.now() - IDLE_LIMIT_MS - 1000);
+}
+
+describe("updateSupabaseSession idle timeout", () => {
+  it("force-signs-out an idle authenticated request and redirects to /login?reason=timeout", async () => {
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/admin", { cookies: { [IDLE_COOKIE]: expiredIdleValue() } })
+    );
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
+    // The last-active marker is cleared so a fresh sign-in starts a new window.
+    const cleared = res.cookies.get(IDLE_COOKIE);
+    expect(cleared?.value).toBe("");
+    expect(cleared?.maxAge).toBe(0);
+  });
+
+  it("slides the last-active marker forward on an active authenticated request", async () => {
+    setSession(true);
+    // A recent (non-expired) marker: no sign-out, just a bump.
+    const recent = String(Date.now() - 1000);
+    const res = await updateSupabaseSession(
+      request("/admin", { cookies: { [IDLE_COOKIE]: recent } })
+    );
+
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(res.headers.get("location")).toBeNull();
+    const bumped = res.cookies.get(IDLE_COOKIE);
+    expect(bumped?.value).toBeDefined();
+    expect(Number.isFinite(Number(bumped?.value))).toBe(true);
+    expect(Number(bumped?.value)).toBeGreaterThanOrEqual(Number(recent));
+  });
+
+  it("starts a window on a first authenticated request with no marker", async () => {
+    setSession(true);
+    const res = await updateSupabaseSession(request("/admin"));
+
+    expect(mockSignOut).not.toHaveBeenCalled();
+    const set = res.cookies.get(IDLE_COOKIE);
+    expect(Number.isFinite(Number(set?.value))).toBe(true);
+  });
+
+  it("never signs out or sets a marker for an anonymous request", async () => {
+    setSession(false);
+    const res = await updateSupabaseSession(
+      request("/admin", { cookies: { [IDLE_COOKIE]: expiredIdleValue() } })
+    );
+
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(res.cookies.get(IDLE_COOKIE)).toBeUndefined();
+  });
+
+  it("does not enforce the timeout on an auth callback (code / token_hash)", async () => {
+    for (const qs of ["code=abc", "token_hash=xyz&type=recovery"]) {
+      setSession(true);
+      const res = await updateSupabaseSession(
+        request(`/reset-password?${qs}`, {
+          cookies: { [IDLE_COOKIE]: expiredIdleValue() },
+        })
+      );
+      expect(mockSignOut).not.toHaveBeenCalled();
+      // No timeout redirect: the auth-callback request is left to its own flow.
+      expect(res.headers.get("location")).toBeNull();
+    }
+  });
 });
 
 describe("updateSupabaseSession landing-hint fast path", () => {
