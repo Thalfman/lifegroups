@@ -2,8 +2,10 @@ import "server-only";
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
-import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
-import { fetchGroupRubricGradeRow } from "@/lib/supabase/group-rubric-grade-reads";
+import {
+  fetchGroupRubricGradeRow,
+  fetchHealthRubric,
+} from "@/lib/supabase/rubric-grade-reads";
 import { wrapError, type ReadResult } from "@/lib/supabase/read-core";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import {
@@ -14,7 +16,7 @@ import {
 // Model side for the Group-Health Grade by rubric (#377 / ADR 0018, Pivot slice
 // 4). Reads the configured group rubric + the persisted grade row (the latter
 // through the column-allowlisted reads seam,
-// lib/supabase/group-rubric-grade-reads) and recomputes the effective letter
+// lib/supabase/rubric-grade-reads) and recomputes the effective letter
 // live via the pure facade, so the surface and the Multiplication pillar see one
 // effective letter. Admin-only data, behind the admin layout guard and the
 // table's admin-only RLS.

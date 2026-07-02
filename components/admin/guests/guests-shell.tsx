@@ -9,7 +9,7 @@ import type { GuestPipelineStage } from "@/types/enums";
 import {
   GUEST_PIPELINE_STAGES,
   type GuestDirectoryEntry,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/guest-reads";
 import { GuestCreateForm } from "./guest-create-form";
 import { GuestCard } from "./guest-card";
 import {

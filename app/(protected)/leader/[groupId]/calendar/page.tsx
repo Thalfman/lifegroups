@@ -15,10 +15,8 @@ import { requireLeader } from "@/lib/auth/session";
 import { toShellUser } from "@/lib/auth/shell-user";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  fetchGroupCalendarEvents,
-  fetchLeaderGroupsByIds,
-} from "@/lib/supabase/read-models";
+import { fetchLeaderGroupsByIds } from "@/lib/supabase/group-reads";
+import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
 import {
   generateMonthOccurrences,
   mergeOverrides,
@@ -28,7 +26,7 @@ import {
   toSavedOverrides,
 } from "@/lib/calendar/occurrences";
 import { churchMonthIso, churchTodayIso } from "@/lib/shared/church-time";
-import type { LeaderSafeGroupRow } from "@/lib/supabase/read-models";
+import type { LeaderSafeGroupRow } from "@/lib/supabase/group-reads";
 import {
   leaderArchiveCalendarEvent,
   leaderCreateCalendarEvent,

@@ -1,9 +1,7 @@
 import { measureReadBundle } from "@/lib/observability/read-timing";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  fetchGuests,
-  fetchOverviewActivityCounts,
-} from "@/lib/supabase/read-models";
+import { fetchGuests } from "@/lib/supabase/guest-reads";
+import { fetchOverviewActivityCounts } from "@/lib/supabase/overview-reads";
 import { fetchActivityResetBaseline } from "@/lib/supabase/maintenance-reads";
 import { loadAllGroupsForAdmin } from "@/lib/admin/groups-read";
 import {

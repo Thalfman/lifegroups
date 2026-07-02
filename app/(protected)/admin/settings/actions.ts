@@ -21,6 +21,7 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 import { updateTag } from "next/cache";
 import {
   METRIC_DEFAULTS_CACHE_TAG,
@@ -177,6 +178,23 @@ export async function adminUpdateMetricDefaults(
 
 // ----- adminUpsertGroupMetricSettings -------------------------------------
 
+// toRpcArgs key list: the upsert RPC args are exactly these payload fields,
+// p_-prefixed. check_in_due_offset_hours_override is NOT a form field (see
+// GROUP_METRIC_FIELDS above) but stays an RPC arg: always null since #472 (the
+// validator normalizes the absent field), and the frozen full-state RPC still
+// accepts it, so passing null keeps stored overrides clearable on every save.
+const GROUP_METRIC_ARG_KEYS = [
+  "group_id",
+  "capacity_override",
+  "capacity_warning_threshold_pct_override",
+  "healthy_attendance_pct_override",
+  "manual_health_status_override",
+  "exclude_from_capacity_metrics",
+  "admin_metric_notes",
+  "check_in_due_offset_hours_override",
+  "allow_over_capacity",
+] as const;
+
 const UPSERT_GROUP_METRIC_SPEC: AdminWriteActionSpec<
   GroupMetricSettingsPayload,
   { id: string }
@@ -186,22 +204,11 @@ const UPSERT_GROUP_METRIC_SPEC: AdminWriteActionSpec<
   validate: validateGroupMetricSettingsPayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_upsert_group_metric_settings", {
-      p_group_id: value.group_id,
-      p_capacity_override: value.capacity_override,
-      p_capacity_warning_threshold_pct_override:
-        value.capacity_warning_threshold_pct_override,
-      p_healthy_attendance_pct_override: value.healthy_attendance_pct_override,
-      p_manual_health_status_override: value.manual_health_status_override,
-      p_exclude_from_capacity_metrics: value.exclude_from_capacity_metrics,
-      p_admin_metric_notes: value.admin_metric_notes,
-      // Always null since #472 (the form no longer submits the key); the
-      // frozen full-state RPC still accepts it, so passing null keeps stored
-      // overrides clearable on every save.
-      p_check_in_due_offset_hours_override:
-        value.check_in_due_offset_hours_override,
-      p_allow_over_capacity: value.allow_over_capacity,
-    }),
+    adminRpc(
+      client,
+      "admin_upsert_group_metric_settings",
+      toRpcArgs(value, GROUP_METRIC_ARG_KEYS)
+    ),
   revalidate: () => SETTINGS_REVALIDATE_PATHS,
   noDataError: "The override was not saved. Please try again.",
 };

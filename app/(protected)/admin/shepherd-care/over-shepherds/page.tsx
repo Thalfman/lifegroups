@@ -14,7 +14,7 @@ import {
   fetchOverShepherdsForAdmin,
   type ActiveShepherdCoverageAssignmentSummary,
   type OverShepherdListRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 
 export const dynamic = "force-dynamic";
 

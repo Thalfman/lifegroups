@@ -3,20 +3,24 @@ import type {
   PeoplePipelineData,
 } from "@/components/admin/people-management-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
-  fetchActiveMemberships,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchShepherdCareDirectoryForAdmin,
+} from "@/lib/supabase/shepherd-care-reads";
+import {
   fetchAllGroupLeaders,
   fetchAllGroups,
-  fetchAllMembers,
   fetchGroupRefs,
-  fetchLeaderPipelineForAdmin,
+} from "@/lib/supabase/group-reads";
+import {
+  fetchActiveMemberships,
+  fetchAllMembers,
   fetchProfilesForAdmin,
-  fetchShepherdCareDirectoryForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/membership-reads";
+import { fetchLeaderPipelineForAdmin } from "@/lib/supabase/multiplication-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
 import {
@@ -32,41 +36,27 @@ import { buildLeaderPipelineData } from "@/components/admin/leader-pipeline/lead
 // opened its own client; they now share a single adapter and are each testable
 // through an in-memory adapter.
 
-export type PeopleReads = {
-  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
-  fetchAllMembers: OmitClient<typeof fetchAllMembers>;
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
+const PEOPLE_FETCHERS = {
+  fetchProfilesForAdmin,
+  fetchAllMembers,
+  fetchAllGroups,
   // Lean group projection for the shared leader-pipeline builder (which only
-  // needs id/name/lifecycle); the directory above keeps the full fetchAllGroups.
-  fetchGroupRefs: OmitClient<typeof fetchGroupRefs>;
-  fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
-  fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
-  fetchLeaderPipeline: OmitClient<typeof fetchLeaderPipelineForAdmin>;
-  fetchActiveCoverageAssignments: OmitClient<
-    typeof fetchActiveShepherdCoverageAssignmentsForAdmin
-  >;
-  fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
-  fetchAttentionBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
-  fetchShepherdCareDirectory: OmitClient<
-    typeof fetchShepherdCareDirectoryForAdmin
-  >;
+  // needs id/name/lifecycle); the directory keeps the full fetchAllGroups.
+  fetchGroupRefs,
+  fetchAllGroupLeaders,
+  fetchActiveMemberships,
+  fetchLeaderPipeline: fetchLeaderPipelineForAdmin,
+  fetchActiveCoverageAssignments:
+    fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchMetricDefaults: fetchMetricDefaultsCached,
+  fetchAttentionBaselines: fetchAttentionResetBaselines,
+  fetchShepherdCareDirectory: fetchShepherdCareDirectoryForAdmin,
 };
 
+export type PeopleReads = BoundReads<typeof PEOPLE_FETCHERS>;
+
 export function supabasePeopleReads(client: AppSupabaseClient): PeopleReads {
-  return bindReads(client, {
-    fetchProfilesForAdmin,
-    fetchAllMembers,
-    fetchAllGroups,
-    fetchGroupRefs,
-    fetchAllGroupLeaders,
-    fetchActiveMemberships,
-    fetchLeaderPipeline: fetchLeaderPipelineForAdmin,
-    fetchActiveCoverageAssignments:
-      fetchActiveShepherdCoverageAssignmentsForAdmin,
-    fetchMetricDefaults: fetchMetricDefaultsCached,
-    fetchAttentionBaselines: fetchAttentionResetBaselines,
-    fetchShepherdCareDirectory: fetchShepherdCareDirectoryForAdmin,
-  });
+  return bindReads(client, PEOPLE_FETCHERS, "people");
 }
 
 const EMPTY_DIRECTORY = (

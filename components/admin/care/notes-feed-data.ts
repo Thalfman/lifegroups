@@ -1,4 +1,4 @@
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchAllReadableCareNotes,
@@ -41,24 +41,20 @@ export type NotesFeedData = {
   namesAvailable: boolean;
 };
 
-export type NotesFeedReads = {
-  fetchCareNotes: OmitClient<typeof fetchAllReadableCareNotes>;
-  fetchPrayerRequests: OmitClient<typeof fetchAllReadablePrayerRequests>;
-  fetchBroadNotes: OmitClient<typeof fetchBroadNoteInteractionsForAdmin>;
-  fetchSealedCounts: OmitClient<typeof fetchSealedNoteCounts>;
-  fetchProfileNames: OmitClient<typeof fetchProfileNamesByIds>;
+const NOTES_FEED_FETCHERS = {
+  fetchCareNotes: fetchAllReadableCareNotes,
+  fetchPrayerRequests: fetchAllReadablePrayerRequests,
+  fetchBroadNotes: fetchBroadNoteInteractionsForAdmin,
+  fetchSealedCounts: fetchSealedNoteCounts,
+  fetchProfileNames: fetchProfileNamesByIds,
 };
+
+export type NotesFeedReads = BoundReads<typeof NOTES_FEED_FETCHERS>;
 
 export function supabaseNotesFeedReads(
   client: AppSupabaseClient
 ): NotesFeedReads {
-  return bindReads(client, {
-    fetchCareNotes: fetchAllReadableCareNotes,
-    fetchPrayerRequests: fetchAllReadablePrayerRequests,
-    fetchBroadNotes: fetchBroadNoteInteractionsForAdmin,
-    fetchSealedCounts: fetchSealedNoteCounts,
-    fetchProfileNames: fetchProfileNamesByIds,
-  });
+  return bindReads(client, NOTES_FEED_FETCHERS, "notes_feed");
 }
 
 export const EMPTY_NOTES_FEED: NotesFeedData = {

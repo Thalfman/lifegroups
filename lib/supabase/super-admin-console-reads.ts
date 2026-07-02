@@ -1,13 +1,15 @@
 // Phase SAC.4 (#164): Super Admin Console coverage read models.
 //
-// Kept in a dedicated module (rather than appended to the large read-models.ts)
+// Kept in a dedicated module (rather than appended to a broader read module)
 // so the console's net-new reads are easy to find. These read the same
 // shepherd_coverage_assignments / over_shepherds / profiles tables the
 // over-shepherd surfaces already read; the console only adds a list view +
 // the two pools the assign form draws from. No writes here.
 
 import type { AppSupabaseClient } from "./types";
+import type { UsageEventsRow } from "@/types/database";
 import { fetchProfileNamesByIds } from "./care-note-feed-reads";
+import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 
 export type SuperAdminConsoleCoverageAssignment = {
   id: string;
@@ -107,4 +109,26 @@ export async function fetchCurrentCoverageAssignments(
       overName.get(r.over_shepherd_id) ?? "Unknown over-shepherd",
     assigned_at: r.assigned_at,
   }));
+}
+
+// Phase USAGE.1: read the recent usage_events for the Super Admin Console's
+// Usage panel. usage_events is Super-Admin-only by RLS, so this read fails
+// closed for every other role; the console only renders it for super_admin.
+export async function fetchRecentUsageEvents(
+  client: ReadClient,
+  options: { limit?: number } = {}
+): Promise<ReadResult<UsageEventsRow[]>> {
+  const limit = options.limit ?? 200;
+  // Project only the columns the panel needs. usage_events holds user activity
+  // telemetry, so an explicit column list keeps any later schema addition from
+  // silently widening the console's read surface (vs. select("*")) — the same
+  // discipline fetchPlatformConfig applies to the Super-Admin config store.
+  const { data, error } = await client
+    .from("usage_events")
+    .select("id, actor_profile_id, event_type, area, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error)
+    return { data: null, error: wrapError("fetchRecentUsageEvents", error) };
+  return { data: data ?? [], error: null };
 }

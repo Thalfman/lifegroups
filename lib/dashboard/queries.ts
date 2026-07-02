@@ -1,32 +1,47 @@
 import {
-  fetchActiveGroupCount,
-  fetchActiveMemberships,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
-  fetchAllGroupLeaders,
-  fetchAllGroupMetricSettings,
-  fetchAllGroups,
-  fetchAttendanceRecordsForSessions,
-  fetchAttendanceSessions,
-  fetchGroupCalendarEvents,
-  fetchGroupHealthAssessmentRatings,
-  fetchGroupsByIds,
-  fetchGuests,
-  fetchLatestHealthUpdates,
-  fetchLaunchPlanningAssumptions,
-  fetchLeaderPipelineForAdmin,
-  fetchMembersByIds,
-  fetchMetricDefaults,
-  fetchMultiplicationCandidatesForAdmin,
-  fetchNewGuestsForGroupSince,
-  fetchOpenFollowUps,
-  fetchOpenFollowUpsDueCount,
   fetchOverShepherdsForAdmin,
-  fetchProfilesForAdmin,
   fetchShepherdCareDirectoryRowsForAdmin,
   buildCareDirectoryEntries,
   type ShepherdCareDirectoryEntry,
-  type LeaderFollowUpRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
+import { type LeaderFollowUpRow } from "@/lib/supabase/follow-up-reads";
+import {
+  fetchActiveGroupCount,
+  fetchAllGroupLeaders,
+  fetchAllGroups,
+  fetchGroupsByIds,
+} from "@/lib/supabase/group-reads";
+import {
+  fetchActiveMemberships,
+  fetchMembersByIds,
+  fetchProfilesForAdmin,
+} from "@/lib/supabase/membership-reads";
+import {
+  fetchGuests,
+  fetchNewGuestsForGroupSince,
+} from "@/lib/supabase/guest-reads";
+import {
+  fetchAttendanceRecordsForSessions,
+  fetchAttendanceSessions,
+} from "@/lib/supabase/attendance-reads";
+import {
+  fetchGroupHealthAssessmentRatings,
+  fetchLatestHealthUpdates,
+} from "@/lib/supabase/health-reads";
+import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
+import {
+  fetchOpenFollowUps,
+  fetchOpenFollowUpsDueCount,
+} from "@/lib/supabase/overview-reads";
+import {
+  fetchLeaderPipelineForAdmin,
+  fetchMultiplicationCandidatesForAdmin,
+} from "@/lib/supabase/multiplication-reads";
+import {
+  fetchAllGroupMetricSettings,
+  fetchLaunchPlanningAssumptions,
+} from "@/lib/supabase/settings-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { measureReadBundle } from "@/lib/observability/read-timing";
 import { loadAllGroupsForAdmin } from "@/lib/admin/groups-read";
@@ -37,7 +52,7 @@ import {
   type AttentionBaselines,
 } from "@/lib/admin/attention-reset";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {
   AdminDashboardData,
@@ -195,47 +210,38 @@ function buildMultiplicationSummary(
   };
 }
 
-// The reads the admin dashboard orchestration depends on, as one interface —
-// the seam between the orchestration (the error-gate, the graceful-degrade
-// branches, the pure-model wiring) and Supabase. The orchestration is a
-// function of this interface, so it can be exercised through an in-memory
-// adapter in a unit test instead of a live client. Each method mirrors a
-// read-model fetcher with the `client` argument already applied. The
-// `OmitClient` / `bindReads` scaffold now lives in `lib/supabase/reads-seam.ts`
-// so every surface shares it (ADR 0015).
-export type AdminDashboardReads = {
-  fetchMetricDefaults: OmitClient<typeof fetchMetricDefaults>;
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
-  fetchActiveGroupCount: OmitClient<typeof fetchActiveGroupCount>;
-  fetchGuests: OmitClient<typeof fetchGuests>;
-  fetchOpenFollowUps: OmitClient<typeof fetchOpenFollowUps>;
-  fetchOpenFollowUpsDueCount: OmitClient<typeof fetchOpenFollowUpsDueCount>;
-  fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
-  fetchLatestHealthUpdates: OmitClient<typeof fetchLatestHealthUpdates>;
-  fetchGroupHealthAssessmentRatings: OmitClient<
-    typeof fetchGroupHealthAssessmentRatings
-  >;
-  fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
-  fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
-  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
-  fetchAllGroupMetricSettings: OmitClient<typeof fetchAllGroupMetricSettings>;
-  fetchGroupCalendarEvents: OmitClient<typeof fetchGroupCalendarEvents>;
-  fetchOverShepherdsForAdmin: OmitClient<typeof fetchOverShepherdsForAdmin>;
-  fetchActiveShepherdCoverageAssignmentsForAdmin: OmitClient<
-    typeof fetchActiveShepherdCoverageAssignmentsForAdmin
-  >;
-  fetchLaunchPlanningAssumptions: OmitClient<
-    typeof fetchLaunchPlanningAssumptions
-  >;
-  fetchShepherdCareDirectoryRowsForAdmin: OmitClient<
-    typeof fetchShepherdCareDirectoryRowsForAdmin
-  >;
-  fetchLeaderPipelineForAdmin: OmitClient<typeof fetchLeaderPipelineForAdmin>;
-  fetchMultiplicationCandidatesForAdmin: OmitClient<
-    typeof fetchMultiplicationCandidatesForAdmin
-  >;
-  fetchAttentionResetBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
+// The reads the admin dashboard orchestration depends on, declared once as a
+// fetcher map — the seam between the orchestration (the error-gate, the
+// graceful-degrade branches, the pure-model wiring) and Supabase. The
+// orchestration is a function of the derived interface, so it can be exercised
+// through an in-memory adapter in a unit test instead of a live client. The
+// `BoundReads` / `bindReads` scaffold lives in `lib/supabase/reads-seam.ts` so
+// every surface shares it (ADR 0015).
+const ADMIN_DASHBOARD_FETCHERS = {
+  fetchMetricDefaults: fetchMetricDefaultsCached,
+  fetchAllGroups,
+  fetchActiveGroupCount,
+  fetchGuests,
+  fetchOpenFollowUps,
+  fetchOpenFollowUpsDueCount,
+  fetchActiveMemberships,
+  fetchLatestHealthUpdates,
+  fetchGroupHealthAssessmentRatings,
+  fetchAttendanceSessions,
+  fetchAllGroupLeaders,
+  fetchProfilesForAdmin,
+  fetchAllGroupMetricSettings,
+  fetchGroupCalendarEvents,
+  fetchOverShepherdsForAdmin,
+  fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchLaunchPlanningAssumptions,
+  fetchShepherdCareDirectoryRowsForAdmin,
+  fetchLeaderPipelineForAdmin,
+  fetchMultiplicationCandidatesForAdmin,
+  fetchAttentionResetBaselines,
 };
+
+export type AdminDashboardReads = BoundReads<typeof ADMIN_DASHBOARD_FETCHERS>;
 
 // The production adapter at the reads seam: binds the live Supabase client to
 // every read-model fetcher via the shared `bindReads` scaffold (ADR 0015).
@@ -243,28 +249,7 @@ export function supabaseAdminDashboardReads(
   client: AppSupabaseClient
 ): AdminDashboardReads {
   return {
-    ...bindReads(client, {
-      fetchMetricDefaults: fetchMetricDefaultsCached,
-      fetchActiveGroupCount,
-      fetchGuests,
-      fetchOpenFollowUps,
-      fetchOpenFollowUpsDueCount,
-      fetchActiveMemberships,
-      fetchLatestHealthUpdates,
-      fetchGroupHealthAssessmentRatings,
-      fetchAttendanceSessions,
-      fetchAllGroupLeaders,
-      fetchProfilesForAdmin,
-      fetchAllGroupMetricSettings,
-      fetchGroupCalendarEvents,
-      fetchOverShepherdsForAdmin,
-      fetchActiveShepherdCoverageAssignmentsForAdmin,
-      fetchLaunchPlanningAssumptions,
-      fetchShepherdCareDirectoryRowsForAdmin,
-      fetchLeaderPipelineForAdmin,
-      fetchMultiplicationCandidatesForAdmin,
-      fetchAttentionResetBaselines,
-    }),
+    ...bindReads(client, ADMIN_DASHBOARD_FETCHERS, "admin_dashboard"),
     // Share the per-request cached groups read with Boundary B's Multiply grid
     // (lib/admin/groups-read.ts) so a first /admin launch reads the full groups
     // table once across both Suspense boundaries. The seam type is unchanged

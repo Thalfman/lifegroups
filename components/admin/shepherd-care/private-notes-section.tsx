@@ -25,7 +25,7 @@ import { isPrfPasskeySupported } from "@/lib/crypto/private-notes";
 import type {
   PrivateNoteCiphertext,
   PrivateNoteKeySlot,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 
 type Props = {
   careProfileId: string;

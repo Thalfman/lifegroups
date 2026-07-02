@@ -13,6 +13,7 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 
 const REVALIDATE_PATHS = [
   "/admin/guests",
@@ -20,6 +21,9 @@ const REVALIDATE_PATHS = [
   "/admin/follow-ups",
 ] as const;
 
+// Both form-key lists double as toRpcArgs key lists: the RPC args are exactly
+// these fields, p_-prefixed (checked against the Args types at the adminRpc
+// call sites).
 const CREATE_GUEST_KEYS = [
   "full_name",
   "email",
@@ -57,17 +61,7 @@ const CREATE_GUEST_SPEC: AdminWriteActionSpec<
     pipeline_stage: value.pipeline_stage,
   }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_guest", {
-      p_full_name: value.full_name,
-      p_email: value.email,
-      p_phone: value.phone,
-      p_first_attended_group_id: value.first_attended_group_id,
-      p_first_attended_date: value.first_attended_date,
-      p_pipeline_stage: value.pipeline_stage,
-      p_assigned_group_id: value.assigned_group_id,
-      p_follow_up_owner_id: value.follow_up_owner_id,
-      p_notes: value.notes,
-    }),
+    adminRpc(client, "admin_create_guest", toRpcArgs(value, CREATE_GUEST_KEYS)),
   revalidate: () => REVALIDATE_PATHS,
   noDataError: "The guest wasn't saved. Please try again.",
 };
@@ -91,16 +85,11 @@ const UPDATE_GUEST_SPEC: AdminWriteActionSpec<
   fields: (_actor, value) => ({ target_guest_id: value.guest_id }),
   okFields: (value) => ({ pipeline_stage: value.pipeline_stage }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_update_guest_pipeline", {
-      p_guest_id: value.guest_id,
-      p_pipeline_stage: value.pipeline_stage,
-      p_set_assigned_group_id: value.set_assigned_group_id,
-      p_assigned_group_id: value.assigned_group_id,
-      p_set_follow_up_owner_id: value.set_follow_up_owner_id,
-      p_follow_up_owner_id: value.follow_up_owner_id,
-      p_set_notes: value.set_notes,
-      p_notes: value.notes,
-    }),
+    adminRpc(
+      client,
+      "admin_update_guest_pipeline",
+      toRpcArgs(value, UPDATE_GUEST_KEYS)
+    ),
   revalidate: () => REVALIDATE_PATHS,
   noDataError: "The guest wasn't updated. Please try again.",
 };

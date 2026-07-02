@@ -9,15 +9,17 @@ import { toShellUser } from "@/lib/auth/shell-user";
 import { readFrozenSurfaceFlagForLeader } from "@/lib/auth/leader-surface-flag";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { fetchGroupsByIds } from "@/lib/supabase/group-reads";
 import {
   fetchActiveMemberships,
+  fetchMembersByIds,
+} from "@/lib/supabase/membership-reads";
+import {
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
-  fetchGroupCalendarEvents,
-  fetchGroupsByIds,
-  fetchLatestHealthUpdates,
-  fetchMembersByIds,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/attendance-reads";
+import { fetchLatestHealthUpdates } from "@/lib/supabase/health-reads";
+import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { isoWeekStart } from "@/lib/shared/church-time";
 import {

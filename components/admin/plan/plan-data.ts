@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
@@ -55,22 +55,19 @@ export const EMPTY_PLAN_DATA: PlanData = {
 
 // The reads this surface assembles, as one interface (ADR 0015). `loadPlanData`
 // binds the live client; a test binds an in-memory adapter.
-export type PlanReads = {
-  fetchProspects: OmitClient<typeof fetchProspects>;
-  fetchPlanGroupOptions: OmitClient<typeof fetchPlanGroupOptions>;
-  fetchDueFollowUps: OmitClient<typeof fetchDueFollowUps>;
-  fetchGroupTypes: OmitClient<typeof fetchGroupTypesCached>;
+const PLAN_FETCHERS = {
+  fetchProspects,
+  fetchPlanGroupOptions,
+  fetchDueFollowUps,
+  fetchGroupTypes: fetchGroupTypesCached,
 };
+
+export type PlanReads = BoundReads<typeof PLAN_FETCHERS>;
 
 // Production adapter: binds the live Supabase client to every read this surface
 // needs.
 export function supabasePlanReads(client: AppSupabaseClient): PlanReads {
-  return bindReads(client, {
-    fetchProspects,
-    fetchPlanGroupOptions,
-    fetchDueFollowUps,
-    fetchGroupTypes: fetchGroupTypesCached,
-  });
+  return bindReads(client, PLAN_FETCHERS, "plan");
 }
 
 // Pure assembly: gather the four reads through the batch combinator, then

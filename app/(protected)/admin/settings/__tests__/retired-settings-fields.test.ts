@@ -42,8 +42,13 @@ describe("settings actions — retired keys are not read from FormData", () => {
 
   it("still passes the (always-null) offset to the frozen full-state RPC", () => {
     // The RPC signature is frozen; passing null is the clear path for any
-    // stored per-group override.
-    expect(ACTIONS).toContain("p_check_in_due_offset_hours_override:");
+    // stored per-group override. The arg travels through the toRpcArgs key
+    // list (p_-prefixed at the boundary), so pin its presence there.
+    const argKeys = ACTIONS.match(
+      /const GROUP_METRIC_ARG_KEYS = \[[\s\S]*?\] as const;/
+    )?.[0];
+    expect(argKeys).toBeDefined();
+    expect(argKeys).toContain('"check_in_due_offset_hours_override"');
   });
 });
 

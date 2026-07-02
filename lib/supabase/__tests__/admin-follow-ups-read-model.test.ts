@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fetchFollowUpsForAdmin } from "@/lib/supabase/read-models";
+import { fetchFollowUpsForAdmin } from "@/lib/supabase/follow-up-reads";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 
 // Captures the column allowlist passed to `.select(...)`. The admin
@@ -40,7 +40,12 @@ describe("fetchFollowUpsForAdmin — admin read-model seam", () => {
     const { client, select } = makeClient([]);
     await fetchFollowUpsForAdmin(client);
     const cols = select();
-    for (const audit of ["updated_at", "completed_at", "created_by", "updated_by"]) {
+    for (const audit of [
+      "updated_at",
+      "completed_at",
+      "created_by",
+      "updated_by",
+    ]) {
       expect(cols).not.toContain(audit);
     }
   });

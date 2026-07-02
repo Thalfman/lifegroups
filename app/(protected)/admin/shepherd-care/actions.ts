@@ -51,6 +51,11 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
+
+// Form-key lists double as toRpcArgs key lists where they match the RPC's
+// p_* args exactly; specs whose form carries extra revalidation-only fields
+// (shepherd_profile_id) declare a dedicated *_ARG_KEYS const instead.
 
 const UPSERT_KEYS = [
   "shepherd_profile_id",
@@ -85,6 +90,13 @@ const CREATE_CARE_FOLLOW_UP_KEYS = [
   "shepherd_profile_id",
 ] as const;
 
+const CREATE_CARE_FOLLOW_UP_ARG_KEYS = [
+  "care_profile_id",
+  "title",
+  "due_date",
+  "notes",
+] as const;
+
 const UPDATE_CARE_FOLLOW_UP_STATUS_KEYS = [
   "follow_up_id",
   "status",
@@ -106,6 +118,15 @@ const UPDATE_CARE_FOLLOW_UP_KEYS = [
   "set_notes",
   "notes",
   "shepherd_profile_id",
+] as const;
+
+const UPDATE_CARE_FOLLOW_UP_ARG_KEYS = [
+  "follow_up_id",
+  "title",
+  "set_due_date",
+  "due_date",
+  "set_notes",
+  "notes",
 ] as const;
 
 const CREATE_OVER_SHEPHERD_KEYS = [
@@ -152,6 +173,14 @@ const UPSERT_PRIVATE_NOTE_KEYS = [
   "iv",
   "dek_version",
   "shepherd_profile_id",
+] as const;
+
+const UPSERT_PRIVATE_NOTE_ARG_KEYS = [
+  "care_profile_id",
+  "ciphertext",
+  "iv",
+  "dek_version",
+  "set_body",
 ] as const;
 
 const ENROLL_PRIVATE_NOTE_KEYS = [
@@ -207,15 +236,11 @@ const UPSERT_PROFILE_SPEC: AdminWriteActionSpec<
     summary_set: value.set_admin_summary,
   }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_upsert_shepherd_care_profile", {
-      p_shepherd_profile_id: value.shepherd_profile_id,
-      p_current_status: value.current_status,
-      p_set_current_status: value.set_current_status,
-      p_next_touchpoint_due: value.next_touchpoint_due,
-      p_set_next_touchpoint_due: value.set_next_touchpoint_due,
-      p_admin_summary: value.admin_summary,
-      p_set_admin_summary: value.set_admin_summary,
-    }),
+    adminRpc(
+      client,
+      "admin_upsert_shepherd_care_profile",
+      toRpcArgs(value, UPSERT_KEYS)
+    ),
   revalidate: (value) => shepherdCarePaths(value.shepherd_profile_id),
   noDataError: "The care profile wasn't saved. Please try again.",
 };
@@ -244,16 +269,11 @@ const LOG_INTERACTION_SPEC: AdminWriteActionSpec<
     has_notes: value.notes !== null,
   }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_log_shepherd_care_interaction", {
-      p_shepherd_profile_id: value.shepherd_profile_id,
-      p_interaction_at: value.interaction_at,
-      p_interaction_type: value.interaction_type,
-      p_notes: value.notes,
-      p_set_next_touchpoint_due: value.set_next_touchpoint_due,
-      p_next_touchpoint_due: value.next_touchpoint_due,
-      p_set_current_status: value.set_current_status,
-      p_current_status: value.current_status,
-    }),
+    adminRpc(
+      client,
+      "admin_log_shepherd_care_interaction",
+      toRpcArgs(value, LOG_INTERACTION_KEYS)
+    ),
   revalidate: (value) => shepherdCarePaths(value.shepherd_profile_id),
   noDataError: "The interaction wasn't saved. Please try again.",
 };
@@ -294,12 +314,11 @@ const CREATE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
     has_notes: value.notes !== null,
   }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_shepherd_care_follow_up", {
-      p_care_profile_id: value.care_profile_id,
-      p_title: value.title,
-      p_due_date: value.due_date,
-      p_notes: value.notes,
-    }),
+    adminRpc(
+      client,
+      "admin_create_shepherd_care_follow_up",
+      toRpcArgs(value, CREATE_CARE_FOLLOW_UP_ARG_KEYS)
+    ),
   revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
   noDataError: "The follow-up wasn't saved. Please try again.",
 };
@@ -378,14 +397,11 @@ const UPDATE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
     notes_set: value.set_notes,
   }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_update_shepherd_care_follow_up", {
-      p_follow_up_id: value.follow_up_id,
-      p_title: value.title,
-      p_set_due_date: value.set_due_date,
-      p_due_date: value.due_date,
-      p_set_notes: value.set_notes,
-      p_notes: value.notes,
-    }),
+    adminRpc(
+      client,
+      "admin_update_shepherd_care_follow_up",
+      toRpcArgs(value, UPDATE_CARE_FOLLOW_UP_ARG_KEYS)
+    ),
   revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
   noDataError: "The follow-up wasn't updated. Please try again.",
 };
@@ -414,12 +430,11 @@ const CREATE_OVER_SHEPHERD_SPEC: AdminWriteActionSpec<
     has_notes: value.notes !== null,
   }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_over_shepherd", {
-      p_full_name: value.full_name,
-      p_email: value.email,
-      p_phone: value.phone,
-      p_notes: value.notes,
-    }),
+    adminRpc(
+      client,
+      "admin_create_over_shepherd",
+      toRpcArgs(value, CREATE_OVER_SHEPHERD_KEYS)
+    ),
   revalidate: () => overShepherdPaths(),
   noDataError: "The over-shepherd wasn't saved. Please try again.",
 };
@@ -450,14 +465,11 @@ const UPDATE_OVER_SHEPHERD_SPEC: AdminWriteActionSpec<
     has_notes: value.notes !== null,
   }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_update_over_shepherd", {
-      p_over_shepherd_id: value.over_shepherd_id,
-      p_full_name: value.full_name,
-      p_email: value.email,
-      p_phone: value.phone,
-      p_notes: value.notes,
-      p_active: value.active,
-    }),
+    adminRpc(
+      client,
+      "admin_update_over_shepherd",
+      toRpcArgs(value, UPDATE_OVER_SHEPHERD_KEYS)
+    ),
   revalidate: (value) => [
     ...overShepherdPaths(value.over_shepherd_id),
     ...(value.active === false ? [LEADER_DETAIL_ROUTE] : []),
@@ -617,13 +629,11 @@ const UPSERT_PRIVATE_NOTE_SPEC: AdminWriteActionSpec<
   }),
   okFields: (value) => ({ body_set: value.set_body }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_upsert_shepherd_care_private_note", {
-      p_care_profile_id: value.care_profile_id,
-      p_ciphertext: value.ciphertext,
-      p_iv: value.iv,
-      p_dek_version: value.dek_version,
-      p_set_body: value.set_body,
-    }),
+    adminRpc(
+      client,
+      "admin_upsert_shepherd_care_private_note",
+      toRpcArgs(value, UPSERT_PRIVATE_NOTE_ARG_KEYS)
+    ),
   revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
   noDataError: "The private note wasn't saved. Please try again.",
 };
@@ -642,6 +652,17 @@ export async function adminUpsertShepherdCarePrivateNote(
 // ----- Phase SC.4 (#113) — key-slot lifecycle actions ---------------------
 
 // ----- adminAddPrivateNoteKeySlot (second passkey) ------------------------
+
+// The RPC additionally takes the constant p_slot_type (recovery slots are
+// rotated, never added), kept literal at the call site.
+const ADD_KEY_SLOT_ARG_KEYS = [
+  "credential_id",
+  "label",
+  "prf_salt",
+  "hkdf_salt",
+  "wrapped_dek",
+  "wrap_iv",
+] as const;
 
 const ADD_KEY_SLOT_SPEC: AdminWriteActionSpec<
   AddPrivateNoteKeySlotPayload,
@@ -662,12 +683,7 @@ const ADD_KEY_SLOT_SPEC: AdminWriteActionSpec<
   rpc: (client, value) =>
     adminRpc(client, "admin_add_private_note_key_slot", {
       p_slot_type: "passkey",
-      p_credential_id: value.credential_id,
-      p_label: value.label,
-      p_prf_salt: value.prf_salt,
-      p_hkdf_salt: value.hkdf_salt,
-      p_wrapped_dek: value.wrapped_dek,
-      p_wrap_iv: value.wrap_iv,
+      ...toRpcArgs(value, ADD_KEY_SLOT_ARG_KEYS),
     }),
   revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
   noDataError: "The passkey couldn't be added. Please try again.",
@@ -686,6 +702,13 @@ export async function adminAddPrivateNoteKeySlot(
 
 // ----- adminRotatePrivateNoteRecovery -------------------------------------
 
+const ROTATE_RECOVERY_ARG_KEYS = [
+  "hkdf_salt",
+  "wrapped_dek",
+  "wrap_iv",
+  "label",
+] as const;
+
 const ROTATE_RECOVERY_SPEC: AdminWriteActionSpec<
   RotatePrivateNoteRecoveryPayload,
   { id: string }
@@ -694,12 +717,11 @@ const ROTATE_RECOVERY_SPEC: AdminWriteActionSpec<
   keys: ["hkdf_salt", "wrapped_dek", "wrap_iv", "label", "shepherd_profile_id"],
   validate: validateRotatePrivateNoteRecoveryPayload,
   rpc: (client, value) =>
-    adminRpc(client, "admin_rotate_private_note_recovery", {
-      p_hkdf_salt: value.hkdf_salt,
-      p_wrapped_dek: value.wrapped_dek,
-      p_wrap_iv: value.wrap_iv,
-      p_label: value.label,
-    }),
+    adminRpc(
+      client,
+      "admin_rotate_private_note_recovery",
+      toRpcArgs(value, ROTATE_RECOVERY_ARG_KEYS)
+    ),
   revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
   noDataError: "The recovery code couldn't be rotated. Please try again.",
 };

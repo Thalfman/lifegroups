@@ -1,4 +1,4 @@
-import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/read-models";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-reads";
 import { CareDirectoryTable } from "@/components/admin/shepherd-care/care-directory-table-base";
 
 // Focused "My Shepherds" directory for the Over-Shepherd surface. The shared

@@ -11,9 +11,9 @@
 import {
   fetchAllGroupLeaders,
   fetchAllGroups,
-  fetchGroupCalendarEvents,
-  fetchProfilesForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/group-reads";
+import { fetchProfilesForAdmin } from "@/lib/supabase/membership-reads";
+import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   generateMonthOccurrences,

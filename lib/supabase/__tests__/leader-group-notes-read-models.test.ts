@@ -5,8 +5,8 @@ import {
   fetchAuthoredGroupPrayerRequests,
   fetchGroupCareNotes,
   fetchGroupPrayerRequests,
-  fetchLeaderGroupsByIds,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/care-note-reads";
+import { fetchLeaderGroupsByIds } from "@/lib/supabase/group-reads";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 
 const LEADER = "11111111-1111-1111-1111-111111111111";

@@ -16,6 +16,7 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 
 // The pipeline is the supply side of the Capacity Board (#185) and the
 // staffing forecast (#186); revalidate those surfaces so a stage advance shows
@@ -64,6 +65,26 @@ function readApprenticeForm(input: unknown): Record<string, unknown> {
   };
 }
 
+// toRpcArgs key lists: the apprentice RPC args are exactly these payload
+// fields, p_-prefixed (create keys on the group, update on the apprentice).
+const APPRENTICE_FIELD_ARG_KEYS = [
+  "display_name",
+  "member_id",
+  "readiness_stage",
+  "expected_ready_on",
+  "notes",
+] as const;
+
+const CREATE_APPRENTICE_ARG_KEYS = [
+  "group_id",
+  ...APPRENTICE_FIELD_ARG_KEYS,
+] as const;
+
+const UPDATE_APPRENTICE_ARG_KEYS = [
+  "apprentice_id",
+  ...APPRENTICE_FIELD_ARG_KEYS,
+] as const;
+
 // ----- adminCreateApprentice ----------------------------------------------
 
 const CREATE_APPRENTICE_SPEC: AdminWriteActionSpec<
@@ -74,14 +95,11 @@ const CREATE_APPRENTICE_SPEC: AdminWriteActionSpec<
   read: readApprenticeForm,
   validate: validateCreateApprenticePayload,
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_apprentice", {
-      p_group_id: value.group_id,
-      p_display_name: value.display_name,
-      p_member_id: value.member_id,
-      p_readiness_stage: value.readiness_stage,
-      p_expected_ready_on: value.expected_ready_on,
-      p_notes: value.notes,
-    }),
+    adminRpc(
+      client,
+      "admin_create_apprentice",
+      toRpcArgs(value, CREATE_APPRENTICE_ARG_KEYS)
+    ),
   revalidate: () => APPRENTICE_REVALIDATE,
   noDataError: "The apprentice was not saved. Please try again.",
 };
@@ -103,14 +121,11 @@ const UPDATE_APPRENTICE_SPEC: AdminWriteActionSpec<
   read: readApprenticeForm,
   validate: validateUpdateApprenticePayload,
   rpc: (client, value) =>
-    adminRpc(client, "admin_update_apprentice", {
-      p_apprentice_id: value.apprentice_id,
-      p_display_name: value.display_name,
-      p_member_id: value.member_id,
-      p_readiness_stage: value.readiness_stage,
-      p_expected_ready_on: value.expected_ready_on,
-      p_notes: value.notes,
-    }),
+    adminRpc(
+      client,
+      "admin_update_apprentice",
+      toRpcArgs(value, UPDATE_APPRENTICE_ARG_KEYS)
+    ),
   revalidate: () => APPRENTICE_REVALIDATE,
   noDataError: "The apprentice was not saved. Please try again.",
 };

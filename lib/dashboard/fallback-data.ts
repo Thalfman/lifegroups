@@ -10,7 +10,7 @@ import type {
   ShepherdCareDashboardSummary,
   UpcomingCalendarEvent,
 } from "./types";
-import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
+import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/guest-reads";
 import { pipelineStageLabel, isActivePipelineStage } from "./labels";
 import {
   DEMO_ATTENTION_ITEMS,

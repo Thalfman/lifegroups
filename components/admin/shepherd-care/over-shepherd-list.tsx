@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { OverShepherdListRow } from "@/lib/supabase/read-models";
+import type { OverShepherdListRow } from "@/lib/supabase/shepherd-care-reads";
 import { OverShepherdArchiveButton } from "@/components/admin/shepherd-care/over-shepherd-archive-button";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { EmptyState } from "@/components/ui/empty-state";

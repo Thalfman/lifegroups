@@ -19,6 +19,7 @@ import {
   type GroupHealthRatingsPayload,
 } from "@/lib/admin/validation";
 import { adminRpc } from "@/lib/admin/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 import {
   attendanceConsistency,
   computeGrade,
@@ -135,6 +136,14 @@ export async function adminRecomputeGroupHealthAssessment(
 // full state of both dimensions, so the validated payload IS the desired row (an
 // empty score is an explicit clear) — no merge-from-prior needed. The RPC forces
 // the group-question leader-reported provenance flag server-side.
+const RATINGS_ARG_KEYS = [
+  "group_id",
+  "spiritual_growth_score",
+  "spiritual_growth_note",
+  "group_question_score",
+  "needs_follow_up",
+] as const;
+
 const RATINGS_SPEC: AdminWriteActionSpec<
   GroupHealthRatingsPayload,
   { id: string }
@@ -165,13 +174,11 @@ const RATINGS_SPEC: AdminWriteActionSpec<
     });
     if (recomputed.error) return { data: null, error: recomputed.error };
 
+    // The payload half is the mechanical copy; the month and the recomputed
+    // grade dimensions are derived server-side and stay literal.
     return adminRpc(client, "admin_set_group_health_ratings", {
-      p_group_id: value.group_id,
+      ...toRpcArgs(value, RATINGS_ARG_KEYS),
       p_period_month: currentPeriodMonthIso(),
-      p_spiritual_growth_score: value.spiritual_growth_score,
-      p_spiritual_growth_note: value.spiritual_growth_note,
-      p_group_question_score: value.group_question_score,
-      p_needs_follow_up: value.needs_follow_up,
       p_attendance_pct: recomputed.data.attendance_pct,
       p_attendance_weeks_counted: recomputed.data.attendance_weeks_counted,
       p_computed_numeric: recomputed.data.computed_numeric,

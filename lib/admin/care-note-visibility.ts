@@ -12,9 +12,11 @@
 // 20260608090000_phase_pivot9_care_notes.sql migration enforces in the database.
 // Like lib/admin/feature-flags.ts, it encodes the security rule in pure logic,
 // not glue: no I/O, callers load the viewer + note + grant and this resolves a
-// single boolean. RLS is the real boundary; this resolver is the app-layer copy
-// that the UI uses to decide what to even attempt to render, and that the unit
-// test pins against the full truth table so the two can never silently diverge.
+// single boolean. RLS is the real boundary; this resolver is deliberately
+// CALLER-FREE in production code — it exists as the executable specification of
+// that policy, pinned by the unit test's full truth table and by the SEC-1
+// fitness check below, so a policy change can never silently diverge from the
+// documented rule. Do not delete it for being "unused"; its use is the pin.
 //
 // SEC-1 pin (audit 2026-06-21): the fitness check
 // tests/fitness/care-note-visibility-divergence.test.ts asserts that THIS

@@ -13,7 +13,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: mockCreateClient,
 }));
 
-vi.mock("@/lib/supabase/read-models", () => ({
+vi.mock("@/lib/supabase/settings-reads", () => ({
   fetchAdminFeatureFlags: mockFetchFlags,
 }));
 

@@ -1,12 +1,12 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import { fetchGroupRefs } from "@/lib/supabase/group-reads";
 import {
   fetchActiveMemberships,
   fetchAllMembers,
-  fetchGroupRefs,
-  fetchLeaderPipelineForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/membership-reads";
+import { fetchLeaderPipelineForAdmin } from "@/lib/supabase/multiplication-reads";
 import {
   buildPipelineRollup,
   type ApprenticeView,
@@ -34,27 +34,24 @@ export type LeaderPipelineData = {
   error: string | null;
 };
 
-export type LeaderPipelineReads = {
-  fetchLeaderPipeline: OmitClient<typeof fetchLeaderPipelineForAdmin>;
+const LEADER_PIPELINE_FETCHERS = {
+  fetchLeaderPipeline: fetchLeaderPipelineForAdmin,
   // Lean id/name/lifecycle projection — the rollup only needs to identify active
   // groups, so we avoid pulling the full group row (e.g. admin_notes), which
   // matters now this loads on every Multiply visit via the Leaders tab.
-  fetchGroupRefs: OmitClient<typeof fetchGroupRefs>;
+  fetchGroupRefs,
   // Active memberships + active members feed the member-link dropdown. The
   // names match PeopleReads' fields so PeopleReads stays a structural superset.
-  fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
-  fetchAllMembers: OmitClient<typeof fetchAllMembers>;
+  fetchActiveMemberships,
+  fetchAllMembers,
 };
+
+export type LeaderPipelineReads = BoundReads<typeof LEADER_PIPELINE_FETCHERS>;
 
 export function supabaseLeaderPipelineReads(
   client: AppSupabaseClient
 ): LeaderPipelineReads {
-  return bindReads(client, {
-    fetchLeaderPipeline: fetchLeaderPipelineForAdmin,
-    fetchGroupRefs,
-    fetchActiveMemberships,
-    fetchAllMembers,
-  });
+  return bindReads(client, LEADER_PIPELINE_FETCHERS, "leader_pipeline");
 }
 
 const EMPTY_ROLLUP: PipelineRollup = {

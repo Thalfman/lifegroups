@@ -10,7 +10,7 @@ const { mockFetchHealthRubric } = vi.hoisted(() => ({
   mockFetchHealthRubric: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/health-rubric-reads", () => ({
+vi.mock("@/lib/supabase/rubric-grade-reads", () => ({
   fetchHealthRubric: mockFetchHealthRubric,
 }));
 

@@ -1,14 +1,16 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import { fetchGroupRefs } from "@/lib/supabase/group-reads";
 import {
   fetchApprenticePickerRefs,
-  fetchGroupRefs,
+  fetchMultiplicationCandidatesForAdmin,
+} from "@/lib/supabase/multiplication-reads";
+import {
   fetchGroupTypes,
   fetchGroupTypeConfigs,
-  fetchMultiplicationCandidatesForAdmin,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/settings-reads";
 import {
   buildMultiplicationView,
   type MultiplicationView,
@@ -50,32 +52,26 @@ export type MultiplyPlanData = MultiplicationView & {
   unpipelinedCandidates: CandidateView[];
 };
 
-export type MultiplyPlanReads = {
-  fetchMultiplicationCandidates: OmitClient<
-    typeof fetchMultiplicationCandidatesForAdmin
-  >;
+const MULTIPLY_PLAN_FETCHERS = {
+  fetchMultiplicationCandidates: fetchMultiplicationCandidatesForAdmin,
   // Lean projections — the planner only needs to list active groups (with their
   // free-text type, to derive the candidate segment) and build same-group
   // apprentice-picker labels, so we avoid pulling privacy-sensitive columns
   // (group admin_notes, apprentice notes) into this always-on read path.
-  fetchGroupRefs: OmitClient<typeof fetchGroupRefs>;
-  fetchApprenticeRefs: OmitClient<typeof fetchApprenticePickerRefs>;
+  fetchGroupRefs,
+  fetchApprenticeRefs: fetchApprenticePickerRefs,
   // Pipeline intent (additive, non-blocking): the per-type configs carry the
   // in_pipeline flag; the master list feeds the add-to-pipeline picker.
-  fetchGroupTypeConfigs: OmitClient<typeof fetchGroupTypeConfigs>;
-  fetchGroupTypes: OmitClient<typeof fetchGroupTypes>;
+  fetchGroupTypeConfigs,
+  fetchGroupTypes,
 };
+
+export type MultiplyPlanReads = BoundReads<typeof MULTIPLY_PLAN_FETCHERS>;
 
 export function supabaseMultiplyPlanReads(
   client: AppSupabaseClient
 ): MultiplyPlanReads {
-  return bindReads(client, {
-    fetchMultiplicationCandidates: fetchMultiplicationCandidatesForAdmin,
-    fetchGroupRefs,
-    fetchApprenticeRefs: fetchApprenticePickerRefs,
-    fetchGroupTypeConfigs,
-    fetchGroupTypes,
-  });
+  return bindReads(client, MULTIPLY_PLAN_FETCHERS, "multiply_plan");
 }
 
 // The documented empty shape: what the Plan tab degrades to when a blocking

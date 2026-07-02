@@ -11,7 +11,7 @@ import {
   decodeNumericRecord,
   type ReadResult,
 } from "@/lib/supabase/read-core";
-import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
+import { fetchHealthRubric } from "@/lib/supabase/rubric-grade-reads";
 import { fetchLeaderHealthRubric } from "@/lib/admin/leader-health-read";
 import { decodeRubricCriteria, type Rubric } from "@/lib/admin/health-rubric";
 import {

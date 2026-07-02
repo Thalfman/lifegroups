@@ -1,34 +1,29 @@
 import type { GuestsManagementData } from "@/components/admin/guests/guests-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
-import {
-  fetchAllGroups,
-  fetchGuestFollowUpCounts,
-  fetchGuests,
-  fetchProfilesForAdmin,
-} from "@/lib/supabase/read-models";
+import { fetchGuestFollowUpCounts } from "@/lib/supabase/follow-up-reads";
+import { fetchAllGroups } from "@/lib/supabase/group-reads";
+import { fetchProfilesForAdmin } from "@/lib/supabase/membership-reads";
+import { fetchGuests } from "@/lib/supabase/guest-reads";
 
 // The Guests surface's data, as a function of the reads seam (ADR 0015). The
 // follow-up counts are a waterfall — they read by the guest ids the first batch
 // returns — and that sequencing plus the Map→record projection is now testable
 // through an in-memory adapter.
 
-export type GuestsReads = {
-  fetchGuests: OmitClient<typeof fetchGuests>;
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
-  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
-  fetchGuestFollowUpCounts: OmitClient<typeof fetchGuestFollowUpCounts>;
+const GUESTS_FETCHERS = {
+  fetchGuests,
+  fetchAllGroups,
+  fetchProfilesForAdmin,
+  fetchGuestFollowUpCounts,
 };
 
+export type GuestsReads = BoundReads<typeof GUESTS_FETCHERS>;
+
 export function supabaseGuestsReads(client: AppSupabaseClient): GuestsReads {
-  return bindReads(client, {
-    fetchGuests,
-    fetchAllGroups,
-    fetchProfilesForAdmin,
-    fetchGuestFollowUpCounts,
-  });
+  return bindReads(client, GUESTS_FETCHERS, "guests");
 }
 
 export const EMPTY_GUESTS_DATA: GuestsManagementData = {

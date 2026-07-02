@@ -12,7 +12,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchLeaderGroupsByIds,
   type LeaderSafeGroupRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/group-reads";
 import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
 import { FirstRunCard } from "@/components/orientation/first-run-card";
 

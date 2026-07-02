@@ -15,10 +15,8 @@ import type {
   GroupLeadersRow,
   ProfilesRow,
 } from "@/types/database";
-import type {
-  GuestDirectoryEntry,
-  LeaderFollowUpRow,
-} from "@/lib/supabase/read-models";
+import type { LeaderFollowUpRow } from "@/lib/supabase/follow-up-reads";
+import type { GuestDirectoryEntry } from "@/lib/supabase/guest-reads";
 import type {
   AttendanceSessionStatus,
   GroupCalendarEventStatus,

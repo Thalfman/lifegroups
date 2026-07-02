@@ -21,6 +21,7 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 import { updateTag } from "next/cache";
 import { GROUP_TYPES_CACHE_TAG } from "@/lib/supabase/cached-config";
 
@@ -68,12 +69,11 @@ const CREATE_PROSPECT_SPEC: AdminWriteActionSpec<
   validate: validateCreateProspectPayload,
   okFields: (_value, id) => ({ new_prospect_id: id }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_create_prospect", {
-      p_full_name: value.full_name,
-      p_email: value.email,
-      p_phone: value.phone,
-      p_desired_group_type: value.desired_group_type,
-    }),
+    adminRpc(
+      client,
+      "admin_create_prospect",
+      toRpcArgs(value, CREATE_PROSPECT_KEYS)
+    ),
   revalidate: () => REVALIDATE_PATHS,
   noDataError: "The prospect wasn't saved. Please try again.",
 };
@@ -166,12 +166,11 @@ const UPDATE_PROSPECT_SPEC: AdminWriteActionSpec<
     has_phone: value.phone !== null,
   }),
   rpc: (client, value) =>
-    adminRpc(client, "admin_update_prospect", {
-      p_prospect_id: value.prospect_id,
-      p_full_name: value.full_name,
-      p_email: value.email,
-      p_phone: value.phone,
-    }),
+    adminRpc(
+      client,
+      "admin_update_prospect",
+      toRpcArgs(value, UPDATE_PROSPECT_KEYS)
+    ),
   revalidate: () => REVALIDATE_PATHS,
   noDataError: "The prospect wasn't updated. Please try again.",
 };

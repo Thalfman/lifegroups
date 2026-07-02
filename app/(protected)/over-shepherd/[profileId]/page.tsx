@@ -23,7 +23,7 @@ import {
 import {
   fetchCareNotesForSubject,
   fetchPrayerRequestsForSubject,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/care-note-reads";
 import type {
   CareNotesRow,
   PrayerRequestsRow,

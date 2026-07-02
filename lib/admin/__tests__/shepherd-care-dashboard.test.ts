@@ -12,7 +12,7 @@ import type {
   OverShepherdListRow,
   ShepherdCareDirectoryEntry,
   ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 
 const TODAY = "2026-05-22";
 const STALE_OLD = "2026-01-01"; // ~141 days before TODAY -> stale

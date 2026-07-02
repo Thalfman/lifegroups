@@ -9,9 +9,8 @@ import {
 } from "./read-core";
 
 // Phase 5C.0 — follow-up + guest-follow-up + recent-audit read models.
-// Extracted from read-models so the follow-up read domain has its own home;
-// read-models re-exports it wholesale, so every name stays importable from there
-// unchanged.
+// Extracted from the retired read-models barrel so the follow-up read domain
+// has its own home.
 
 /**
  * Leader-safe follow_ups column list. `admin_private_note` is intentionally

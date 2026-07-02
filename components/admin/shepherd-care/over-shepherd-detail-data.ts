@@ -1,12 +1,12 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { measureReadBundle } from "@/lib/observability/read-timing";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchOverShepherdByIdForAdmin,
   fetchShepherdsCoveredByOverShepherdForAdmin,
   type ShepherdCoveredByOverShepherd,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 import type { OverShepherdsRow } from "@/types/database";
 
 // The Over-Shepherd detail page's read-orchestration, as a pure function of a
@@ -35,12 +35,14 @@ export type OverShepherdDetailResult =
   | OverShepherdDetailData
   | { kind: "db_unavailable" };
 
-export type OverShepherdDetailReads = {
-  fetchOverShepherd: OmitClient<typeof fetchOverShepherdByIdForAdmin>;
-  fetchCoveredShepherds: OmitClient<
-    typeof fetchShepherdsCoveredByOverShepherdForAdmin
-  >;
+const OVER_SHEPHERD_DETAIL_FETCHERS = {
+  fetchOverShepherd: fetchOverShepherdByIdForAdmin,
+  fetchCoveredShepherds: fetchShepherdsCoveredByOverShepherdForAdmin,
 };
+
+export type OverShepherdDetailReads = BoundReads<
+  typeof OVER_SHEPHERD_DETAIL_FETCHERS
+>;
 
 // Production adapter: binds the live Supabase client to the two reads this
 // surface needs. The underlying fetchers keep their explicit column
@@ -48,10 +50,11 @@ export type OverShepherdDetailReads = {
 export function supabaseOverShepherdDetailReads(
   client: AppSupabaseClient
 ): OverShepherdDetailReads {
-  return bindReads(client, {
-    fetchOverShepherd: fetchOverShepherdByIdForAdmin,
-    fetchCoveredShepherds: fetchShepherdsCoveredByOverShepherdForAdmin,
-  });
+  return bindReads(
+    client,
+    OVER_SHEPHERD_DETAIL_FETCHERS,
+    "over_shepherd_detail"
+  );
 }
 
 // Pure assembly: subject resolution decides 404 vs render; the coverage list

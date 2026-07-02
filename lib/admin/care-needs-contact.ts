@@ -24,7 +24,7 @@ import {
   fetchShepherdCareDirectoryForAdmin,
   type ActiveShepherdCoverageAssignmentSummary,
   type ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
 import {

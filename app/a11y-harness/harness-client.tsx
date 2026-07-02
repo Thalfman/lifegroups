@@ -83,7 +83,7 @@ import type { MultiplyTypeRow } from "@/components/admin/multiply/multiply-grid-
 import type {
   ActiveShepherdCoverageAssignmentSummary,
   ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 import { SuperAdminCollapsibleSection } from "@/components/admin/super-admin-collapsible-section";
 import { SuperAdminSectionAnchors } from "@/components/admin/super-admin-section-anchors";
 import { Sidebar } from "@/components/lg/shell/Sidebar";

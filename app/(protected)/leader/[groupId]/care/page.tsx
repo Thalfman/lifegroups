@@ -9,11 +9,13 @@ import { toShellUser } from "@/lib/auth/shell-user";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  fetchLeaderGroupsByIds,
   fetchGroupCareNotes,
   fetchGroupPrayerRequests,
+} from "@/lib/supabase/care-note-reads";
+import {
+  fetchLeaderGroupsByIds,
   type LeaderSafeGroupRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/group-reads";
 import type { PrayerRequestsRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";

@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import type { AppSettingsRow } from "@/types/database";
-import { fetchMetricDefaults, fetchGroupTypes } from "./read-models";
+import { fetchMetricDefaults, fetchGroupTypes } from "./settings-reads";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 
 // Cache tag for the global metric_defaults config. The admin settings write

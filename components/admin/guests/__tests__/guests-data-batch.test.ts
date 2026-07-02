@@ -5,7 +5,7 @@ import {
   type GuestsReads,
 } from "@/components/admin/guests/guests-data";
 import type { ReadResult } from "@/lib/supabase/read-core";
-import type { GuestDirectoryEntry } from "@/lib/supabase/read-models";
+import type { GuestDirectoryEntry } from "@/lib/supabase/guest-reads";
 import type { ProfilesRow } from "@/types/database";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });

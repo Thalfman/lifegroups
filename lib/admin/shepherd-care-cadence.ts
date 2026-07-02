@@ -58,8 +58,8 @@ export function staleWindowDaysForTier(
 }
 
 // Whole days between two YYYY-MM-DD strings at UTC midnight. Inlined (rather
-// than imported from read-models) to keep this module pure and dependency-free;
-// it matches lib/supabase/read-models.differenceInDaysIso exactly so the
+// than imported from read-core) to keep this module pure and dependency-free;
+// it matches lib/supabase/read-core.differenceInDaysIso exactly so the
 // per-tier model agrees with the rest of the care date math.
 function daysBetweenIso(todayIso: string, thenIso: string): number {
   const a = Date.parse(`${todayIso}T00:00:00Z`);

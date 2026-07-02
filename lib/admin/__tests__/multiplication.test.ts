@@ -11,7 +11,7 @@ import {
 } from "@/lib/admin/multiplication";
 import type { SegmentableGroup } from "@/lib/admin/multiplication";
 import type { ShepherdMatchInput } from "@/lib/admin/leader-pipeline";
-import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
+import type { MultiplicationCandidateEntry } from "@/lib/supabase/multiplication-reads";
 
 // Build a candidate entry as the read model returns it, overriding only the
 // fields a given test cares about. Segmentation derives from the anchoring

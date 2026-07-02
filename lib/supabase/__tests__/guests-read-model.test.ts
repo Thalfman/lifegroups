@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fetchGuests } from "@/lib/supabase/read-models";
+import { fetchGuests } from "@/lib/supabase/guest-reads";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 
 // Captures the column allowlist passed to `.select(...)` and resolves to

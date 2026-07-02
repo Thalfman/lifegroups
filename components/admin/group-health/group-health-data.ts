@@ -1,10 +1,10 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { listGroupHealthOverview } from "@/lib/admin/group-health-read";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import { resolveGroupGradeBoard } from "@/lib/admin/group-health-grades";
-import { fetchPlatformConfig } from "@/lib/supabase/read-models";
+import { fetchPlatformConfig } from "@/lib/supabase/settings-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { decodeMetricDefaults } from "@/lib/admin/metrics";
 import { decodeAppConfig } from "@/lib/admin/app-config-decode";
@@ -33,20 +33,18 @@ export type GroupHealthView =
       watchGrade: WatchGrade;
     };
 
-export type GroupHealthReads = {
-  listGroupHealthOverview: OmitClient<typeof listGroupHealthOverview>;
-  fetchPlatformConfig: OmitClient<typeof fetchPlatformConfig>;
-  fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
+const GROUP_HEALTH_FETCHERS = {
+  listGroupHealthOverview,
+  fetchPlatformConfig,
+  fetchMetricDefaults: fetchMetricDefaultsCached,
 };
+
+export type GroupHealthReads = BoundReads<typeof GROUP_HEALTH_FETCHERS>;
 
 export function supabaseGroupHealthReads(
   client: AppSupabaseClient
 ): GroupHealthReads {
-  return bindReads(client, {
-    listGroupHealthOverview,
-    fetchPlatformConfig,
-    fetchMetricDefaults: fetchMetricDefaultsCached,
-  });
+  return bindReads(client, GROUP_HEALTH_FETCHERS, "group_health");
 }
 
 export async function buildGroupHealthData(

@@ -9,7 +9,7 @@ import type {
   CareFollowUpDashboardRow,
   ShepherdCareDirectoryEntry,
   ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/read-models";
+} from "@/lib/supabase/shepherd-care-reads";
 import type { CareAttentionItem } from "@/lib/admin/shepherd-care-dashboard";
 
 const TODAY = "2026-06-03";

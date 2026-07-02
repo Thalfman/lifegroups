@@ -22,7 +22,7 @@
 
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchAllGroups } from "@/lib/supabase/read-models";
+import { fetchAllGroups } from "@/lib/supabase/group-reads";
 import type { ReadResult } from "@/lib/supabase/read-core";
 import type { GroupsRow } from "@/types/database";
 

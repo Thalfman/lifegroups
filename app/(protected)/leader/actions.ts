@@ -12,7 +12,22 @@ import {
   type LeaderWriteActionSpec,
 } from "@/lib/leader/run-action";
 import { leaderRpc } from "@/lib/leader/rpc";
+import { toRpcArgs } from "@/lib/shared/rpc-args";
 import { readFrozenSurfaceFlagForLeader } from "@/lib/auth/leader-surface-flag";
+
+// toRpcArgs key list shared by both check-in specs: the RPC args are exactly
+// these payload fields, p_-prefixed (checked against
+// LeaderSubmitGroupCheckinArgs at the leaderRpc call sites).
+const CHECKIN_ARG_KEYS = [
+  "group_id",
+  "meeting_week",
+  "meeting_date",
+  "status",
+  "leader_note",
+  "pulse",
+  "follow_up_needed",
+  "attendance",
+] as const;
 
 const REVALIDATE_LEADER = "/leader";
 
@@ -99,16 +114,11 @@ const SUBMIT_CHECKIN_SPEC: LeaderWriteActionSpec<
     new_session_id: id,
   }),
   rpc: (client, value) =>
-    leaderRpc(client, "leader_submit_group_checkin", {
-      p_group_id: value.group_id,
-      p_meeting_week: value.meeting_week,
-      p_meeting_date: value.meeting_date,
-      p_status: value.status,
-      p_leader_note: value.leader_note,
-      p_pulse: value.pulse,
-      p_follow_up_needed: value.follow_up_needed,
-      p_attendance: value.attendance,
-    }),
+    leaderRpc(
+      client,
+      "leader_submit_group_checkin",
+      toRpcArgs(value, CHECKIN_ARG_KEYS)
+    ),
   revalidate: (value) => [
     REVALIDATE_LEADER,
     `/leader/${value.group_id}/checkin`,
@@ -166,16 +176,11 @@ const QUICK_DID_NOT_MEET_SPEC: LeaderWriteActionSpec<
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   okFields: (_value, id) => ({ new_session_id: id }),
   rpc: (client, value) =>
-    leaderRpc(client, "leader_submit_group_checkin", {
-      p_group_id: value.group_id,
-      p_meeting_week: value.meeting_week,
-      p_meeting_date: value.meeting_date,
-      p_status: value.status,
-      p_leader_note: value.leader_note,
-      p_pulse: value.pulse,
-      p_follow_up_needed: value.follow_up_needed,
-      p_attendance: value.attendance,
-    }),
+    leaderRpc(
+      client,
+      "leader_submit_group_checkin",
+      toRpcArgs(value, CHECKIN_ARG_KEYS)
+    ),
   revalidate: () => [REVALIDATE_LEADER],
   result: (id) => ({ session_id: id }),
   noDataError: "The check-in didn't save. Please try again.",

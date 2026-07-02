@@ -29,7 +29,7 @@ import { adminRpc } from "@/lib/admin/rpc";
 import { decodeRubricCriteria, type Rubric } from "@/lib/admin/health-rubric";
 import { resolveGroupRubricGrade } from "@/lib/admin/group-rubric-grade";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
-import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
+import { fetchHealthRubric } from "@/lib/supabase/rubric-grade-reads";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import type {
   GroupRubricGradePayload,

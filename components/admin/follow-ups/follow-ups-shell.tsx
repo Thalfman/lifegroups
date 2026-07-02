@@ -13,10 +13,8 @@ import { PBadge } from "@/components/pastoral/atoms";
 import { PButton } from "@/components/pastoral/button";
 import type { GroupsRow, MembersRow, ProfilesRow } from "@/types/database";
 import type { FollowUpPriority, FollowUpStatus } from "@/types/enums";
-import type {
-  AdminFollowUpEntry,
-  GuestDirectoryEntry,
-} from "@/lib/supabase/read-models";
+import type { AdminFollowUpEntry } from "@/lib/supabase/follow-up-reads";
+import type { GuestDirectoryEntry } from "@/lib/supabase/guest-reads";
 import {
   FOLLOW_UP_DUE_FILTERS,
   FOLLOW_UP_PRIORITY_FILTERS,
