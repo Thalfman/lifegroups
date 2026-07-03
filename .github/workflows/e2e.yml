@@ -27,10 +27,12 @@ on:
     # check, not a merge gate.
     - cron: "0 8 * * 1"
   pull_request:
-    # Advisory signal on the PRs most likely to break the write pipelines this
-    # lane pins: the lane itself, the stack/seed tooling, schema/seed changes,
-    # the Care Note pipeline (form → action → reads → surfaces), and the
-    # Interest Funnel + Multiply lock-in pipelines (#826/#827).
+    # Advisory signal only on PRs that change the lane itself: the specs, the
+    # runner/stack/seed tooling, and the schema+seed the stack is built from.
+    # App-code paths were deliberately dropped while the lane accrues flake
+    # signal (#839) — they made nearly every PR carry an advisory red X. The
+    # weekly cron below covers app-code drift; re-widen the filter (or fold
+    # the lane into the required job) once the lane is stable enough to gate.
     paths:
       - "tests/e2e/**"
       - "playwright.e2e.config.ts"
@@ -41,36 +43,6 @@ on:
       - ".github/workflows/e2e.yml"
       - "supabase/migrations/**"
       - "supabase/seed/**"
-      - "app/(protected)/admin/shepherd-care/care-notes-actions.ts"
-      - "app/(protected)/over-shepherd/**"
-      - "components/admin/care/**"
-      - "components/admin/shepherd-care/**"
-      - "components/over-shepherd/**"
-      # The Interest Funnel spec (#826) drives /admin/plan; the readiness spec
-      # (#827) drives /admin/multiply plus its Groups-editor precondition (the
-      # lock-in actions live under launch-planning, its legacy home, and the
-      # Pipeline data flows through the shared launch-planning view builder;
-      # the Groups list is hosted by group-management-shell before the
-      # directory renders the editor drawer).
-      - "app/(protected)/admin/plan/**"
-      - "app/(protected)/admin/multiply/**"
-      - "app/(protected)/admin/groups/**"
-      - "app/(protected)/admin/launch-planning/**"
-      - "components/admin/plan/**"
-      - "components/admin/multiply/**"
-      - "components/admin/groups/**"
-      - "components/admin/groups-directory.tsx"
-      - "components/admin/group-management-shell.tsx"
-      - "components/admin/launch-planning/**"
-      - "components/admin/forms/**"
-      # The shared seams every write crosses (Codex review on #837): the write
-      # runners, RPC gateways, validators, auth guards, and the reads seam all
-      # sit between the form and the RPC, so a PR touching them must get this
-      # lane's advisory signal too.
-      - "lib/admin/**"
-      - "lib/shared/**"
-      - "lib/auth/**"
-      - "lib/supabase/**"
 
 # Never run more than one E2E lane per ref at a time; a newer run supersedes.
 concurrency:
