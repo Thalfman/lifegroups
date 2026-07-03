@@ -18,11 +18,11 @@ const CreateScenarioForm = dynamic(
   { ssr: false }
 );
 
-// The "Plan a launch" action, lifted out of LaunchPlanningShell so the Planning
-// area's Launches tab can offer the same one-click "save a named scenario from
-// your current forecast" affordance (#303) without the frozen route's
-// tab-switching hero. Tuning the forecast is one tab-click away (the Capacity
-// tab), so this widget drops the shell's "Adjust forecast" shortcut.
+// The "Plan a launch" action, lifted out of the retired launch-planning shell
+// so the Planning area's Launches tab can offer the same one-click "save a
+// named scenario from your current forecast" affordance (#303) without the
+// frozen route's tab-switching hero. Tuning the forecast is one tab-click away
+// (the Capacity tab), so this widget drops the old "Adjust forecast" shortcut.
 export function PlanLaunchWidget({
   baseline,
 }: {
