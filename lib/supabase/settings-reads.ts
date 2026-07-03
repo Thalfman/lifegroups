@@ -106,20 +106,24 @@ export async function fetchGroupTypes(
 // Returns the per-type config rows (target group count + optional readiness-rule
 // override) keyed on the free-text group_type name. A type with no row inherits
 // target 0 + the single global readiness rule. Admin-only via RLS.
-const GROUP_TYPE_CONFIG_COLUMNS =
-  "group_type, target_count, readiness_rule, in_pipeline" as const;
-
 export type GroupTypeConfigEntry = Pick<
   GroupTypeConfigsRow,
   "group_type" | "target_count" | "readiness_rule" | "in_pipeline"
 >;
+
+const ADMIN_GROUP_TYPE_CONFIG_COLUMNS = columns<GroupTypeConfigEntry>()(
+  "group_type",
+  "target_count",
+  "readiness_rule",
+  "in_pipeline"
+);
 
 export async function fetchGroupTypeConfigs(
   client: ReadClient
 ): Promise<ReadResult<GroupTypeConfigEntry[]>> {
   const { data, error } = await client
     .from("group_type_configs")
-    .select(GROUP_TYPE_CONFIG_COLUMNS)
+    .select(ADMIN_GROUP_TYPE_CONFIG_COLUMNS.select)
     .order("group_type", { ascending: true });
   if (error)
     return { data: null, error: wrapError("fetchGroupTypeConfigs", error) };
@@ -205,9 +209,16 @@ export async function fetchGroupHealthRubricSetting(
   return { data, error: null };
 }
 
-const CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS =
-  "id, snapshot_date, attendance_count, note, created_by_profile_id, " +
-  "created_at, updated_at";
+const ADMIN_CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS =
+  columns<ChurchAttendanceSnapshotsRow>()(
+    "id",
+    "snapshot_date",
+    "attendance_count",
+    "note",
+    "created_by_profile_id",
+    "created_at",
+    "updated_at"
+  );
 
 // Julian P2: most-recent-first church attendance snapshots. The first row is
 // the latest known church-wide attendance, the denominator for the
@@ -219,7 +230,7 @@ export async function fetchChurchAttendanceSnapshots(
   const limit = options.limit ?? 12;
   const { data, error } = await client
     .from("church_attendance_snapshots")
-    .select(CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS)
+    .select(ADMIN_CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS.select)
     .order("snapshot_date", { ascending: false })
     .limit(limit);
   if (error) {
@@ -371,8 +382,19 @@ export async function fetchLaunchPlanningInputsForAdmin(
 // boundary guard checks it's a plain object before the row is handed to
 // the pure decoder.
 
-const LAUNCH_PLANNING_SCENARIO_COLUMNS =
-  "id, name, description, assumptions, is_current, archived_at, created_by, updated_by, created_at, updated_at";
+const ADMIN_LAUNCH_PLANNING_SCENARIO_COLUMNS =
+  columns<LaunchPlanningScenariosRow>()(
+    "id",
+    "name",
+    "description",
+    "assumptions",
+    "is_current",
+    "archived_at",
+    "created_by",
+    "updated_by",
+    "created_at",
+    "updated_at"
+  );
 
 function isLaunchPlanningScenarioRow(
   v: unknown
@@ -397,7 +419,7 @@ export async function fetchLaunchPlanningScenariosForAdmin(
 ): Promise<ReadResult<LaunchPlanningScenariosRow[]>> {
   const { data, error } = await client
     .from("launch_planning_scenarios")
-    .select(LAUNCH_PLANNING_SCENARIO_COLUMNS)
+    .select(ADMIN_LAUNCH_PLANNING_SCENARIO_COLUMNS.select)
     .order("is_current", { ascending: false })
     .order("name", { ascending: true });
   if (error)
@@ -419,7 +441,7 @@ export async function fetchLaunchPlanningScenarioByIdForAdmin(
 ): Promise<ReadResult<LaunchPlanningScenariosRow | null>> {
   const { data, error } = await client
     .from("launch_planning_scenarios")
-    .select(LAUNCH_PLANNING_SCENARIO_COLUMNS)
+    .select(ADMIN_LAUNCH_PLANNING_SCENARIO_COLUMNS.select)
     .eq("id", id)
     .maybeSingle();
   if (error)

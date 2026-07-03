@@ -13,13 +13,28 @@ import {
   type ReadResult,
 } from "./read-core";
 
-const MULTIPLICATION_CANDIDATE_COLUMNS =
-  "id, group_id, target_year, status, " +
-  "shepherd_willing, needs_similar_stage, " +
-  "enough_members, established_long_enough, co_shepherd_tenured, " +
-  "notes, successor_designate, meeting_time, leader_pipeline_id, " +
-  "manual_member_count, archived_at, " +
-  "created_by, updated_by, created_at, updated_at";
+const ADMIN_MULTIPLICATION_CANDIDATE_COLUMNS =
+  columns<MultiplicationCandidatesRow>()(
+    "id",
+    "group_id",
+    "target_year",
+    "status",
+    "shepherd_willing",
+    "needs_similar_stage",
+    "enough_members",
+    "established_long_enough",
+    "co_shepherd_tenured",
+    "notes",
+    "successor_designate",
+    "meeting_time",
+    "leader_pipeline_id",
+    "manual_member_count",
+    "archived_at",
+    "created_by",
+    "updated_by",
+    "created_at",
+    "updated_at"
+  );
 
 export type MultiplicationCandidateGroup = Pick<
   GroupsRow,
@@ -107,7 +122,7 @@ export async function fetchMultiplicationCandidatesForAdmin(
 ): Promise<ReadResult<MultiplicationCandidateEntry[]>> {
   const candidatesRes = await client
     .from("multiplication_candidates")
-    .select(MULTIPLICATION_CANDIDATE_COLUMNS)
+    .select(ADMIN_MULTIPLICATION_CANDIDATE_COLUMNS.select)
     .is("archived_at", null)
     .order("created_at", { ascending: true });
   if (candidatesRes.error) {
@@ -221,9 +236,20 @@ export async function fetchMultiplicationCandidatesForAdmin(
   return { data: entries, error: null };
 }
 
-const LEADER_PIPELINE_COLUMNS =
-  "id, group_id, display_name, member_id, readiness_stage, expected_ready_on, " +
-  "notes, archived_at, created_by, updated_by, created_at, updated_at";
+const LEADER_PIPELINE_COLUMNS = columns<LeaderPipelineRow>()(
+  "id",
+  "group_id",
+  "display_name",
+  "member_id",
+  "readiness_stage",
+  "expected_ready_on",
+  "notes",
+  "archived_at",
+  "created_by",
+  "updated_by",
+  "created_at",
+  "updated_at"
+);
 
 export type LeaderPipelineEntry = {
   apprentice: LeaderPipelineRow;
@@ -240,7 +266,7 @@ export async function fetchLeaderPipelineForAdmin(
 ): Promise<ReadResult<LeaderPipelineEntry[]>> {
   const pipelineRes = await client
     .from("leader_pipeline")
-    .select(LEADER_PIPELINE_COLUMNS)
+    .select(LEADER_PIPELINE_COLUMNS.select)
     .is("archived_at", null)
     .order("created_at", { ascending: true });
   if (pipelineRes.error) {

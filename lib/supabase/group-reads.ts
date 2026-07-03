@@ -104,8 +104,15 @@ export type LeaderSafeGroupRow = Pick<
   | "meeting_week_parity"
 >;
 
-const LEADER_SAFE_GROUP_COLUMNS =
-  "id, name, lifecycle_status, meeting_day, meeting_time, meeting_frequency, meeting_week_parity";
+const LEADER_SAFE_GROUP_COLUMNS = columns<LeaderSafeGroupRow>()(
+  "id",
+  "name",
+  "lifecycle_status",
+  "meeting_day",
+  "meeting_time",
+  "meeting_frequency",
+  "meeting_week_parity"
+);
 
 export async function fetchLeaderGroupsByIds(
   client: ReadClient,
@@ -114,7 +121,7 @@ export async function fetchLeaderGroupsByIds(
   if (ids.length === 0) return { data: [], error: null };
   const { data, error } = await client
     .from("groups")
-    .select(LEADER_SAFE_GROUP_COLUMNS)
+    .select(LEADER_SAFE_GROUP_COLUMNS.select)
     .in("id", ids)
     .order("name", { ascending: true });
   if (error)

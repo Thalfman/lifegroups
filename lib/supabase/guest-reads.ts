@@ -35,17 +35,26 @@ export type GuestDirectoryEntry = Pick<
   | "created_at"
 >;
 
-const GUEST_DIRECTORY_COLUMNS =
-  "id, full_name, email, phone, first_attended_group_id, " +
-  "first_attended_date, pipeline_stage, assigned_group_id, " +
-  "follow_up_owner_id, notes, created_at";
+const ADMIN_GUEST_DIRECTORY_COLUMNS = columns<GuestDirectoryEntry>()(
+  "id",
+  "full_name",
+  "email",
+  "phone",
+  "first_attended_group_id",
+  "first_attended_date",
+  "pipeline_stage",
+  "assigned_group_id",
+  "follow_up_owner_id",
+  "notes",
+  "created_at"
+);
 
 export async function fetchGuests(
   client: ReadClient
 ): Promise<ReadResult<GuestDirectoryEntry[]>> {
   const { data, error } = await client
     .from("guests")
-    .select(GUEST_DIRECTORY_COLUMNS)
+    .select(ADMIN_GUEST_DIRECTORY_COLUMNS.select)
     .order("created_at", { ascending: false })
     .range(0, GUEST_PAGE_LIMIT - 1)
     .returns<GuestDirectoryEntry[]>();
@@ -55,7 +64,7 @@ export async function fetchGuests(
 
 // Column allowlist for the full-row guests fetcher (#495); every GuestsRow
 // column, pinned by a colocated test. The admin directory read above uses the
-// narrower GUEST_DIRECTORY_COLUMNS projection instead.
+// narrower ADMIN_GUEST_DIRECTORY_COLUMNS projection instead.
 export const GUEST_COLUMNS = columns<GuestsRow>()(
   "id",
   "full_name",
