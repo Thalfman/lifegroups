@@ -1,3 +1,5 @@
+import "server-only";
+
 import type {
   GroupsRow,
   LeaderPipelineRow,
@@ -5,6 +7,7 @@ import type {
 } from "@/types/database";
 import type { LeaderReadinessStage } from "@/types/enums";
 import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
+import { readBatch } from "./read-batch";
 import {
   columns,
   fetchByIds,
@@ -13,13 +16,28 @@ import {
   type ReadResult,
 } from "./read-core";
 
-const MULTIPLICATION_CANDIDATE_COLUMNS =
-  "id, group_id, target_year, status, " +
-  "shepherd_willing, needs_similar_stage, " +
-  "enough_members, established_long_enough, co_shepherd_tenured, " +
-  "notes, successor_designate, meeting_time, leader_pipeline_id, " +
-  "manual_member_count, archived_at, " +
-  "created_by, updated_by, created_at, updated_at";
+const ADMIN_MULTIPLICATION_CANDIDATE_COLUMNS =
+  columns<MultiplicationCandidatesRow>()(
+    "id",
+    "group_id",
+    "target_year",
+    "status",
+    "shepherd_willing",
+    "needs_similar_stage",
+    "enough_members",
+    "established_long_enough",
+    "co_shepherd_tenured",
+    "notes",
+    "successor_designate",
+    "meeting_time",
+    "leader_pipeline_id",
+    "manual_member_count",
+    "archived_at",
+    "created_by",
+    "updated_by",
+    "created_at",
+    "updated_at"
+  );
 
 export type MultiplicationCandidateGroup = Pick<
   GroupsRow,
@@ -51,17 +69,20 @@ type MultiplicationGroupProjection = {
   name: string;
 };
 
-// Return the first non-null read error from a set of batched reads, wrapped
-// with its scope, or null when every read succeeded. Collapses the repetitive
-// per-read error guards in `fetchMultiplicationCandidatesForAdmin`.
-function firstReadError(
-  results: ReadonlyArray<{ scope: string; error: unknown }>
-): Error | null {
-  for (const r of results) {
-    if (r.error) return wrapError(r.scope, r.error);
-  }
-  return null;
-}
+const ADMIN_MULTIPLICATION_GROUP_COLUMNS =
+  columns<MultiplicationGroupProjection>()(
+    "id",
+    "name",
+    "group_type",
+    "launched_on",
+    "lifecycle_status"
+  );
+
+// The linked apprentice's identity + stage for the planner's inline
+// enrichment (see MultiplicationCandidateApprentice).
+const ADMIN_LINKED_APPRENTICE_COLUMNS = columns<
+  Pick<LeaderPipelineRow, "id" | "display_name" | "readiness_stage">
+>()("id", "display_name", "readiness_stage");
 
 function indexApprentices(
   rows: ReadonlyArray<{
@@ -107,7 +128,7 @@ export async function fetchMultiplicationCandidatesForAdmin(
 ): Promise<ReadResult<MultiplicationCandidateEntry[]>> {
   const candidatesRes = await client
     .from("multiplication_candidates")
-    .select(MULTIPLICATION_CANDIDATE_COLUMNS)
+    .select(ADMIN_MULTIPLICATION_CANDIDATE_COLUMNS.select)
     .is("archived_at", null)
     .order("created_at", { ascending: true });
   if (candidatesRes.error) {
@@ -140,65 +161,103 @@ export async function fetchMultiplicationCandidatesForAdmin(
 
   // When every candidate is a type-only watch, groupIds is empty. Short-circuit
   // the group-keyed reads (an empty `.in("id", [])` is the edge other read paths
-  // here avoid) so a valid all-type-only pipeline still renders.
+  // here avoid) so a valid all-type-only pipeline still renders. Gathered
+  // through readBatch (ADR 0015); each thunk wraps its own scope label.
   const noGroups = groupIds.length === 0;
-  const [groupsRes, membershipsRes, apprenticesRes] = await Promise.all([
-    noGroups
-      ? Promise.resolve({ data: [], error: null })
-      : client
-          .from("groups")
-          .select("id, name, group_type, launched_on, lifecycle_status")
-          .in("id", groupIds),
-    noGroups
-      ? Promise.resolve({ data: [], error: null })
-      : client
-          .from("group_memberships")
-          .select("group_id, status")
-          .in("group_id", groupIds)
-          .eq("status", "active"),
-    apprenticeIds.length > 0
-      ? client
-          .from("leader_pipeline")
-          .select("id, display_name, readiness_stage")
-          .in("id", apprenticeIds)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+  const batch = await readBatch({
+    groups: async (): Promise<ReadResult<MultiplicationGroupProjection[]>> => {
+      if (noGroups) return { data: [], error: null };
+      const { data, error } = await client
+        .from("groups")
+        .select(ADMIN_MULTIPLICATION_GROUP_COLUMNS.select)
+        .in("id", groupIds);
+      if (error)
+        return {
+          data: null,
+          error: wrapError(
+            "fetchMultiplicationCandidatesForAdmin/groups",
+            error
+          ),
+        };
+      return {
+        data: (data ?? []) as MultiplicationGroupProjection[],
+        error: null,
+      };
+    },
+    memberships: async (): Promise<
+      ReadResult<{ group_id: string; status: string | null }[]>
+    > => {
+      if (noGroups) return { data: [], error: null };
+      const { data, error } = await client
+        .from("group_memberships")
+        .select("group_id, status")
+        .in("group_id", groupIds)
+        .eq("status", "active");
+      if (error)
+        return {
+          data: null,
+          error: wrapError(
+            "fetchMultiplicationCandidatesForAdmin/memberships",
+            error
+          ),
+        };
+      return {
+        data: (data ?? []) as { group_id: string; status: string | null }[],
+        error: null,
+      };
+    },
+    apprentices: async (): Promise<
+      ReadResult<
+        {
+          id: string;
+          display_name: string;
+          readiness_stage: LeaderReadinessStage;
+        }[]
+      >
+    > => {
+      if (apprenticeIds.length === 0) return { data: [], error: null };
+      const { data, error } = await client
+        .from("leader_pipeline")
+        .select(ADMIN_LINKED_APPRENTICE_COLUMNS.select)
+        .in("id", apprenticeIds);
+      if (error)
+        return {
+          data: null,
+          error: wrapError(
+            "fetchMultiplicationCandidatesForAdmin/apprentices",
+            error
+          ),
+        };
+      return {
+        data: (data ?? []) as {
+          id: string;
+          display_name: string;
+          readiness_stage: LeaderReadinessStage;
+        }[],
+        error: null,
+      };
+    },
+  });
   // The group + membership reads back the candidate's identity and member count,
   // so a failure there blanks the read. The linked-apprentice enrichment is
   // non-critical (the planner shows the name; the Multiply locked-in rows don't
   // render it at all), so a transient leader_pipeline read failure degrades
   // linkedApprentice to null (empty index below) rather than blanking every
   // candidate — reads degrade gracefully: a failed read suppresses derived
-  // output, not the whole surface.
-  const batchError = firstReadError([
-    {
-      scope: "fetchMultiplicationCandidatesForAdmin/groups",
-      error: groupsRes.error,
-    },
-    {
-      scope: "fetchMultiplicationCandidatesForAdmin/memberships",
-      error: membershipsRes.error,
-    },
-  ]);
-  if (batchError) return { data: null, error: batchError };
+  // output, not the whole surface. That precedence is composed from the batch's
+  // errors bag as data: only groups/memberships gate the read.
+  const gateMessage = batch.errors.groups ?? batch.errors.memberships;
+  if (gateMessage !== null)
+    return { data: null, error: new Error(gateMessage) };
 
-  const apprenticeById = indexApprentices(
-    (apprenticesRes.data ?? []) as {
-      id: string;
-      display_name: string;
-      readiness_stage: LeaderReadinessStage;
-    }[]
-  );
+  const apprenticeById = indexApprentices(batch.results.apprentices.data ?? []);
 
   // The planner buckets by the anchoring group's free-text group_type, read
   // directly off the group projection — no catalog round-trip needed.
-  const groupRows = (groupsRes.data ?? []) as MultiplicationGroupProjection[];
+  const groupRows = batch.results.groups.data ?? [];
   const groupById = indexCandidateGroups(groupRows);
   const memberCountByGroup = countActiveMembersByGroup(
-    (membershipsRes.data ?? []) as {
-      group_id: string;
-      status: string | null;
-    }[]
+    batch.results.memberships.data ?? []
   );
 
   const entries: MultiplicationCandidateEntry[] = candidates.map(
@@ -221,9 +280,20 @@ export async function fetchMultiplicationCandidatesForAdmin(
   return { data: entries, error: null };
 }
 
-const LEADER_PIPELINE_COLUMNS =
-  "id, group_id, display_name, member_id, readiness_stage, expected_ready_on, " +
-  "notes, archived_at, created_by, updated_by, created_at, updated_at";
+const LEADER_PIPELINE_COLUMNS = columns<LeaderPipelineRow>()(
+  "id",
+  "group_id",
+  "display_name",
+  "member_id",
+  "readiness_stage",
+  "expected_ready_on",
+  "notes",
+  "archived_at",
+  "created_by",
+  "updated_by",
+  "created_at",
+  "updated_at"
+);
 
 export type LeaderPipelineEntry = {
   apprentice: LeaderPipelineRow;
@@ -240,7 +310,7 @@ export async function fetchLeaderPipelineForAdmin(
 ): Promise<ReadResult<LeaderPipelineEntry[]>> {
   const pipelineRes = await client
     .from("leader_pipeline")
-    .select(LEADER_PIPELINE_COLUMNS)
+    .select(LEADER_PIPELINE_COLUMNS.select)
     .is("archived_at", null)
     .order("created_at", { ascending: true });
   if (pipelineRes.error) {
@@ -288,12 +358,21 @@ export type ApprenticePickerRef = Pick<
   "id" | "group_id" | "display_name" | "readiness_stage"
 >;
 
+// Shared by the candidate picker and the capacity-board apprentice read —
+// both need exactly the identity/group/stage projection.
+const ADMIN_APPRENTICE_PICKER_COLUMNS = columns<ApprenticePickerRef>()(
+  "id",
+  "group_id",
+  "display_name",
+  "readiness_stage"
+);
+
 export async function fetchApprenticePickerRefs(
   client: ReadClient
 ): Promise<ReadResult<{ apprentice: ApprenticePickerRef }[]>> {
   const { data, error } = await client
     .from("leader_pipeline")
-    .select("id, group_id, display_name, readiness_stage")
+    .select(ADMIN_APPRENTICE_PICKER_COLUMNS.select)
     .is("archived_at", null)
     .order("created_at", { ascending: true });
   if (error) {
@@ -321,60 +400,79 @@ export type CapacityBoardExtras = {
   // group id → free-text group_type, so the board's segment is the type name.
   // A group with no type is simply absent (= Untyped).
   groupTypeByGroup: Record<string, string>;
-  error: string | null;
 };
 
 export async function fetchCapacityBoardExtras(
   client: ReadClient
-): Promise<CapacityBoardExtras> {
-  const empty: CapacityBoardExtras = {
-    apprentices: [],
-    candidateGroupIds: [],
-    groupTypeByGroup: {},
-    error: null,
-  };
-
-  const [apprenticesRes, candidatesRes, groupsRes] = await Promise.all([
-    client
-      .from("leader_pipeline")
-      .select("id, group_id, display_name, readiness_stage")
-      .is("archived_at", null),
-    client
-      .from("multiplication_candidates")
-      .select("group_id")
-      .is("archived_at", null),
+): Promise<ReadResult<CapacityBoardExtras>> {
+  // Gather-and-degrade through readBatch (ADR 0015); this used to be the one
+  // reads-seam fetcher returning a bespoke inline-error shape.
+  const batch = await readBatch({
+    apprentices: async (): Promise<
+      ReadResult<CapacityBoardExtras["apprentices"]>
+    > => {
+      const { data, error } = await client
+        .from("leader_pipeline")
+        .select(ADMIN_APPRENTICE_PICKER_COLUMNS.select)
+        .is("archived_at", null);
+      if (error)
+        return {
+          data: null,
+          error: wrapError("fetchCapacityBoardExtras/apprentices", error),
+        };
+      return {
+        data: (data ?? []) as CapacityBoardExtras["apprentices"],
+        error: null,
+      };
+    },
+    candidates: async (): Promise<
+      ReadResult<{ group_id: string | null }[]>
+    > => {
+      const { data, error } = await client
+        .from("multiplication_candidates")
+        .select("group_id")
+        .is("archived_at", null);
+      if (error)
+        return {
+          data: null,
+          error: wrapError("fetchCapacityBoardExtras/candidates", error),
+        };
+      return {
+        data: (data ?? []) as { group_id: string | null }[],
+        error: null,
+      };
+    },
     // Each group's free-text type, for the board's segment label.
-    client.from("groups").select("id, group_type"),
-  ]);
-
-  const error =
-    (apprenticesRes.error &&
-      wrapError("fetchCapacityBoardExtras/apprentices", apprenticesRes.error)
-        .message) ||
-    (candidatesRes.error &&
-      wrapError("fetchCapacityBoardExtras/candidates", candidatesRes.error)
-        .message) ||
-    (groupsRes.error &&
-      wrapError("fetchCapacityBoardExtras/groups", groupsRes.error).message) ||
-    null;
-  if (error) return { ...empty, error };
+    groups: async (): Promise<
+      ReadResult<{ id: string; group_type: string | null }[]>
+    > => {
+      const { data, error } = await client
+        .from("groups")
+        .select("id, group_type");
+      if (error)
+        return {
+          data: null,
+          error: wrapError("fetchCapacityBoardExtras/groups", error),
+        };
+      return {
+        data: (data ?? []) as { id: string; group_type: string | null }[],
+        error: null,
+      };
+    },
+  });
+  if (batch.firstError !== null)
+    return { data: null, error: new Error(batch.firstError) };
 
   // Each group's free-text type drives the board segment label directly; an
   // absent entry reads as Untyped.
   const groupTypeByGroup: Record<string, string> = {};
-  const groupRows = (groupsRes.data ?? []) as {
-    id: string;
-    group_type: string | null;
-  }[];
-  for (const g of groupRows) {
+  for (const g of batch.results.groups.data ?? []) {
     const type = g.group_type?.trim();
     if (type) groupTypeByGroup[g.id] = type;
   }
 
   const candidateGroupIds: string[] = [];
-  for (const c of (candidatesRes.data ?? []) as {
-    group_id: string | null;
-  }[]) {
+  for (const c of batch.results.candidates.data ?? []) {
     // Type-only candidates carry no group, so they don't count as "already a
     // candidate" on the capacity board.
     if (c.group_id == null) continue;
@@ -382,10 +480,11 @@ export async function fetchCapacityBoardExtras(
   }
 
   return {
-    apprentices: (apprenticesRes.data ??
-      []) as CapacityBoardExtras["apprentices"],
-    candidateGroupIds,
-    groupTypeByGroup,
+    data: {
+      apprentices: batch.results.apprentices.data ?? [],
+      candidateGroupIds,
+      groupTypeByGroup,
+    },
     error: null,
   };
 }

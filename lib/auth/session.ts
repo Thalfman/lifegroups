@@ -6,6 +6,7 @@ import { log } from "@/lib/observability/logger";
 import { measureReadBundle } from "@/lib/observability/read-timing";
 import { isUserRole, type UserRole } from "./roles";
 import { isUuid } from "@/lib/shared/uuid";
+import { columns } from "@/lib/supabase/read-core";
 import { readFrozenSurfaceFlagForLeader } from "./leader-surface-flag";
 
 export type AuthUser = { id: string; email: string | null };
@@ -57,17 +58,15 @@ const VALID_PROFILE_STATUSES = new Set(["active", "inactive", "invited"]);
 // colocated test pins the exact set so adding a profiles column can never
 // silently widen this read. If a consumer legitimately needs a new column,
 // add it here AND update the pinning test deliberately.
-export const SESSION_PROFILE_COLUMNS = [
+export const SESSION_PROFILE_COLUMNS = columns<ProfilesRow>()(
   "id", // primary key; actor identity for guards/actions
   "auth_user_id", // checked by the isProfilesRow trust-boundary guard
   "full_name", // rendered in shells/layouts from session.profile
   "full_name_pending", // choose-your-name gate: (protected)/layout + app/page (ADR 0032)
   "email", // rendered in shells/layouts from session.profile
   "role", // authorization: every role guard switches on this
-  "status", // authorization: guards require "active"
-] as const satisfies readonly (keyof ProfilesRow)[];
-
-const SESSION_PROFILE_SELECT = SESSION_PROFILE_COLUMNS.join(", ");
+  "status" // authorization: guards require "active"
+);
 
 function isProfilesRow(v: unknown): v is ProfilesRow {
   if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
@@ -126,7 +125,7 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
     measureReadBundle("session_profile", async () =>
       client
         .from("profiles")
-        .select(SESSION_PROFILE_SELECT)
+        .select(SESSION_PROFILE_COLUMNS.select)
         .eq("auth_user_id", claimsSub)
         .maybeSingle()
     ),

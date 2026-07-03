@@ -1,22 +1,28 @@
+// NOTE: deliberately NOT marked "server-only" — pure helpers/types in this
+// module are still value-imported by client-bundled dashboard demo/fixture
+// code; splitting those out is tracked by the #816 module-split work.
 import type {
   GroupHealthAssessmentsRow,
   GroupHealthUpdatesRow,
 } from "@/types/database";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 export type GroupHealthAssessmentRatingRow = Pick<
   GroupHealthAssessmentsRow,
   "group_id" | "spiritual_growth_score" | "group_question_score"
 >;
 
-export const GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS = [
-  "group_id",
-  "spiritual_growth_score",
-  "group_question_score",
-] as const satisfies readonly (keyof GroupHealthAssessmentsRow)[];
-
-const GROUP_HEALTH_ASSESSMENT_RATING_SELECT =
-  GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS.join(", ");
+export const GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS =
+  columns<GroupHealthAssessmentsRow>()(
+    "group_id",
+    "spiritual_growth_score",
+    "group_question_score"
+  );
 
 export async function fetchGroupHealthAssessmentRatings(
   client: ReadClient,
@@ -24,7 +30,7 @@ export async function fetchGroupHealthAssessmentRatings(
 ): Promise<ReadResult<GroupHealthAssessmentRatingRow[]>> {
   const { data, error } = await client
     .from("group_health_assessments")
-    .select(GROUP_HEALTH_ASSESSMENT_RATING_SELECT)
+    .select(GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS.select)
     .eq("period_month", options.periodMonth)
     .returns<GroupHealthAssessmentRatingRow[]>();
   if (error) {
@@ -39,7 +45,7 @@ export async function fetchGroupHealthAssessmentRatings(
 // Column allowlist for the group-health-update fetcher (#495); every
 // GroupHealthUpdatesRow column (the admin review renders leader_note and
 // admin_note side by side), pinned by a colocated test.
-export const GROUP_HEALTH_UPDATE_COLUMNS = [
+export const GROUP_HEALTH_UPDATE_COLUMNS = columns<GroupHealthUpdatesRow>()(
   "id",
   "group_id",
   "submitted_by",
@@ -48,10 +54,8 @@ export const GROUP_HEALTH_UPDATE_COLUMNS = [
   "follow_up_needed",
   "leader_note",
   "admin_note",
-  "created_at",
-] as const satisfies readonly (keyof GroupHealthUpdatesRow)[];
-
-const GROUP_HEALTH_UPDATE_SELECT = GROUP_HEALTH_UPDATE_COLUMNS.join(", ");
+  "created_at"
+);
 
 export async function fetchLatestHealthUpdates(
   client: ReadClient,
@@ -59,7 +63,7 @@ export async function fetchLatestHealthUpdates(
 ): Promise<ReadResult<GroupHealthUpdatesRow[]>> {
   let query = client
     .from("group_health_updates")
-    .select(GROUP_HEALTH_UPDATE_SELECT)
+    .select(GROUP_HEALTH_UPDATE_COLUMNS.select)
     .order("update_week", { ascending: false });
   if (options.groupId) query = query.eq("group_id", options.groupId);
   if (options.updateWeek) query = query.eq("update_week", options.updateWeek);

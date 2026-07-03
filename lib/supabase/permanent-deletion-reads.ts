@@ -1,16 +1,39 @@
+import "server-only";
+
 // ADR 0014 (#312–#316): server reads for the danger-zone permanent-deletion
 // panel — the curated targets a Super Admin can pick from, and the recent
 // tombstones they can recover. Both are RLS-gated (tombstones is super-admin
 // read only); a failed read degrades to an empty list rather than throwing, so
 // the rest of the console still renders.
 
-import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   PERMANENT_DELETION_ENTITIES,
   findPermanentDeletionEntity,
   type PermanentDeletionItem,
 } from "@/lib/admin/permanent-deletion";
 import type { TombstonesRow } from "@/types/database";
+import { columns, type ReadClient } from "./read-core";
+
+const SUPER_ADMIN_TOMBSTONE_COLUMNS = columns<
+  Pick<
+    TombstonesRow,
+    | "id"
+    | "entity_type"
+    | "table_name"
+    | "entity_id"
+    | "row_snapshot"
+    | "deleted_at"
+    | "restored_at"
+  >
+>()(
+  "id",
+  "entity_type",
+  "table_name",
+  "entity_id",
+  "row_snapshot",
+  "deleted_at",
+  "restored_at"
+);
 
 export type PermanentDeletionTargetGroup = {
   entityType: string;
@@ -30,7 +53,7 @@ export type RecentTombstone = {
 };
 
 export async function fetchPermanentDeletionTargets(
-  client: AppSupabaseClient
+  client: ReadClient
 ): Promise<PermanentDeletionTargetGroup[]> {
   const groups = await Promise.all(
     PERMANENT_DELETION_ENTITIES.map(async (entity) => {
@@ -52,14 +75,12 @@ export async function fetchPermanentDeletionTargets(
 }
 
 export async function fetchRecentTombstones(
-  client: AppSupabaseClient,
+  client: ReadClient,
   limit = 20
 ): Promise<RecentTombstone[]> {
   const { data } = await client
     .from("tombstones")
-    .select(
-      "id, entity_type, table_name, entity_id, row_snapshot, deleted_at, restored_at"
-    )
+    .select(SUPER_ADMIN_TOMBSTONE_COLUMNS.select)
     .order("deleted_at", { ascending: false })
     .limit(limit);
 

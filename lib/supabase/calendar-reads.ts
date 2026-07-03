@@ -1,5 +1,13 @@
+// NOTE: deliberately NOT marked "server-only" — pure helpers/types in this
+// module are still value-imported by client-bundled dashboard demo/fixture
+// code; splitting those out is tracked by the #816 module-split work.
 import type { GroupCalendarEventsRow } from "@/types/database";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 // Phase 5A.6 group calendar readers. RLS already scopes these to
 // admin / leader-of-group via the SELECT policies in
@@ -32,7 +40,7 @@ const CALENDAR_EVENTS_PAGE_LIMIT = 10000;
 // reachable from both admin and leader calendar surfaces, so the pin matters
 // doubly: a future admin-only calendar column added to the table cannot flow
 // into a leader context without showing up as a deliberate diff here.
-export const GROUP_CALENDAR_EVENT_COLUMNS = [
+export const GROUP_CALENDAR_EVENT_COLUMNS = columns<GroupCalendarEventsRow>()(
   "id",
   "group_id",
   "event_date",
@@ -46,10 +54,8 @@ export const GROUP_CALENDAR_EVENT_COLUMNS = [
   "updated_by",
   "created_at",
   "updated_at",
-  "archived_at",
-] as const satisfies readonly (keyof GroupCalendarEventsRow)[];
-
-const GROUP_CALENDAR_EVENT_SELECT = GROUP_CALENDAR_EVENT_COLUMNS.join(", ");
+  "archived_at"
+);
 
 export async function fetchGroupCalendarEvents(
   client: ReadClient,
@@ -57,7 +63,7 @@ export async function fetchGroupCalendarEvents(
 ): Promise<ReadResult<GroupCalendarEventsRow[]>> {
   let query = client
     .from("group_calendar_events")
-    .select(GROUP_CALENDAR_EVENT_SELECT)
+    .select(GROUP_CALENDAR_EVENT_COLUMNS.select)
     .order("event_date", { ascending: true })
     .order("start_time", { ascending: true, nullsFirst: true });
   if (options.groupId) query = query.eq("group_id", options.groupId);

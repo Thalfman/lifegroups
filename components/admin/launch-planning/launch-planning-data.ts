@@ -45,10 +45,9 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type { ApprenticeOption } from "@/components/admin/multiplication/multiplication-planner";
 
 // The reads this surface assembles, as one interface (ADR 0015). `loadX` binds
-// the live client; a test binds an in-memory adapter. The two bundle reads
-// (inputs, capacity extras) carry bespoke per-section error shapes the
-// assembly's precedence depends on, so they stay raw rather than flattening
-// through the readBatch combinator.
+// the live client; a test binds an in-memory adapter. The inputs bundle carries
+// a bespoke per-section errors bag the assembly's precedence depends on, so it
+// stays raw rather than flattening through the readBatch combinator.
 const LAUNCH_PLANNING_FETCHERS = {
   fetchLaunchPlanningAssumptions,
   fetchLaunchPlanningInputsForAdmin,
@@ -311,18 +310,19 @@ export async function buildLaunchPlanningData(
     inputsBundle.errors.overrides ??
     inputsBundle.errors.memberships ??
     inputsBundle.errors.metricDefaults ??
-    boardExtras.error ??
+    boardExtras.error?.message ??
     null;
-  const capacityModel = capacityError
-    ? EMPTY_CAPACITY_MODEL
-    : buildCapacityBoardModel({
-        groups: inputsBundle.groups,
-        overrides: inputsBundle.groupMetricSettings,
-        memberships: inputsBundle.memberships,
-        metricDefaults,
-        apprentices: boardExtras.apprentices,
-        candidateGroupIds: boardExtras.candidateGroupIds,
-      });
+  const capacityModel =
+    capacityError || boardExtras.data === null
+      ? EMPTY_CAPACITY_MODEL
+      : buildCapacityBoardModel({
+          groups: inputsBundle.groups,
+          overrides: inputsBundle.groupMetricSettings,
+          memberships: inputsBundle.memberships,
+          metricDefaults,
+          apprentices: boardExtras.data.apprentices,
+          candidateGroupIds: boardExtras.data.candidateGroupIds,
+        });
 
   // --- Multiplication planner. The pipeline drives apprenticesByGroup; a
   // pipeline failure must block the planner (as the old /admin/multiplication

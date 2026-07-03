@@ -1,3 +1,6 @@
+// NOTE: deliberately NOT marked "server-only" — pure helpers/types in this
+// module are still value-imported by client-bundled dashboard demo/fixture
+// code; splitting those out is tracked by the #816 module-split work.
 import type { ProfilesRow, ShepherdCareProfilesRow } from "@/types/database";
 import {
   BUILT_IN_CARE_CADENCE_WINDOWS,
@@ -196,6 +199,13 @@ export function computeNeedsAttention(
   );
 }
 
+// The shepherd-identity projection of a profiles row: what the directory embed
+// read and the single-shepherd lookup both need. Shared so the two select
+// strings cannot drift apart.
+const SHEPHERD_CARE_SHEPHERD_PROFILE_COLUMNS = columns<
+  Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">
+>()("id", "full_name", "email", "role", "status");
+
 /**
  * Admin-only directory of leader / co_leader profiles joined with the
  * matching shepherd_care_profiles row (or null when no care row exists
@@ -221,7 +231,7 @@ export async function fetchShepherdCareDirectoryRowsForAdmin(
   const { data, error } = await client
     .from("profiles")
     .select(
-      `id, full_name, email, role, status, shepherd_care_profiles(${SHEPHERD_CARE_DIRECTORY_COLUMNS.select})`
+      `${SHEPHERD_CARE_SHEPHERD_PROFILE_COLUMNS.select}, shepherd_care_profiles(${SHEPHERD_CARE_DIRECTORY_COLUMNS.select})`
     )
     .in("role", ["leader", "co_leader"])
     .eq("status", "active")
@@ -304,7 +314,7 @@ export async function fetchShepherdCareProfileByShepherdId(
       error: wrapError("fetchShepherdCareProfileByShepherdId", error),
     };
   }
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
 
   // admin_summary now lives in the fenced, admin-only shepherd_care_admin_notes
   // table (phase_os5). Re-attach it here for the admin detail surface; this
@@ -395,7 +405,7 @@ export async function fetchAdminShepherdProfileById(
 > {
   const { data, error } = await client
     .from("profiles")
-    .select("id, full_name, email, role, status")
+    .select(SHEPHERD_CARE_SHEPHERD_PROFILE_COLUMNS.select)
     .eq("id", shepherdProfileId)
     .maybeSingle();
   if (error) {
@@ -404,7 +414,7 @@ export async function fetchAdminShepherdProfileById(
       error: wrapError("fetchAdminShepherdProfileById", error),
     };
   }
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   return {
     data: data as Pick<
       ProfilesRow,

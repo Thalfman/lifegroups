@@ -1,13 +1,21 @@
+// NOTE: deliberately NOT marked "server-only" — pure helpers/types in this
+// module are still value-imported by client-bundled dashboard demo/fixture
+// code; splitting those out is tracked by the #816 module-split work.
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
 } from "@/types/database";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 // Column allowlist for the attendance-session fetcher (#495); every
 // AttendanceSessionsRow column (the admin review surfaces render both the
 // leader_note and admin_note), pinned by a colocated test.
-export const ATTENDANCE_SESSION_COLUMNS = [
+export const ATTENDANCE_SESSION_COLUMNS = columns<AttendanceSessionsRow>()(
   "id",
   "group_id",
   "meeting_week",
@@ -18,10 +26,8 @@ export const ATTENDANCE_SESSION_COLUMNS = [
   "leader_note",
   "admin_note",
   "created_at",
-  "updated_at",
-] as const satisfies readonly (keyof AttendanceSessionsRow)[];
-
-const ATTENDANCE_SESSION_SELECT = ATTENDANCE_SESSION_COLUMNS.join(", ");
+  "updated_at"
+);
 
 export async function fetchAttendanceSessions(
   client: ReadClient,
@@ -29,7 +35,7 @@ export async function fetchAttendanceSessions(
 ): Promise<ReadResult<AttendanceSessionsRow[]>> {
   let query = client
     .from("attendance_sessions")
-    .select(ATTENDANCE_SESSION_SELECT)
+    .select(ATTENDANCE_SESSION_COLUMNS.select)
     .order("meeting_week", { ascending: false });
   if (options.groupId) query = query.eq("group_id", options.groupId);
   if (options.meetingWeek)
@@ -58,15 +64,13 @@ export async function fetchLatestMeetingWeek(
 
 // Column allowlist for the attendance-record fetcher (#495); every
 // AttendanceRecordsRow column, pinned by a colocated test.
-export const ATTENDANCE_RECORD_COLUMNS = [
+export const ATTENDANCE_RECORD_COLUMNS = columns<AttendanceRecordsRow>()(
   "id",
   "session_id",
   "member_id",
   "attendance_status",
-  "created_at",
-] as const satisfies readonly (keyof AttendanceRecordsRow)[];
-
-const ATTENDANCE_RECORD_SELECT = ATTENDANCE_RECORD_COLUMNS.join(", ");
+  "created_at"
+);
 
 export async function fetchAttendanceRecordsForSessions(
   client: ReadClient,
@@ -78,7 +82,7 @@ export async function fetchAttendanceRecordsForSessions(
   // even at modest deployment sizes; explicit range keeps results stable.
   const { data, error } = await client
     .from("attendance_records")
-    .select(ATTENDANCE_RECORD_SELECT)
+    .select(ATTENDANCE_RECORD_COLUMNS.select)
     .in("session_id", sessionIds)
     .range(0, 9999)
     .returns<AttendanceRecordsRow[]>();

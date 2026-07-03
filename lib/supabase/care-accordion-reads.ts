@@ -1,18 +1,19 @@
 import "server-only";
 
-import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type { GroupHealthLetter, LeaderHealthLetter } from "@/types/enums";
+import { readBatch } from "./read-batch";
 import {
   columns,
   wrapError,
   decodeNumericRecord,
+  type ReadClient,
   type ReadResult,
-} from "@/lib/supabase/read-core";
+} from "./read-core";
 import {
   fetchHealthRubric,
   type PersistedGroupGrade,
   type PersistedLeaderGrade,
-} from "@/lib/supabase/rubric-grade-reads";
+} from "./rubric-grade-reads";
 import { fetchLeaderHealthRubric } from "@/lib/admin/leader-health-read";
 import { decodeRubricCriteria, type Rubric } from "@/lib/admin/health-rubric";
 import {
@@ -62,7 +63,7 @@ export const ADMIN_LEADER_RUBRIC_GRADE_YEAR_COLUMNS =
 // All persisted Leader-Health Grade rows for a ministry year (one per graded
 // leader), reduced to what the letter resolver needs.
 export async function fetchLeaderRubricGradesForYear(
-  client: AppSupabaseClient,
+  client: ReadClient,
   ministryYear: number
 ): Promise<ReadResult<LeaderHealthGradeInput[]>> {
   const { data, error } = await client
@@ -108,7 +109,7 @@ export const ADMIN_GROUP_RUBRIC_GRADE_YEAR_COLUMNS =
 // All persisted Group-Health Grade rows for a ministry year (one per graded
 // group), reduced to what the letter resolver needs.
 export async function fetchGroupRubricGradesForYear(
-  client: AppSupabaseClient,
+  client: ReadClient,
   ministryYear: number
 ): Promise<ReadResult<GroupHealthGradeInput[]>> {
   const { data, error } = await client
@@ -137,7 +138,7 @@ export async function fetchGroupRubricGradesForYear(
 // by RLS). These are the Leaders whose Care Notes / Prayer Requests the admin
 // may read; everyone else is sealed.
 async function fetchGrantedSubjectIds(
-  client: AppSupabaseClient
+  client: ReadClient
 ): Promise<ReadResult<string[]>> {
   const { data, error } = await client
     .from("note_transparency_grants")
@@ -165,7 +166,7 @@ async function fetchGrantedSubjectIds(
 // VIEWER can read), so a SECURITY DEFINER count RPC would have to re-encode
 // the grant logic rather than lean on RLS. See docs/ui-followups.md.
 async function fetchSubjectProfileIds(
-  client: AppSupabaseClient,
+  client: ReadClient,
   table: "care_notes" | "prayer_requests"
 ): Promise<ReadResult<string[]>> {
   const { data, error } = await client.from(table).select("subject_profile_id");
@@ -220,7 +221,7 @@ const EMPTY_ENRICHMENT: CareAccordionEnrichment = {
 // failed grade read leaves that grade ungraded; a failed note read leaves the
 // Leader sealed — the surface never blocks on enrichment.
 export async function loadCareAccordionEnrichment(
-  client: AppSupabaseClient,
+  client: ReadClient,
   opts: { ministryYear: number | null; periodMonthIso: string }
 ): Promise<CareAccordionEnrichment> {
   const { ministryYear, periodMonthIso } = opts;
@@ -239,31 +240,38 @@ export async function loadCareAccordionEnrichment(
     error: null,
   };
 
-  const [
-    leaderRubricRes,
-    groupRubricRes,
-    leaderGradesRes,
-    groupGradesRes,
-    grantsRes,
-    careNoteIdsRes,
-    prayerIdsRes,
-  ] = await Promise.all([
-    inYear ? fetchLeaderHealthRubric(client) : Promise.resolve(emptyRubric),
-    inYear
-      ? fetchHealthRubric(client, "group")
-      : Promise.resolve({ data: null, error: null } as ReadResult<{
-          criteria: unknown;
-        } | null>),
-    inYear && ministryYear !== null
-      ? fetchLeaderRubricGradesForYear(client, ministryYear)
-      : Promise.resolve(emptyLeaderRows),
-    inYear && ministryYear !== null
-      ? fetchGroupRubricGradesForYear(client, ministryYear)
-      : Promise.resolve(emptyGroupRows),
-    fetchGrantedSubjectIds(client),
-    fetchSubjectProfileIds(client, "care_notes"),
-    fetchSubjectProfileIds(client, "prayer_requests"),
-  ]);
+  // Gather-and-degrade through readBatch (ADR 0015). Declaration order pins
+  // the same error precedence the old hand-rolled ?? chain encoded.
+  const batch = await readBatch({
+    leaderRubric: () =>
+      inYear ? fetchLeaderHealthRubric(client) : Promise.resolve(emptyRubric),
+    groupRubric: () =>
+      inYear
+        ? fetchHealthRubric(client, "group")
+        : Promise.resolve({ data: null, error: null } as ReadResult<{
+            criteria: unknown;
+          } | null>),
+    leaderGrades: () =>
+      inYear && ministryYear !== null
+        ? fetchLeaderRubricGradesForYear(client, ministryYear)
+        : Promise.resolve(emptyLeaderRows),
+    groupGrades: () =>
+      inYear && ministryYear !== null
+        ? fetchGroupRubricGradesForYear(client, ministryYear)
+        : Promise.resolve(emptyGroupRows),
+    grants: () => fetchGrantedSubjectIds(client),
+    careNoteIds: () => fetchSubjectProfileIds(client, "care_notes"),
+    prayerIds: () => fetchSubjectProfileIds(client, "prayer_requests"),
+  });
+  const {
+    leaderRubric: leaderRubricRes,
+    groupRubric: groupRubricRes,
+    leaderGrades: leaderGradesRes,
+    groupGrades: groupGradesRes,
+    grants: grantsRes,
+    careNoteIds: careNoteIdsRes,
+    prayerIds: prayerIdsRes,
+  } = batch.results;
 
   // Leader-Health letters (#378). Resolve only when in a year and both the
   // rubric and grade rows read cleanly; otherwise leave the map empty (ungraded).
@@ -320,22 +328,12 @@ export async function loadCareAccordionEnrichment(
     groupGradesAvailable: !groupRubricRes.error && !groupGradesRes.error,
   };
 
-  const error =
-    leaderRubricRes.error?.message ??
-    groupRubricRes.error?.message ??
-    leaderGradesRes.error?.message ??
-    groupGradesRes.error?.message ??
-    grantsRes.error?.message ??
-    careNoteIdsRes.error?.message ??
-    prayerIdsRes.error?.message ??
-    null;
-
   return {
     leaderHealthByLeaderId,
     groupHealthByGroupId,
     noteStateByLeaderId,
     gradeEntry,
-    error,
+    error: batch.firstError,
   };
 }
 

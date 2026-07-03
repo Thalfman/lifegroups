@@ -1,3 +1,5 @@
+import "server-only";
+
 // Phase SAC.4 (#164): Super Admin Console coverage read models.
 //
 // Kept in a dedicated module (rather than appended to a broader read module)
@@ -6,10 +8,18 @@
 // over-shepherd surfaces already read; the console only adds a list view +
 // the two pools the assign form draws from. No writes here.
 
-import type { AppSupabaseClient } from "./types";
-import type { UsageEventsRow } from "@/types/database";
+import type {
+  ProfilesRow,
+  ShepherdCoverageAssignmentsRow,
+  UsageEventsRow,
+} from "@/types/database";
 import { fetchProfileNamesByIds } from "./care-note-feed-reads";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 export type SuperAdminConsoleCoverageAssignment = {
   id: string;
@@ -32,7 +42,7 @@ export type SuperAdminConsoleCoverageLeader = {
 
 // Active over-shepherds, name-sorted, for the assign form's target pool.
 export async function fetchActiveOverShepherds(
-  client: AppSupabaseClient
+  client: ReadClient
 ): Promise<SuperAdminConsoleOverShepherd[]> {
   const { data, error } = await client
     .from("over_shepherds")
@@ -43,13 +53,17 @@ export async function fetchActiveOverShepherds(
   return data as SuperAdminConsoleOverShepherd[];
 }
 
+const SUPER_ADMIN_COVERAGE_LEADER_COLUMNS = columns<
+  Pick<ProfilesRow, "id" | "full_name" | "role" | "status">
+>()("id", "full_name", "role", "status");
+
 // Active leader / co-leader profiles, the eligible coverage subjects.
 export async function fetchCoverageAssignableLeaders(
-  client: AppSupabaseClient
+  client: ReadClient
 ): Promise<SuperAdminConsoleCoverageLeader[]> {
   const { data, error } = await client
     .from("profiles")
-    .select("id, full_name, role, status")
+    .select(SUPER_ADMIN_COVERAGE_LEADER_COLUMNS.select)
     .in("role", ["leader", "co_leader"])
     .eq("status", "active")
     .order("full_name", { ascending: true });
@@ -62,12 +76,19 @@ export async function fetchCoverageAssignableLeaders(
 
 // Current (active) coverage assignments, with the shepherd + over-shepherd
 // names resolved for display.
+const SUPER_ADMIN_COVERAGE_ASSIGNMENT_COLUMNS = columns<
+  Pick<
+    ShepherdCoverageAssignmentsRow,
+    "id" | "shepherd_profile_id" | "over_shepherd_id" | "assigned_at" | "active"
+  >
+>()("id", "shepherd_profile_id", "over_shepherd_id", "assigned_at", "active");
+
 export async function fetchCurrentCoverageAssignments(
-  client: AppSupabaseClient
+  client: ReadClient
 ): Promise<SuperAdminConsoleCoverageAssignment[]> {
   const { data, error } = await client
     .from("shepherd_coverage_assignments")
-    .select("id, shepherd_profile_id, over_shepherd_id, assigned_at, active")
+    .select(SUPER_ADMIN_COVERAGE_ASSIGNMENT_COLUMNS.select)
     .eq("active", true)
     .order("assigned_at", { ascending: false });
   if (error || !data) return [];
@@ -114,18 +135,26 @@ export async function fetchCurrentCoverageAssignments(
 // Phase USAGE.1: read the recent usage_events for the Super Admin Console's
 // Usage panel. usage_events is Super-Admin-only by RLS, so this read fails
 // closed for every other role; the console only renders it for super_admin.
+// Project only the columns the panel needs. usage_events holds user activity
+// telemetry, so an explicit column list keeps any later schema addition from
+// silently widening the console's read surface (vs. select("*")) — the same
+// discipline fetchPlatformConfig applies to the Super-Admin config store.
+const SUPER_ADMIN_USAGE_EVENT_COLUMNS = columns<UsageEventsRow>()(
+  "id",
+  "actor_profile_id",
+  "event_type",
+  "area",
+  "created_at"
+);
+
 export async function fetchRecentUsageEvents(
   client: ReadClient,
   options: { limit?: number } = {}
 ): Promise<ReadResult<UsageEventsRow[]>> {
   const limit = options.limit ?? 200;
-  // Project only the columns the panel needs. usage_events holds user activity
-  // telemetry, so an explicit column list keeps any later schema addition from
-  // silently widening the console's read surface (vs. select("*")) — the same
-  // discipline fetchPlatformConfig applies to the Super-Admin config store.
   const { data, error } = await client
     .from("usage_events")
-    .select("id, actor_profile_id, event_type, area, created_at")
+    .select(SUPER_ADMIN_USAGE_EVENT_COLUMNS.select)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error)

@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { AuditEventsRow, FollowUpsRow } from "@/types/database";
 import type { FollowUpStatus } from "@/types/enums";
 import {
@@ -216,7 +218,7 @@ export async function fetchGuestNamesByIds(
 // Column allowlist for the recent-audit reader (#495); every AuditEventsRow
 // column (the activity feeds render actor attribution + metadata), pinned by
 // a colocated test so a future audit column cannot silently widen this read.
-export const AUDIT_EVENT_COLUMNS = [
+export const AUDIT_EVENT_COLUMNS = columns<AuditEventsRow>()(
   "id",
   "actor_profile_id",
   "action",
@@ -225,10 +227,8 @@ export const AUDIT_EVENT_COLUMNS = [
   "metadata",
   "created_at",
   "actor_name",
-  "actor_email",
-] as const satisfies readonly (keyof AuditEventsRow)[];
-
-const AUDIT_EVENT_SELECT = AUDIT_EVENT_COLUMNS.join(", ");
+  "actor_email"
+);
 
 export async function fetchRecentAuditEvents(
   client: ReadClient,
@@ -237,7 +237,7 @@ export async function fetchRecentAuditEvents(
   const limit = options.limit ?? 25;
   let query = client
     .from("audit_events")
-    .select(AUDIT_EVENT_SELECT)
+    .select(AUDIT_EVENT_COLUMNS.select)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (options.actionsLike) {

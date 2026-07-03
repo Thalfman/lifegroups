@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { CareNotesRow, PrayerRequestsRow } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
 import { CARE_NOTE_COLUMNS, PRAYER_REQUEST_COLUMNS } from "./care-note-reads";
@@ -116,7 +118,8 @@ export interface BroadNoteFeedRow {
 }
 
 // Mirrors SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS (shepherd-care-interaction-reads.ts)
-// plus the `notes` body and the author column the feed attributes.
+// plus the `notes` body and the author column the feed attributes. Raw select
+// string by necessity: columns<Row>() cannot express embed fragments.
 const BROAD_NOTE_FEED_COLUMNS =
   "id, interaction_at, notes, created_by_profile_id, created_at, " +
   "care_profile:shepherd_care_profiles!shepherd_care_interactions_care_profile_id_fkey!inner ( " +

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { pgHexToBase64 } from "@/lib/crypto/encoding";
 import {
   columns,
@@ -112,7 +114,7 @@ function byteaToBase64(value: string): string {
 }
 
 function nullableByteaToBase64(value: string | null): string | null {
-  return value === null || value === undefined ? null : byteaToBase64(value);
+  return value == null ? null : byteaToBase64(value);
 }
 
 /**
@@ -140,7 +142,7 @@ export async function fetchShepherdCarePrivateNoteCiphertextForCreator(
       ),
     };
   }
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   const row = data as RawPrivateNoteCiphertext;
   return {
     data: {

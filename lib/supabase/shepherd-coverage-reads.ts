@@ -1,3 +1,5 @@
+import "server-only";
+
 import type {
   OverShepherdsRow,
   ProfilesRow,
@@ -127,7 +129,7 @@ export async function fetchOverShepherdByIdForAdmin(
       error: wrapError("fetchOverShepherdByIdForAdmin", error),
     };
   }
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   return { data: data as OverShepherdsRow, error: null };
 }
 
@@ -163,6 +165,8 @@ function projectCoverageAssignmentRows(
   });
 }
 
+// Raw select string by necessity: columns<Row>() cannot express embed
+// fragments (FK hints + !inner markers), so this stays hand-written.
 const ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT =
   "id, shepherd_profile_id, over_shepherd_id, assigned_at, " +
   "over_shepherd:over_shepherds!shepherd_coverage_assignments_over_shepherd_id_fkey ( id, full_name, active ), " +
@@ -236,7 +240,7 @@ export async function fetchActiveShepherdCoverageAssignmentByShepherdId(
       ),
     };
   }
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   const [summary] = projectCoverageAssignmentRows([data as unknown]);
   return { data: summary ?? null, error: null };
 }

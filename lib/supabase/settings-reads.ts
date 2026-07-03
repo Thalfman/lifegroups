@@ -1,3 +1,6 @@
+// NOTE: deliberately NOT marked "server-only" — pure helpers/types in this
+// module are still value-imported by client-bundled dashboard demo/fixture
+// code; splitting those out is tracked by the #816 module-split work.
 import type {
   AppSettingsRow,
   ChurchAttendanceSnapshotsRow,
@@ -9,7 +12,13 @@ import type {
   PlatformConfigRow,
 } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import { readBatch } from "./read-batch";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 import { fetchAllGroups } from "./group-reads";
 import { fetchActiveMemberships } from "./membership-reads";
 
@@ -39,15 +48,13 @@ function isGroupMetricSettingsRow(v: unknown): v is GroupMetricSettingsRow {
 // AppSettingsRow column, pinned by a colocated test. Shared by the
 // metric-defaults, group-health-rubric, and launch-planning-assumptions
 // readers — they all fetch one keyed row and guard it with isAppSettingsRow.
-export const APP_SETTINGS_COLUMNS = [
+export const APP_SETTINGS_COLUMNS = columns<AppSettingsRow>()(
   "id",
   "setting_key",
   "setting_value",
   "created_at",
-  "updated_at",
-] as const satisfies readonly (keyof AppSettingsRow)[];
-
-const APP_SETTINGS_SELECT = APP_SETTINGS_COLUMNS.join(", ");
+  "updated_at"
+);
 
 // Returns the single `metric_defaults` row from `app_settings`. The row is
 // seeded by the Phase 5A.4 migration and never deleted; a `null` return
@@ -58,12 +65,12 @@ export async function fetchMetricDefaults(
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select(APP_SETTINGS_SELECT)
+    .select(APP_SETTINGS_COLUMNS.select)
     .eq("setting_key", "metric_defaults")
     .maybeSingle();
   if (error)
     return { data: null, error: wrapError("fetchMetricDefaults", error) };
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
       data: null,
@@ -82,11 +89,11 @@ export async function fetchGroupTypes(
 ): Promise<ReadResult<string[]>> {
   const { data, error } = await client
     .from("app_settings")
-    .select(APP_SETTINGS_SELECT)
+    .select(APP_SETTINGS_COLUMNS.select)
     .eq("setting_key", "group_types")
     .maybeSingle();
   if (error) return { data: null, error: wrapError("fetchGroupTypes", error) };
-  if (data === null || data === undefined) return { data: [], error: null };
+  if (data == null) return { data: [], error: null };
   const row: unknown = data;
   if (!isAppSettingsRow(row)) {
     return {
@@ -103,20 +110,24 @@ export async function fetchGroupTypes(
 // Returns the per-type config rows (target group count + optional readiness-rule
 // override) keyed on the free-text group_type name. A type with no row inherits
 // target 0 + the single global readiness rule. Admin-only via RLS.
-const GROUP_TYPE_CONFIG_COLUMNS =
-  "group_type, target_count, readiness_rule, in_pipeline" as const;
-
 export type GroupTypeConfigEntry = Pick<
   GroupTypeConfigsRow,
   "group_type" | "target_count" | "readiness_rule" | "in_pipeline"
 >;
+
+const ADMIN_GROUP_TYPE_CONFIG_COLUMNS = columns<GroupTypeConfigEntry>()(
+  "group_type",
+  "target_count",
+  "readiness_rule",
+  "in_pipeline"
+);
 
 export async function fetchGroupTypeConfigs(
   client: ReadClient
 ): Promise<ReadResult<GroupTypeConfigEntry[]>> {
   const { data, error } = await client
     .from("group_type_configs")
-    .select(GROUP_TYPE_CONFIG_COLUMNS)
+    .select(ADMIN_GROUP_TYPE_CONFIG_COLUMNS.select)
     .order("group_type", { ascending: true });
   if (error)
     return { data: null, error: wrapError("fetchGroupTypeConfigs", error) };
@@ -144,7 +155,7 @@ export async function fetchPlatformConfig(
     .maybeSingle();
   if (error)
     return { data: null, error: wrapError("fetchPlatformConfig", error) };
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
       data: null,
@@ -181,7 +192,7 @@ export async function fetchGroupHealthRubricSetting(
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select(APP_SETTINGS_SELECT)
+    .select(APP_SETTINGS_COLUMNS.select)
     .eq("setting_key", "group_health_rubric")
     .maybeSingle();
   if (error)
@@ -189,7 +200,7 @@ export async function fetchGroupHealthRubricSetting(
       data: null,
       error: wrapError("fetchGroupHealthRubricSetting", error),
     };
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
       data: null,
@@ -202,9 +213,16 @@ export async function fetchGroupHealthRubricSetting(
   return { data, error: null };
 }
 
-const CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS =
-  "id, snapshot_date, attendance_count, note, created_by_profile_id, " +
-  "created_at, updated_at";
+const ADMIN_CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS =
+  columns<ChurchAttendanceSnapshotsRow>()(
+    "id",
+    "snapshot_date",
+    "attendance_count",
+    "note",
+    "created_by_profile_id",
+    "created_at",
+    "updated_at"
+  );
 
 // Julian P2: most-recent-first church attendance snapshots. The first row is
 // the latest known church-wide attendance, the denominator for the
@@ -216,7 +234,7 @@ export async function fetchChurchAttendanceSnapshots(
   const limit = options.limit ?? 12;
   const { data, error } = await client
     .from("church_attendance_snapshots")
-    .select(CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS)
+    .select(ADMIN_CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS.select)
     .order("snapshot_date", { ascending: false })
     .limit(limit);
   if (error) {
@@ -234,7 +252,7 @@ export async function fetchChurchAttendanceSnapshots(
 // this once at load time and join client-side by group_id.
 // Column allowlist for the per-group metric-override readers (#495); every
 // GroupMetricSettingsRow column, pinned by a colocated test.
-export const GROUP_METRIC_SETTINGS_COLUMNS = [
+export const GROUP_METRIC_SETTINGS_COLUMNS = columns<GroupMetricSettingsRow>()(
   "group_id",
   "capacity_override",
   "capacity_warning_threshold_pct_override",
@@ -245,17 +263,15 @@ export const GROUP_METRIC_SETTINGS_COLUMNS = [
   "check_in_due_offset_hours_override",
   "allow_over_capacity",
   "created_at",
-  "updated_at",
-] as const satisfies readonly (keyof GroupMetricSettingsRow)[];
-
-const GROUP_METRIC_SETTINGS_SELECT = GROUP_METRIC_SETTINGS_COLUMNS.join(", ");
+  "updated_at"
+);
 
 export async function fetchAllGroupMetricSettings(
   client: ReadClient
 ): Promise<ReadResult<GroupMetricSettingsRow[]>> {
   const { data, error } = await client
     .from("group_metric_settings")
-    .select(GROUP_METRIC_SETTINGS_SELECT)
+    .select(GROUP_METRIC_SETTINGS_COLUMNS.select)
     .returns<GroupMetricSettingsRow[]>();
   if (error)
     return {
@@ -271,12 +287,12 @@ export async function fetchGroupMetricSettings(
 ): Promise<ReadResult<GroupMetricSettingsRow | null>> {
   const { data, error } = await client
     .from("group_metric_settings")
-    .select(GROUP_METRIC_SETTINGS_SELECT)
+    .select(GROUP_METRIC_SETTINGS_COLUMNS.select)
     .eq("group_id", groupId)
     .maybeSingle();
   if (error)
     return { data: null, error: wrapError("fetchGroupMetricSettings", error) };
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   if (!isGroupMetricSettingsRow(data)) {
     return {
       data: null,
@@ -301,7 +317,7 @@ export async function fetchLaunchPlanningAssumptions(
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select(APP_SETTINGS_SELECT)
+    .select(APP_SETTINGS_COLUMNS.select)
     .eq("setting_key", "launch_planning_assumptions")
     .maybeSingle();
   if (error)
@@ -309,7 +325,7 @@ export async function fetchLaunchPlanningAssumptions(
       data: null,
       error: wrapError("fetchLaunchPlanningAssumptions", error),
     };
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
       data: null,
@@ -341,24 +357,20 @@ export type LaunchPlanningInputsBundle = {
 export async function fetchLaunchPlanningInputsForAdmin(
   client: ReadClient
 ): Promise<LaunchPlanningInputsBundle> {
-  const [groupsRes, overridesRes, membershipsRes, defaultsRes] =
-    await Promise.all([
-      fetchAllGroups(client),
-      fetchAllGroupMetricSettings(client),
-      fetchActiveMemberships(client),
-      fetchMetricDefaults(client),
-    ]);
+  // Gather-and-degrade through readBatch (ADR 0015); the bundle's per-key
+  // errors bag is the batch's errors map, not a hand-maintained copy.
+  const batch = await readBatch({
+    groups: () => fetchAllGroups(client),
+    overrides: () => fetchAllGroupMetricSettings(client),
+    memberships: () => fetchActiveMemberships(client),
+    metricDefaults: () => fetchMetricDefaults(client),
+  });
   return {
-    groups: groupsRes.data ?? [],
-    groupMetricSettings: overridesRes.data ?? [],
-    memberships: membershipsRes.data ?? [],
-    metricDefaultsRow: defaultsRes.data ?? null,
-    errors: {
-      groups: groupsRes.error?.message ?? null,
-      overrides: overridesRes.error?.message ?? null,
-      memberships: membershipsRes.error?.message ?? null,
-      metricDefaults: defaultsRes.error?.message ?? null,
-    },
+    groups: batch.results.groups.data ?? [],
+    groupMetricSettings: batch.results.overrides.data ?? [],
+    memberships: batch.results.memberships.data ?? [],
+    metricDefaultsRow: batch.results.metricDefaults.data ?? null,
+    errors: batch.errors,
   };
 }
 
@@ -370,8 +382,19 @@ export async function fetchLaunchPlanningInputsForAdmin(
 // boundary guard checks it's a plain object before the row is handed to
 // the pure decoder.
 
-const LAUNCH_PLANNING_SCENARIO_COLUMNS =
-  "id, name, description, assumptions, is_current, archived_at, created_by, updated_by, created_at, updated_at";
+const ADMIN_LAUNCH_PLANNING_SCENARIO_COLUMNS =
+  columns<LaunchPlanningScenariosRow>()(
+    "id",
+    "name",
+    "description",
+    "assumptions",
+    "is_current",
+    "archived_at",
+    "created_by",
+    "updated_by",
+    "created_at",
+    "updated_at"
+  );
 
 function isLaunchPlanningScenarioRow(
   v: unknown
@@ -396,7 +419,7 @@ export async function fetchLaunchPlanningScenariosForAdmin(
 ): Promise<ReadResult<LaunchPlanningScenariosRow[]>> {
   const { data, error } = await client
     .from("launch_planning_scenarios")
-    .select(LAUNCH_PLANNING_SCENARIO_COLUMNS)
+    .select(ADMIN_LAUNCH_PLANNING_SCENARIO_COLUMNS.select)
     .order("is_current", { ascending: false })
     .order("name", { ascending: true });
   if (error)
@@ -418,7 +441,7 @@ export async function fetchLaunchPlanningScenarioByIdForAdmin(
 ): Promise<ReadResult<LaunchPlanningScenariosRow | null>> {
   const { data, error } = await client
     .from("launch_planning_scenarios")
-    .select(LAUNCH_PLANNING_SCENARIO_COLUMNS)
+    .select(ADMIN_LAUNCH_PLANNING_SCENARIO_COLUMNS.select)
     .eq("id", id)
     .maybeSingle();
   if (error)

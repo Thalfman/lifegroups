@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { ShepherdCareInteractionsRow } from "@/types/database";
 import { ELIGIBLE_SHEPHERD_ROLES } from "./shepherd-coverage-reads";
 import {
@@ -71,6 +73,8 @@ export async function fetchShepherdCareInteractionsForAdmin(
  * deactivated or moved off the eligible roles. Without this filter the feed
  * would link to detail pages that return 404 for those profiles.
  */
+// Raw select string by necessity: columns<Row>() cannot express embed
+// fragments (FK hints + !inner markers), so this stays hand-written.
 export const SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS =
   "id, care_profile_id, interaction_at, interaction_type, created_at, " +
   "care_profile:shepherd_care_profiles!shepherd_care_interactions_care_profile_id_fkey!inner ( " +

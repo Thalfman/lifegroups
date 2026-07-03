@@ -1,3 +1,5 @@
+import "server-only";
+
 // Danger-Zone maintenance read models (PRD-SAC6): the impact previews the
 // Super Admin Console shows before a destructive action runs.
 //
@@ -10,7 +12,12 @@
 // Head-only count queries keep these cheap. All reads run under the caller's
 // (super-admin) session, so RLS still applies.
 
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 import type {
   ActivityResetBaselinesRow,
   AttentionResetBaselinesRow,
@@ -80,12 +87,19 @@ export function coerceRowCounts(value: unknown): Record<string, number> {
   return out;
 }
 
+const SUPER_ADMIN_CLEAN_SLATE_SNAPSHOT_COLUMNS = columns<
+  Pick<
+    CleanSlateSnapshotsRow,
+    "id" | "created_at" | "total_rows" | "row_counts"
+  >
+>()("id", "created_at", "total_rows", "row_counts");
+
 export async function fetchLatestCleanSlateSnapshot(
   client: ReadClient
 ): Promise<ReadResult<CleanSlateLatestSnapshot | null>> {
   const { data, error } = await client
     .from("clean_slate_snapshots")
-    .select("id, created_at, total_rows, row_counts")
+    .select(SUPER_ADMIN_CLEAN_SLATE_SNAPSHOT_COLUMNS.select)
     .is("restored_at", null)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -188,6 +202,13 @@ function latestSnapshotByCategory(
   return out;
 }
 
+const SUPER_ADMIN_HISTORY_RESET_SNAPSHOT_COLUMNS = columns<
+  Pick<
+    HistoryResetSnapshotsRow,
+    "id" | "created_at" | "total_rows" | "category"
+  >
+>()("id", "created_at", "total_rows", "category");
+
 export async function fetchHistoryResetState(
   client: ReadClient
 ): Promise<ReadResult<HistoryResetState>> {
@@ -203,7 +224,7 @@ export async function fetchHistoryResetState(
     // Latest un-restored snapshot per category, in one read.
     const { data: snapshotRows, error: snapshotError } = await client
       .from("history_reset_snapshots")
-      .select("id, created_at, total_rows, category")
+      .select(SUPER_ADMIN_HISTORY_RESET_SNAPSHOT_COLUMNS.select)
       .is("restored_at", null)
       .order("created_at", { ascending: false });
     if (snapshotError) throw snapshotError;
@@ -235,14 +256,23 @@ export async function fetchHistoryResetState(
 // admits both admin roles to SELECT (the whole admin team's Home agrees). Used
 // by the dashboard read; a failure degrades to "no baselines" (today's
 // behaviour) rather than failing the page.
+const SUPER_ADMIN_ATTENTION_RESET_BASELINE_COLUMNS =
+  columns<AttentionResetBaselinesRow>()(
+    "id",
+    "surface",
+    "scope",
+    "entity_id",
+    "baseline_on",
+    "created_by",
+    "created_at"
+  );
+
 export async function fetchAttentionResetBaselines(
   client: ReadClient
 ): Promise<ReadResult<AttentionResetBaselinesRow[]>> {
   const { data, error } = await client
     .from("attention_reset_baselines")
-    .select(
-      "id, surface, scope, entity_id, baseline_on, created_by, created_at"
-    );
+    .select(SUPER_ADMIN_ATTENTION_RESET_BASELINE_COLUMNS.select);
   if (error)
     return {
       data: null,
@@ -283,6 +313,20 @@ export type AttentionResetState = {
   surfaces: AttentionResetSurfaceState[];
 };
 
+const SUPER_ADMIN_ATTENTION_BASELINE_STATE_COLUMNS = columns<
+  Pick<
+    AttentionResetBaselinesRow,
+    "surface" | "scope" | "entity_id" | "baseline_on"
+  >
+>()("surface", "scope", "entity_id", "baseline_on");
+
+const SUPER_ADMIN_ATTENTION_RESET_SNAPSHOT_COLUMNS = columns<
+  Pick<
+    AttentionResetSnapshotsRow,
+    "id" | "created_at" | "surface" | "scope" | "entity_id"
+  >
+>()("id", "created_at", "surface", "scope", "entity_id");
+
 export async function fetchAttentionResetState(
   client: ReadClient
 ): Promise<ReadResult<AttentionResetState>> {
@@ -291,10 +335,10 @@ export async function fetchAttentionResetState(
       await Promise.all([
         client
           .from("attention_reset_baselines")
-          .select("surface, scope, entity_id, baseline_on"),
+          .select(SUPER_ADMIN_ATTENTION_BASELINE_STATE_COLUMNS.select),
         client
           .from("attention_reset_snapshots")
-          .select("id, created_at, surface, scope, entity_id")
+          .select(SUPER_ADMIN_ATTENTION_RESET_SNAPSHOT_COLUMNS.select)
           .is("restored_at", null)
           .is("superseded_at", null)
           .order("created_at", { ascending: false }),
