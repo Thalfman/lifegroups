@@ -103,12 +103,13 @@ backwards compatibility; the `/staff` surface was removed.
 
 ## Read path
 
-- `lib/dashboard/queries.ts` exposes `getAdminDashboardData(client)`
-  and `getLeaderDashboardData(client, { assignedGroupIds })`. Each
-  returns a `DashboardResult<T>` carrying
+- `lib/dashboard/queries.ts` exposes `getAdminDashboardData(client)`,
+  which returns a `DashboardResult<T>` carrying
   `source: "live" | "fallback"` plus an optional `error` so the UI
-  can label what it is showing.
-- The queries fall back to `lib/dashboard/fallback-data.ts` whenever
+  can label what it is showing. (The dormant leader-dashboard
+  orchestrator was retired to git history — the live `/leader` surface
+  reads through `lib/leader/leader-reads.ts` instead.)
+- The query falls back to `lib/dashboard/fallback-data.ts` whenever
   the client is `null` (no env vars) or a Supabase error is surfaced.
 - Typed read helpers live in `lib/supabase/read-models.ts` (and the
   per-surface `*-reads.ts` modules) with **explicit column allowlists**

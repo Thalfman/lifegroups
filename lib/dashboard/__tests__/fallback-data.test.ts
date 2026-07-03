@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  getAdminDashboardData,
-  getLeaderDashboardData,
-} from "@/lib/dashboard/queries";
+import { getAdminDashboardData } from "@/lib/dashboard/queries";
 import {
   ADMIN_FALLBACK,
   INTEREST_FUNNEL_FALLBACK,
-  LEADER_FALLBACK,
   MULTIPLY_READINESS_FALLBACK,
 } from "@/lib/dashboard/fallback-data";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/guest-reads";
@@ -29,12 +25,6 @@ describe("fallback adapter — dashboard read with no client", () => {
     const result = await getAdminDashboardData(null);
     expect(result.source).toBe("fallback");
     expect(result.data).toEqual(ADMIN_FALLBACK);
-  });
-
-  it("leader read returns the fallback shape, tagged as fallback", async () => {
-    const result = await getLeaderDashboardData(null, { assignedGroupIds: [] });
-    expect(result.source).toBe("fallback");
-    expect(result.data).toEqual(LEADER_FALLBACK);
   });
 });
 

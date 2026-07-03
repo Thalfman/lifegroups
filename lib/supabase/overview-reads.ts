@@ -104,9 +104,8 @@ export async function fetchOverviewActivityCounts(
 }
 
 /**
- * Open follow-ups summary helper used by both the admin dashboard
- * (`getAdminDashboardData`) and the per-group leader dashboard
- * (`buildLeaderGroupDashboard`).
+ * Open follow-ups summary helper used by the admin dashboard
+ * (`getAdminDashboardData`).
  *
  * Selects via {@link LEADER_FOLLOW_UP_COLUMNS} and returns
  * {@link LeaderFollowUpRow}, i.e. **never** includes `admin_private_note`.

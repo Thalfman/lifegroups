@@ -7,26 +7,17 @@ import {
   fetchActiveShepherdCoverageAssignmentsForAdmin,
   fetchOverShepherdsForAdmin,
 } from "@/lib/supabase/shepherd-coverage-reads";
-import { type LeaderFollowUpRow } from "@/lib/supabase/follow-up-reads";
 import {
   fetchActiveGroupCount,
   fetchAllGroupLeaders,
   fetchAllGroups,
-  fetchGroupsByIds,
 } from "@/lib/supabase/group-reads";
 import {
   fetchActiveMemberships,
-  fetchMembersByIds,
   fetchProfilesForAdmin,
 } from "@/lib/supabase/membership-reads";
-import {
-  fetchGuests,
-  fetchNewGuestsForGroupSince,
-} from "@/lib/supabase/guest-reads";
-import {
-  fetchAttendanceRecordsForSessions,
-  fetchAttendanceSessions,
-} from "@/lib/supabase/attendance-reads";
+import { fetchGuests } from "@/lib/supabase/guest-reads";
+import { fetchAttendanceSessions } from "@/lib/supabase/attendance-reads";
 import {
   fetchGroupHealthAssessmentRatings,
   fetchLatestHealthUpdates,
@@ -59,19 +50,15 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {
   AdminDashboardData,
   DashboardResult,
-  LeaderCurrentWeek,
-  LeaderDashboardData,
-  LeaderGroupDashboard,
   LeaderPipelineDashboardSummary,
   MultiplicationDashboardSummary,
-  ShepherdCareDashboardSummary,
 } from "./types";
-import { buildAdminGroupModel, toFollowUpItem } from "./admin-group-model";
+import { buildAdminGroupModel } from "./admin-group-model";
 import { buildLaunchPlanningSnapshot } from "./launch-planning-snapshot";
 import { buildShepherdCareSummary } from "./shepherd-care-summary";
 import { LEADER_READINESS_STAGES } from "@/lib/admin/leader-pipeline";
 import type { OverviewGrain } from "@/lib/admin/overview-period";
-import { ADMIN_FALLBACK, LEADER_FALLBACK } from "./fallback-data";
+import { ADMIN_FALLBACK } from "./fallback-data";
 // Phase 5B.0 swapped the dashboard's UTC isoWeekStart for a
 // church-timezone-aware version so the leader workflow and the
 // dashboard agree on what "this week" means.
@@ -84,25 +71,6 @@ import {
   careCadenceWindowsFromDefaults,
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
-import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
-import { generateOccurrencesInRange } from "@/lib/calendar/occurrences";
-import { eventDisplayLabel } from "@/lib/calendar/payload";
-import type {
-  AttendanceRecordsRow,
-  GroupCalendarEventsRow,
-  GroupMembershipsRow,
-  GroupsRow,
-  MembersRow,
-} from "@/types/database";
-
-function describeWeek(meetingWeekIso: string): string {
-  const date = new Date(`${meetingWeekIso}T00:00:00Z`);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
 
 function fallback<T>(data: T, error?: string): DashboardResult<T> {
   return { source: "fallback", data, error };
@@ -110,25 +78,6 @@ function fallback<T>(data: T, error?: string): DashboardResult<T> {
 
 function live<T>(data: T): DashboardResult<T> {
   return { source: "live", data };
-}
-
-function shortenName(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0];
-  const last = parts[parts.length - 1];
-  return `${parts[0]} ${last.charAt(0)}.`;
-}
-
-function computeAttendanceRhythm(
-  rows: { presentCount: number; absentCount: number; excusedCount: number }[]
-): string {
-  if (rows.length === 0) return "No recent sessions";
-  const presentTotals = rows.map((r) => r.presentCount);
-  const avg =
-    presentTotals.reduce((sum, n) => sum + n, 0) / presentTotals.length;
-  const latest = presentTotals[0];
-  if (Math.abs(latest - avg) <= 1) return "Steady";
-  return latest > avg ? "Growing" : "Dipping";
 }
 
 // ---------------------------------------------------------------------------
@@ -522,252 +471,5 @@ export async function buildAdminDashboardData(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return fallback(ADMIN_FALLBACK, message);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Leader dashboard (unchanged Phase 5B.0 model)
-// ---------------------------------------------------------------------------
-
-async function buildLeaderGroupDashboard(
-  client: AppSupabaseClient,
-  group: GroupsRow,
-  calendarEvents: GroupCalendarEventsRow[] = []
-): Promise<LeaderGroupDashboard> {
-  // The leader card header is always anchored to "this calendar week" so the
-  // workflow date doesn't drift backwards on weeks where a leader hasn't
-  // submitted yet. Computed up front so the new-guests count (which only needs
-  // the group id + week) can join the first parallel batch instead of trailing
-  // it on its own round trip.
-  const currentWeekIso = isoWeekStart(new Date());
-
-  const [
-    sessionsResult,
-    membershipsResult,
-    healthUpdatesResult,
-    followUpsResult,
-    newGuestsResult,
-  ] = await Promise.all([
-    fetchAttendanceSessions(client, { groupId: group.id, limit: 8 }),
-    fetchActiveMemberships(client, { groupId: group.id }),
-    fetchLatestHealthUpdates(client, { groupId: group.id }),
-    fetchOpenFollowUps(client, { groupId: group.id, limit: 6 }),
-    fetchNewGuestsForGroupSince(client, group.id, currentWeekIso),
-  ]);
-
-  const firstError =
-    sessionsResult.error ||
-    membershipsResult.error ||
-    healthUpdatesResult.error ||
-    followUpsResult.error ||
-    newGuestsResult.error;
-  if (firstError) throw firstError;
-
-  const sessions = sessionsResult.data ?? [];
-  const memberships = membershipsResult.data ?? [];
-  const healthUpdates = healthUpdatesResult.data ?? [];
-  const followUps = followUpsResult.data ?? [];
-  const newGuestsThisWeek = (newGuestsResult.data ?? []).length;
-
-  // Both follow-on reads depend only on the first batch's results (member ids
-  // from memberships, session ids from sessions) and not on each other, so they
-  // run in parallel rather than as two sequential round trips.
-  const memberIds = memberships.map((m: GroupMembershipsRow) => m.member_id);
-  const [membersResult, recordsResult] = await Promise.all([
-    fetchMembersByIds(client, memberIds),
-    sessions.length > 0
-      ? fetchAttendanceRecordsForSessions(
-          client,
-          sessions.map((s) => s.id)
-        )
-      : Promise.resolve({ data: [] as AttendanceRecordsRow[], error: null }),
-  ]);
-  if (membersResult.error) throw membersResult.error;
-  if (recordsResult.error) throw recordsResult.error;
-  const members = (membersResult.data ?? []) as MembersRow[];
-  const recordsByMember: AttendanceRecordsRow[] = recordsResult.data ?? [];
-
-  const recentSessions = sessions.slice(0, 4).map((session) => {
-    const recs = recordsByMember.filter((r) => r.session_id === session.id);
-    return {
-      meetingWeek: session.meeting_week,
-      status: session.status,
-      presentCount: recs.filter((r) => r.attendance_status === "present")
-        .length,
-      absentCount: recs.filter((r) => r.attendance_status === "absent").length,
-      excusedCount: recs.filter((r) => r.attendance_status === "excused")
-        .length,
-    };
-  });
-
-  const latestHealth = healthUpdates[0];
-  const latestWeekIso = currentWeekIso;
-
-  const currentWeekSession =
-    sessions.find((s) => s.meeting_week === currentWeekIso) ?? null;
-  const currentWeekRecords = currentWeekSession
-    ? recordsByMember.filter((r) => r.session_id === currentWeekSession.id)
-    : [];
-
-  const followUpItems = followUps.map((row: LeaderFollowUpRow) =>
-    toFollowUpItem(row, new Map([[group.id, group]]))
-  );
-
-  const memberList = members
-    .map((m) => ({ id: m.id, displayName: shortenName(m.full_name) }))
-    .sort((a, b) => a.displayName.localeCompare(b.displayName));
-
-  const rhythm = computeAttendanceRhythm(recentSessions);
-
-  const currentWeek: LeaderCurrentWeek = {
-    meetingWeek: currentWeekIso,
-    status: currentWeekSession?.status ?? "not_submitted",
-    alreadySubmitted:
-      currentWeekSession?.status === "submitted" ||
-      currentWeekSession?.status === "did_not_meet" ||
-      currentWeekSession?.status === "planned_pause" ||
-      currentWeekSession?.status === "admin_entered",
-    presentCount: currentWeekRecords.filter(
-      (r) => r.attendance_status === "present"
-    ).length,
-    absentCount: currentWeekRecords.filter(
-      (r) => r.attendance_status === "absent"
-    ).length,
-    excusedCount: currentWeekRecords.filter(
-      (r) => r.attendance_status === "excused"
-    ).length,
-    meetingDate: currentWeekSession?.meeting_date ?? null,
-    submittedAt: currentWeekSession?.submitted_at ?? null,
-    leaderNote: currentWeekSession?.leader_note ?? null,
-  };
-
-  // Upcoming-events strip: at most 2 upcoming events from today onwards.
-  // Phase 5A.6 correction: after dropping form-first event creation,
-  // default meetings are generated from the group's schedule and
-  // typically have no DB row. The strip must include those generated
-  // occurrences so a group that meets weekly and has no explicit
-  // overrides still shows "next up" entries. Saved override rows merge
-  // onto the same date and replace the gathering type / status. OFF /
-  // cancelled overrides are kept in the list so the leader can see what
-  // they previously published. Meeting time is always inherited from
-  // the group schedule.
-  //
-  // The floor is today's church-local calendar date so a Wednesday view
-  // doesn't show Monday's already-past meeting; the ceiling is the same
-  // 8-week horizon used by the calendar fetch so the merge is complete.
-  const todayIso = churchTodayIso();
-  const horizonEndIso = addDaysIso(todayIso, 8 * 7);
-  const generated = generateOccurrencesInRange(
-    {
-      meetingDay: group.meeting_day,
-      meetingTime: group.meeting_time,
-      meetingFrequency: group.meeting_frequency,
-      meetingWeekParity: group.meeting_week_parity,
-    },
-    todayIso,
-    horizonEndIso
-  );
-  const overridesByDate = new Map<string, GroupCalendarEventsRow>();
-  for (const e of calendarEvents) {
-    if (e.archived_at != null) continue;
-    if (e.event_date < todayIso) continue;
-    overridesByDate.set(e.event_date, e);
-  }
-  const dates = new Set<string>([
-    ...generated.map((g) => g.date),
-    ...overridesByDate.keys(),
-  ]);
-  const upcomingEvents = Array.from(dates)
-    .sort()
-    .slice(0, 2)
-    .map((date) => {
-      const override = overridesByDate.get(date);
-      if (override) {
-        return {
-          date,
-          label: eventDisplayLabel({
-            title: override.title,
-            event_type: override.event_type,
-          }),
-          status: override.status,
-          startTime: group.meeting_time,
-        };
-      }
-      return {
-        date,
-        label: eventDisplayLabel({ title: null, event_type: "study" }),
-        status: "scheduled" as const,
-        startTime: group.meeting_time,
-      };
-    });
-
-  return {
-    group: {
-      groupId: group.id,
-      name: group.name,
-      meetingDay: group.meeting_day,
-      meetingTime: group.meeting_time,
-      lifecycleStatus: group.lifecycle_status,
-      healthStatus: latestHealth?.pulse ?? group.health_status,
-      capacity: group.capacity,
-      activeMembers: memberships.length,
-      weekLabel: `Week of ${describeWeek(latestWeekIso)}`,
-      members: memberList,
-    },
-    recentSessions,
-    healthPulse: {
-      attendanceRhythm: rhythm,
-      newGuestsThisWeek,
-      currentHealth: latestHealth?.pulse ?? group.health_status,
-      leaderNote: latestHealth?.leader_note ?? null,
-    },
-    followUps: followUpItems,
-    currentWeek,
-    upcomingEvents,
-  };
-}
-
-export async function getLeaderDashboardData(
-  client: AppSupabaseClient | null,
-  options: { assignedGroupIds: readonly string[] }
-): Promise<DashboardResult<LeaderDashboardData>> {
-  if (!client) return fallback(LEADER_FALLBACK);
-  if (options.assignedGroupIds.length === 0) return live({ groups: [] });
-
-  try {
-    const todayIso = isoWeekStart(new Date());
-    const horizonEnd = addDaysIso(todayIso, 8 * 7);
-    const [groupsResult, calendarEventsResult] = await Promise.all([
-      fetchGroupsByIds(client, [...options.assignedGroupIds]),
-      fetchGroupCalendarEvents(client, {
-        groupIds: [...options.assignedGroupIds],
-        fromDate: todayIso,
-        toDate: horizonEnd,
-        includeArchived: false,
-      }),
-    ]);
-    if (groupsResult.error)
-      return fallback(LEADER_FALLBACK, groupsResult.error.message);
-    if (calendarEventsResult.error)
-      return fallback(LEADER_FALLBACK, calendarEventsResult.error.message);
-    const groups = groupsResult.data ?? [];
-    if (groups.length === 0) return live({ groups: [] });
-
-    const eventsByGroup = new Map<string, GroupCalendarEventsRow[]>();
-    for (const e of calendarEventsResult.data ?? []) {
-      const list = eventsByGroup.get(e.group_id) ?? [];
-      list.push(e);
-      eventsByGroup.set(e.group_id, list);
-    }
-
-    const dashboards = await Promise.all(
-      groups.map((g) =>
-        buildLeaderGroupDashboard(client, g, eventsByGroup.get(g.id) ?? [])
-      )
-    );
-    return live({ groups: dashboards });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return fallback(LEADER_FALLBACK, message);
   }
 }

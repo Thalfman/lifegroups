@@ -65,43 +65,6 @@ export async function fetchGuests(
   return { data: data ?? [], error: null };
 }
 
-// Column allowlist for the full-row guests fetcher (#495); every GuestsRow
-// column, pinned by a colocated test. The admin directory read above uses the
-// narrower ADMIN_GUEST_DIRECTORY_COLUMNS projection instead.
-export const GUEST_COLUMNS = columns<GuestsRow>()(
-  "id",
-  "full_name",
-  "email",
-  "phone",
-  "first_attended_group_id",
-  "first_attended_date",
-  "pipeline_stage",
-  "assigned_group_id",
-  "follow_up_owner_id",
-  "notes",
-  "created_at",
-  "updated_at"
-);
-
-export async function fetchNewGuestsForGroupSince(
-  client: ReadClient,
-  groupId: string,
-  sinceIsoDate: string
-): Promise<ReadResult<GuestsRow[]>> {
-  const { data, error } = await client
-    .from("guests")
-    .select(GUEST_COLUMNS.select)
-    .or(`first_attended_group_id.eq.${groupId},assigned_group_id.eq.${groupId}`)
-    .gte("first_attended_date", sinceIsoDate)
-    .returns<GuestsRow[]>();
-  if (error)
-    return {
-      data: null,
-      error: wrapError("fetchNewGuestsForGroupSince", error),
-    };
-  return { data: data ?? [], error: null };
-}
-
 export const GUEST_PIPELINE_STAGES: GuestPipelineStage[] = [
   "new",
   "contacted",

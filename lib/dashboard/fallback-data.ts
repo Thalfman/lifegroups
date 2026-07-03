@@ -1,14 +1,12 @@
 import type {
   AdminDashboardData,
   InterestFunnelDashboardSummary,
-  LeaderDashboardData,
   LeaderPipelineDashboardSummary,
   MultiplicationDashboardSummary,
   MultiplyReadinessDashboardSummary,
   OverviewActivitySummary,
   PipelineStageCount,
   ShepherdCareDashboardSummary,
-  UpcomingCalendarEvent,
 } from "./types";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/guest-reads";
 import { pipelineStageLabel, isActivePipelineStage } from "./labels";
@@ -60,28 +58,6 @@ const fallbackGuestPipelineCount = fallbackPipelineBreakdown
 
 const FALLBACK_WEEK = "2026-05-18";
 const FALLBACK_WEEK_LABEL = "Week of May 18, 2026";
-
-// Phase 5A.6 demo calendar for the leader fallback group. Models the
-// 5-week rotation (Community Night, Men's Transformation, Study,
-// Women's Transformation, Study) starting at the fallback week with
-// one OFF date and one Cancelled date sprinkled in. The old public
-// /leader-preview and /admin-preview routes are retired; the surviving
-// demo-data surface is the env-gated /a11y-harness, rendered when no
-// Supabase client is configured.
-const fallbackLeaderUpcoming: UpcomingCalendarEvent[] = [
-  {
-    date: "2026-05-19", // Tuesday: Community Night
-    label: "Community Night",
-    status: "scheduled",
-    startTime: "19:00",
-  },
-  {
-    date: "2026-05-26", // Tuesday: Men's Transformation
-    label: "Men’s Transformation",
-    status: "scheduled",
-    startTime: "19:00",
-  },
-];
 
 // Derived from the Care demo seed through the live summary rule
 // (lib/dashboard/shepherd-care-summary.ts) — never hardcoded, so a change to
@@ -210,101 +186,4 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
   // this value is for the no-client demo.)
   dueFollowUpsThisWeekCount: 0,
   weekAheadCutoffIso: DEMO_WEEK_AHEAD_CUTOFF_ISO,
-};
-
-export const LEADER_FALLBACK: LeaderDashboardData = {
-  groups: [
-    {
-      group: {
-        groupId: "fallback-leader-group",
-        name: "Tuesday Night Life Group",
-        meetingDay: "Tuesday",
-        meetingTime: "19:00",
-        lifecycleStatus: "active",
-        healthStatus: "healthy",
-        capacity: 12,
-        activeMembers: 8,
-        weekLabel: "Week of May 18",
-        members: [
-          { id: "fallback-m-1", displayName: "Jordan K." },
-          { id: "fallback-m-2", displayName: "Priya M." },
-          { id: "fallback-m-3", displayName: "Noah B." },
-          { id: "fallback-m-4", displayName: "Grace T." },
-          { id: "fallback-m-5", displayName: "Elijah R." },
-          { id: "fallback-m-6", displayName: "Avery L." },
-          { id: "fallback-m-7", displayName: "Sam W." },
-          { id: "fallback-m-8", displayName: "Riley T." },
-        ],
-      },
-      recentSessions: [
-        {
-          meetingWeek: "2026-05-11",
-          status: "submitted",
-          presentCount: 7,
-          absentCount: 1,
-          excusedCount: 0,
-        },
-        {
-          meetingWeek: "2026-05-04",
-          status: "submitted",
-          presentCount: 6,
-          absentCount: 1,
-          excusedCount: 1,
-        },
-        {
-          meetingWeek: "2026-04-27",
-          status: "submitted",
-          presentCount: 7,
-          absentCount: 0,
-          excusedCount: 1,
-        },
-        {
-          meetingWeek: "2026-04-20",
-          status: "submitted",
-          presentCount: 6,
-          absentCount: 2,
-          excusedCount: 0,
-        },
-      ],
-      healthPulse: {
-        attendanceRhythm: "Steady",
-        newGuestsThisWeek: 1,
-        currentHealth: "healthy",
-        leaderNote:
-          "Group continues to grow steadily; planning a guest-friendly week soon.",
-      },
-      followUps: [
-        {
-          id: "fallback-leader-fu-1",
-          title: "Welcome new guest to the group",
-          type: "guest",
-          priority: "normal",
-          status: "open",
-          dueDate: null,
-          relatedGroupName: "Tuesday Night Life Group",
-        },
-        {
-          id: "fallback-leader-fu-2",
-          title: "Confirm meeting space for next week",
-          type: "admin",
-          priority: "low",
-          status: "open",
-          dueDate: null,
-          relatedGroupName: "Tuesday Night Life Group",
-        },
-      ],
-      currentWeek: {
-        meetingWeek: "2026-05-18",
-        status: "not_submitted",
-        alreadySubmitted: false,
-        presentCount: 0,
-        absentCount: 0,
-        excusedCount: 0,
-        meetingDate: null,
-        submittedAt: null,
-        leaderNote: null,
-      },
-      upcomingEvents: fallbackLeaderUpcoming,
-    },
-  ],
 };
