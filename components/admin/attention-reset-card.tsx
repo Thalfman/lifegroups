@@ -36,11 +36,11 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { successTextClassName } from "@/components/admin/forms/field-styles";
 import {
-  fieldInputClassName,
-  fieldLabelClassName,
-  successTextClassName,
-} from "@/components/admin/forms/field-styles";
+  ConfirmPhraseInput,
+  confirmPhraseMatches,
+} from "@/components/admin/forms/confirm-phrase-input";
 import {
   DangerCard,
   DangerPill,
@@ -142,11 +142,15 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
 
   const meta = ATTENTION_RESET_SURFACE_META[surface.surface];
   const phrase = CONFIRM_PHRASE[surface.surface];
-  const phraseMatches = confirm.trim() === phrase;
-  const restoreMatches =
-    restoreConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;
-  const entityRestoreMatches =
-    entityRestoreConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;
+  const phraseMatches = confirmPhraseMatches(confirm, phrase);
+  const restoreMatches = confirmPhraseMatches(
+    restoreConfirm,
+    CLEAN_SLATE_RESTORE_CONFIRM_PHRASE
+  );
+  const entityRestoreMatches = confirmPhraseMatches(
+    entityRestoreConfirm,
+    CLEAN_SLATE_RESTORE_CONFIRM_PHRASE
+  );
   const snapshot = surface.snapshot;
   const entitySnapshots = surface.entitySnapshots;
 
@@ -180,24 +184,14 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
       <form action={reset.formAction} className="grid gap-2">
         <input type="hidden" name="scope" value="global" />
         <div className="flex flex-wrap items-end gap-2">
-          <div className="min-w-40 flex-1 basis-44">
-            <label
-              htmlFor={`attention-reset-confirm-${surface.surface}`}
-              className={fieldLabelClassName}
-            >
-              Type {phrase} to confirm
-            </label>
-            <input
-              id={`attention-reset-confirm-${surface.surface}`}
-              name="confirm"
-              type="text"
-              autoComplete="off"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder={phrase}
-              className={fieldInputClassName}
-            />
-          </div>
+          <ConfirmPhraseInput
+            id={`attention-reset-confirm-${surface.surface}`}
+            phrase={phrase}
+            label={<>Type {phrase} to confirm</>}
+            className="min-w-40 flex-1 basis-44"
+            value={confirm}
+            onChange={setConfirm}
+          />
           <Button
             type="submit"
             variant="destructive"
@@ -240,24 +234,14 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
             {formatIsoDateTimeUtc(snapshot.createdAt)} UTC.
           </div>
           <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-40 flex-1 basis-44">
-              <label
-                htmlFor={`attention-restore-confirm-${surface.surface}`}
-                className={fieldLabelClassName}
-              >
-                Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to restore
-              </label>
-              <input
-                id={`attention-restore-confirm-${surface.surface}`}
-                name="confirm"
-                type="text"
-                autoComplete="off"
-                value={restoreConfirm}
-                onChange={(e) => setRestoreConfirm(e.target.value)}
-                placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
-                className={fieldInputClassName}
-              />
-            </div>
+            <ConfirmPhraseInput
+              id={`attention-restore-confirm-${surface.surface}`}
+              phrase={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
+              label={<>Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to restore</>}
+              className="min-w-40 flex-1 basis-44"
+              value={restoreConfirm}
+              onChange={setRestoreConfirm}
+            />
             <PButton
               type="submit"
               tone="ghost"
@@ -287,15 +271,13 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
           <div className="font-sans text-xs text-ink2">
             Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} once to enable.
           </div>
-          <input
-            aria-label={`Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to enable single-reset undo for ${meta.label}`}
+          <ConfirmPhraseInput
+            phrase={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
+            ariaLabel={`Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to enable single-reset undo for ${meta.label}`}
             name="entity-restore-confirm"
-            type="text"
-            autoComplete="off"
+            bounded
             value={entityRestoreConfirm}
-            onChange={(e) => setEntityRestoreConfirm(e.target.value)}
-            placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
-            className={`${fieldInputClassName} max-w-[220px]`}
+            onChange={setEntityRestoreConfirm}
           />
           {entitySnapshots.map((es) => (
             <form

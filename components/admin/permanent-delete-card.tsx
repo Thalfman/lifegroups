@@ -32,11 +32,14 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import {
-  fieldInputClassName,
   fieldLabelClassName,
   fieldSelectClassName,
   successTextClassName,
 } from "@/components/admin/forms/field-styles";
+import {
+  ConfirmPhraseInput,
+  confirmPhraseMatches,
+} from "@/components/admin/forms/confirm-phrase-input";
 import {
   DangerCard,
   DangerSection,
@@ -98,7 +101,10 @@ export function PermanentDeleteCard({
     preflight.state.value.entityId === selectedId
       ? preflight.state.value
       : null;
-  const phraseMatches = confirm.trim() === PERMANENT_DELETE_CONFIRM_PHRASE;
+  const phraseMatches = confirmPhraseMatches(
+    confirm,
+    PERMANENT_DELETE_CONFIRM_PHRASE
+  );
   const canDelete =
     !!selectedId && phraseMatches && report !== null && report.deletable;
 
@@ -179,24 +185,13 @@ export function PermanentDeleteCard({
         <form ref={delFormRef} action={del.formAction} className="grid gap-2.5">
           <input type="hidden" name="entityType" value={entityType} />
           <input type="hidden" name="id" value={selectedId} />
-          <div>
-            <label
-              htmlFor="perm-delete-confirm"
-              className={fieldLabelClassName}
-            >
-              Type {PERMANENT_DELETE_CONFIRM_PHRASE} to confirm
-            </label>
-            <input
-              id="perm-delete-confirm"
-              name="confirm"
-              type="text"
-              autoComplete="off"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder={PERMANENT_DELETE_CONFIRM_PHRASE}
-              className={fieldInputClassName}
-            />
-          </div>
+          <ConfirmPhraseInput
+            id="perm-delete-confirm"
+            phrase={PERMANENT_DELETE_CONFIRM_PHRASE}
+            label={<>Type {PERMANENT_DELETE_CONFIRM_PHRASE} to confirm</>}
+            value={confirm}
+            onChange={setConfirm}
+          />
           <div className="flex items-center gap-2.5">
             <Button
               type="submit"
@@ -322,7 +317,10 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
   useValueChange(restoreState, (next) => {
     if (next?.ok) setConfirm("");
   });
-  const matches = confirm.trim() === TOMBSTONE_RESTORE_CONFIRM_PHRASE;
+  const matches = confirmPhraseMatches(
+    confirm,
+    TOMBSTONE_RESTORE_CONFIRM_PHRASE
+  );
   const alreadyRestored = tombstone.restoredAt !== null;
 
   return (
@@ -346,14 +344,12 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
         </span>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            name="confirm"
-            type="text"
-            autoComplete="off"
+          <ConfirmPhraseInput
+            phrase={TOMBSTONE_RESTORE_CONFIRM_PHRASE}
+            ariaLabel={`Type ${TOMBSTONE_RESTORE_CONFIRM_PHRASE} to confirm restoring ${tombstone.label}`}
+            bounded
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder={TOMBSTONE_RESTORE_CONFIRM_PHRASE}
-            className={cnInput}
+            onChange={setConfirm}
           />
           <PButton
             type="submit"
@@ -375,7 +371,3 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
     </form>
   );
 }
-
-// The tombstone confirm input sits inline beside its Restore button, so it
-// keeps a bounded width instead of the full-width field default.
-const cnInput = `${fieldInputClassName} max-w-[220px]`;
