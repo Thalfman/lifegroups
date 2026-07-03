@@ -48,7 +48,10 @@ on:
       - "components/over-shepherd/**"
       # The Interest Funnel spec (#826) drives /admin/plan; the readiness spec
       # (#827) drives /admin/multiply plus its Groups-editor precondition (the
-      # lock-in actions live under launch-planning, its legacy home).
+      # lock-in actions live under launch-planning, its legacy home, and the
+      # Pipeline data flows through the shared launch-planning view builder;
+      # the Groups list is hosted by group-management-shell before the
+      # directory renders the editor drawer).
       - "app/(protected)/admin/plan/**"
       - "app/(protected)/admin/multiply/**"
       - "app/(protected)/admin/groups/**"
@@ -57,6 +60,8 @@ on:
       - "components/admin/multiply/**"
       - "components/admin/groups/**"
       - "components/admin/groups-directory.tsx"
+      - "components/admin/group-management-shell.tsx"
+      - "components/admin/launch-planning/**"
       - "components/admin/forms/**"
       # The shared seams every write crosses (Codex review on #837): the write
       # runners, RPC gateways, validators, auth guards, and the reads seam all
