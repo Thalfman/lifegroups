@@ -68,14 +68,25 @@ esac
 
 log "Local stack: $SUPABASE_URL_LOCAL"
 
-# Diagnostic breadcrumbs for key/grant drift across Supabase CLI versions (the
-# values are throwaway local-dev credentials the CLI itself prints). The key
-# prefix distinguishes a legacy JWT ("eyJ...") from a new-style secret key
-# ("sb_secret_..."); the privilege probes say whether PostgREST-side table
-# grants exist for the roles a key can map to.
-log "Service key shape: ${SERVICE_ROLE_KEY_LOCAL:0:10}..."
-log "service_role SELECT on profiles: $(psql "$DB_URL_LOCAL" -tAc "select has_table_privilege('service_role','public.profiles','SELECT')" 2>&1 | head -n1)"
-log "anon SELECT on profiles: $(psql "$DB_URL_LOCAL" -tAc "select has_table_privilege('anon','public.profiles','SELECT')" 2>&1 | head -n1)"
+# --- 1b. Local-stack grant repair for service_role ----------------------------
+# Hosted Supabase gives service_role blanket table grants via the project's
+# default privileges (the Edge Functions rely on that), but a fresh CLI stack
+# applying only this repo's migrations ends up WITHOUT them — the migrations
+# grant to `authenticated` only (20260518070000_phase5a2_grants_hardening.sql
+# fixed the same gap for that role). Without the repair, the seed script's
+# service client dies with "permission denied for table profiles". This is
+# local-parity plumbing for the throwaway stack, not a schema change; RLS and
+# the authenticated/anon grants are untouched.
+if [ "$(psql "$DB_URL_LOCAL" -tAc "select has_table_privilege('service_role','public.profiles','SELECT')" 2>/dev/null)" != "t" ]; then
+  log "Granting service_role table access (local parity with hosted defaults)..."
+  psql "$DB_URL_LOCAL" -v ON_ERROR_STOP=1 -q <<'SQL'
+grant usage on schema public to service_role;
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+SQL
+else
+  log "service_role table grants already present."
+fi
 
 # --- 2. Apply the operational seed -------------------------------------------
 # `supabase start` applies migrations under supabase/migrations/. The seeded
