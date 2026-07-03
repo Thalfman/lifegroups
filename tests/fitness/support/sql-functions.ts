@@ -94,11 +94,33 @@ export interface DropFunctionStatement {
   readonly pos: number;
 }
 
+/**
+ * A dynamic by-name drop: a plpgsql DO block that enumerates `pg_proc` rows by
+ * `proname in ('…', …)` (or `proname = '…'`) filtered to one `nspname`, and
+ * `execute`s a DROP FUNCTION per row — the idiom migrations use to retire
+ * EVERY overload of a function at once (e.g.
+ * 20260708000000_collapse_cells_to_group_type_list.sql). A literal-only parser
+ * cannot see these drops, which would leave retired RPC bodies looking
+ * net-effective (and, e.g., force error-copy for tokens only dead functions
+ * raise). This models that specific enumerate-and-drop idiom — it is NOT a
+ * plpgsql interpreter; a dynamic drop it can't read simply folds as today
+ * (the functions stay effective), which fails visible rather than hiding one.
+ */
+export interface DropFunctionsByNameStatement {
+  /** Schema-qualified function names, lowercased. Drops ALL overloads. */
+  readonly names: readonly string[];
+  readonly relPath: string;
+  readonly line: number;
+  /** Character offset of the DO block in the file — folded in textual order. */
+  readonly pos: number;
+}
+
 export interface ParsedSqlFunctions {
   readonly creates: readonly CreateFunctionStatement[];
   readonly alters: readonly AlterFunctionStatement[];
   readonly grants: readonly GrantFunctionStatement[];
   readonly drops: readonly DropFunctionStatement[];
+  readonly dropsByName: readonly DropFunctionsByNameStatement[];
 }
 
 /** The folded, final-state view of one function signature across all migrations. */
@@ -289,6 +311,8 @@ const GRANT_ALL_FN_RE =
   /\b(grant|revoke)\s+(?:all|execute)(?:\s+privileges)?\s+on\s+all\s+(?:functions|routines)\s+in\s+schema\s+([a-z0-9_."]+)\s+(?:to|from)\s+([^;]+);/gi;
 const DROP_FN_RE =
   /\bdrop\s+(?:function|routine)\s+(?:if\s+exists\s+)?([a-z0-9_."]+)\s*\(/gi;
+// A `DO $tag$ … $tag$` block (candidate for the dynamic by-name drop idiom).
+const DO_BLOCK_RE = /\bdo\s+(\$[a-z_][a-z0-9_]*\$|\$\$)/gi;
 
 /**
  * Normalize a GRANT/REVOKE role list to bare lowercased role names. Takes only
@@ -458,7 +482,44 @@ export function parseSqlFunctions(file: SourceFile): ParsedSqlFunctions {
     DROP_FN_RE.lastIndex = end;
   }
 
-  return { creates, alters, grants, drops };
+  // Dynamic by-name drops (see DropFunctionsByNameStatement). All three parts
+  // of the idiom must be present in ONE DO block — an `execute`d DROP
+  // FUNCTION/ROUTINE, a `proname` filter, and a literal `nspname` — otherwise
+  // the block is left unmodelled and the functions stay effective.
+  const dropsByName: DropFunctionsByNameStatement[] = [];
+  DO_BLOCK_RE.lastIndex = 0;
+  for (let m = DO_BLOCK_RE.exec(text); m; m = DO_BLOCK_RE.exec(text)) {
+    const tag = m[1];
+    const bodyStart = m.index + m[0].length;
+    const close = text.indexOf(tag, bodyStart);
+    const body = text.slice(bodyStart, close === -1 ? text.length : close);
+    DO_BLOCK_RE.lastIndex = close === -1 ? text.length : close + tag.length;
+    if (!/\bexecute\b[^;]*\bdrop\s+(?:function|routine)\b/i.test(body)) {
+      continue;
+    }
+    const schema = /\bnspname\s*=\s*'([a-z0-9_]+)'/i.exec(body);
+    if (!schema) continue;
+    const names: string[] = [];
+    const inList = /\bproname\s+in\s*\(([^)]*)\)/i.exec(body);
+    if (inList) {
+      const nameRe = /'([a-z0-9_]+)'/g;
+      for (let q = nameRe.exec(inList[1]); q; q = nameRe.exec(inList[1])) {
+        names.push(q[1].toLowerCase());
+      }
+    } else {
+      const eq = /\bproname\s*=\s*'([a-z0-9_]+)'/i.exec(body);
+      if (eq) names.push(eq[1].toLowerCase());
+    }
+    if (names.length === 0) continue;
+    dropsByName.push({
+      names: names.map((n) => `${schema[1].toLowerCase()}.${n}`),
+      relPath: file.relPath,
+      line: lineOf(file.text, m.index),
+      pos: m.index,
+    });
+  }
+
+  return { creates, alters, grants, drops, dropsByName };
 }
 
 // App login roles whose EXECUTE access means a function is reachable from app
@@ -551,12 +612,18 @@ export function effectiveFunctions(
   const grantState = new Map<string, GrantState>();
 
   for (const file of files) {
-    const { creates, alters, grants, drops } = parseSqlFunctions(file);
+    const { creates, alters, grants, drops, dropsByName } =
+      parseSqlFunctions(file);
     const ordered = [
       ...creates.map((c) => ({ pos: c.pos, kind: "create" as const, c })),
       ...alters.map((a) => ({ pos: a.pos, kind: "alter" as const, a })),
       ...grants.map((g) => ({ pos: g.pos, kind: "grant" as const, g })),
       ...drops.map((d) => ({ pos: d.pos, kind: "drop" as const, d })),
+      ...dropsByName.map((d) => ({
+        pos: d.pos,
+        kind: "dropByName" as const,
+        d,
+      })),
     ].sort((x, y) => x.pos - y.pos);
 
     for (const stmt of ordered) {
@@ -596,6 +663,18 @@ export function effectiveFunctions(
         // EXECUTE — so reset both the definition and the folded grant state.
         state.delete(stmt.d.signature);
         grantState.delete(stmt.d.signature);
+      } else if (stmt.kind === "dropByName") {
+        // A dynamic enumerate-and-drop DO block removes EVERY overload of each
+        // named function (and, as above, the grants go with them).
+        for (const name of stmt.d.names) {
+          const prefix = `${name}(`;
+          for (const sig of [...state.keys()]) {
+            if (sig.startsWith(prefix)) state.delete(sig);
+          }
+          for (const sig of [...grantState.keys()]) {
+            if (sig.startsWith(prefix)) grantState.delete(sig);
+          }
+        }
       } else {
         applyGrant(grantState, stmt.g, state.keys());
       }

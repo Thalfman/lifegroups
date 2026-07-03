@@ -684,3 +684,116 @@ as $$ select 1 $$;`
     ).toEqual(["public.f()"]);
   });
 });
+
+describe("effectiveFunctions dynamic by-name drops (DO-block idiom)", () => {
+  // The enumerate-and-drop idiom from
+  // 20260708000000_collapse_cells_to_group_type_list.sql: select pg_proc rows
+  // by proname (all overloads) and `execute` a DROP per row.
+  const dropByNameDo = (names: string[]) => `do $$
+declare
+  r record;
+begin
+  for r in
+    select p.oid::regprocedure as sig
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in (${names.map((n) => `'${n}'`).join(", ")})
+  loop
+    execute 'drop function if exists ' || r.sig;
+  end loop;
+end$$;`;
+
+  const twoOverloads = sql(
+    "20260101000000_a.sql",
+    `create function public.admin_retired(p_id uuid)
+returns void language plpgsql security definer set search_path = public
+as $$ begin raise exception 'dead_token'; end; $$;
+create function public.admin_retired(p_id uuid, p_label text)
+returns void language plpgsql security definer set search_path = public
+as $$ begin raise exception 'dead_token'; end; $$;
+create function public.admin_kept(p_id uuid)
+returns void language plpgsql security definer set search_path = public
+as $$ begin raise exception 'live_token'; end; $$;`
+  );
+
+  it("removes EVERY overload of each named function; others survive", () => {
+    const drop = sql(
+      "20260202000000_b.sql",
+      dropByNameDo(["admin_retired", "admin_other"])
+    );
+    expect(
+      effectiveFunctions([twoOverloads, drop])
+        .map((f) => f.signature)
+        .sort()
+    ).toEqual(["public.admin_kept(uuid)"]);
+  });
+
+  it("a re-CREATE after the DO block in the same file survives the fold", () => {
+    const drop = sql(
+      "20260202000000_b.sql",
+      `${dropByNameDo(["admin_retired"])}
+create function public.admin_retired(p_id uuid)
+returns void language plpgsql security definer set search_path = public
+as $$ begin raise exception 'new_token'; end; $$;`
+    );
+    const survivors = effectiveFunctions([twoOverloads, drop]).filter(
+      (f) => f.name === "public.admin_retired"
+    );
+    expect(survivors.map((f) => f.signature)).toEqual([
+      "public.admin_retired(uuid)",
+    ]);
+    expect(survivors[0].body).toContain("new_token");
+  });
+
+  it("supports the single-name `proname = '…'` form", () => {
+    const drop = sql(
+      "20260202000000_b.sql",
+      `do $$
+declare r record;
+begin
+  for r in
+    select p.oid::regprocedure as sig from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'admin_kept'
+  loop
+    execute 'drop routine if exists ' || r.sig;
+  end loop;
+end$$;`
+    );
+    expect(
+      effectiveFunctions([twoOverloads, drop]).map((f) => f.name)
+    ).not.toContain("public.admin_kept");
+  });
+
+  it("leaves an unmodelled dynamic drop alone (no nspname literal → no drop)", () => {
+    const drop = sql(
+      "20260202000000_b.sql",
+      `do $$
+declare r record;
+begin
+  for r in select p.oid::regprocedure as sig from pg_proc p
+    where p.proname in ('admin_retired')
+  loop
+    execute 'drop function if exists ' || r.sig;
+  end loop;
+end$$;`
+    );
+    // Conservative: an idiom the parser can't fully read must NOT hide
+    // functions — they stay effective and any downstream gate fails visible.
+    expect(
+      effectiveFunctions([twoOverloads, drop]).map((f) => f.name)
+    ).toContain("public.admin_retired");
+  });
+
+  it("a DO block without an executed DROP FUNCTION drops nothing", () => {
+    const doBlock = sql(
+      "20260202000000_b.sql",
+      `do $$
+begin
+  update pg_catalog.pg_class set relname = relname where false;
+end$$;`
+    );
+    expect(effectiveFunctions([twoOverloads, doBlock])).toHaveLength(3);
+  });
+});
