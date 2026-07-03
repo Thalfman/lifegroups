@@ -1,0 +1,112 @@
+name: E2E happy-path lane
+
+# E2E lane (#812): stands up a LOCAL seeded Supabase CLI stack (free, no
+# production secrets), seeds the per-tier throwaway auth users, builds and
+# serves the REAL app against it (no a11y harness, no stubbed actions), and
+# drives the happy-path write specs in tests/e2e/ through the real
+# form → server action → SECURITY DEFINER RPC pipeline under real RLS.
+#
+# GATING STATUS: ADVISORY (not a required check / not in branch protection)
+# while the lane accrues flake signal — the default PR lane
+# (.github/workflows/ci.yml) stays deterministic and needs no Supabase.
+# Promotion path once the lane has ~4 consecutive green scheduled/PR runs with
+# zero flakes: either add this job to branch protection, or fold the steps
+# into the required `ci` job behind a step-level paths gate the way the RLS
+# harness landed (#811). Because it is NOT required, the pull_request paths
+# filter below is safe (the "skipped required check counts as passing"
+# branch-protection trap only bites required checks).
+#
+# Coordinates with .github/workflows/seeded-auth-route-smoke.yml (#597): both
+# source scripts/seeded-local-stack.sh for the stack/seed plumbing; this lane
+# owns tests/e2e/** and playwright.e2e.config.ts.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Mondays 08:00 UTC (an hour after the route smoke) — a drift
+    # check, not a merge gate.
+    - cron: "0 8 * * 1"
+  pull_request:
+    # Advisory signal on the PRs most likely to break the write pipeline this
+    # lane pins: the lane itself, the stack/seed tooling, schema/seed changes,
+    # and the Care Note pipeline (form → action → reads → surfaces).
+    paths:
+      - "tests/e2e/**"
+      - "playwright.e2e.config.ts"
+      - "scripts/e2e.sh"
+      - "scripts/seeded-local-stack.sh"
+      - "scripts/seed-test-auth-users.ts"
+      - "scripts/test-auth-shared.ts"
+      - ".github/workflows/e2e.yml"
+      - "supabase/migrations/**"
+      - "supabase/seed/**"
+      - "app/(protected)/admin/shepherd-care/care-notes-actions.ts"
+      - "app/(protected)/over-shepherd/**"
+      - "components/admin/care/**"
+      - "components/admin/shepherd-care/**"
+      - "components/over-shepherd/**"
+      # The shared seams every write crosses (Codex review on #837): the write
+      # runners, RPC gateways, validators, auth guards, and the reads seam all
+      # sit between the form and the RPC, so a PR touching them must get this
+      # lane's advisory signal too.
+      - "lib/admin/**"
+      - "lib/shared/**"
+      - "lib/auth/**"
+      - "lib/supabase/**"
+
+# Never run more than one E2E lane per ref at a time; a newer run supersedes.
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+# This workflow reads no repo secrets: the local Supabase CLI stack mints its
+# own dev keys, and the throwaway test users are local-only.
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: local seeded Supabase + E2E specs
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase stack
+        # Applies every migration under supabase/migrations/ to a throwaway
+        # local Postgres + Auth. No remote project is linked.
+        run: supabase start
+
+      - name: Run E2E lane
+        # The runner reads the local stack's URL/keys from `supabase status`,
+        # applies the operational seed, seeds throwaway Auth users, then serves
+        # the real app and runs the tests/e2e/ Playwright specs.
+        run: ./scripts/e2e.sh
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-playwright-report
+          path: playwright-report-e2e
+          retention-days: 7
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop --no-backup || true

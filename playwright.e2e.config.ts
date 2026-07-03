@@ -1,0 +1,79 @@
+import { defineConfig, devices } from "@playwright/test";
+
+// E2E happy-path lane (#812). Unlike playwright.config.ts (the a11y lane,
+// which bakes NEXT_PUBLIC_A11Y_HARNESS=1 into the build and stubs every server
+// action), this config serves the REAL app against a LOCAL seeded Supabase
+// stack: real sign-in, real Server Actions, real SECURITY DEFINER RPCs, real
+// RLS. A separate config because webServer build-time env is per-config — this
+// build must NOT enable the harness, and must inline the NEXT_PUBLIC_SUPABASE_*
+// values scripts/e2e.sh exports (see the sourced scripts/seeded-local-stack.sh).
+//
+// Run via `npm run test:e2e` (one command: starts the stack if needed, seeds,
+// serves, runs). The specs do real writes against one shared local database,
+// so the lane is single-worker with no parallelism; specs use unique note
+// bodies so re-runs against a persistent local stack stay green.
+
+const PORT = Number(process.env.E2E_PORT ?? 3211);
+const BASE_URL = `http://127.0.0.1:${PORT}`;
+
+// In CI we build once and serve the production output; locally `next dev` is
+// faster to iterate against. Override with E2E_WEBSERVER if needed (mirrors
+// A11Y_WEBSERVER). Unlike the a11y lane there is no build-time harness flag to
+// protect here — but keep the build inside this command anyway so the
+// NEXT_PUBLIC_SUPABASE_* values exported by scripts/e2e.sh are inlined into
+// the same build Playwright serves.
+const webServerCommand =
+  process.env.E2E_WEBSERVER ??
+  (process.env.CI
+    ? `npm run build && npx next start -p ${PORT}`
+    : `npx next dev -p ${PORT}`);
+
+export default defineConfig({
+  testDir: "./tests/e2e",
+  // Real writes to one shared local database: keep the specs strictly serial.
+  fullyParallel: false,
+  workers: 1,
+  forbidOnly: !!process.env.CI,
+  retries: 0,
+  // Each spec crosses several full page loads of force-dynamic surfaces on a
+  // cold `next start` against the local stack; a busy CI runner has blown the
+  // default 30s budget on a single navigation. Generous is cheap here — the
+  // lane is advisory, single-worker, and two specs long.
+  timeout: 90_000,
+  reporter: process.env.CI
+    ? [
+        ["list"],
+        ["html", { outputFolder: "playwright-report-e2e", open: "never" }],
+      ]
+    : [["html", { outputFolder: "playwright-report-e2e" }]],
+  expect: {
+    // A submit's response carries the revalidated RSC payload; give the
+    // post-write assertions headroom on cold CI runners.
+    timeout: 15_000,
+  },
+  use: {
+    baseURL: BASE_URL,
+    // retries stay 0, so capture the trace whenever a spec fails — it is the
+    // main debugging artifact when the lane runs remotely in CI.
+    trace: "retain-on-failure",
+  },
+  projects: [
+    // One desktop project. The mobile-viewport matrix belongs to the a11y
+    // lane; this lane pins the write pipeline, not responsive layout.
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
+  webServer: {
+    command: webServerCommand,
+    url: BASE_URL,
+    reuseExistingServer: !process.env.CI,
+    timeout: 240_000,
+    // Deliberately NO env block: the command inherits the shell environment
+    // (the Supabase env exported by scripts/e2e.sh), and
+    // NEXT_PUBLIC_A11Y_HARNESS stays unset — real routes only. The
+    // service-role key is never exported by the runner, so it cannot reach
+    // this server (repo invariant).
+  },
+});

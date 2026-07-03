@@ -18,6 +18,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:coverage": "npm run verify:toolchain && vitest run --coverage",
     "test:a11y": "npm run verify:toolchain && playwright test",
+    "test:e2e": "bash scripts/e2e.sh",
     "seed:test-auth": "tsx scripts/seed-test-auth-users.ts",
     "remove:test-auth": "tsx scripts/remove-test-auth-users.ts",
     "prepare": "husky"
@@ -51,6 +52,7 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
+    "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^3.2.6",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.16.0",
@@ -65,7 +67,8 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "ws": "^8.21.0"
   },
   "overrides": {
     "esbuild": "^0.28.1"
