@@ -112,7 +112,12 @@ test.describe("Care Note write pipeline", () => {
         await expect(
           adminPage.getByText("Sealed.", { exact: true })
         ).toBeVisible();
+        // Reload to re-run the server reads, then reopen the tab — a reload
+        // lands back on the default Overview tab.
         await adminPage.reload();
+        await adminPage
+          .getByRole("tab", { name: "Care notes & prayer" })
+          .click();
       }
       await expect(adminView.getByText(/sealed to their author/)).toBeVisible();
       await expect(adminPage.getByText(body)).toHaveCount(0);
