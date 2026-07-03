@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { buttonClassName } from "@/components/ui/button";
 import { formatIsoDate } from "@/lib/shared/date";
-import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-reads";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
 import { ShepherdCareStatusBadge } from "./status-badge";
 
 // Shared presentational care-directory listing. Both the admin directory (with

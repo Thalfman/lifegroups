@@ -1,11 +1,11 @@
 import { differenceInDaysIso } from "@/lib/supabase/read-core";
+import { type ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
+import { type ShepherdCareRecentInteractionRow } from "@/lib/supabase/shepherd-care-interaction-reads";
+import { type CareFollowUpDashboardRow } from "@/lib/supabase/shepherd-care-follow-up-reads";
 import {
   type ActiveShepherdCoverageAssignmentSummary,
-  type CareFollowUpDashboardRow,
   type OverShepherdListRow,
-  type ShepherdCareDirectoryEntry,
-  type ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-coverage-reads";
 import { isFollowUpOverdue } from "@/lib/admin/shepherd-care-follow-ups";
 import {
   BUILT_IN_CARE_CADENCE_WINDOWS,

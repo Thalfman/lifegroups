@@ -2,7 +2,7 @@
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminSession } from "@/lib/auth/session";
-import { fetchShepherdCareProfileByShepherdId } from "@/lib/supabase/shepherd-care-reads";
+import { fetchShepherdCareProfileByShepherdId } from "@/lib/supabase/shepherd-care-directory-reads";
 import { isUuid } from "@/lib/shared/uuid";
 
 // Read-only care-profile resolver (#776 Phase 1, OPP-1). A care follow-up keys

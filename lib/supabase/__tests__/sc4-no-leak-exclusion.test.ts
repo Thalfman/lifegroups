@@ -20,7 +20,7 @@ const TABLES = ["shepherd_care_private_notes", "shepherd_care_note_key_slots"];
 //    to classify them as `encrypted_private` but never reads them. The
 //    `.from()` and reader-symbol checks below still hold it to no-read.
 const ALLOWLIST = new Set([
-  "lib/supabase/shepherd-care-reads.ts",
+  "lib/supabase/shepherd-care-private-note-reads.ts",
   "types/database.ts",
   "lib/security/data-classification.ts",
 ]);
@@ -83,11 +83,12 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
     ).toEqual([]);
   });
 
-  it("the only PostgREST .from() reads of the tables live in shepherd-care-reads.ts", () => {
+  it("the only PostgREST .from() reads of the tables live in shepherd-care-private-note-reads.ts", () => {
     const fromOffenders: string[] = [];
     for (const file of sourceFiles) {
       const relPath = rel(file);
-      if (relPath === "lib/supabase/shepherd-care-reads.ts") continue;
+      if (relPath === "lib/supabase/shepherd-care-private-note-reads.ts")
+        continue;
       const content = readFileSync(file, "utf8");
       for (const t of TABLES) {
         if (
@@ -104,9 +105,9 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
     ).toEqual([]);
   });
 
-  it("EVERY private-note read in shepherd-care-reads.ts is scoped by created_by_profile_id", () => {
+  it("EVERY private-note read in shepherd-care-private-note-reads.ts is scoped by created_by_profile_id", () => {
     const readModels = readFileSync(
-      `${REPO_ROOT}lib/supabase/shepherd-care-reads.ts`,
+      `${REPO_ROOT}lib/supabase/shepherd-care-private-note-reads.ts`,
       "utf8"
     );
     // Every read filters on the creator (belt-and-braces with RLS).
@@ -132,7 +133,7 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
       }
       expect(
         occurrences,
-        `shepherd-care-reads must read ${t} at least once`
+        `shepherd-care-private-note-reads must read ${t} at least once`
       ).toBeGreaterThan(0);
     }
   });
@@ -175,7 +176,7 @@ describe("SC.4 no-leak — the creator-scoped readers are consumed only on the a
   const DETAIL_DATA_PATH =
     "components/admin/shepherd-care/shepherd-care-detail-data.ts";
   const SYMBOL_ALLOWLIST = new Set([
-    "lib/supabase/shepherd-care-reads.ts", // where they are defined
+    "lib/supabase/shepherd-care-private-note-reads.ts", // where they are defined
     DETAIL_DATA_PATH, // the admin detail page's reads seam — the only consumer
   ]);
 
@@ -194,15 +195,16 @@ describe("SC.4 no-leak — the creator-scoped readers are consumed only on the a
     ).toEqual([]);
   });
 
-  it("the admin detail page passes the ministry_admin gate into the seam loader", () => {
+  it("the admin detail view passes the ministry_admin gate into the seam loader", () => {
     // requireAdmin() admits super_admin, so the readers must not be CALLED on a
-    // super_admin request — not merely hidden from the UI. The page resolves
-    // the gate from the actor's role and hands it to the loader.
-    const page = readFileSync(
-      `${REPO_ROOT}app/(protected)/admin/shepherd-care/[profileId]/page.tsx`,
+    // super_admin request — not merely hidden from the UI. The detail view
+    // (the page's presentational body, #822) resolves the gate from the
+    // actor's role and hands it to the loader at the single call site.
+    const view = readFileSync(
+      `${REPO_ROOT}components/admin/shepherd-care/shepherd-care-detail-view.tsx`,
       "utf8"
     );
-    expect(page).toMatch(
+    expect(view).toMatch(
       /loadShepherdCareDetailData\(\{[^}]*canReadPrivateNotes: actorRole === "ministry_admin"/
     );
   });

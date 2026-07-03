@@ -34,7 +34,7 @@ import { actionOk } from "@/lib/shared/action-result";
 import type {
   PrivateNoteCiphertext,
   PrivateNoteKeySlot,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-private-note-reads";
 
 // Mock ONLY the WebAuthn passkey surface of the crypto module; every other
 // export is the real implementation (the module itself is never modified).

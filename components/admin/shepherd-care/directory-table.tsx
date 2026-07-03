@@ -1,7 +1,5 @@
-import type {
-  ActiveShepherdCoverageAssignmentSummary,
-  ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/shepherd-care-reads";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
+import type { ActiveShepherdCoverageAssignmentSummary } from "@/lib/supabase/shepherd-coverage-reads";
 import {
   CareDirectoryTable,
   type CareDirectoryEmptyAction,

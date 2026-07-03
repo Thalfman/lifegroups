@@ -5,7 +5,7 @@ import {
   type GroupManagementReads,
 } from "@/components/admin/groups/group-management-data";
 import type { ReadResult } from "@/lib/supabase/read-core";
-import { buildCareDirectoryEntries } from "@/lib/supabase/shepherd-care-reads";
+import { buildCareDirectoryEntries } from "@/lib/supabase/shepherd-care-directory-reads";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
 const fail = (message: string): ReadResult<never> => ({

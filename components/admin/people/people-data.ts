@@ -6,10 +6,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
-import {
-  fetchActiveShepherdCoverageAssignmentsForAdmin,
-  fetchShepherdCareDirectoryForAdmin,
-} from "@/lib/supabase/shepherd-care-reads";
+import { fetchShepherdCareDirectoryForAdmin } from "@/lib/supabase/shepherd-care-directory-reads";
+import { fetchActiveShepherdCoverageAssignmentsForAdmin } from "@/lib/supabase/shepherd-coverage-reads";
 import {
   fetchAllGroupLeaders,
   fetchAllGroups,

@@ -18,7 +18,7 @@ import {
   type NotesFeedData,
 } from "@/components/admin/care/notes-feed-data";
 import { group, profile } from "@/lib/dashboard/group-fixtures";
-import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-reads";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
 
 // The Care page's promise threading is the trickiest in the app: a concurrent
 // batch whose notes-feed seed maps are then-derived mid-flight, plus a

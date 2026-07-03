@@ -113,7 +113,7 @@ export interface BroadNoteFeedRow {
   shepherd_full_name: string;
 }
 
-// Mirrors SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS (shepherd-care-reads.ts)
+// Mirrors SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS (shepherd-care-interaction-reads.ts)
 // plus the `notes` body and the author column the feed attributes.
 const BROAD_NOTE_FEED_COLUMNS =
   "id, interaction_at, notes, created_by_profile_id, created_at, " +

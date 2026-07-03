@@ -80,10 +80,8 @@ import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 import { ShepherdCareDirectoryTable } from "@/components/admin/shepherd-care/directory-table";
 import { MultiplyGridView } from "@/components/admin/multiply/multiply-grid";
 import type { MultiplyTypeRow } from "@/components/admin/multiply/multiply-grid-data";
-import type {
-  ActiveShepherdCoverageAssignmentSummary,
-  ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/shepherd-care-reads";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
+import type { ActiveShepherdCoverageAssignmentSummary } from "@/lib/supabase/shepherd-coverage-reads";
 import { SuperAdminCollapsibleSection } from "@/components/admin/super-admin-collapsible-section";
 import { SuperAdminSectionAnchors } from "@/components/admin/super-admin-section-anchors";
 import { Sidebar } from "@/components/lg/shell/Sidebar";

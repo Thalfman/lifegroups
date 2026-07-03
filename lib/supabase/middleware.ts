@@ -76,9 +76,13 @@ export async function updateSupabaseSession(
   // arrives more than IDLE_LIMIT_MS after the last bump resumes an abandoned
   // session and is force-signed-out. A purely idle browser makes no requests, so
   // its marker is never bumped and the next request it makes trips the timeout.
-  // The marker outlives the Supabase session window (idle-timeout.ts), so a
-  // long-idle request still carries a STALE marker to detect rather than an
-  // absent one. Two carve-outs:
+  // The guard FAILS CLOSED (idle-timeout.ts): an authenticated request whose
+  // marker is absent or garbled is treated as idle-expired, so deleting the
+  // cookie from devtools can't mint a fresh window. That is safe because login
+  // is the sole seeder of the marker and every other session creator is either
+  // waived below (password-setup pending, the /auth/confirm handshake) or ends
+  // in sign-out — an authenticated request with no marker is never a legitimate
+  // first visit (anonymous requests skip this block entirely). Two carve-outs:
   //   - the /auth/confirm verify handshake is waived: it runs verifyOtp, which
   //     replaces any stale session with the link's account, so it must not be
   //     interrupted. Every OTHER path is enforced — including `/` and

@@ -8,11 +8,11 @@ import type {
 import type { Rubric, RubricScores } from "@/lib/admin/health-rubric";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
 import { resolveGroupRubricGrade } from "@/lib/admin/group-rubric-grade";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
 import type {
   ActiveShepherdCoverageAssignmentSummary,
   OverShepherdListRow,
-  ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-coverage-reads";
 
 // Pure model for the canonical Care accordion (#373, ADR 0016). Care is now an
 // accordion grouped by Over-Shepherd, collapsed by default: each pane lists the
@@ -96,7 +96,7 @@ export type CareAccordionLeader = {
   careStatus: ShepherdCareStatus | null;
   // Whether the care directory flags this Leader for attention this week — the
   // SAME per-tier staleness + status signal the All-leaders roster filters on
-  // (shepherd-care-reads' computeNeedsAttention), passed straight through. Surfaced so
+  // (shepherd-care-directory-reads' computeNeedsAttention), passed straight through. Surfaced so
   // the collapsed-by-default accordion can roll up "N need attention" per
   // Over-Shepherd, and mark the individual Leaders, without expanding a pane.
   needsAttention: boolean;
