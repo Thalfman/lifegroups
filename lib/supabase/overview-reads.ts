@@ -1,3 +1,5 @@
+import "server-only";
+
 import { churchDayStartUtcIso } from "@/lib/shared/church-time";
 import { readBatch } from "./read-batch";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";

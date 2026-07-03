@@ -1,3 +1,5 @@
+import "server-only";
+
 // Danger-Zone maintenance read models (PRD-SAC6): the impact previews the
 // Super Admin Console shows before a destructive action runs.
 //

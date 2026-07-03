@@ -1,3 +1,5 @@
+import "server-only";
+
 import type {
   OverShepherdsRow,
   ProfilesRow,
@@ -127,7 +129,7 @@ export async function fetchOverShepherdByIdForAdmin(
       error: wrapError("fetchOverShepherdByIdForAdmin", error),
     };
   }
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   return { data: data as OverShepherdsRow, error: null };
 }
 
@@ -238,7 +240,7 @@ export async function fetchActiveShepherdCoverageAssignmentByShepherdId(
       ),
     };
   }
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   const [summary] = projectCoverageAssignmentRows([data as unknown]);
   return { data: summary ?? null, error: null };
 }

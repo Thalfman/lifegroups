@@ -1,3 +1,5 @@
+import "server-only";
+
 // Phase SAC.4 (#164): Super Admin Console coverage read models.
 //
 // Kept in a dedicated module (rather than appended to a broader read module)
@@ -6,7 +8,6 @@
 // over-shepherd surfaces already read; the console only adds a list view +
 // the two pools the assign form draws from. No writes here.
 
-import type { AppSupabaseClient } from "./types";
 import type {
   ProfilesRow,
   ShepherdCoverageAssignmentsRow,
@@ -41,7 +42,7 @@ export type SuperAdminConsoleCoverageLeader = {
 
 // Active over-shepherds, name-sorted, for the assign form's target pool.
 export async function fetchActiveOverShepherds(
-  client: AppSupabaseClient
+  client: ReadClient
 ): Promise<SuperAdminConsoleOverShepherd[]> {
   const { data, error } = await client
     .from("over_shepherds")
@@ -58,7 +59,7 @@ const SUPER_ADMIN_COVERAGE_LEADER_COLUMNS = columns<
 
 // Active leader / co-leader profiles, the eligible coverage subjects.
 export async function fetchCoverageAssignableLeaders(
-  client: AppSupabaseClient
+  client: ReadClient
 ): Promise<SuperAdminConsoleCoverageLeader[]> {
   const { data, error } = await client
     .from("profiles")
@@ -83,7 +84,7 @@ const SUPER_ADMIN_COVERAGE_ASSIGNMENT_COLUMNS = columns<
 >()("id", "shepherd_profile_id", "over_shepherd_id", "assigned_at", "active");
 
 export async function fetchCurrentCoverageAssignments(
-  client: AppSupabaseClient
+  client: ReadClient
 ): Promise<SuperAdminConsoleCoverageAssignment[]> {
   const { data, error } = await client
     .from("shepherd_coverage_assignments")

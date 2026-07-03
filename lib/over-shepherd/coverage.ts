@@ -21,7 +21,7 @@ export type OverShepherdCoverage = {
 // Shepherd the caller doesn't cover rather than leaning on an empty result.
 export function isCoveredShepherd(
   coverage: OverShepherdCoverage | null,
-  shepherdProfileId: string,
+  shepherdProfileId: string
 ): boolean {
   if (coverage === null) return false;
   return coverage.coveredShepherdIds.includes(shepherdProfileId);
@@ -47,7 +47,7 @@ function isCoverageShape(v: unknown): v is {
 }
 
 export async function fetchOverShepherdCoverageForCaller(
-  client: AppSupabaseClient | null,
+  client: AppSupabaseClient | null
 ): Promise<CoverageResult> {
   if (!client) {
     return { data: null, error: new Error("Database is not configured.") };
@@ -66,7 +66,7 @@ export async function fetchOverShepherdCoverageForCaller(
 
   // NULL from the RPC => no access (zero or ambiguous match). This is a
   // valid, non-error outcome.
-  if (data === null || data === undefined) {
+  if (data == null) {
     return { data: null, error: null };
   }
 
@@ -74,7 +74,7 @@ export async function fetchOverShepherdCoverageForCaller(
     return {
       data: null,
       error: new Error(
-        "over_shepherd_caller_coverage: response failed shape validation",
+        "over_shepherd_caller_coverage: response failed shape validation"
       ),
     };
   }

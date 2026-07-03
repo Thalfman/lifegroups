@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { CareNotesRow, PrayerRequestsRow } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
 import { CARE_NOTE_COLUMNS, PRAYER_REQUEST_COLUMNS } from "./care-note-reads";

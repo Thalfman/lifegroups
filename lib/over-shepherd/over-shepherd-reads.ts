@@ -1,3 +1,5 @@
+import "server-only";
+
 // Coverage-scoped read layer for the Over-Shepherd surface
 // (docs/adr/0002-oversight-ladder-and-leader-gating.md).
 //
@@ -145,7 +147,7 @@ export async function fetchOverShepherdCareProfileByShepherdId(
       error: wrapError("fetchOverShepherdCareProfileByShepherdId", error),
     };
   }
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   return { data: data as OverShepherdCareProfile, error: null };
 }
 

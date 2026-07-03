@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { AuditEventsRow, FollowUpsRow } from "@/types/database";
 import type { FollowUpStatus } from "@/types/enums";
 import {

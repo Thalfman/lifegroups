@@ -1,3 +1,6 @@
+// NOTE: deliberately NOT marked "server-only" — pure helpers/types in this
+// module are still value-imported by client-bundled dashboard demo/fixture
+// code; splitting those out is tracked by the #816 module-split work.
 import type {
   AppSettingsRow,
   ChurchAttendanceSnapshotsRow,
@@ -67,7 +70,7 @@ export async function fetchMetricDefaults(
     .maybeSingle();
   if (error)
     return { data: null, error: wrapError("fetchMetricDefaults", error) };
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
       data: null,
@@ -90,7 +93,7 @@ export async function fetchGroupTypes(
     .eq("setting_key", "group_types")
     .maybeSingle();
   if (error) return { data: null, error: wrapError("fetchGroupTypes", error) };
-  if (data === null || data === undefined) return { data: [], error: null };
+  if (data == null) return { data: [], error: null };
   const row: unknown = data;
   if (!isAppSettingsRow(row)) {
     return {
@@ -152,7 +155,7 @@ export async function fetchPlatformConfig(
     .maybeSingle();
   if (error)
     return { data: null, error: wrapError("fetchPlatformConfig", error) };
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
       data: null,
@@ -197,7 +200,7 @@ export async function fetchGroupHealthRubricSetting(
       data: null,
       error: wrapError("fetchGroupHealthRubricSetting", error),
     };
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
       data: null,
@@ -289,7 +292,7 @@ export async function fetchGroupMetricSettings(
     .maybeSingle();
   if (error)
     return { data: null, error: wrapError("fetchGroupMetricSettings", error) };
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   if (!isGroupMetricSettingsRow(data)) {
     return {
       data: null,
@@ -322,7 +325,7 @@ export async function fetchLaunchPlanningAssumptions(
       data: null,
       error: wrapError("fetchLaunchPlanningAssumptions", error),
     };
-  if (data === null || data === undefined) return { data: null, error: null };
+  if (data == null) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
       data: null,

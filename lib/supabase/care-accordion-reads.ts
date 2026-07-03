@@ -1,19 +1,19 @@
 import "server-only";
 
-import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type { GroupHealthLetter, LeaderHealthLetter } from "@/types/enums";
-import { readBatch } from "@/lib/supabase/read-batch";
+import { readBatch } from "./read-batch";
 import {
   columns,
   wrapError,
   decodeNumericRecord,
+  type ReadClient,
   type ReadResult,
-} from "@/lib/supabase/read-core";
+} from "./read-core";
 import {
   fetchHealthRubric,
   type PersistedGroupGrade,
   type PersistedLeaderGrade,
-} from "@/lib/supabase/rubric-grade-reads";
+} from "./rubric-grade-reads";
 import { fetchLeaderHealthRubric } from "@/lib/admin/leader-health-read";
 import { decodeRubricCriteria, type Rubric } from "@/lib/admin/health-rubric";
 import {
@@ -63,7 +63,7 @@ export const ADMIN_LEADER_RUBRIC_GRADE_YEAR_COLUMNS =
 // All persisted Leader-Health Grade rows for a ministry year (one per graded
 // leader), reduced to what the letter resolver needs.
 export async function fetchLeaderRubricGradesForYear(
-  client: AppSupabaseClient,
+  client: ReadClient,
   ministryYear: number
 ): Promise<ReadResult<LeaderHealthGradeInput[]>> {
   const { data, error } = await client
@@ -109,7 +109,7 @@ export const ADMIN_GROUP_RUBRIC_GRADE_YEAR_COLUMNS =
 // All persisted Group-Health Grade rows for a ministry year (one per graded
 // group), reduced to what the letter resolver needs.
 export async function fetchGroupRubricGradesForYear(
-  client: AppSupabaseClient,
+  client: ReadClient,
   ministryYear: number
 ): Promise<ReadResult<GroupHealthGradeInput[]>> {
   const { data, error } = await client
@@ -138,7 +138,7 @@ export async function fetchGroupRubricGradesForYear(
 // by RLS). These are the Leaders whose Care Notes / Prayer Requests the admin
 // may read; everyone else is sealed.
 async function fetchGrantedSubjectIds(
-  client: AppSupabaseClient
+  client: ReadClient
 ): Promise<ReadResult<string[]>> {
   const { data, error } = await client
     .from("note_transparency_grants")
@@ -166,7 +166,7 @@ async function fetchGrantedSubjectIds(
 // VIEWER can read), so a SECURITY DEFINER count RPC would have to re-encode
 // the grant logic rather than lean on RLS. See docs/ui-followups.md.
 async function fetchSubjectProfileIds(
-  client: AppSupabaseClient,
+  client: ReadClient,
   table: "care_notes" | "prayer_requests"
 ): Promise<ReadResult<string[]>> {
   const { data, error } = await client.from(table).select("subject_profile_id");
@@ -221,7 +221,7 @@ const EMPTY_ENRICHMENT: CareAccordionEnrichment = {
 // failed grade read leaves that grade ungraded; a failed note read leaves the
 // Leader sealed — the surface never blocks on enrichment.
 export async function loadCareAccordionEnrichment(
-  client: AppSupabaseClient,
+  client: ReadClient,
   opts: { ministryYear: number | null; periodMonthIso: string }
 ): Promise<CareAccordionEnrichment> {
   const { ministryYear, periodMonthIso } = opts;

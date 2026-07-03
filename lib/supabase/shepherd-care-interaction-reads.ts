@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { ShepherdCareInteractionsRow } from "@/types/database";
 import { ELIGIBLE_SHEPHERD_ROLES } from "./shepherd-coverage-reads";
 import {

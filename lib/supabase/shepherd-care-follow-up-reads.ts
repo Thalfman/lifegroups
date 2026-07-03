@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { ShepherdCareFollowUpsRow } from "@/types/database";
 import {
   columns,

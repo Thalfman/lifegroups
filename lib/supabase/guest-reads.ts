@@ -1,3 +1,6 @@
+// NOTE: deliberately NOT marked "server-only" — pure helpers/types in this
+// module are still value-imported by client-bundled dashboard demo/fixture
+// code; splitting those out is tracked by the #816 module-split work.
 import type { GuestsRow } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
 import {
