@@ -9,7 +9,7 @@ MCP/CLI work an engineering session can do and verify).
 The launch wave is deliberate (ADR 0009/0016/0017): **Julian + Tom first**,
 Over-Shepherds shortly after, Leaders last. Since ADR 0024 the
 `leader_surface` flag is **on (and verified) by default**, so the Leader wave
-is gated by *account issuance*, not the flag — but that gate only holds once
+is gated by _account issuance_, not the flag — but that gate only holds once
 no leader accounts exist. Today production still has 3 `leader` + 1
 `co_leader` accounts, and `requireLeader()` admits any **active** leader
 profile while the flag is live, so anyone holding (or resetting) those
@@ -26,9 +26,16 @@ until Julian's explicit go-ahead.
       scheduled snapshots; latest observed backup was 2026-06-09 07:34:09
       +0000 — verified 2026-06-10 via Supabase dashboard. _Eng_
 - [x] **Branch protection on `main`**: requires the CI checks
-      (`lint + typecheck + test` and
+      (`lint + typecheck + build + test` and
       `accessible-name check (playwright + axe)`) before merge — verified
-      2026-06-10 via GitHub branch protection API. _Eng_
+      2026-06-10 via GitHub branch protection API. Branch protection matches
+      required checks on the **exact job name string** (renaming a job in
+      `ci.yml` silently un-requires it — update the protected contexts in the
+      same change), and the protected-context strings themselves can only be
+      verified from GitHub's branch-protection settings/API, not from the
+      repo. The RLS integration harness gates RLS-relevant PRs as path-gated
+      steps **inside** the `lint + typecheck + build + test` job (#811), so it
+      adds no separate required check. _Eng_
 
 ## 2. Schema parity (the drift fix)
 
@@ -91,19 +98,15 @@ until Julian's explicit go-ahead.
       integration **redeployed it minutes later** — its deploy-to-production
       step pushes every function declared in `supabase/config.toml` on each
       push to `main` (see [`RELEASE.md`](./RELEASE.md) § Edge Functions).
-      Re-verified still ACTIVE in production 2026-06-11. Do it in this order:
-      1. Merge the `enabled = false` guard on the function's `config.toml`
-         block (so the next push to `main` can't redeploy it). _Eng_
-      2. Then delete it:
-         `supabase functions delete manage-test-auth-users --project-ref juvytverslrcqbkxgkvg`
-         (or Dashboard → Edge Functions → delete). _Tom_
-      3. **Verify immediately** — before any other runbook step continues:
-         the production function list (Dashboard → Edge Functions, or MCP
-         `list_edge_functions` against `juvytverslrcqbkxgkvg`) shows exactly
-         `invite-user` + `redeem-invite`. Catches a missed, failed, or
-         wrong-project deletion on the spot. _Tom + Eng_
-      4. After the **next** merge to `main`, re-check the same list to
-         confirm the integration no longer redeploys it. _Eng_
+      Re-verified still ACTIVE in production 2026-06-11. Do it in this order: 1. Merge the `enabled = false` guard on the function's `config.toml`
+      block (so the next push to `main` can't redeploy it). _Eng_ 2. Then delete it:
+      `supabase functions delete manage-test-auth-users --project-ref juvytverslrcqbkxgkvg`
+      (or Dashboard → Edge Functions → delete). _Tom_ 3. **Verify immediately** — before any other runbook step continues:
+      the production function list (Dashboard → Edge Functions, or MCP
+      `list_edge_functions` against `juvytverslrcqbkxgkvg`) shows exactly
+      `invite-user` + `redeem-invite`. Catches a missed, failed, or
+      wrong-project deletion on the spot. _Tom + Eng_ 4. After the **next** merge to `main`, re-check the same list to
+      confirm the integration no longer redeploys it. _Eng_
 
       Known side effect: the Super-Admin console's **Test accounts** panel
       calls this function for its status chip, so with the function deleted
