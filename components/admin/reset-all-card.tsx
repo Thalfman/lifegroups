@@ -74,7 +74,7 @@ export function ResetAllCard({
     <DangerCard
       emphasis
       title="Reset everything — one clean launch state"
-      intro="The single step most operators want before launch. It does everything the granular workflows do in one guarded action: clears all accumulated history, hides the time-based “Needs attention” launch warnings, and resets the leader-care and health-check attention cards to a clean baseline. People, groups, leaders, memberships, settings, care profiles & notes, and the audit log are kept. Recoverable snapshots are captured first — undo each piece from its own workflow. Running it again when everything is already clean is a safe no-op."
+      intro="The single step most operators want before launch. It does everything the granular workflows do in one guarded action: clears all accumulated history, hides the time-based “Needs attention” launch warnings, and resets the shepherd-care and health-check attention cards to a clean baseline. People, groups, shepherds, memberships, settings, care profiles & notes, and the audit log are kept. Recoverable snapshots are captured first — undo each piece from its own workflow. Running it again when everything is already clean is a safe no-op."
     >
       <DangerSection
         variant="destructive"

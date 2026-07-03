@@ -36,6 +36,7 @@ describe("Danger-zone card intros enumerate shepherds, not leaders (#809)", () =
   const CLEAN_SLATE = source(
     "../../../../components/admin/clean-slate-card.tsx"
   );
+  const RESET_ALL = source("../../../../components/admin/reset-all-card.tsx");
 
   it("launch-prep card keeps the shepherds enumeration", () => {
     expect(LAUNCH_PREP).toContain(
@@ -49,5 +50,13 @@ describe("Danger-zone card intros enumerate shepherds, not leaders (#809)", () =
       "People, groups, shepherds, memberships, settings, care profiles & notes, and the audit log are kept"
     );
     expect(CLEAN_SLATE).not.toContain("groups, leaders,");
+  });
+
+  it("reset-all card keeps the same enumeration and shepherd-care wording", () => {
+    expect(RESET_ALL).toContain(
+      "People, groups, shepherds, memberships, settings, care profiles & notes, and the audit log are kept"
+    );
+    expect(RESET_ALL).not.toContain("groups, leaders,");
+    expect(RESET_ALL).not.toContain("leader-care");
   });
 });
