@@ -49,6 +49,20 @@ import {
   fetchAllGroupMetricSettings,
   GROUP_METRIC_SETTINGS_COLUMNS,
 } from "@/lib/supabase/settings-reads";
+import {
+  fetchGroupRubricGradeRow,
+  fetchHealthRubric,
+  fetchLeaderRubricGradeRow,
+  GROUP_RUBRIC_GRADE_COLUMNS,
+  HEALTH_RUBRIC_COLUMNS,
+  LEADER_RUBRIC_GRADE_COLUMNS,
+} from "@/lib/supabase/rubric-grade-reads";
+import {
+  ADMIN_GROUP_RUBRIC_GRADE_YEAR_COLUMNS,
+  ADMIN_LEADER_RUBRIC_GRADE_YEAR_COLUMNS,
+  fetchGroupRubricGradesForYear,
+  fetchLeaderRubricGradesForYear,
+} from "@/lib/supabase/care-accordion-reads";
 
 // Pins the shared read-model column allowlists (#495), following the shape of
 // the session profile pinning test (#492). These fetchers are the high-fan-out
@@ -607,6 +621,101 @@ describe("audit_events read column allowlist (#495)", () => {
     });
     expect(calls.get("audit_events")).toEqual([
       PINNED_AUDIT_EVENT_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── health_rubrics + rubric grades (#830 M8) ─────────────────────────────────
+
+const PINNED_HEALTH_RUBRIC_COLUMNS = [
+  "id",
+  "kind",
+  "criteria",
+  "updated_at",
+] as const;
+
+describe("health_rubrics read column allowlist (#830)", () => {
+  it("pins the exact allowlist — widening the rubric read must be a deliberate diff here", () => {
+    expect([...HEALTH_RUBRIC_COLUMNS.list]).toEqual([
+      ...PINNED_HEALTH_RUBRIC_COLUMNS,
+    ]);
+  });
+
+  it("passes exactly the joined allowlist to the rubric read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchHealthRubric(client, "group");
+    });
+    expect(calls.get("health_rubrics")).toEqual([
+      PINNED_HEALTH_RUBRIC_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+const PINNED_GRADE_ROW_COLUMNS = [
+  "ministry_year",
+  "criterion_scores",
+  "computed_letter",
+  "override_letter",
+  "override_scope",
+  "override_period_month",
+  "updated_at",
+] as const;
+
+describe("rubric-grade single-row read column allowlists (#830)", () => {
+  it("pins the exact allowlists — widening a grade read must be a deliberate diff here", () => {
+    expect([...GROUP_RUBRIC_GRADE_COLUMNS.list]).toEqual([
+      "group_id",
+      ...PINNED_GRADE_ROW_COLUMNS,
+    ]);
+    expect([...LEADER_RUBRIC_GRADE_COLUMNS.list]).toEqual([
+      "profile_id",
+      ...PINNED_GRADE_ROW_COLUMNS,
+    ]);
+  });
+
+  it("passes exactly the joined allowlists to the single-row grade reads", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchGroupRubricGradeRow(client, UUID_A, 2026);
+      await fetchLeaderRubricGradeRow(client, UUID_A, 2026);
+    });
+    expect(calls.get("group_rubric_grades")).toEqual([
+      GROUP_RUBRIC_GRADE_COLUMNS.select,
+    ]);
+    expect(calls.get("leader_rubric_grades")).toEqual([
+      LEADER_RUBRIC_GRADE_COLUMNS.select,
+    ]);
+  });
+});
+
+const PINNED_GRADE_YEAR_COLUMNS = [
+  "criterion_scores",
+  "override_letter",
+  "override_scope",
+  "override_period_month",
+] as const;
+
+describe("care-accordion grade-year read column allowlists (#830)", () => {
+  it("pins the exact allowlists — the year readers stay narrower than the single-row reads", () => {
+    expect([...ADMIN_GROUP_RUBRIC_GRADE_YEAR_COLUMNS.list]).toEqual([
+      "group_id",
+      ...PINNED_GRADE_YEAR_COLUMNS,
+    ]);
+    expect([...ADMIN_LEADER_RUBRIC_GRADE_YEAR_COLUMNS.list]).toEqual([
+      "profile_id",
+      ...PINNED_GRADE_YEAR_COLUMNS,
+    ]);
+  });
+
+  it("passes exactly the joined allowlists to the year reads", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchGroupRubricGradesForYear(client, 2026);
+      await fetchLeaderRubricGradesForYear(client, 2026);
+    });
+    expect(calls.get("group_rubric_grades")).toEqual([
+      ADMIN_GROUP_RUBRIC_GRADE_YEAR_COLUMNS.select,
+    ]);
+    expect(calls.get("leader_rubric_grades")).toEqual([
+      ADMIN_LEADER_RUBRIC_GRADE_YEAR_COLUMNS.select,
     ]);
   });
 });
