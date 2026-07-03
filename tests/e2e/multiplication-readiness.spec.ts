@@ -119,16 +119,20 @@ test.describe("Multiplication-readiness assessment pipeline", () => {
     // Deep-link straight to the Pipeline tab — the active tab is URL-driven
     // (?tab=), which also keeps the tab across the later reload.
     await page.goto("/admin/multiply?tab=pipeline");
-    await expect(page.getByRole("tab", { name: "Pipeline" })).toHaveAttribute(
+    await expect(main.getByRole("tab", { name: "Pipeline" })).toHaveAttribute(
       "aria-selected",
       "true"
     );
     // Wait for the Pipeline panel's content before probing the section — a
     // premature count() would misread "still streaming" as "not pipelined".
     await expect(
-      page.getByRole("heading", { name: "Pipelined types" })
+      main.getByRole("heading", { name: "Pipelined types" })
     ).toBeVisible();
-    const section = page.locator(SECTION_ID);
+    // Scoped through <main>: after a reload the streamed shell can leave a
+    // hidden duplicate of the page body — including this section's id —
+    // OUTSIDE the main landmark, and an unscoped id lookup then resolves to
+    // both copies (lane run 17 tripped strict mode exactly there).
+    const section = main.locator(SECTION_ID);
     if ((await section.count()) === 0) {
       const addTypeSection = main
         .locator("section")
@@ -140,7 +144,7 @@ test.describe("Multiplication-readiness assessment pipeline", () => {
       // The add select is controlled and Add stays disabled until React sees
       // the selection — the enabled check doubles as the hydration guard.
       await expect(async () => {
-        await page.getByLabel("Add a type to the pipeline").selectOption(TYPE);
+        await main.getByLabel("Add a type to the pipeline").selectOption(TYPE);
         await expect(addButton).toBeEnabled({ timeout: 2_000 });
       }).toPass();
       await addButton.click();
@@ -234,7 +238,7 @@ test.describe("Multiplication-readiness assessment pipeline", () => {
     // panel mounts active), so everything asserted below is persisted rows —
     // form → action → RPC → RLS read round-tripped.
     await page.reload();
-    await expect(page.getByRole("tab", { name: "Pipeline" })).toHaveAttribute(
+    await expect(main.getByRole("tab", { name: "Pipeline" })).toHaveAttribute(
       "aria-selected",
       "true"
     );

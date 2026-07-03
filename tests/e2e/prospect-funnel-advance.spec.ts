@@ -135,6 +135,19 @@ test.describe("Interest Funnel advance pipeline", () => {
       .getByRole("alertdialog")
       .getByRole("button", { name: "Archive", exact: true })
       .click();
+    // Cleanup tolerates the #839 stall class like the create above: if the
+    // archived card hasn't left the board live, reload — the soft archive
+    // commits before the response stream stalls, so the fresh force-dynamic
+    // read renders the board without it (lane run 17 hit exactly this).
+    const liveArchive = await main
+      .getByText(name)
+      .waitFor({ state: "hidden", timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!liveArchive) {
+      console.log("[e2e] prospect archive: no live signal in 15s, reloading");
+      await page.reload();
+    }
     await expect(main.getByText(name)).toHaveCount(0);
   });
 
