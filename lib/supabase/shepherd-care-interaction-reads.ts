@@ -2,8 +2,10 @@ import type { ShepherdCareInteractionsRow } from "@/types/database";
 import { ELIGIBLE_SHEPHERD_ROLES } from "./shepherd-coverage-reads";
 import {
   columns,
+  projectJoinRows,
   unwrapEmbed,
   wrapError,
+  type EmbeddedToOne,
   type ReadClient,
   type ReadResult,
 } from "./read-core";
@@ -86,38 +88,29 @@ export type ShepherdCareRecentInteractionRow = {
   shepherd_full_name: string;
 };
 
+type RecentInteractionJoinCareProfile = {
+  shepherd_profile_id: string;
+  shepherd: EmbeddedToOne<{ id: string; full_name: string }>;
+};
+
+type RecentInteractionJoinRow = {
+  id: string;
+  care_profile_id: string;
+  interaction_at: string;
+  interaction_type: ShepherdCareInteractionsRow["interaction_type"];
+  created_at: string;
+  care_profile: EmbeddedToOne<RecentInteractionJoinCareProfile>;
+};
+
 function projectRecentInteractionRows(
   rows: unknown[]
 ): ShepherdCareRecentInteractionRow[] {
-  const out: ShepherdCareRecentInteractionRow[] = [];
-  for (const r of rows as Array<{
-    id: string;
-    care_profile_id: string;
-    interaction_at: string;
-    interaction_type: ShepherdCareInteractionsRow["interaction_type"];
-    created_at: string;
-    care_profile:
-      | {
-          shepherd_profile_id: string;
-          shepherd:
-            | { id: string; full_name: string }
-            | { id: string; full_name: string }[]
-            | null;
-        }
-      | {
-          shepherd_profile_id: string;
-          shepherd:
-            | { id: string; full_name: string }
-            | { id: string; full_name: string }[]
-            | null;
-        }[]
-      | null;
-  }>) {
+  return projectJoinRows(rows as RecentInteractionJoinRow[], (r) => {
     const cp = unwrapEmbed(r.care_profile);
-    if (cp === null) continue;
+    if (cp === null) return null;
     const shepherd = unwrapEmbed(cp.shepherd);
-    if (shepherd === null) continue;
-    out.push({
+    if (shepherd === null) return null;
+    return {
       id: r.id,
       care_profile_id: r.care_profile_id,
       interaction_at: r.interaction_at,
@@ -125,9 +118,8 @@ function projectRecentInteractionRows(
       created_at: r.created_at,
       shepherd_profile_id: cp.shepherd_profile_id,
       shepherd_full_name: shepherd.full_name,
-    });
-  }
-  return out;
+    };
+  });
 }
 
 /**

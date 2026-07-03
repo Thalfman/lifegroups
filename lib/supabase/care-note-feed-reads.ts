@@ -2,8 +2,10 @@ import type { CareNotesRow, PrayerRequestsRow } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
 import { CARE_NOTE_COLUMNS, PRAYER_REQUEST_COLUMNS } from "./care-note-reads";
 import {
+  projectJoinRows,
   unwrapEmbed,
   wrapError,
+  type EmbeddedToOne,
   type ReadClient,
   type ReadResult,
 } from "./read-core";
@@ -122,14 +124,9 @@ const BROAD_NOTE_FEED_COLUMNS =
   "shepherd:profiles!shepherd_care_profiles_shepherd_profile_id_fkey!inner ( id, full_name, status ) " +
   ")";
 
-// Supabase types embedded to-one joins as object-or-array depending on
-// client version; both arms (and null) are handled defensively below.
 type BroadNoteJoinCareProfile = {
   shepherd_profile_id: string;
-  shepherd:
-    | { id: string; full_name: string }
-    | { id: string; full_name: string }[]
-    | null;
+  shepherd: EmbeddedToOne<{ id: string; full_name: string }>;
 };
 
 type BroadNoteJoinRow = {
@@ -138,7 +135,7 @@ type BroadNoteJoinRow = {
   notes: string | null;
   created_by_profile_id: string;
   created_at: string;
-  care_profile: BroadNoteJoinCareProfile | BroadNoteJoinCareProfile[] | null;
+  care_profile: EmbeddedToOne<BroadNoteJoinCareProfile>;
 };
 
 // Admin-only broad-note feed read: `interaction_type = 'other'` rows (the
@@ -164,24 +161,26 @@ export async function fetchBroadNoteInteractionsForAdmin(
       data: null,
       error: wrapError("fetchBroadNoteInteractionsForAdmin", error),
     };
-  const out: BroadNoteFeedRow[] = [];
-  for (const r of (data ?? []) as unknown as BroadNoteJoinRow[]) {
-    const cp = unwrapEmbed(r.care_profile);
-    if (cp === null) continue;
-    const shepherd = unwrapEmbed(cp.shepherd);
-    if (shepherd === null) continue;
-    const body = (r.notes ?? "").trim();
-    if (body.length === 0) continue;
-    out.push({
-      id: r.id,
-      interaction_at: r.interaction_at,
-      created_at: r.created_at,
-      notes: body,
-      created_by_profile_id: r.created_by_profile_id,
-      shepherd_profile_id: cp.shepherd_profile_id,
-      shepherd_full_name: shepherd.full_name,
-    });
-  }
+  const out = projectJoinRows(
+    (data ?? []) as unknown as BroadNoteJoinRow[],
+    (r) => {
+      const cp = unwrapEmbed(r.care_profile);
+      if (cp === null) return null;
+      const shepherd = unwrapEmbed(cp.shepherd);
+      if (shepherd === null) return null;
+      const body = (r.notes ?? "").trim();
+      if (body.length === 0) return null;
+      return {
+        id: r.id,
+        interaction_at: r.interaction_at,
+        created_at: r.created_at,
+        notes: body,
+        created_by_profile_id: r.created_by_profile_id,
+        shepherd_profile_id: cp.shepherd_profile_id,
+        shepherd_full_name: shepherd.full_name,
+      };
+    }
+  );
   return { data: out, error: null };
 }
 
