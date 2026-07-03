@@ -57,9 +57,13 @@ test.describe("Care Note write pipeline", () => {
     // (hydrated client submit), or — when the click lands before hydration —
     // a NATIVE form POST that runs the same server action and re-renders the
     // force-dynamic page with the note already in "Your care notes". Both are
-    // real round-trips through the pipeline; accept either.
+    // real round-trips through the pipeline; accept either (.first() because
+    // the hydrated path can render BOTH signals at once).
     await expect(
-      page.getByText(SAVED_TEXT).or(page.getByRole("main").getByText(body))
+      page
+        .getByText(SAVED_TEXT)
+        .or(page.getByRole("main").getByText(body))
+        .first()
     ).toBeVisible();
 
     // Round-trip: a full reload re-runs the page's server reads
