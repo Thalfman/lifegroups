@@ -30,6 +30,11 @@ const webServerCommand =
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Playwright's default testMatch also catches *.test.ts, which would load
+  // the Vitest unit tests colocated under tests/e2e/__tests__/ (they cover
+  // the pure action-telemetry module) and fail on the vitest import. This
+  // lane's specs are *.spec.ts only.
+  testMatch: "**/*.spec.ts",
   // Real writes to one shared local database: keep the specs strictly serial.
   fullyParallel: false,
   workers: 1,
@@ -76,6 +81,15 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,
+    // Forward the app server's output into the runner's stdout/stderr (#839):
+    // the read loaders' `read_bundle` structured log lines (and any server
+    // errors) then land in the CI job log, timestamped, interleaved with the
+    // specs' [e2e] server-action telemetry — so a stalled write can be
+    // correlated with what the re-rendered page's reads were doing. Playwright
+    // defaults stdout to "ignore"; the build output rides along, which is
+    // acceptable noise for an advisory diagnostics lane.
+    stdout: "pipe",
+    stderr: "pipe",
     // Deliberately NO env block: the command inherits the shell environment
     // (the Supabase env exported by scripts/e2e.sh), and
     // NEXT_PUBLIC_A11Y_HARNESS stays unset — real routes only. The

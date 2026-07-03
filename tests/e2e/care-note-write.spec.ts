@@ -1,5 +1,11 @@
-import { test, expect } from "@playwright/test";
-import { e2eCreds, signIn, uniqueBody } from "./helpers";
+import {
+  test,
+  expect,
+  e2eCreds,
+  instrumentPage,
+  signIn,
+  uniqueBody,
+} from "./helpers";
 
 // Happy-path Care Note write, end to end (#812; pipeline from ADR 0017/0023).
 // Unlike every other lane, nothing here is stubbed: the specs sign in as the
@@ -89,6 +95,9 @@ test.describe("Care Note write pipeline", () => {
     });
     try {
       const adminPage = await adminContext.newPage();
+      // Fixture pages are instrumented by the extended `test`; this manually
+      // created page drives the audited seal write, so cover it too (#839).
+      instrumentPage(adminPage, `${testInfo.title} [admin context]`);
       await signIn(adminPage, creds.admin.email!, creds.admin.password!);
       await adminPage.goto(`/admin/shepherd-care/${profileId}`);
       const adminView = adminPage.getByRole("main");

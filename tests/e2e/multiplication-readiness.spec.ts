@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test";
-import { e2eCreds, signIn } from "./helpers";
+import { test, expect, e2eCreds, signIn } from "./helpers";
 
 // Happy-path Multiplication-readiness assessment, end to end (#827; model from
 // ADR 0019/0021/0029/0030). Nothing here is stubbed: the spec signs in as the
