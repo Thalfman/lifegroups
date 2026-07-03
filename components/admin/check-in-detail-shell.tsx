@@ -98,7 +98,7 @@ export function CheckInDetailShell({
   data: CheckInDetailData;
   meetingWeek: string;
 }) {
-  const anyError = Object.values(data.errors).some(Boolean);
+  const anyError = Object.values(data.errors).some((e) => e != null);
 
   const { group, session, sessionStatus, health, members } = data;
   const meta = group

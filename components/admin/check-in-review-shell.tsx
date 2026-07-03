@@ -208,7 +208,7 @@ export function CheckInReviewShell({
   meetingWeek: string;
   weekOptions: WeekOption[];
 }) {
-  const anyError = Object.values(data.errors).some(Boolean);
+  const anyError = Object.values(data.errors).some((e) => e != null);
 
   const everyoneIn = data.summary.totalActive > 0 && data.summary.missing === 0;
 
