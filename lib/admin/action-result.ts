@@ -89,6 +89,21 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "We couldn't find that apprentice. Refresh the page and try again.",
   apprentice_group_mismatch:
     "That apprentice belongs to a different group. An apprentice can only lead the next group out of its own group.",
+  // Multiplication-candidate tokens (#818 parity sweep — previously fell
+  // through to the generic fallback).
+  missing_candidate:
+    "We couldn't find that multiplication candidate. Refresh the page and try again.",
+  candidate_exists:
+    "That group is already in the multiplication plan. Refresh the page to see it.",
+  type_candidate_exists:
+    "That group type already has a multiplication candidate in the plan. Refresh the page to see it.",
+  apprentice_requires_group:
+    "Link the apprentice's group before adding them to a candidate. An apprentice can only lead the next group out of its own group.",
+  not_a_leader:
+    "That person isn't an active shepherd or co-shepherd, so a shepherd grade can't be recorded for them. Refresh the page and try again.",
+  // Group-type catalog token (Settings > Groups).
+  duplicate_label:
+    "A group type with that name already exists. Pick a different name, or restore the archived one.",
   // LP.2 launch planning scenario tokens.
   missing_scenario:
     "We couldn't find that scenario. Refresh the page and try again.",
