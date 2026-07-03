@@ -105,22 +105,30 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
       setErrors([]);
       setWarnings([]);
       startTransition(async () => {
-        const result =
-          action === "status"
-            ? await testAccountsStatus()
-            : action === "enable"
-              ? await testAccountsEnable()
-              : action === "disable"
-                ? await testAccountsDisable()
-                : await testAccountsDiagnose();
-        if (result.ok) {
-          setStatus(result.value);
-          setWarnings(result.value.warnings ?? []);
-          if (!result.value.ok) setErrors(result.value.errors);
-        } else {
-          setErrors(result.errors);
+        // The actions normally return a discriminated result, but a thrown
+        // rejection (network drop, unexpected server error) would otherwise
+        // skip setPending(null) and wedge every trigger in its disabled state.
+        try {
+          const result =
+            action === "status"
+              ? await testAccountsStatus()
+              : action === "enable"
+                ? await testAccountsEnable()
+                : action === "disable"
+                  ? await testAccountsDisable()
+                  : await testAccountsDiagnose();
+          if (result.ok) {
+            setStatus(result.value);
+            setWarnings(result.value.warnings ?? []);
+            if (!result.value.ok) setErrors(result.value.errors);
+          } else {
+            setErrors(result.errors);
+          }
+        } catch (err) {
+          setErrors([err instanceof Error ? err.message : String(err)]);
+        } finally {
+          setPending(null);
         }
-        setPending(null);
       });
     },
     []
