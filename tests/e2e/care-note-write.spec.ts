@@ -53,7 +53,14 @@ test.describe("Care Note write pipeline", () => {
     await page
       .getByRole("button", { name: "Add care note", exact: true })
       .click();
-    await expect(page.getByText(SAVED_TEXT)).toBeVisible();
+    // Success surfaces one of two ways: the inline "Care note saved." status
+    // (hydrated client submit), or — when the click lands before hydration —
+    // a NATIVE form POST that runs the same server action and re-renders the
+    // force-dynamic page with the note already in "Your care notes". Both are
+    // real round-trips through the pipeline; accept either.
+    await expect(
+      page.getByText(SAVED_TEXT).or(page.getByRole("main").getByText(body))
+    ).toBeVisible();
 
     // Round-trip: a full reload re-runs the page's server reads
     // (force-dynamic), so the note below only appears if the write persisted
