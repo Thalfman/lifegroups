@@ -1,9 +1,9 @@
-// Hidden from nav (EXT.1 in docs/PRODUCT_ROADMAP.md) per the Julian
-// admin OS pivot — anything external lives behind a future scope
-// conversation with Julian + the comms director. The route still
-// resolves so existing bookmarks work, and the pipeline data is left
-// intact. No new work here without an EXT.1 spec. See
-// docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
+// Hidden from nav per the Julian admin OS pivot (ADR 0033 records the
+// keep decision; the pre-pivot roadmap/audit docs that first demoted this
+// surface are retired to git history — see docs/README.md "Archived").
+// Anything external lives behind a future scope conversation with Julian +
+// the comms director. The route still resolves so existing bookmarks work,
+// and the pipeline data is left intact.
 //
 // Wired through the admin page runner (ADR 0028); the frozen-surface banner is
 // the runner's `frozenBanner`.

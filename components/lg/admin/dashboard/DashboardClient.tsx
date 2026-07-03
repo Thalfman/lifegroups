@@ -21,7 +21,8 @@ import { ThisWeekCard } from "./ThisWeekCard";
 //      bodies — those stay on the guarded care surfaces (ADR 0002).
 //
 // Re-skinned warm (pastoral palette) so it meshes with the deep care / launch
-// surfaces. See docs/PRODUCT_SURFACE_AUDIT_2026-05.md for the admin-OS rationale.
+// surfaces. (The 2026-05 surface-audit doc with the admin-OS rationale is
+// retired to git history — see docs/README.md "Archived" and ADR 0033.)
 
 // Sections speak in the serif voice — plain sentence-case headings, no
 // tracked-uppercase eyebrows (the page kicker is the one tracked voice).

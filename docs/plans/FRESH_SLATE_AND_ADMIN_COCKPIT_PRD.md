@@ -1,6 +1,15 @@
 # PRD — Fresh Slate & Admin Cockpit (PRD-SAC6)
 
-> **Status:** Proposed (design only — no code written yet).
+> **Status:** Partially shipped (status updated 2026-07-03, #828). The
+> Super-Admin **Danger Zone** side is live: Clean Slate with snapshot
+> export/revert (`clean-slate-actions.ts`, `clean-slate/export/`), the audit
+> reset (`audit-reset-actions.ts`), and further tools that grew beyond this
+> PRD's scope — launch prep, history/activity/attention resets, reset-all,
+> and permanent delete — all under
+> `app/(protected)/admin/super-admin/` with the
+> `components/admin/danger-zone-console.tsx` card UI. The admin-cockpit
+> ergonomics (Features 4–5) and the CSV export template (Feature 2) have not
+> shipped as specced here (people import lives in Settings instead).
 > **Scope:** Super-Admin "Danger Zone" power tools + admin landing-page ergonomics.
 > **Codename:** PRD-SAC6 "Fresh Slate & Admin Cockpit".
 
@@ -17,9 +26,9 @@ already set up, and WITHOUT any schema changes. They also want a few
 quality-of-life tools: a CSV template for bulk import, an audit-log reset, and a
 tighter admin landing page.
 
-This PRD captures five features across two trust tiers. It is a **design
-document**; the implementation is future work described here, not built by this
-PRD.
+This PRD captures five features across two trust tiers. It began as a design
+document; the Danger-Zone features have since shipped (see the Status header
+for what's live and what still hasn't been built).
 
 ### How writes work in this codebase (constraints every feature must honor)
 
@@ -45,13 +54,13 @@ preferences are localStorage-only (`lib/hooks/use-persisted-view-state.ts`,
 
 ### Confirmed product decisions
 
-| Decision | Choice |
-| --- | --- |
-| Clean Slate scope | **History only** — keep all people, groups, and assignments |
-| Revert mechanism | **Single snapshot**, exportable to a JSON file and re-importable later (covers accidental wipe after the in-DB snapshot is gone) |
-| Shepherd-care boundary | **Wipe the care log** (`shepherd_care_interactions` + `shepherd_care_follow_ups`); **keep** care profiles + private/admin notes |
-| Audit reset | **Separate** standalone action (not coupled to Clean Slate) |
-| CSV export | **Empty template** matching the existing import parser |
+| Decision               | Choice                                                                                                                           |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Clean Slate scope      | **History only** — keep all people, groups, and assignments                                                                      |
+| Revert mechanism       | **Single snapshot**, exportable to a JSON file and re-importable later (covers accidental wipe after the in-DB snapshot is gone) |
+| Shepherd-care boundary | **Wipe the care log** (`shepherd_care_interactions` + `shepherd_care_follow_ups`); **keep** care profiles + private/admin notes  |
+| Audit reset            | **Separate** standalone action (not coupled to Clean Slate)                                                                      |
+| CSV export             | **Empty template** matching the existing import parser                                                                           |
 
 ---
 
@@ -98,17 +107,17 @@ ordering). The original note's "care_profiles" maps to the real table
 
 **`clean_slate_snapshots` table** — single logical snapshot store:
 
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | `uuid` pk | `default gen_random_uuid()` |
-| `created_by` | `uuid` | `→ profiles(id)` |
-| `created_at` | `timestamptz` | `default now()` |
-| `kind` | `text` | `default 'wipe'` |
-| `payload` | `jsonb` | per-table row arrays + `schema_version: 1` |
-| `row_counts` | `jsonb` | denormalized counts per table |
-| `total_rows` | `integer` | denormalized total |
-| `restored_at` | `timestamptz` | set on revert |
-| `restored_by` | `uuid` | `→ profiles(id)` |
+| Column        | Type          | Notes                                      |
+| ------------- | ------------- | ------------------------------------------ |
+| `id`          | `uuid` pk     | `default gen_random_uuid()`                |
+| `created_by`  | `uuid`        | `→ profiles(id)`                           |
+| `created_at`  | `timestamptz` | `default now()`                            |
+| `kind`        | `text`        | `default 'wipe'`                           |
+| `payload`     | `jsonb`       | per-table row arrays + `schema_version: 1` |
+| `row_counts`  | `jsonb`       | denormalized counts per table              |
+| `total_rows`  | `integer`     | denormalized total                         |
+| `restored_at` | `timestamptz` | set on revert                              |
+| `restored_by` | `uuid`        | `→ profiles(id)`                           |
 
 RLS enabled with a **single SELECT policy** gated on `auth_role() = 'super_admin'`
 (mirrors the `audit_events` precedent); **no** INSERT/UPDATE/DELETE policy — all
@@ -169,7 +178,7 @@ hard-deleted, the restore INSERT would raise and roll back the whole transaction
   `malformed_snapshot` (reuse the existing `insufficient_privilege`).
 
 - **NEW `app/(protected)/admin/super-admin/clean-slate-actions.ts`** (`"use
-  server"`, custom-action shape like `people-import-actions.ts`): each action does
+server"`, custom-action shape like `people-import-actions.ts`): each action does
   `requireSuperAdminSession()` → server client → RPC wrapper → `mapRpcError` →
   `revalidatePath("/admin/super-admin")` → `ActionResult<CleanSlateSummary>`. Wipe
   and revert **re-verify the type-to-confirm phrase server-side**. Import reads the
@@ -217,17 +226,17 @@ migration is needed.)
 
 ### 1.6 Edge cases
 
-| Edge case | Handling |
-| --- | --- |
-| Nothing to wipe | Wipe raises `nothing_to_wipe` when `total_rows = 0`; no snapshot, no audit, no-op. |
-| Double-wipe | Second wipe finds targets empty → `nothing_to_wipe`. Advisory lock blocks a concurrent-wipe race. |
-| Revert after new data added | `target_not_empty` guard refuses (avoids PK collisions / silent merge). |
-| Revert with no snapshot | `missing_snapshot`; UI points to the import-a-file path. |
-| Double-revert of same snapshot | `restored_at` set on first revert; latest-un-restored query skips it. |
-| Import of stale/mismatched schema | RPC checks `schema_version` (`unsupported_snapshot_version`) and that each key is a JSON array (`malformed_snapshot`); extra columns ignored. |
-| Non-JSON / garbage file | Server action `JSON.parse` try/catch returns a friendly failure before the RPC. |
-| Referenced parent gone between wipe & revert | Safe under current write surface (deactivate-only); otherwise the restore raises and rolls back (fail-safe). |
-| Large payload | jsonb in a single TOAST-backed row; export streams via the route handler. A future slice could move to per-table snapshot rows if payloads grow huge. |
+| Edge case                                    | Handling                                                                                                                                              |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nothing to wipe                              | Wipe raises `nothing_to_wipe` when `total_rows = 0`; no snapshot, no audit, no-op.                                                                    |
+| Double-wipe                                  | Second wipe finds targets empty → `nothing_to_wipe`. Advisory lock blocks a concurrent-wipe race.                                                     |
+| Revert after new data added                  | `target_not_empty` guard refuses (avoids PK collisions / silent merge).                                                                               |
+| Revert with no snapshot                      | `missing_snapshot`; UI points to the import-a-file path.                                                                                              |
+| Double-revert of same snapshot               | `restored_at` set on first revert; latest-un-restored query skips it.                                                                                 |
+| Import of stale/mismatched schema            | RPC checks `schema_version` (`unsupported_snapshot_version`) and that each key is a JSON array (`malformed_snapshot`); extra columns ignored.         |
+| Non-JSON / garbage file                      | Server action `JSON.parse` try/catch returns a friendly failure before the RPC.                                                                       |
+| Referenced parent gone between wipe & revert | Safe under current write surface (deactivate-only); otherwise the restore raises and rolls back (fail-safe).                                          |
+| Large payload                                | jsonb in a single TOAST-backed row; export streams via the route handler. A future slice could move to per-table snapshot rows if payloads grow huge. |
 
 ---
 

@@ -1,9 +1,18 @@
 # Settings Overhaul — Group Categories, Targets & Numeric Triggers — PRD
 
+> ⚠️ **Superseded (2026-07-03, #828).** This PRD specifies the retired
+> **Cell (Audience × Category)** Settings model — per-cell targets and the
+> tiered trigger cascade. That data model was collapsed to a single free-text
+> **Group type** per group by
+> [ADR 0034](../adr/0034-collapse-cells-to-group-type-list.md) (migration
+> `20260708000000`, #738): per-type config now lives in `group_type_configs`
+> and the trigger resolves global → per-type. Kept as the historical record of
+> the numeric-trigger and Settings-reshape reasoning; do not build from it.
+>
 > 📌 **What this is.** The agreed design for reshaping **Settings** around groups.
 > Three complaints drive it: (1) too much explanatory prose on the Settings, Care,
 > and Multiply surfaces; (2) Settings "misses the mark for groups" — there's no way
-> to say *how many groups of a given kind we want*; (3) the multiply **triggers** use
+> to say _how many groups of a given kind we want_; (3) the multiply **triggers** use
 > letter grades for things that are really **counts** (interest, capacity).
 >
 > Builds on [`CAPACITY_AND_MULTIPLICATION_PRD.md`](./CAPACITY_AND_MULTIPLICATION_PRD.md),
@@ -67,13 +76,13 @@ per type, but:
 
 The readiness pillars and their units:
 
-| Pillar | Unit | Source |
-| --- | --- | --- |
-| **interest** | **number of people** | prospects in state `interested` for the cell |
-| **capacity** | **derived issue / no-issue** | group sizes + joinable-group count |
-| **groupHealth** | **A–F letter** | group health rubric ✅ |
-| **leaderHealth** | **A–F letter** | leader health rubric ✅ |
-| ~~overflow~~ | — | **folded into capacity Facet A; dropped** |
+| Pillar           | Unit                         | Source                                       |
+| ---------------- | ---------------------------- | -------------------------------------------- |
+| **interest**     | **number of people**         | prospects in state `interested` for the cell |
+| **capacity**     | **derived issue / no-issue** | group sizes + joinable-group count           |
+| **groupHealth**  | **A–F letter**               | group health rubric ✅                       |
+| **leaderHealth** | **A–F letter**               | leader health rubric ✅                      |
+| ~~overflow~~     | —                            | **folded into capacity Facet A; dropped**    |
 
 **Capacity is no longer fed and there are no "offerings."** It is a **derived,
 multi-faceted** signal:
@@ -85,7 +94,7 @@ multi-faceted** signal:
 
 **The trigger rule is global with per-cell overrides.** The admin marks **each
 pillar required or not** and sets its threshold (interest ≥ N; health ≥ letter;
-capacity required/not). A cell reads **"ready"** when every *required* pillar
+capacity required/not). A cell reads **"ready"** when every _required_ pillar
 clears. This preserves the existing flexible per-pillar config from
 [ADR 0019](../adr/0019-multiplication-by-type-and-pillars.md), only with the new
 units.
@@ -125,13 +134,13 @@ units.
 
 ## 3. Data-model deltas
 
-| Change | Table / column | Notes |
-| --- | --- | --- |
-| 🆕 Category catalog | `group_categories` (id, label) | free-form labels |
-| 🆕 Cell config | `category_type_targets` (audience_category, category_id, target_count, trigger overrides) | one row per active cell |
-| 🆕 Group → cell | `groups.category_id` FK | **replaces** `life_stage` |
-| 🟡 Retire enum | `groups.life_stage` | stop reading; deprecate/drop |
-| 🆕 Prospect intent | `prospects.desired_audience_category`, `prospects.desired_category_id` | drives per-cell interest |
+| Change              | Table / column                                                                            | Notes                        |
+| ------------------- | ----------------------------------------------------------------------------------------- | ---------------------------- |
+| 🆕 Category catalog | `group_categories` (id, label)                                                            | free-form labels             |
+| 🆕 Cell config      | `category_type_targets` (audience_category, category_id, target_count, trigger overrides) | one row per active cell      |
+| 🆕 Group → cell     | `groups.category_id` FK                                                                   | **replaces** `life_stage`    |
+| 🟡 Retire enum      | `groups.life_stage`                                                                       | stop reading; deprecate/drop |
+| 🆕 Prospect intent  | `prospects.desired_audience_category`, `prospects.desired_category_id`                    | drives per-cell interest     |
 
 Capacity feed columns (fed headroom, full-group count, offerings) on
 `multiplication_configs` are **retired** — capacity is now derived.
@@ -144,7 +153,7 @@ Capacity feed columns (fed headroom, full-group count, offerings) on
    small N, capacity required, health not-required until grades exist) and call
    them out in the migration.
 2. **"Joinable / launching" definitions.** Reuse existing group lifecycle state to
-   define *active + launching* (coverage X) and *joinable = active & under 12*
+   define _active + launching_ (coverage X) and _joinable = active & under 12_
    (capacity Facet B).
 3. **Reads seam.** New per-cell tallies go through the reads seam
    ([ADR 0015](../adr/0015-reads-seam-for-surface-orchestration.md)); writes go
