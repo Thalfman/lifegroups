@@ -18,8 +18,16 @@
 // or full env dumps. Errors are redacted of known secret values.
 
 // deno-lint-ignore-file no-explicit-any
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { KNOWN_TEST_EMAILS, TEST_GROUP_SPECS, TEST_USER_SPECS, type TestUserSpec } from "./known-test-emails.ts";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  KNOWN_TEST_EMAILS,
+  TEST_GROUP_SPECS,
+  TEST_USER_SPECS,
+  type TestUserSpec,
+} from "./known-test-emails.ts";
 
 type Action = "status" | "enable" | "disable" | "diagnose";
 
@@ -27,14 +35,29 @@ type UserSummary = {
   key: TestUserSpec["key"];
   email: string;
   role: string;
-  authUser: "exists" | "missing" | "created" | "updated" | "deleted" | "skipped";
-  profile: "active" | "inactive" | "missing" | "created" | "updated" | "skipped";
+  authUser:
+    | "exists"
+    | "missing"
+    | "created"
+    | "updated"
+    | "deleted"
+    | "skipped";
+  profile:
+    | "active"
+    | "inactive"
+    | "missing"
+    | "created"
+    | "updated"
+    | "skipped";
   groupAssignment: "active" | "inactive" | "none" | "added" | "deactivated";
   groupName: string | null;
   skipReason: string | null;
 };
 
-type GroupsSummary = Record<"a" | "b", "exists" | "created" | "archived" | "missing">;
+type GroupsSummary = Record<
+  "a" | "b",
+  "exists" | "created" | "archived" | "missing"
+>;
 
 type PostgrestErrorPayload = {
   code?: string;
@@ -49,7 +72,11 @@ type DiagnosticsReport = {
     queried: boolean;
     succeeded: boolean;
     rowCount: number;
-    profile?: { email: string | null; role: string | null; status: string | null };
+    profile?: {
+      email: string | null;
+      role: string | null;
+      status: string | null;
+    };
     postgrestError?: PostgrestErrorPayload;
   };
   envPresent: Record<string, boolean>;
@@ -103,7 +130,7 @@ function listMissingEnv(
     anonKey: string;
     enableFlag: boolean;
     passwords: Record<string, string>;
-  },
+  }
 ): string[] {
   const missing: string[] = [];
   if (!env.supabaseUrl) missing.push("SUPABASE_URL");
@@ -128,7 +155,8 @@ function listMissingEnv(
 function classifyUrlIsRemote(rawUrl: string): boolean {
   try {
     const host = new URL(rawUrl).hostname.toLowerCase();
-    if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false;
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1")
+      return false;
     if (host.endsWith(".supabase.internal")) return false;
     return true;
   } catch {
@@ -136,7 +164,10 @@ function classifyUrlIsRemote(rawUrl: string): boolean {
   }
 }
 
-function buildSecretSet(env: { serviceRoleKey: string; passwords: string[] }): Set<string> {
+function buildSecretSet(env: {
+  serviceRoleKey: string;
+  passwords: string[];
+}): Set<string> {
   const set = new Set<string>();
   if (env.serviceRoleKey) set.add(env.serviceRoleKey);
   for (const p of env.passwords) {
@@ -152,7 +183,10 @@ function redact(message: string, secrets: Set<string>): string {
     const escaped = secret.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     out = out.replace(new RegExp(escaped, "g"), "[REDACTED]");
   }
-  out = out.replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED_JWT]");
+  out = out.replace(
+    /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
+    "[REDACTED_JWT]"
+  );
   return out;
 }
 
@@ -175,17 +209,23 @@ function buildEnvPresence(env: {
     SUPABASE_ANON_KEY: env.anonKey.length > 0,
     ENABLE_TEST_AUTH_USERS: env.enableTestAuthUsersRaw.length > 0,
     TEST_ADMIN_PASSWORD: (env.passwords.TEST_ADMIN_PASSWORD ?? "").length > 0,
-    TEST_LEADER1_PASSWORD: (env.passwords.TEST_LEADER1_PASSWORD ?? "").length > 0,
-    TEST_LEADER2_PASSWORD: (env.passwords.TEST_LEADER2_PASSWORD ?? "").length > 0,
-    TEST_COLEADER_PASSWORD: (env.passwords.TEST_COLEADER_PASSWORD ?? "").length > 0,
+    TEST_LEADER1_PASSWORD:
+      (env.passwords.TEST_LEADER1_PASSWORD ?? "").length > 0,
+    TEST_LEADER2_PASSWORD:
+      (env.passwords.TEST_LEADER2_PASSWORD ?? "").length > 0,
+    TEST_COLEADER_PASSWORD:
+      (env.passwords.TEST_COLEADER_PASSWORD ?? "").length > 0,
   };
 }
 
 // Runs each PostgREST diagnostic field through `redact()` defensively.
 // PostgREST text rarely contains secrets, but applying redact is cheap.
 function redactPostgrestError(
-  pgErr: { code?: string; message?: string; details?: string; hint?: string } | null | undefined,
-  secrets: Set<string>,
+  pgErr:
+    | { code?: string; message?: string; details?: string; hint?: string }
+    | null
+    | undefined,
+  secrets: Set<string>
 ): PostgrestErrorPayload | undefined {
   if (!pgErr) return undefined;
   const safe: PostgrestErrorPayload = {};
@@ -202,7 +242,8 @@ function jsonResponse(body: ResponseBody, status: number): Response {
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Headers":
+        "authorization, x-client-info, apikey, content-type",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
     },
   });
@@ -221,14 +262,18 @@ function emptyResponse(action: Action | "unknown"): ResponseBody {
 
 async function findAuthUserByEmail(
   client: SupabaseClient,
-  email: string,
+  email: string
 ): Promise<{ id: string; email: string | null } | null> {
   const target = email.toLowerCase();
   let page = 1;
   const perPage = 200;
   for (;;) {
-    const { data, error } = await client.auth.admin.listUsers({ page, perPage });
-    if (error) throw new Error(`listUsers failed on page ${page}: ${error.message}`);
+    const { data, error } = await client.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+    if (error)
+      throw new Error(`listUsers failed on page ${page}: ${error.message}`);
     const users = data?.users ?? [];
     const match = users.find((u) => (u.email ?? "").toLowerCase() === target);
     if (match) return { id: match.id, email: match.email ?? null };
@@ -241,18 +286,28 @@ async function findAuthUserByEmail(
 async function resolveGroup(
   service: SupabaseClient,
   key: "A" | "B",
-  createIfMissing: boolean,
-): Promise<{ id: string; name: string; action: "exists" | "created" | "missing" }> {
+  createIfMissing: boolean
+): Promise<{
+  id: string;
+  name: string;
+  action: "exists" | "created" | "missing";
+}> {
   const candidates = DEMO_SAFE_GROUP_NAMES[key];
   const { data, error } = await service
     .from("groups")
     .select("id, name, lifecycle_status")
     .in("name", candidates)
     .eq("lifecycle_status", "active");
-  if (error) throw new Error(`groups lookup failed for ${key}: ${error.message}`);
-  const rows = (data ?? []) as { id: string; name: string; lifecycle_status: string }[];
+  if (error)
+    throw new Error(`groups lookup failed for ${key}: ${error.message}`);
+  const rows = (data ?? []) as {
+    id: string;
+    name: string;
+    lifecycle_status: string;
+  }[];
   if (rows.length > 0) {
-    const pick = rows.find((r) => r.name === TEST_GROUP_SPECS[key].name) ?? rows[0];
+    const pick =
+      rows.find((r) => r.name === TEST_GROUP_SPECS[key].name) ?? rows[0];
     return { id: pick.id, name: pick.name, action: "exists" };
   }
   if (!createIfMissing) {
@@ -272,13 +327,14 @@ async function resolveGroup(
     })
     .select("id, name")
     .single();
-  if (insErr) throw new Error(`group insert failed for ${key}: ${insErr.message}`);
+  if (insErr)
+    throw new Error(`group insert failed for ${key}: ${insErr.message}`);
   return { id: ins.id as string, name: ins.name as string, action: "created" };
 }
 
 async function handleStatus(
   service: SupabaseClient,
-  isRemoteSupabase: boolean,
+  isRemoteSupabase: boolean
 ): Promise<ResponseBody> {
   const out = emptyResponse("status");
   out.isRemoteSupabase = isRemoteSupabase;
@@ -320,7 +376,8 @@ async function handleStatus(
             .eq("profile_id", p.id)
             .eq("role", spec.groupRole)
             .maybeSingle();
-          if (glErr) throw new Error(`group_leaders lookup failed: ${glErr.message}`);
+          if (glErr)
+            throw new Error(`group_leaders lookup failed: ${glErr.message}`);
           if (glRow) {
             const g = glRow as any;
             row.groupAssignment = g.active ? "active" : "inactive";
@@ -345,7 +402,8 @@ async function handleStatus(
   for (const key of ["A", "B"] as const) {
     try {
       const g = await resolveGroup(service, key, false);
-      out.groups[key.toLowerCase() as "a" | "b"] = g.action === "missing" ? "missing" : "exists";
+      out.groups[key.toLowerCase() as "a" | "b"] =
+        g.action === "missing" ? "missing" : "exists";
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       out.errors.push(msg);
@@ -360,12 +418,17 @@ async function handleStatus(
 async function handleEnable(
   service: SupabaseClient,
   passwords: Record<string, string>,
-  isRemoteSupabase: boolean,
+  isRemoteSupabase: boolean
 ): Promise<ResponseBody> {
   const out = emptyResponse("enable");
   out.isRemoteSupabase = isRemoteSupabase;
 
-  const groupCache: Partial<Record<"A" | "B", { id: string; name: string; action: "exists" | "created" | "missing" }>> = {};
+  const groupCache: Partial<
+    Record<
+      "A" | "B",
+      { id: string; name: string; action: "exists" | "created" | "missing" }
+    >
+  > = {};
 
   for (const spec of TEST_USER_SPECS) {
     const row: UserSummary = {
@@ -419,7 +482,11 @@ async function handleEnable(
 
       let profileId: string;
       if (existingProfile) {
-        const p = existingProfile as { id: string; role: string; status: string };
+        const p = existingProfile as {
+          id: string;
+          role: string;
+          status: string;
+        };
         if (p.role === "super_admin") {
           row.profile = "skipped";
           row.skipReason = "refusing to overwrite super_admin profile";
@@ -458,7 +525,11 @@ async function handleEnable(
       if (spec.groupKey && spec.groupRole) {
         if (!groupCache[spec.groupKey]) {
           const g = await resolveGroup(service, spec.groupKey, true);
-          groupCache[spec.groupKey] = g as { id: string; name: string; action: "exists" | "created" };
+          groupCache[spec.groupKey] = g as {
+            id: string;
+            name: string;
+            action: "exists" | "created";
+          };
           out.groups[spec.groupKey.toLowerCase() as "a" | "b"] =
             g.action === "created" ? "created" : "exists";
         }
@@ -472,28 +543,31 @@ async function handleEnable(
           .eq("profile_id", profileId)
           .eq("role", spec.groupRole)
           .maybeSingle();
-        if (glErr) throw new Error(`group_leaders lookup failed: ${glErr.message}`);
+        if (glErr)
+          throw new Error(`group_leaders lookup failed: ${glErr.message}`);
         if (glRow) {
           if (!(glRow as any).active) {
             const { error: updErr } = await service
               .from("group_leaders")
               .update({ active: true })
               .eq("id", (glRow as any).id);
-            if (updErr) throw new Error(`group_leaders reactivate failed: ${updErr.message}`);
+            if (updErr)
+              throw new Error(
+                `group_leaders reactivate failed: ${updErr.message}`
+              );
             row.groupAssignment = "added";
           } else {
             row.groupAssignment = "active";
           }
         } else {
-          const { error: insErr } = await service
-            .from("group_leaders")
-            .insert({
-              group_id: group.id,
-              profile_id: profileId,
-              role: spec.groupRole,
-              active: true,
-            });
-          if (insErr) throw new Error(`group_leaders insert failed: ${insErr.message}`);
+          const { error: insErr } = await service.from("group_leaders").insert({
+            group_id: group.id,
+            profile_id: profileId,
+            role: spec.groupRole,
+            active: true,
+          });
+          if (insErr)
+            throw new Error(`group_leaders insert failed: ${insErr.message}`);
           row.groupAssignment = "added";
         }
       }
@@ -510,7 +584,7 @@ async function handleEnable(
 
 async function handleDisable(
   service: SupabaseClient,
-  isRemoteSupabase: boolean,
+  isRemoteSupabase: boolean
 ): Promise<ResponseBody> {
   const out = emptyResponse("disable");
   out.isRemoteSupabase = isRemoteSupabase;
@@ -573,7 +647,8 @@ async function handleDisable(
         .from("group_leaders")
         .update({ active: false })
         .eq("profile_id", p.id);
-      if (glErr) throw new Error(`group_leaders deactivate failed: ${glErr.message}`);
+      if (glErr)
+        throw new Error(`group_leaders deactivate failed: ${glErr.message}`);
       row.groupAssignment = "deactivated";
 
       const { error: updErr } = await service
@@ -581,7 +656,8 @@ async function handleDisable(
         .update({ status: "inactive", auth_user_id: null })
         .eq("id", p.id)
         .in("role", Array.from(REMOVABLE_ROLES));
-      if (updErr) throw new Error(`profile deactivate failed: ${updErr.message}`);
+      if (updErr)
+        throw new Error(`profile deactivate failed: ${updErr.message}`);
       row.profile = "inactive";
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -597,15 +673,21 @@ async function handleDisable(
         .from("groups")
         .select("id, lifecycle_status")
         .eq("name", name);
-      if (error) throw new Error(`groups lookup failed for ${name}: ${error.message}`);
-      const matches = (rows ?? []) as { id: string; lifecycle_status: string }[];
+      if (error)
+        throw new Error(`groups lookup failed for ${name}: ${error.message}`);
+      const matches = (rows ?? []) as {
+        id: string;
+        lifecycle_status: string;
+      }[];
       const outKey = key.toLowerCase() as "a" | "b";
       if (matches.length === 0) {
         out.groups[outKey] = "missing";
         continue;
       }
       if (matches.length > 1) {
-        out.warnings.push(`group[${name}]: ambiguous (${matches.length} rows); skipped archive`);
+        out.warnings.push(
+          `group[${name}]: ambiguous (${matches.length} rows); skipped archive`
+        );
         out.groups[outKey] = "exists";
         continue;
       }
@@ -615,9 +697,14 @@ async function handleDisable(
         .select("id")
         .eq("group_id", group.id)
         .eq("active", true);
-      if (lErr) throw new Error(`group_leaders count failed for ${name}: ${lErr.message}`);
+      if (lErr)
+        throw new Error(
+          `group_leaders count failed for ${name}: ${lErr.message}`
+        );
       if ((leaders ?? []).length > 0) {
-        out.warnings.push(`group[${name}]: still has active leaders; skipped archive`);
+        out.warnings.push(
+          `group[${name}]: still has active leaders; skipped archive`
+        );
         out.groups[outKey] = "exists";
         continue;
       }
@@ -627,9 +714,13 @@ async function handleDisable(
       }
       const { error: updErr } = await service
         .from("groups")
-        .update({ lifecycle_status: "closed", closed_at: new Date().toISOString() })
+        .update({
+          lifecycle_status: "closed",
+          closed_at: new Date().toISOString(),
+        })
         .eq("id", group.id);
-      if (updErr) throw new Error(`group archive failed for ${name}: ${updErr.message}`);
+      if (updErr)
+        throw new Error(`group archive failed for ${name}: ${updErr.message}`);
       out.groups[outKey] = "archived";
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -642,14 +733,18 @@ async function handleDisable(
 }
 
 // deno-lint-ignore no-explicit-any
-declare const Deno: { env: { get: (k: string) => string | undefined }; serve: (handler: (req: Request) => Promise<Response> | Response) => any };
+declare const Deno: {
+  env: { get: (k: string) => string | undefined };
+  serve: (handler: (req: Request) => Promise<Response> | Response) => any;
+};
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+        "Access-Control-Allow-Headers":
+          "authorization, x-client-info, apikey, content-type",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
       },
     });
@@ -665,7 +760,10 @@ Deno.serve(async (req: Request) => {
     TEST_COLEADER_PASSWORD: Deno.env.get("TEST_COLEADER_PASSWORD") ?? "",
   };
 
-  const secrets = buildSecretSet({ serviceRoleKey, passwords: Object.values(passwords) });
+  const secrets = buildSecretSet({
+    serviceRoleKey,
+    passwords: Object.values(passwords),
+  });
   const isRemoteSupabase = classifyUrlIsRemote(supabaseUrl);
 
   if (req.method !== "POST") {
@@ -675,8 +773,8 @@ Deno.serve(async (req: Request) => {
   }
 
   const authHeader = req.headers.get("Authorization");
-  const hasAuthHeader = authHeader?.toLowerCase().startsWith("bearer ") ?? false;
-  console.log(JSON.stringify({ event: "auth.header", hasAuthHeader }));
+  const hasAuthHeader =
+    authHeader?.toLowerCase().startsWith("bearer ") ?? false;
   if (!hasAuthHeader) {
     const body = emptyResponse("unknown");
     body.code = "missing_authorization_header";
@@ -694,7 +792,12 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(body, 400);
   }
   const action = parsed.action;
-  if (action !== "status" && action !== "enable" && action !== "disable" && action !== "diagnose") {
+  if (
+    action !== "status" &&
+    action !== "enable" &&
+    action !== "disable" &&
+    action !== "diagnose"
+  ) {
     const body = emptyResponse("unknown");
     body.errors.push("invalid_action");
     return jsonResponse(body, 400);
@@ -729,24 +832,14 @@ Deno.serve(async (req: Request) => {
     if (error) throw new Error(error.message);
     if (!data?.user?.id) throw new Error("no_user");
     callerAuthId = data.user.id;
-    console.log(JSON.stringify({
-      event: "auth.jwt",
-      action,
-      jwtVerified: true,
-      authUserId: callerAuthId,
-    }));
   } catch (err) {
-    console.log(JSON.stringify({
-      event: "auth.jwt",
-      action,
-      jwtVerified: false,
-      errorClass: err instanceof Error ? err.constructor.name : typeof err,
-    }));
     const body = emptyResponse(action);
     body.code = "invalid_or_expired_session";
     body.message = "Supabase Auth could not verify the bearer token.";
     body.errors.push("invalid_or_expired_session");
-    body.errors.push(redact(err instanceof Error ? err.message : String(err), secrets));
+    body.errors.push(
+      redact(err instanceof Error ? err.message : String(err), secrets)
+    );
     return jsonResponse(body, 401);
   }
 
@@ -762,7 +855,10 @@ Deno.serve(async (req: Request) => {
   // PGRST116 on duplicates; we get to distinguish zero / one / many rows
   // from a real query failure and surface safe details for each case.
   type ProfileLookupResult =
-    | { kind: "ok"; row: { id: string; email: string | null; role: string; status: string } }
+    | {
+        kind: "ok";
+        row: { id: string; email: string | null; role: string; status: string };
+      }
     | { kind: "none" }
     | { kind: "duplicate"; count: number }
     | { kind: "error"; pg: PostgrestErrorPayload };
@@ -774,7 +870,16 @@ Deno.serve(async (req: Request) => {
       .eq("auth_user_id", callerAuthId)
       .limit(2);
     if (error) {
-      const pg = redactPostgrestError(error as { code?: string; message?: string; details?: string; hint?: string }, secrets) ?? {};
+      const pg =
+        redactPostgrestError(
+          error as {
+            code?: string;
+            message?: string;
+            details?: string;
+            hint?: string;
+          },
+          secrets
+        ) ?? {};
       return { kind: "error", pg };
     }
     const list = (rows ?? []) as Array<{
@@ -787,7 +892,10 @@ Deno.serve(async (req: Request) => {
     if (list.length === 0) return { kind: "none" };
     if (list.length > 1) return { kind: "duplicate", count: list.length };
     const r = list[0];
-    return { kind: "ok", row: { id: r.id, email: r.email, role: r.role, status: r.status } };
+    return {
+      kind: "ok",
+      row: { id: r.id, email: r.email, role: r.role, status: r.status },
+    };
   }
 
   // Diagnose short-circuits the role gate so an operator can see what
@@ -798,9 +906,11 @@ Deno.serve(async (req: Request) => {
       queried: true,
       succeeded: lookup.kind !== "error",
       rowCount:
-        lookup.kind === "ok" ? 1
-        : lookup.kind === "duplicate" ? lookup.count
-        : 0,
+        lookup.kind === "ok"
+          ? 1
+          : lookup.kind === "duplicate"
+            ? lookup.count
+            : 0,
     };
     if (lookup.kind === "ok") {
       profileLookup.profile = {
@@ -813,48 +923,65 @@ Deno.serve(async (req: Request) => {
       profileLookup.postgrestError = lookup.pg;
     }
 
-    console.log(JSON.stringify({
-      event: "auth.diagnose",
-      action,
-      authUserId: callerAuthId,
-      lookupKind: lookup.kind,
-      rowCount: profileLookup.rowCount,
-      pgCode: lookup.kind === "error" ? lookup.pg.code : undefined,
-    }));
+    console.log(
+      JSON.stringify({
+        event: "auth.diagnose",
+        action,
+        authUserId: callerAuthId,
+        lookupKind: lookup.kind,
+        rowCount: profileLookup.rowCount,
+        pgCode: lookup.kind === "error" ? lookup.pg.code : undefined,
+      })
+    );
 
     const body = emptyResponse("diagnose");
     body.isRemoteSupabase = isRemoteSupabase;
     body.ok = true;
     body.code = "diagnose_ok";
-    body.message = "Diagnostic snapshot of the Edge Function's view of the caller.";
+    body.message =
+      "Diagnostic snapshot of the Edge Function's view of the caller.";
     body.diagnostics = {
       callerAuthUserId: callerAuthId,
       profileLookup,
       envPresent: buildEnvPresence({
-        supabaseUrl, serviceRoleKey, anonKey, enableTestAuthUsersRaw, passwords,
+        supabaseUrl,
+        serviceRoleKey,
+        anonKey,
+        enableTestAuthUsersRaw,
+        passwords,
       }),
     };
     return jsonResponse(body, 200);
   }
 
-  let profileRow: { id: string; email: string | null; role: string; status: string };
+  let profileRow: {
+    id: string;
+    email: string | null;
+    role: string;
+    status: string;
+  };
   const lookup = await lookupCallerProfile();
-  console.log(JSON.stringify({
-    event: "auth.profile",
-    action,
-    authUserId: callerAuthId,
-    lookupKind: lookup.kind,
-    rowCount:
-      lookup.kind === "ok" ? 1
-      : lookup.kind === "duplicate" ? lookup.count
-      : 0,
-    pgCode: lookup.kind === "error" ? lookup.pg.code : undefined,
-  }));
+  console.log(
+    JSON.stringify({
+      event: "auth.profile",
+      action,
+      authUserId: callerAuthId,
+      lookupKind: lookup.kind,
+      rowCount:
+        lookup.kind === "ok"
+          ? 1
+          : lookup.kind === "duplicate"
+            ? lookup.count
+            : 0,
+      pgCode: lookup.kind === "error" ? lookup.pg.code : undefined,
+    })
+  );
 
   if (lookup.kind === "error") {
     const body = emptyResponse(action);
     body.code = "profile_lookup_query_failed";
-    body.message = "The Edge Function could not query profiles with the configured elevated key.";
+    body.message =
+      "The Edge Function could not query profiles with the configured elevated key.";
     body.postgrestError = lookup.pg;
     body.errors.push("profile_lookup_query_failed");
     return jsonResponse(body, 500);
@@ -916,7 +1043,9 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(result, result.ok ? 200 : 207);
   } catch (err) {
     const body = emptyResponse(action);
-    body.errors.push(redact(err instanceof Error ? err.message : String(err), secrets));
+    body.errors.push(
+      redact(err instanceof Error ? err.message : String(err), secrets)
+    );
     return jsonResponse(body, 500);
   }
 });
