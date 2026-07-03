@@ -1,8 +1,6 @@
----
-status: accepted
----
-
 # Home is a self-dismissing setup workspace
+
+**Status:** Accepted
 
 While any first-run setup step is incomplete, the admin Home leads with the
 setup checklist as its primary panel; once every step reads `complete`, Home

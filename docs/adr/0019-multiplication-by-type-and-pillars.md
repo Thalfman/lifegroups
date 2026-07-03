@@ -1,6 +1,9 @@
 # Multiplication by group type, assessed by five pillars
 
-**Status:** Accepted
+**Status:** Accepted — amended by
+[ADR 0034](./0034-collapse-cells-to-group-type-list.md): the **Audience** unit
+was retired by the cell → group-type collapse (#738); the five pillars and the
+directional trigger survive, assessed per free-text group type.
 
 Multiplication re-frames from planning individual groups to deciding whether to
 launch another group of a **type**. The unit is the **Audience** (Men's,

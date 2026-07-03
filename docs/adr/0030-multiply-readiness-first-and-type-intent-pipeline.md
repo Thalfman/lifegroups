@@ -7,9 +7,10 @@ from "pick one concrete group to multiply" to a **type-first** working list: the
 Ministry Admin pipelines a **group type**, and the existing groups of that type
 appear beneath it as **candidates**. The third tab stays **Shepherds**.
 
-Status: accepted — amends ADR 0022 (Multiply's tab set) and completes ADR 0029
-(the readiness checklist) in the UI. The tab order/default amends ADR 0022's
-"Plan is the landing tab."
+**Status:** Accepted — amends ADR 0022 (Multiply's tab set) and completes ADR
+0029 (the readiness checklist) in the UI. The tab order/default amends ADR
+0022's "Plan is the landing tab." The `in_pipeline` flag amends
+[ADR 0034](./0034-collapse-cells-to-group-type-list.md)'s candidate model.
 
 ## Why
 

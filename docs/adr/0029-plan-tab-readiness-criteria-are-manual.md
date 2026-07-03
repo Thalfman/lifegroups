@@ -1,5 +1,8 @@
 # The Plan tab's multiplication readiness criteria become a manual checklist
 
+**Status:** Accepted — completed in the UI by
+[ADR 0030](./0030-multiply-readiness-first-and-type-intent-pipeline.md).
+
 The Multiply **Plan** tab shows, per candidate group, a row of readiness chips —
 the five per-group criteria from ADR 0006 / `lib/admin/multiplication.ts`
 (systems-conversation answer 10): **12+ members**, **3+ years as a group**,
