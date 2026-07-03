@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { useValueChange } from "@/lib/hooks/use-value-change";
 import { PButton } from "@/components/pastoral/button";
 import {
@@ -255,7 +256,7 @@ function AssumptionFields({
           id={fieldId("notes")}
           name="notes"
           rows={3}
-          maxLength={2000}
+          maxLength={NOTE_MAX_CHARS}
           defaultValue={defaults.notes ?? ""}
           style={{
             ...fieldInputStyle,

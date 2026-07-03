@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminLogShepherdCareInteraction,
@@ -144,7 +145,7 @@ export function LogTouchForm({
           id="cta-notes"
           name="notes"
           rows={3}
-          maxLength={2000}
+          maxLength={NOTE_MAX_CHARS}
           className={`${FIELD_INPUT} min-h-20 resize-y`}
           placeholder="What did you talk about? What's the read?"
         />
@@ -268,7 +269,7 @@ export function CareProfileFieldForm({
               id="cta-admin_summary"
               name="admin_summary"
               rows={4}
-              maxLength={2000}
+              maxLength={NOTE_MAX_CHARS}
               defaultValue={current?.admin_summary ?? ""}
               className={`${FIELD_INPUT} min-h-24 resize-y`}
               placeholder="High-level read on how this shepherd is doing."

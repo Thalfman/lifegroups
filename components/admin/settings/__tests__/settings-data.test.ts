@@ -36,8 +36,7 @@ const GROUP = { id: "g1", name: "Alpha" } as never;
 describe("buildSettingsData — degradation", () => {
   it("reports no errors when every read succeeds", async () => {
     const data = await buildSettingsData(
-      emptyReads({ fetchAllGroups: async () => ok([GROUP]) }),
-      { isSuperAdmin: false }
+      emptyReads({ fetchAllGroups: async () => ok([GROUP]) })
     );
 
     expect(data.errors).toEqual({
@@ -50,7 +49,6 @@ describe("buildSettingsData — degradation", () => {
       readiness: null,
     });
     expect(data.groups).toEqual([GROUP]);
-    expect(data.isSuperAdmin).toBe(false);
   });
 
   it("falls back to the built-in defaults when the defaults read fails, keeping the other tabs", async () => {
@@ -58,8 +56,7 @@ describe("buildSettingsData — degradation", () => {
       emptyReads({
         fetchMetricDefaults: async () => fail("defaults boom"),
         fetchAllGroups: async () => ok([GROUP]),
-      }),
-      { isSuperAdmin: false }
+      })
     );
 
     expect(data.errors.defaults).toBe("defaults boom");
@@ -74,8 +71,7 @@ describe("buildSettingsData — degradation", () => {
     const data = await buildSettingsData(
       emptyReads({
         fetchGroupTypes: async () => ok(["Men", "Women", "Mixed"]),
-      }),
-      { isSuperAdmin: false }
+      })
     );
 
     expect(data.groupTypes).toEqual(["Men", "Women", "Mixed"]);
@@ -87,8 +83,7 @@ describe("buildSettingsData — degradation", () => {
       emptyReads({
         fetchAllGroups: async () => ok([GROUP]),
         fetchGroupTypes: async () => fail("group types boom"),
-      }),
-      { isSuperAdmin: false }
+      })
     );
 
     expect(data.errors.groupTypes).toBe("group types boom");
@@ -105,8 +100,7 @@ describe("buildSettingsData — degradation", () => {
         fetchAllGroupMetricSettings: async () => fail("overrides boom"),
         fetchGroupHealthRubric: async () => fail("group rubric boom"),
         fetchLeaderHealthRubric: async () => fail("leader rubric boom"),
-      }),
-      { isSuperAdmin: false }
+      })
     );
 
     expect(data.errors.overrides).toBe("overrides boom");
@@ -123,9 +117,7 @@ describe("buildSettingsData — degradation", () => {
   });
 
   it("seeds the working default rubric when no health_rubrics row exists (#642)", async () => {
-    const data = await buildSettingsData(emptyReads(), {
-      isSuperAdmin: false,
-    });
+    const data = await buildSettingsData(emptyReads());
 
     // No row, no error → the editor shows the 40/40/20 starting defaults, not a
     // zeroed form, and is flagged as unsaved so the note + lazy-persist apply.
@@ -147,8 +139,7 @@ describe("buildSettingsData — degradation", () => {
           ok({
             criteria: [{ key: "unity", label: "Unity", weight: 100 }],
           } as never),
-      }),
-      { isSuperAdmin: false }
+      })
     );
 
     expect(data.hasSavedGroupRubric).toBe(true);
@@ -168,8 +159,7 @@ describe("buildSettingsData — degradation", () => {
             created_at: "2026-06-01T00:00:00Z",
             updated_at: "2026-06-01T00:00:00Z",
           }),
-      }),
-      { isSuperAdmin: false }
+      })
     );
 
     expect(data.defaultsSource).toBe("live");
@@ -182,8 +172,7 @@ describe("buildSettingsData — degradation", () => {
   });
 
   it("documents the no-database fallback shape", () => {
-    const empty = emptySettingsData(true);
-    expect(empty.isSuperAdmin).toBe(true);
+    const empty = emptySettingsData();
     expect(empty.defaults).toEqual(BUILT_IN_METRIC_DEFAULTS);
     expect(empty.defaultsSource).toBe("fallback");
     expect(empty.errors.defaults).toBe(

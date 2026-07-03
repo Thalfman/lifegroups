@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveMultiplicationCandidate,
@@ -316,7 +317,7 @@ function NotesField({
       <textarea
         id={id}
         name="notes"
-        maxLength={2000}
+        maxLength={NOTE_MAX_CHARS}
         rows={3}
         defaultValue={defaultValue ?? ""}
         className={TEXTAREA}

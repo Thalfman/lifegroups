@@ -1,4 +1,5 @@
 import { isUuid } from "@/lib/shared/uuid";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import type { ValidationResult } from "./shared";
 import {
   isRecord,
@@ -64,8 +65,10 @@ export function validateGroupHealthRatingsPayload(
 
   const noteRaw = readOptionalString(input.spiritual_growth_note);
   let note: string | null = null;
-  if (noteRaw !== undefined && noteRaw.length > 2000) {
-    errors.push("Spiritual-growth note is too long (max 2000 characters).");
+  if (noteRaw !== undefined && noteRaw.length > NOTE_MAX_CHARS) {
+    errors.push(
+      `Spiritual-growth note is too long (max ${NOTE_MAX_CHARS} characters).`
+    );
   } else {
     note = noteRaw ?? null;
   }

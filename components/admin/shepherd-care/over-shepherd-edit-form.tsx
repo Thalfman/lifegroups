@@ -1,6 +1,7 @@
 "use client";
 
 import { PButton } from "@/components/pastoral/button";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { adminUpdateOverShepherd } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
   useActionForm,
@@ -76,7 +77,7 @@ export function OverShepherdEditForm({
             id="os-edit-notes"
             name="notes"
             rows={3}
-            maxLength={2000}
+            maxLength={NOTE_MAX_CHARS}
             defaultValue={overShepherd.notes ?? ""}
             className={`${FIELD_INPUT} min-h-20 resize-y`}
           />

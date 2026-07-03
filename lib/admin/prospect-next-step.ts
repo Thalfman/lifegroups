@@ -23,6 +23,7 @@
 // admin_set_prospect_next_step (the authoritative gate).
 
 import { isIsoDate } from "@/lib/admin/validation/shared";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 
 // The two Next Step kinds. connect_to_group_leader is back-office only.
 export type NextStepType = "connect_to_group_leader" | "follow_up";
@@ -39,8 +40,8 @@ export const NEXT_STEP_TYPE_LABEL: Record<NextStepType, string> = {
 
 // The longest a Next Step detail / Additional Note may be. Mirrors the SQL
 // CHECK + the RPC length guards.
-export const NEXT_STEP_DETAIL_MAX = 2000;
-export const ADDITIONAL_NOTE_MAX = 2000;
+export const NEXT_STEP_DETAIL_MAX = NOTE_MAX_CHARS;
+export const ADDITIONAL_NOTE_MAX = NOTE_MAX_CHARS;
 
 // The normalized Next Step shape. dueDate is an ISO `YYYY-MM-DD` string or null;
 // detail is trimmed-non-empty or null. A null NextStep means "no current step".

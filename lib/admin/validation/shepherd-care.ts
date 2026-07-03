@@ -1,3 +1,4 @@
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import type {
   ShepherdCareInteractionType,
   ShepherdCareStatus,
@@ -96,8 +97,8 @@ export function validateUpsertShepherdCareProfilePayload(
   let summary: string | null = null;
   if (setSummary) {
     if (summaryRaw !== undefined) {
-      if (summaryRaw.length > 2000) {
-        errors.push("Summary is too long (max 2000 characters).");
+      if (summaryRaw.length > NOTE_MAX_CHARS) {
+        errors.push(`Summary is too long (max ${NOTE_MAX_CHARS} characters).`);
       } else {
         summary = summaryRaw;
       }
@@ -173,8 +174,8 @@ export function validateLogShepherdCareInteractionPayload(
   }
 
   const notes = readOptionalString(input.notes);
-  if (notes !== undefined && notes.length > 2000) {
-    errors.push("Notes are too long (max 2000 characters).");
+  if (notes !== undefined && notes.length > NOTE_MAX_CHARS) {
+    errors.push(`Notes are too long (max ${NOTE_MAX_CHARS} characters).`);
   }
 
   const setNext = readBooleanFlag(input.set_next_touchpoint_due);

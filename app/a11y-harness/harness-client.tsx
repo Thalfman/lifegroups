@@ -914,9 +914,6 @@ const SETTINGS_DATA: SettingsShellData = {
     // demo rule decodes cleanly — no stored-trigger-unreadable notice.
     ruleFellBack: false,
   },
-  // Issue #304: render the super_admin variant so the super-admin-only System
-  // tab affordances are in the tree for the a11y scan.
-  isSuperAdmin: true,
   errors: {
     defaults: null,
     groups: null,

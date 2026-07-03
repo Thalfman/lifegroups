@@ -1,6 +1,7 @@
 "use client";
 
 import { PButton } from "@/components/pastoral/button";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { adminUpdateLaunchPlanningAssumptions } from "@/app/(protected)/admin/launch-planning/actions";
 import { P, fontBody } from "@/lib/pastoral";
 import { PercentField } from "@/components/admin/launch-planning/percent-field";
@@ -69,7 +70,7 @@ export function LaunchPlanningAssumptionsForm({
           id="notes"
           name="notes"
           rows={3}
-          maxLength={2000}
+          maxLength={NOTE_MAX_CHARS}
           defaultValue={assumptions.notes ?? ""}
           style={{
             ...fieldInputStyle,

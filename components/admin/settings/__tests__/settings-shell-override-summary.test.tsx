@@ -62,7 +62,6 @@ function shellData(): SettingsShellData {
       rule: BUILT_IN_READINESS_RULE,
       ruleFellBack: false,
     },
-    isSuperAdmin: false,
     errors: {
       defaults: null,
       groups: null,

@@ -1,6 +1,8 @@
 import type { ProspectState } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
 import {
+  ADDITIONAL_NOTE_MAX,
+  NEXT_STEP_DETAIL_MAX,
   normalizeAdditionalNote,
   normalizeNextStep,
 } from "@/lib/admin/prospect-next-step";
@@ -214,7 +216,10 @@ export function validateSetProspectNextStepPayload(
         errors.push("Next step type isn't a valid value.");
       else if (normalized.error === "invalid_due_date")
         errors.push("Next step due date must be a valid date (YYYY-MM-DD).");
-      else errors.push("Next step detail is too long (max 2000 characters).");
+      else
+        errors.push(
+          `Next step detail is too long (max ${NEXT_STEP_DETAIL_MAX} characters).`
+        );
     } else {
       nextStep = {
         type: normalized.value.type,
@@ -227,7 +232,9 @@ export function validateSetProspectNextStepPayload(
   // The Additional Note is independent of the step.
   const note = normalizeAdditionalNote(input.additional_note);
   if (!note.ok)
-    errors.push("Additional note is too long (max 2000 characters).");
+    errors.push(
+      `Additional note is too long (max ${ADDITIONAL_NOTE_MAX} characters).`
+    );
 
   if (errors.length > 0) return { ok: false, errors };
 

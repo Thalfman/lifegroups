@@ -1,6 +1,7 @@
 "use client";
 
 import { PButton } from "@/components/pastoral/button";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { overShepherdLogBroadNote } from "@/app/(protected)/over-shepherd/[profileId]/actions";
 import {
   fieldInputClassName,
@@ -41,7 +42,7 @@ export function LogBroadNoteForm({
           id="osbn-note"
           name="note"
           rows={3}
-          maxLength={2000}
+          maxLength={NOTE_MAX_CHARS}
           required
           className={cn(fieldInputClassName, "min-h-20 resize-y")}
           placeholder="A broad, shareable note on how this Shepherd is doing."

@@ -8,6 +8,7 @@
 // onSaved, recompute disabled while edits are unsaved.
 
 import { useEffect, useState, type MutableRefObject } from "react";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { useRouter } from "next/navigation";
 import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
 import {
@@ -199,7 +200,7 @@ function GroupHealthEditorBody({
             id={`gh-note-${row.group_id}`}
             className={cn(FIELD_INPUT, "min-h-[76px] resize-y")}
             name="spiritual_growth_note"
-            maxLength={2000}
+            maxLength={NOTE_MAX_CHARS}
             defaultValue={row.spiritual_growth_note ?? ""}
           />
         </div>
