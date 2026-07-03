@@ -25,7 +25,7 @@ hidden nav flags and now carry a "preserved, not actively maintained" banner
 
 ## Stack
 
-- Next.js 15 App Router (React Server Components) + TypeScript.
+- Next.js 16 App Router (React Server Components) + TypeScript.
 - Tailwind + a small in-house design system under `components/lg/`
   (warm-pastoral: Newsreader / Geist / JetBrains Mono, OKLCH cream /
   sage / clay, 232px sidebar shell, mobile drawer below 768px).

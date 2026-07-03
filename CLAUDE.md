@@ -248,8 +248,10 @@ these terms in UX copy and commit messages; in code identifiers, keep
   [`0020`](./docs/adr/0020-leader-care-note-is-group-scoped.md) — delivered via
   PRD #371 (slices #372–#382), then amended by
   [`0022`](./docs/adr/0022-multiply-unifies-plan-readiness-leaders.md): Multiply
-  now hosts the **Plan**, **Readiness**, and **Leaders** tabs (target the visible
-  `/admin/multiply` surface, not the off-nav Planning / leader-pipeline hosts).
+  now hosts the **Readiness**, **Pipeline**, and **Shepherds** tabs (as amended
+  by [`0030`](./docs/adr/0030-multiply-readiness-first-and-type-intent-pipeline.md);
+  target the visible `/admin/multiply` surface, not the off-nav Planning /
+  leader-pipeline hosts).
   [`0023`](./docs/adr/0023-all-notes-feed-and-admin-authorship.md) adds the Care
   area's aggregate **Notes** tab + admin Care-Note authorship, and
   [`0024`](./docs/adr/0024-default-on-leader-surface-and-groups-people-nav.md)

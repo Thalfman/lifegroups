@@ -289,12 +289,14 @@ export async function adminSetHealthRubric(
 // replaces the app_settings `group_types` row and stays the authoritative gate.
 // Ministry-Admin-owned, so the default requireAdminSession path applies.
 // Revalidates every surface that reads the list (Settings, Groups, Multiply, the
-// admin home).
+// admin home, and Plan — its intake form's Desired-group-type picker is fed
+// from the same list, #746).
 const GROUP_TYPES_REVALIDATE_PATHS = [
   "/admin/settings",
   "/admin",
   "/admin/multiply",
   "/admin/groups",
+  "/admin/plan",
 ] as const;
 
 const SET_GROUP_TYPES_SPEC: AdminWriteActionSpec<
@@ -361,9 +363,13 @@ export async function adminSetGroupTypeConfig(
 // can override it via its per-type config above; with no override a type inherits
 // this rule. Ministry-Admin-owned, so the default requireAdminSession path
 // applies. Revalidates the Multiply boards as well as Settings.
+// The admin Home dashboard renders the Multiply readiness snapshot
+// (MultiplyOverviewSection derives ready/active type counts from the global
+// rule), so rule edits must revalidate "/admin" too.
 const READINESS_REVALIDATE_PATHS = [
   "/admin/settings",
   "/admin/multiply",
+  "/admin",
 ] as const;
 
 const SET_READINESS_RULE_SPEC: AdminWriteActionSpec<

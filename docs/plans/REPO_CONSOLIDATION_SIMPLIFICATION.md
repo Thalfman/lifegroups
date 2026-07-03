@@ -14,8 +14,13 @@ schema, RLS policies, feature flags, user-facing permissions, or external
 interfaces change. Old direct URLs and alias routes keep resolving (200, not
 302). Every commit leaves the repo building with all suites green.
 
-This document is a proposal. Each numbered area below is an independent wave that
-can be scheduled, scoped down, or deferred on its own.
+This document started as a proposal and is now **partially executed** (status
+updated 2026-07-03, #828). Waves shipped so far: the read-models pass-through
+barrel deletion and single-fetcher read-shell fold (`206dc8b`), per-read timing
+at the reads seam (`21b1959`), the one-read-wave admin first load + groups-read
+dedupe (#803), and the orphaned components/reads sweep (#801). Each remaining
+numbered area below is an independent wave that can be scheduled, scoped down,
+or deferred on its own.
 
 ## Guiding constraints
 
@@ -112,7 +117,10 @@ re-define the identical reads-seam stubs:
 
 ```ts
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
-const fail = (message: string): ReadResult<never> => ({ data: null, error: new Error(message) });
+const fail = (message: string): ReadResult<never> => ({
+  data: null,
+  error: new Error(message),
+});
 ```
 
 (e.g. `components/admin/multiply/__tests__/multiply-plan-data.test.ts`,
@@ -196,20 +204,21 @@ re-seed; Multiply = URL `?tab=` history sync), and minor className tokens.
 
 Land after waves 1–4 are green. Extract a generic `AssignmentForm` from
 `components/admin/forms/{assign-leader,assign-member,coverage-assign}-form.tsx`
-+ `components/admin/shepherd-care/coverage-assignment-form.tsx`, and a shared
-`NoteForm` body from `care-note-write-form.tsx` / `group-note-write-form.tsx`
-(keeping role/visibility gating + per-surface actions intact). The action called,
-field names posted, and validation contract must be identical before/after —
-**and so are the host-integration semantics**:
 
-- **`AssignmentForm` must keep the drawer lifecycle callbacks.**
+- `components/admin/shepherd-care/coverage-assignment-form.tsx`, and a shared
+  `NoteForm` body from `care-note-write-form.tsx` / `group-note-write-form.tsx`
+  (keeping role/visibility gating + per-surface actions intact). The action called,
+  field names posted, and validation contract must be identical before/after —
+  **and so are the host-integration semantics**:
+
+* **`AssignmentForm` must keep the drawer lifecycle callbacks.**
   `AssignLeaderForm`/`AssignMemberForm` fire `onSaved` (clears dirty state after a
   successful write so the EditingSurface drawer doesn't falsely warn) and
   `onPendingChange` (blocks dismissal mid-submit), wired in
   `components/admin/group-assignments-manager.tsx`. Preserving only
   action/fields/validation would leave the drawer dirty after save or dismissible
   mid-submit, so these callbacks are part of the extraction contract.
-- **`NoteForm` must keep per-instance id-prefix + contextual aria-labels.**
+* **`NoteForm` must keep per-instance id-prefix + contextual aria-labels.**
   `CareNoteWriteForm` is rendered repeatedly in the Care accordion, using a
   subject-specific `idPrefix` (`cn`/`pr`-`${subjectProfileId}`) and `subjectName`
   in the submit button's accessible name; `GroupNoteWriteForm` can use static ids

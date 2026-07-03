@@ -2,8 +2,9 @@
 // functional — it is the operational review surface for weekly leader
 // check-ins — but it is no longer the headline. The /admin dashboard
 // now leads with shepherd care and launch planning; missing_check_in
-// dropped from priority 20 to 65 in the attention queue. See
-// docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
+// dropped from priority 20 to 65 in the attention queue. (The 2026-05
+// surface-audit doc that recorded this is retired to git history — see
+// docs/README.md "Archived"; ADR 0033 records the keep decision.)
 //
 // Wired through the admin page runner (ADR 0028); the frozen-surface banner is
 // the runner's `frozenBanner`.

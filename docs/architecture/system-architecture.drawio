@@ -7,7 +7,7 @@
         <mxCell id="1" parent="0" />
 
         <!-- Heading -->
-        <mxCell id="title" value="LifeGroups — System Architecture  (Next.js 15 App Router + Supabase)" style="text;html=1;align=left;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+        <mxCell id="title" value="LifeGroups — System Architecture  (Next.js 16 App Router + Supabase)" style="text;html=1;align=left;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
           <mxGeometry x="80" y="8" width="900" height="30" as="geometry" />
         </mxCell>
         <mxCell id="subtitle" value="Read path: RLS-scoped, column-allowlisted reads through the reads seam.  Write path: validate → guard → SECURITY DEFINER RPC → revalidatePath → log, with a paired audit_events row per mutation." style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
@@ -28,7 +28,7 @@
         </mxCell>
 
         <!-- Next.js server tier -->
-        <mxCell id="next" value="Next.js 15  —  Server (App Router · React Server Components)" style="swimlane;startSize=30;html=1;fillColor=#f8f8f8;strokeColor=#999999;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+        <mxCell id="next" value="Next.js 16  —  Server (App Router · React Server Components)" style="swimlane;startSize=30;html=1;fillColor=#f8f8f8;strokeColor=#999999;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
           <mxGeometry x="80" y="320" width="1080" height="450" as="geometry" />
         </mxCell>
         <mxCell id="page" value="Server Component (page)&#xa;guard auth · load data · render shell" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="next">

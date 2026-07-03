@@ -10,12 +10,14 @@
 > [`ui-audit.md`](./ui-audit.md) (UX audit), and the ADRs.
 >
 > **Precedence.** On any conflict, the ADRs win ([`adr/`](./adr/), currently
-> 0001–0032), and [`CONTEXT.md`](../CONTEXT.md) owns vocabulary. This document
+> 0001–0034), and [`CONTEXT.md`](../CONTEXT.md) owns vocabulary. This document
 > describes; it does not decide.
 >
 > **Status.** Definition sections (§1–§7) describe the intended end product —
-> the landed 2026-06 pivot, fully executed. §8 is a point-in-time assessment
-> dated **2026-06** and will age; re-date it when revising.
+> the landed 2026-06 pivot, fully executed; last trued up against the ADRs
+> (group-type model per ADR 0034, Shepherd labels per ADR 0025, Multiply tabs
+> per ADR 0030) on **2026-07-03**. §8 is a point-in-time assessment dated
+> **2026-06** and will age; re-date it when revising.
 
 ---
 
@@ -56,15 +58,15 @@ A strict **downward-visibility oversight ladder** — each tier sees what the
 tier below sees, plus more (ADR
 [0002](./adr/0002-oversight-ladder-and-leader-gating.md)):
 
-**Super Admin (Tom) ▸ Ministry Admin (Julian) ▸ Over-Shepherd ▸ Leader**
+**Super Admin (Tom) ▸ Ministry Admin (Julian) ▸ Over-Shepherd ▸ Shepherd**
 
-| Role               | `profiles.role`        | Who / usage profile                                                                                                                                                               | Lands on         |
-| ------------------ | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| Super Admin        | `super_admin`          | Tom, the platform owner. Technical. Flags, access, diagnostics, danger zone. Defers pastoral decisions to Julian.                                                                 | `/admin`         |
-| Ministry Admin     | `ministry_admin`       | Julian, the primary persona. Non-technical; short focused sessions, laptop-first with phone use between meetings. Runs all six admin areas.                                       | `/admin`         |
-| Over-Shepherd      | `over_shepherd`        | Three coaches, each covering a set of Leaders. Light, occasional, read-mostly use plus authoring Care Notes / Prayer Requests.                                                    | `/over-shepherd` |
-| Leader / Co-Leader | `leader` / `co_leader` | Group leaders. Group-scoped care surface (notes, prayer requests, calendar). **Live by default** since ADR [0024](./adr/0024-default-on-leader-surface-and-groups-people-nav.md). | `/leader`        |
-| Member             | _(none — not a login)_ | Group participants. Non-auth rows in `members`; they appear in rosters and counts but never sign in.                                                                              | —                |
+| Role                   | `profiles.role`        | Who / usage profile                                                                                                                                                                                                                                                                                     | Lands on         |
+| ---------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Super Admin            | `super_admin`          | Tom, the platform owner. Technical. Flags, access, diagnostics, danger zone. Defers pastoral decisions to Julian.                                                                                                                                                                                       | `/admin`         |
+| Ministry Admin         | `ministry_admin`       | Julian, the primary persona. Non-technical; short focused sessions, laptop-first with phone use between meetings. Runs all six admin areas.                                                                                                                                                             | `/admin`         |
+| Over-Shepherd          | `over_shepherd`        | Three coaches, each covering a set of Leaders. Light, occasional, read-mostly use plus authoring Care Notes / Prayer Requests.                                                                                                                                                                          | `/over-shepherd` |
+| Shepherd / Co-Shepherd | `leader` / `co_leader` | Group shepherds (user-facing label per ADR [0025](./adr/0025-rename-leader-label-to-shepherd.md); the code identity stays `leader`). Group-scoped care surface (notes, prayer requests, calendar). **Live by default** since ADR [0024](./adr/0024-default-on-leader-surface-and-groups-people-nav.md). | `/leader`        |
+| Member                 | _(none — not a login)_ | Group participants. Non-auth rows in `members`; they appear in rosters and counts but never sign in.                                                                                                                                                                                                    | —                |
 
 Landing paths come from `defaultLandingPathForRole` in `lib/auth/roles.ts`.
 The deprecated `staff_viewer` role routes to `/unauthorized` and must not be
@@ -217,7 +219,7 @@ keys.
 The **Interest Funnel**: getting interested people into groups.
 
 - **Intake form** — only a name is required; optional contact info and a
-  desired Audience/Category.
+  Desired group type (ADR 0034).
 - **Funnel board** — four color-coded Prospect states: **Interested**
   (yellow) → **Matched** (blue, requires a group) → **Joined** (sage;
   collapses into a roll-up and leaves the active board), plus **Not at this
@@ -235,20 +237,26 @@ archive.
 The launch-decision area (ADR
 [0019](./adr/0019-multiplication-by-type-and-pillars.md),
 [0021](./adr/0021-three-tier-multiplication-trigger.md),
-[0022](./adr/0022-multiply-unifies-plan-readiness-leaders.md)). Three tabs,
-deep-linkable via `?tab=`:
+[0022](./adr/0022-multiply-unifies-plan-readiness-leaders.md); the cell model
+collapsed to group types by ADR
+[0034](./adr/0034-collapse-cells-to-group-type-list.md), and the tab set
+renamed/reordered by ADR
+[0030](./adr/0030-multiply-readiness-first-and-type-intent-pipeline.md)).
+Three tabs, deep-linkable via `?tab=`:
 
-1. **Plan** _(default)_ — the per-group multiplication plan seeded from
-   Julian's 2026 doc: target year, successor, apprentice, readiness chips.
-2. **Readiness** — the grid of **Cells** (Audience × Category). Each cell
-   shows its four **pillars**, each in its natural unit: **Interest** (a
+1. **Readiness** _(default)_ — the per-**group-type** readiness view. Each
+   type shows its four **pillars**, each in its natural unit: **Interest** (a
    count of matching Prospects — never a letter), **Capacity** (a derived
    issue/no-issue signal: any group over 12 members, or ≤ 1 joinable group),
    **Group Health** (A–F roll-up), **Leader Health** (A–F roll-up). The
-   configured trigger turns pillars into a per-cell readiness signal; the
+   configured trigger turns pillars into a per-type readiness signal; the
    app surfaces the signal, Julian decides.
-3. **Leaders** — the apprentice pipeline: who could lead the next group,
-   with development stage and readiness.
+2. **Pipeline** _(renamed from Plan by ADR 0030)_ — the working list of group
+   types Julian intends to multiply, each over its Multiplication Candidates
+   and the per-group multiplication plan seeded from Julian's 2026 doc:
+   target year, successor, apprentice, readiness chips.
+3. **Shepherds** _(renamed from Leaders)_ — the apprentice pipeline: who
+   could lead the next group, with development stage and readiness.
 
 Multiply is read/decide; its configuration lives in Settings (§4.7).
 
@@ -278,11 +286,12 @@ here, not in the Super Admin Console). Five tabs
 (`components/admin/settings-shell.tsx`):
 
 1. **Care** — care statuses, cadence windows, care-surface configuration.
-2. **Groups** — _creates_ group types: one Cell at a time (pick an Audience,
-   type a free-text Category) plus each cell's tracking target (ADR 0021).
+2. **Groups** — _creates_ group types: free-text names on the admin-managed
+   list, plus each type's tracking target (`group_type_configs`; ADR 0034).
 3. **Multiply** — _configures the Multiplication Trigger_: per pillar,
-   required or not, threshold in the pillar's natural unit, resolved as a
-   three-tier cascade **cell override → per-type (Audience) → global**.
+   required or not, threshold in the pillar's natural unit, resolved as
+   **global rule → optional per-type override** (ADR 0034 collapsed ADR
+   0021's three-tier cascade).
 4. **Thresholds** — metric defaults: the 12-member capacity cap, attendance
    parity, dashboard attention windows.
 5. **System** — the remaining app-level toggles appropriate for an admin.
@@ -429,7 +438,7 @@ heuristic score **25/40**) and the approved remediation direction is
 ### Where it is cohesive
 
 - **Vocabulary discipline.** The live areas consistently use the CONTEXT.md
-  language (Leader, Over-Shepherd, Prospect, Interest Funnel, Cell,
+  language (Shepherd, Over-Shepherd, Prospect, Interest Funnel, Group type,
   Archive). Copy is pastoral and honest ("The week ahead is clear", not
   "No items").
 - **One interaction grammar.** Thin page + client shell everywhere; one

@@ -52,16 +52,16 @@ has landed (PRD [#371](https://github.com/Thalfman/lifegroups/issues/371),
 delivered across **#372–#382**); the table below records what each area delivers
 and what is **live today**.
 
-| Area         | What it delivers                                                                                                                                                                                           | Live today                                                                                                                                                                                                                                          |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Care**     | One Over-Shepherd accordion consolidating Leader-care + coverage + health grading; configurable **A–F** Group- _and_ Leader-Health rubrics; author-private Care Notes + Prayer Requests; Leader/OS logins. | **Live.** The Over-Shepherd accordion, configurable **A–F** Group- and Leader-Health rubrics, author-private Care Notes + Prayer Requests (admins author too, ADR 0023), the aggregate Notes tab, and Leader/OS logins (ADR 0024) have all shipped. |
-| **Plan**     | The Interest Funnel — Prospects moving Interested → Matched → Joined / Not at this time — with a Next Step and armed follow-ups; replaces the Guests pipeline.                                             | **Live.** The Interest Funnel has shipped and replaced the Guests pipeline (now an off-nav alias). Follow-ups are armed (shown as due tasks); actually _sending_ one still awaits a provider (deliberately out of scope, #371).                     |
-| **Multiply** | Multiplication by group **type** — pillars (Interest · Capacity · Group/Leader Health) + a Julian-owned trigger — instead of by individual group.                                                          | **Live.** The Multiply grid — cells (Audience × Category) with per-cell pillars and a tiered (global → per-type → per-cell) readiness trigger — has shipped (#380, ADR 0019/0021).                                                                  |
+| Area         | What it delivers                                                                                                                                                                                           | Live today                                                                                                                                                                                                                                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Care**     | One Over-Shepherd accordion consolidating Leader-care + coverage + health grading; configurable **A–F** Group- _and_ Leader-Health rubrics; author-private Care Notes + Prayer Requests; Leader/OS logins. | **Live.** The Over-Shepherd accordion, configurable **A–F** Group- and Leader-Health rubrics, author-private Care Notes + Prayer Requests (admins author too, ADR 0023), the aggregate Notes tab, and Leader/OS logins (ADR 0024) have all shipped.                                                                 |
+| **Plan**     | The Interest Funnel — Prospects moving Interested → Matched → Joined / Not at this time — with a Next Step and armed follow-ups; replaces the Guests pipeline.                                             | **Live.** The Interest Funnel has shipped at `/admin/plan` (over `prospects`), replacing the Guests pipeline (the legacy `guests` surface stays self-contained and off-nav, ADR 0033). Follow-ups are armed (shown as due tasks); actually _sending_ one still awaits a provider (deliberately out of scope, #371). |
+| **Multiply** | Multiplication by group **type** — pillars (Interest · Capacity · Group/Leader Health) + a Julian-owned trigger — instead of by individual group.                                                          | **Live.** Multiplication by group type — per-type pillars and a global → per-type readiness trigger — has shipped (#380, ADR 0019/0021 as collapsed by ADR 0034).                                                                                                                                                   |
 
 **In one line:** the three jobs are unchanged in spirit but re-shaped into Care ·
-Plan · Multiply (ADR 0016), with Over-Shepherds logging in and the Leader login
-built behind a switch (ADR 0017), configurable A–F health rubrics (ADR 0018), and
-multiplication by type/cell (ADR 0019/0021). Delivered via PRD #371 and slices
+Plan · Multiply (ADR 0016), with Over-Shepherds and Leaders logging in (ADR
+0017, live by default per ADR 0024), configurable A–F health rubrics (ADR 0018),
+and multiplication by group type (ADR 0019/0021/0034). Delivered via PRD #371 and slices
 #372–#382; the old number/assignment surfaces are flagged off, not removed.
 
 ## Where to look next
@@ -152,8 +152,8 @@ Two clarifications:
     **super_admin only**; the rest accept `ministry_admin` and `super_admin`.
   - **Ministry/Super Admin — off-nav, still resolve by direct URL** (the
     remaining pre-pivot surfaces, ADR 0016): `/admin/planning`,
-    `/admin/launch-planning`, `/admin/follow-ups`, `/admin/guests`,
-    `/admin/calendar`, `/admin/group-health`.
+    `/admin/launch-planning`, `/admin/leader-pipeline`, `/admin/follow-ups`,
+    `/admin/guests`, `/admin/calendar`, `/admin/group-health`.
   - **Over-Shepherd** — `/over-shepherd` (+ `/[profileId]`), scoped to covered
     Leaders.
   - **Leader** — `/leader` (+ `/[groupId]/care`, `/[groupId]/calendar`), live by
