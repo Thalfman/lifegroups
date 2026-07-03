@@ -9,18 +9,7 @@ import { toShellUser } from "@/lib/auth/shell-user";
 import { readFrozenSurfaceFlagForLeader } from "@/lib/auth/leader-surface-flag";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchGroupsByIds } from "@/lib/supabase/group-reads";
-import {
-  fetchActiveMemberships,
-  fetchMembersByIds,
-} from "@/lib/supabase/membership-reads";
-import {
-  fetchAttendanceRecordsForSessions,
-  fetchAttendanceSessions,
-} from "@/lib/supabase/attendance-reads";
-import { fetchLatestHealthUpdates } from "@/lib/supabase/health-reads";
-import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
-import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { bindLeaderReads } from "@/lib/leader/leader-reads";
 import { isoWeekStart } from "@/lib/shared/church-time";
 import {
   BUILT_IN_METRIC_DEFAULTS,
@@ -100,6 +89,7 @@ export default async function CheckInPage({
     return anchor.toISOString().slice(0, 10);
   })();
 
+  const reads = bindLeaderReads(client);
   const [
     groupResult,
     membershipsResult,
@@ -108,12 +98,12 @@ export default async function CheckInPage({
     metricDefaultsResult,
     calendarEventsResult,
   ] = await Promise.all([
-    fetchGroupsByIds(client, [groupId]),
-    fetchActiveMemberships(client, { groupId }),
-    fetchAttendanceSessions(client, { groupId, meetingWeek }),
-    fetchLatestHealthUpdates(client, { groupId }),
-    fetchMetricDefaultsCached(client),
-    fetchGroupCalendarEvents(client, {
+    reads.fetchGroupsByIds([groupId]),
+    reads.fetchActiveMemberships({ groupId }),
+    reads.fetchAttendanceSessions({ groupId, meetingWeek }),
+    reads.fetchLatestHealthUpdates({ groupId }),
+    reads.fetchMetricDefaultsCached(),
+    reads.fetchGroupCalendarEvents({
       groupId,
       fromDate: meetingWeek,
       toDate: weekEnd,
@@ -140,7 +130,7 @@ export default async function CheckInPage({
 
   const memberships = membershipsResult.data ?? [];
   const memberIds = memberships.map((m) => m.member_id);
-  const membersResult = await fetchMembersByIds(client, memberIds);
+  const membersResult = await reads.fetchMembersByIds(memberIds);
   if (membersResult.error) throw membersResult.error;
   const members = ((membersResult.data ?? []) as MembersRow[])
     .filter((m) => m.status === "active")
@@ -150,7 +140,7 @@ export default async function CheckInPage({
     ((sessionResult.data ?? []) as AttendanceSessionsRow[])[0] ?? null;
   const attendanceMap: Record<string, AttendanceStatus> = {};
   if (existingSession) {
-    const recordsResult = await fetchAttendanceRecordsForSessions(client, [
+    const recordsResult = await reads.fetchAttendanceRecordsForSessions([
       existingSession.id,
     ]);
     if (recordsResult.error) throw recordsResult.error;

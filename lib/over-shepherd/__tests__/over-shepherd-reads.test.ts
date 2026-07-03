@@ -3,7 +3,7 @@ import {
   OVER_SHEPHERD_CARE_PROFILE_COLUMNS,
   fetchOverShepherdCareDirectory,
   fetchOverShepherdCareProfileByShepherdId,
-} from "@/lib/over-shepherd/read-models";
+} from "@/lib/over-shepherd/over-shepherd-reads";
 import { isCoveredShepherd } from "@/lib/over-shepherd/coverage";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 

@@ -11,7 +11,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
 import { FirstRunCard } from "@/components/orientation/first-run-card";
 import { fetchOverShepherdCoverageForCaller } from "@/lib/over-shepherd/coverage";
-import { fetchOverShepherdCareDirectory } from "@/lib/over-shepherd/read-models";
+import { bindOverShepherdReads } from "@/lib/over-shepherd/over-shepherd-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import {
   careCadenceWindowsFromDefaults,
@@ -85,8 +85,8 @@ export default async function OverShepherdPage() {
     decodeMetricDefaults(metricDefaultsRes?.data ?? null)
   );
 
-  const directoryResult = await fetchOverShepherdCareDirectory(
-    client!,
+  const reads = bindOverShepherdReads(client!);
+  const directoryResult = await reads.fetchOverShepherdCareDirectory(
     coveredIds,
     { windows }
   );

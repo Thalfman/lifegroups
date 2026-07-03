@@ -20,6 +20,11 @@ import type {
   ShepherdCareProfilesRow,
 } from "@/types/database";
 import { type ReadResult } from "@/lib/supabase/read-core";
+import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
+import {
+  fetchCareNotesForSubject,
+  fetchPrayerRequestsForSubject,
+} from "@/lib/supabase/care-note-reads";
 import {
   type ShepherdCareDirectoryEntry,
   type ShepherdCareDirectorySummary,
@@ -154,4 +159,27 @@ export function fetchOverShepherdCareInteractions(
   // (same columns + ordering). Delegate rather than duplicate the query; row
   // scoping is enforced by the OS.3 coverage-scoped RLS on this path.
   return fetchShepherdCareInteractionsForAdmin(client, careProfileId);
+}
+
+// ---------------------------------------------------------------------------
+// The reads seam (ADR 0015): this surface's fetchers in one map, bound with
+// the "over_shepherd" label so read_unit slow/fail timing covers the surface
+// like the 20 admin bindings do.
+// ---------------------------------------------------------------------------
+
+const OVER_SHEPHERD_FETCHERS = {
+  fetchOverShepherdCareDirectory,
+  fetchOverShepherdCareProfileByShepherdId,
+  fetchOverShepherdCareInteractions,
+  // The caller's own author-private notes/prayers about a covered Shepherd
+  // (shared leaf fetchers; RLS returns the author's rows regardless of the
+  // transparency toggle).
+  fetchCareNotesForSubject,
+  fetchPrayerRequestsForSubject,
+};
+
+export type OverShepherdReads = BoundReads<typeof OVER_SHEPHERD_FETCHERS>;
+
+export function bindOverShepherdReads(client: ReadClient): OverShepherdReads {
+  return bindReads(client, OVER_SHEPHERD_FETCHERS, "over_shepherd");
 }
