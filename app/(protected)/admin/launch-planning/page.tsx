@@ -12,6 +12,9 @@ import { churchMonthIso } from "@/lib/shared/church-time";
 // URL via the alias→canonical map (#321).
 //
 // Kept off-nav by design — keep/retire/re-export decision: Keep (ADR 0033).
+// Deliberately NOT on the adminPage() runner (ADR 0028): the shared
+// PlanningView owns the page chrome — there is no PageHeader for the runner's
+// header slot to render.
 export const dynamic = "force-dynamic";
 
 type SearchParams = { month?: string | string[] };

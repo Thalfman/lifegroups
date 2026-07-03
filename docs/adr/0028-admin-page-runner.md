@@ -68,6 +68,11 @@ Left out of the in-scope set, each for a concrete reason:
   `FrozenSurfaceBanner`-above-header vary by **degraded-read status** (no-db /
   error / ok). The runner's header is derived from params, not loaded data, so
   it cannot reproduce that branch without changing the degraded UI.
+- **planning / calendar / launch-planning** — the canonical Planning route and
+  its two frozen aliases (ADR 0013/0033) all render the shared `PlanningView`,
+  which owns the page chrome itself; there is no `PageHeader` for the runner's
+  header slot to render. They share their `requireAdmin` + month-param +
+  `FrozenSurfaceBanner` idiom with each other, not with the runner.
 
 Excluded by the decided scope and untouched: the tiny alias/redirect pages
 (`follow-ups`, `multiply/criteria`, `multiply/settings`), the two giant bespoke

@@ -9,6 +9,10 @@ import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 // is the canonical home for the Care rubric-grade write, and it is the target of
 // the "Edit rubric" deep-link (lib/nav/return-to.ts).
 //
+// Deliberately NOT on the adminPage() runner (ADR 0028's "left out" list): the
+// header lede and banner placement vary with the degraded-read status, which
+// the runner derives from params before the load runs.
+//
 // One render path for the two degraded-read states (no database vs. failed
 // read): same page chrome, only the message and tone differ.
 function GroupHealthNotice({
