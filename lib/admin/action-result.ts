@@ -101,9 +101,6 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "Link the apprentice's group before adding them to a candidate. An apprentice can only lead the next group out of its own group.",
   not_a_leader:
     "That person isn't an active shepherd or co-shepherd, so a shepherd grade can't be recorded for them. Refresh the page and try again.",
-  // Group-type catalog token (Settings > Groups).
-  duplicate_label:
-    "A group type with that name already exists. Pick a different name, or restore the archived one.",
   // LP.2 launch planning scenario tokens.
   missing_scenario:
     "We couldn't find that scenario. Refresh the page and try again.",

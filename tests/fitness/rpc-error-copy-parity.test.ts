@@ -75,6 +75,9 @@ describe("fitness: admin↔leader RPC error-token parity", () => {
 // audit-pairing check), then extract `raise exception 'token'` literals.
 // Only bare snake_case literals count — a prose message with spaces is not a
 // token and falls through to each surface's generic fallback by design.
+// The fold models dynamic enumerate-and-drop DO blocks too (see
+// DropFunctionsByNameStatement), so an RPC retired that way doesn't force
+// copy for tokens only its dead body raises.
 // ---------------------------------------------------------------------------
 
 const MIGRATIONS = readSourceFiles({
