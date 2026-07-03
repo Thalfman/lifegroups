@@ -72,15 +72,14 @@ export async function fetchHealthRubric(
 // select is fully typed — no `as never` cast. Resolution into an effective
 // letter stays in the model (lib/admin/group-rubric-grade), keeping this pure I/O.
 
-// One persisted Group-Health Grade row, read through the column allowlist.
-// `criterion_scores` arrives as raw jsonb; the model decodes it at the trust
-// boundary when it resolves the effective letter. The allowlist below is pinned
-// to this type via `columns<…>()`, so the select string and the row type derive
-// from one list.
+// One persisted Group-Health Grade row after the trust-boundary decode: the
+// raw jsonb `criterion_scores` is decoded to a clean Record here, mirroring
+// the leader reader below. Resolution into an effective letter stays in the
+// model (lib/admin/group-rubric-grade).
 export type GroupRubricGradeRow = {
   group_id: string;
   ministry_year: number;
-  criterion_scores: Record<string, number> | null;
+  criterion_scores: Record<string, number>;
   computed_letter: GroupHealthLetter | null;
   override_letter: GroupHealthLetter | null;
   override_scope: GroupHealthOverrideScope | null;
@@ -88,7 +87,22 @@ export type GroupRubricGradeRow = {
   updated_at: string | null;
 };
 
-export const GROUP_RUBRIC_GRADE_COLUMNS = columns<GroupRubricGradeRow>()(
+// The raw row shape before the trust-boundary decode (criterion_scores is
+// jsonb). The allowlist below is pinned to this type via `columns<…>()`, so the
+// select string and the row type derive from one list.
+export type PersistedGroupGrade = {
+  group_id: string;
+  ministry_year: number;
+  criterion_scores: unknown;
+  computed_letter: GroupHealthLetter | null;
+  override_letter: GroupHealthLetter | null;
+  override_scope: GroupHealthOverrideScope | null;
+  override_period_month: string | null;
+  updated_at: string | null;
+};
+
+// Admin-only column allowlist, pinned to the raw read shape.
+export const GROUP_RUBRIC_GRADE_COLUMNS = columns<PersistedGroupGrade>()(
   "group_id",
   "ministry_year",
   "criterion_scores",
@@ -111,11 +125,25 @@ export async function fetchGroupRubricGradeRow(
     .select(GROUP_RUBRIC_GRADE_COLUMNS.select)
     .eq("group_id", groupId)
     .eq("ministry_year", ministryYear)
-    .maybeSingle<GroupRubricGradeRow>();
+    .maybeSingle<PersistedGroupGrade>();
 
   if (error)
     return { data: null, error: wrapError("fetchGroupRubricGradeRow", error) };
-  return { data: data ?? null, error: null };
+  if (!data) return { data: null, error: null };
+
+  return {
+    data: {
+      group_id: data.group_id,
+      ministry_year: data.ministry_year,
+      criterion_scores: decodeNumericRecord(data.criterion_scores),
+      computed_letter: data.computed_letter,
+      override_letter: data.override_letter,
+      override_scope: data.override_scope,
+      override_period_month: data.override_period_month,
+      updated_at: data.updated_at,
+    },
+    error: null,
+  };
 }
 
 // Read side for the persisted Leader-Health Grade row (#378 / ADR 0018), behind
@@ -139,7 +167,7 @@ export type LeaderRubricGradeRow = {
 };
 
 // The raw row shape before the trust-boundary decode (criterion_scores is jsonb).
-type PersistedLeaderGrade = {
+export type PersistedLeaderGrade = {
   profile_id: string;
   ministry_year: number;
   criterion_scores: unknown;
