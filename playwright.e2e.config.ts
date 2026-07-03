@@ -35,6 +35,11 @@ export default defineConfig({
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: 0,
+  // Each spec crosses several full page loads of force-dynamic surfaces on a
+  // cold `next start` against the local stack; a busy CI runner has blown the
+  // default 30s budget on a single navigation. Generous is cheap here — the
+  // lane is advisory, single-worker, and two specs long.
+  timeout: 90_000,
   reporter: process.env.CI
     ? [
         ["list"],
