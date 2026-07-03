@@ -9,7 +9,12 @@ import type {
   PlatformConfigRow,
 } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 import { fetchAllGroups } from "./group-reads";
 import { fetchActiveMemberships } from "./membership-reads";
 
@@ -39,15 +44,13 @@ function isGroupMetricSettingsRow(v: unknown): v is GroupMetricSettingsRow {
 // AppSettingsRow column, pinned by a colocated test. Shared by the
 // metric-defaults, group-health-rubric, and launch-planning-assumptions
 // readers — they all fetch one keyed row and guard it with isAppSettingsRow.
-export const APP_SETTINGS_COLUMNS = [
+export const APP_SETTINGS_COLUMNS = columns<AppSettingsRow>()(
   "id",
   "setting_key",
   "setting_value",
   "created_at",
-  "updated_at",
-] as const satisfies readonly (keyof AppSettingsRow)[];
-
-const APP_SETTINGS_SELECT = APP_SETTINGS_COLUMNS.join(", ");
+  "updated_at"
+);
 
 // Returns the single `metric_defaults` row from `app_settings`. The row is
 // seeded by the Phase 5A.4 migration and never deleted; a `null` return
@@ -58,7 +61,7 @@ export async function fetchMetricDefaults(
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select(APP_SETTINGS_SELECT)
+    .select(APP_SETTINGS_COLUMNS.select)
     .eq("setting_key", "metric_defaults")
     .maybeSingle();
   if (error)
@@ -82,7 +85,7 @@ export async function fetchGroupTypes(
 ): Promise<ReadResult<string[]>> {
   const { data, error } = await client
     .from("app_settings")
-    .select(APP_SETTINGS_SELECT)
+    .select(APP_SETTINGS_COLUMNS.select)
     .eq("setting_key", "group_types")
     .maybeSingle();
   if (error) return { data: null, error: wrapError("fetchGroupTypes", error) };
@@ -181,7 +184,7 @@ export async function fetchGroupHealthRubricSetting(
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select(APP_SETTINGS_SELECT)
+    .select(APP_SETTINGS_COLUMNS.select)
     .eq("setting_key", "group_health_rubric")
     .maybeSingle();
   if (error)
@@ -234,7 +237,7 @@ export async function fetchChurchAttendanceSnapshots(
 // this once at load time and join client-side by group_id.
 // Column allowlist for the per-group metric-override readers (#495); every
 // GroupMetricSettingsRow column, pinned by a colocated test.
-export const GROUP_METRIC_SETTINGS_COLUMNS = [
+export const GROUP_METRIC_SETTINGS_COLUMNS = columns<GroupMetricSettingsRow>()(
   "group_id",
   "capacity_override",
   "capacity_warning_threshold_pct_override",
@@ -245,17 +248,15 @@ export const GROUP_METRIC_SETTINGS_COLUMNS = [
   "check_in_due_offset_hours_override",
   "allow_over_capacity",
   "created_at",
-  "updated_at",
-] as const satisfies readonly (keyof GroupMetricSettingsRow)[];
-
-const GROUP_METRIC_SETTINGS_SELECT = GROUP_METRIC_SETTINGS_COLUMNS.join(", ");
+  "updated_at"
+);
 
 export async function fetchAllGroupMetricSettings(
   client: ReadClient
 ): Promise<ReadResult<GroupMetricSettingsRow[]>> {
   const { data, error } = await client
     .from("group_metric_settings")
-    .select(GROUP_METRIC_SETTINGS_SELECT)
+    .select(GROUP_METRIC_SETTINGS_COLUMNS.select)
     .returns<GroupMetricSettingsRow[]>();
   if (error)
     return {
@@ -271,7 +272,7 @@ export async function fetchGroupMetricSettings(
 ): Promise<ReadResult<GroupMetricSettingsRow | null>> {
   const { data, error } = await client
     .from("group_metric_settings")
-    .select(GROUP_METRIC_SETTINGS_SELECT)
+    .select(GROUP_METRIC_SETTINGS_COLUMNS.select)
     .eq("group_id", groupId)
     .maybeSingle();
   if (error)
@@ -301,7 +302,7 @@ export async function fetchLaunchPlanningAssumptions(
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select(APP_SETTINGS_SELECT)
+    .select(APP_SETTINGS_COLUMNS.select)
     .eq("setting_key", "launch_planning_assumptions")
     .maybeSingle();
   if (error)

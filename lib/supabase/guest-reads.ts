@@ -1,6 +1,11 @@
 import type { GuestsRow } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 // Supabase REST responses default-cap rows at ~1000. Free-tier dashboards stay well
 // below this, but we widen the cap with an explicit range so pipeline counts stop
@@ -51,7 +56,7 @@ export async function fetchGuests(
 // Column allowlist for the full-row guests fetcher (#495); every GuestsRow
 // column, pinned by a colocated test. The admin directory read above uses the
 // narrower GUEST_DIRECTORY_COLUMNS projection instead.
-export const GUEST_COLUMNS = [
+export const GUEST_COLUMNS = columns<GuestsRow>()(
   "id",
   "full_name",
   "email",
@@ -63,10 +68,8 @@ export const GUEST_COLUMNS = [
   "follow_up_owner_id",
   "notes",
   "created_at",
-  "updated_at",
-] as const satisfies readonly (keyof GuestsRow)[];
-
-const GUEST_SELECT = GUEST_COLUMNS.join(", ");
+  "updated_at"
+);
 
 export async function fetchNewGuestsForGroupSince(
   client: ReadClient,
@@ -75,7 +78,7 @@ export async function fetchNewGuestsForGroupSince(
 ): Promise<ReadResult<GuestsRow[]>> {
   const { data, error } = await client
     .from("guests")
-    .select(GUEST_SELECT)
+    .select(GUEST_COLUMNS.select)
     .or(`first_attended_group_id.eq.${groupId},assigned_group_id.eq.${groupId}`)
     .gte("first_attended_date", sinceIsoDate)
     .returns<GuestsRow[]>();

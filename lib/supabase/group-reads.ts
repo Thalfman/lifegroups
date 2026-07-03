@@ -1,5 +1,10 @@
 import type { GroupLeadersRow, GroupsRow } from "@/types/database";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 // Column allowlist for the full-row groups fetchers (#495). These are the
 // high-fan-out admin reads that return GroupsRow, so the list names every
@@ -8,7 +13,7 @@ import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 // by default. Typed against GroupsRow so a renamed/removed column fails
 // typecheck; a pinning test freezes the exact set so widening this read must
 // be a deliberate diff. Leader routes must keep using LEADER_SAFE_GROUP_COLUMNS.
-export const GROUP_COLUMNS = [
+export const GROUP_COLUMNS = columns<GroupsRow>()(
   "id",
   "name",
   "description",
@@ -30,17 +35,15 @@ export const GROUP_COLUMNS = [
   "admin_notes",
   "created_at",
   "updated_at",
-  "closed_at",
-] as const satisfies readonly (keyof GroupsRow)[];
-
-const GROUP_SELECT = GROUP_COLUMNS.join(", ");
+  "closed_at"
+);
 
 export async function fetchAllGroups(
   client: ReadClient
 ): Promise<ReadResult<GroupsRow[]>> {
   const { data, error } = await client
     .from("groups")
-    .select(GROUP_SELECT)
+    .select(GROUP_COLUMNS.select)
     .order("name", { ascending: true })
     .returns<GroupsRow[]>();
   if (error) return { data: null, error: wrapError("fetchAllGroups", error) };
@@ -75,7 +78,7 @@ export async function fetchGroupsByIds(
   if (ids.length === 0) return { data: [], error: null };
   const { data, error } = await client
     .from("groups")
-    .select(GROUP_SELECT)
+    .select(GROUP_COLUMNS.select)
     .in("id", ids)
     .order("name", { ascending: true })
     .returns<GroupsRow[]>();
@@ -151,23 +154,21 @@ export async function fetchAssignedGroupIdsForProfile(
 
 // Column allowlist for the group-leader assignment read (#495); every
 // GroupLeadersRow column, pinned by a colocated test.
-export const GROUP_LEADER_COLUMNS = [
+export const GROUP_LEADER_COLUMNS = columns<GroupLeadersRow>()(
   "id",
   "group_id",
   "profile_id",
   "role",
   "assigned_at",
   "active",
-  "created_at",
-] as const satisfies readonly (keyof GroupLeadersRow)[];
-
-const GROUP_LEADER_SELECT = GROUP_LEADER_COLUMNS.join(", ");
+  "created_at"
+);
 
 export async function fetchAllGroupLeaders(
   client: ReadClient,
   options: { activeOnly?: boolean } = {}
 ): Promise<ReadResult<GroupLeadersRow[]>> {
-  let query = client.from("group_leaders").select(GROUP_LEADER_SELECT);
+  let query = client.from("group_leaders").select(GROUP_LEADER_COLUMNS.select);
   if (options.activeOnly) query = query.eq("active", true);
   const { data, error } = await query.returns<GroupLeadersRow[]>();
   if (error)

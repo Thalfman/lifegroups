@@ -177,11 +177,11 @@ const PINNED_GROUP_COLUMNS = [
 
 describe("groups read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the groups reads must be a deliberate diff here", () => {
-    expect([...GROUP_COLUMNS]).toEqual([...PINNED_GROUP_COLUMNS]);
+    expect([...GROUP_COLUMNS.list]).toEqual([...PINNED_GROUP_COLUMNS]);
   });
 
   it("never selects '*'", () => {
-    expect(GROUP_COLUMNS).not.toContain("*");
+    expect(GROUP_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the groups reads", async () => {
@@ -212,11 +212,11 @@ const PINNED_PROFILE_COLUMNS = [
 
 describe("profiles read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the profiles read must be a deliberate diff here", () => {
-    expect([...PROFILE_COLUMNS]).toEqual([...PINNED_PROFILE_COLUMNS]);
+    expect([...PROFILE_COLUMNS.list]).toEqual([...PINNED_PROFILE_COLUMNS]);
   });
 
   it("never selects '*'", () => {
-    expect(PROFILE_COLUMNS).not.toContain("*");
+    expect(PROFILE_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the profiles read", async () => {
@@ -243,11 +243,11 @@ const PINNED_MEMBER_COLUMNS = [
 
 describe("members read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the members reads must be a deliberate diff here", () => {
-    expect([...MEMBER_COLUMNS]).toEqual([...PINNED_MEMBER_COLUMNS]);
+    expect([...MEMBER_COLUMNS.list]).toEqual([...PINNED_MEMBER_COLUMNS]);
   });
 
   it("never selects '*'", () => {
-    expect(MEMBER_COLUMNS).not.toContain("*");
+    expect(MEMBER_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the members reads", async () => {
@@ -276,11 +276,13 @@ const PINNED_GROUP_LEADER_COLUMNS = [
 
 describe("group_leaders read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the group-leaders read must be a deliberate diff here", () => {
-    expect([...GROUP_LEADER_COLUMNS]).toEqual([...PINNED_GROUP_LEADER_COLUMNS]);
+    expect([...GROUP_LEADER_COLUMNS.list]).toEqual([
+      ...PINNED_GROUP_LEADER_COLUMNS,
+    ]);
   });
 
   it("never selects '*'", () => {
-    expect(GROUP_LEADER_COLUMNS).not.toContain("*");
+    expect(GROUP_LEADER_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the group-leaders read", async () => {
@@ -308,13 +310,13 @@ const PINNED_GROUP_MEMBERSHIP_COLUMNS = [
 
 describe("group_memberships read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the memberships read must be a deliberate diff here", () => {
-    expect([...GROUP_MEMBERSHIP_COLUMNS]).toEqual([
+    expect([...GROUP_MEMBERSHIP_COLUMNS.list]).toEqual([
       ...PINNED_GROUP_MEMBERSHIP_COLUMNS,
     ]);
   });
 
   it("never selects '*'", () => {
-    expect(GROUP_MEMBERSHIP_COLUMNS).not.toContain("*");
+    expect(GROUP_MEMBERSHIP_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the memberships read", async () => {
@@ -353,17 +355,17 @@ const PINNED_ATTENDANCE_RECORD_COLUMNS = [
 
 describe("attendance read column allowlists (#495)", () => {
   it("pins the exact allowlists — widening the attendance reads must be a deliberate diff here", () => {
-    expect([...ATTENDANCE_SESSION_COLUMNS]).toEqual([
+    expect([...ATTENDANCE_SESSION_COLUMNS.list]).toEqual([
       ...PINNED_ATTENDANCE_SESSION_COLUMNS,
     ]);
-    expect([...ATTENDANCE_RECORD_COLUMNS]).toEqual([
+    expect([...ATTENDANCE_RECORD_COLUMNS.list]).toEqual([
       ...PINNED_ATTENDANCE_RECORD_COLUMNS,
     ]);
   });
 
   it("never selects '*'", () => {
-    expect(ATTENDANCE_SESSION_COLUMNS).not.toContain("*");
-    expect(ATTENDANCE_RECORD_COLUMNS).not.toContain("*");
+    expect(ATTENDANCE_SESSION_COLUMNS.list).not.toContain("*");
+    expect(ATTENDANCE_RECORD_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlists to the attendance reads", async () => {
@@ -396,13 +398,13 @@ const PINNED_GROUP_HEALTH_UPDATE_COLUMNS = [
 
 describe("group_health_updates read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the health-updates read must be a deliberate diff here", () => {
-    expect([...GROUP_HEALTH_UPDATE_COLUMNS]).toEqual([
+    expect([...GROUP_HEALTH_UPDATE_COLUMNS.list]).toEqual([
       ...PINNED_GROUP_HEALTH_UPDATE_COLUMNS,
     ]);
   });
 
   it("never selects '*'", () => {
-    expect(GROUP_HEALTH_UPDATE_COLUMNS).not.toContain("*");
+    expect(GROUP_HEALTH_UPDATE_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the health-updates read", async () => {
@@ -425,13 +427,13 @@ const PINNED_GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS = [
 
 describe("group_health_assessments rating read column allowlist", () => {
   it("pins the exact allowlist for checklist rating-gap counts", () => {
-    expect([...GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS]).toEqual([
+    expect([...GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS.list]).toEqual([
       ...PINNED_GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS,
     ]);
   });
 
   it("never selects '*'", () => {
-    expect(GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS).not.toContain("*");
+    expect(GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the rating read", async () => {
@@ -465,11 +467,11 @@ const PINNED_GUEST_COLUMNS = [
 
 describe("guests read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the guests read must be a deliberate diff here", () => {
-    expect([...GUEST_COLUMNS]).toEqual([...PINNED_GUEST_COLUMNS]);
+    expect([...GUEST_COLUMNS.list]).toEqual([...PINNED_GUEST_COLUMNS]);
   });
 
   it("never selects '*'", () => {
-    expect(GUEST_COLUMNS).not.toContain("*");
+    expect(GUEST_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the guests read", async () => {
@@ -501,13 +503,13 @@ const PINNED_GROUP_CALENDAR_EVENT_COLUMNS = [
 
 describe("group_calendar_events read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the calendar read must be a deliberate diff here", () => {
-    expect([...GROUP_CALENDAR_EVENT_COLUMNS]).toEqual([
+    expect([...GROUP_CALENDAR_EVENT_COLUMNS.list]).toEqual([
       ...PINNED_GROUP_CALENDAR_EVENT_COLUMNS,
     ]);
   });
 
   it("never selects '*'", () => {
-    expect(GROUP_CALENDAR_EVENT_COLUMNS).not.toContain("*");
+    expect(GROUP_CALENDAR_EVENT_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the calendar read", async () => {
@@ -532,11 +534,13 @@ const PINNED_APP_SETTINGS_COLUMNS = [
 
 describe("app_settings read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the settings reads must be a deliberate diff here", () => {
-    expect([...APP_SETTINGS_COLUMNS]).toEqual([...PINNED_APP_SETTINGS_COLUMNS]);
+    expect([...APP_SETTINGS_COLUMNS.list]).toEqual([
+      ...PINNED_APP_SETTINGS_COLUMNS,
+    ]);
   });
 
   it("never selects '*'", () => {
-    expect(APP_SETTINGS_COLUMNS).not.toContain("*");
+    expect(APP_SETTINGS_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the keyed settings reads", async () => {
@@ -571,13 +575,13 @@ const PINNED_GROUP_METRIC_SETTINGS_COLUMNS = [
 
 describe("group_metric_settings read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the metric-override reads must be a deliberate diff here", () => {
-    expect([...GROUP_METRIC_SETTINGS_COLUMNS]).toEqual([
+    expect([...GROUP_METRIC_SETTINGS_COLUMNS.list]).toEqual([
       ...PINNED_GROUP_METRIC_SETTINGS_COLUMNS,
     ]);
   });
 
   it("never selects '*'", () => {
-    expect(GROUP_METRIC_SETTINGS_COLUMNS).not.toContain("*");
+    expect(GROUP_METRIC_SETTINGS_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the metric-override reads", async () => {
@@ -608,11 +612,13 @@ const PINNED_AUDIT_EVENT_COLUMNS = [
 
 describe("audit_events read column allowlist (#495)", () => {
   it("pins the exact allowlist — widening the recent-audit read must be a deliberate diff here", () => {
-    expect([...AUDIT_EVENT_COLUMNS]).toEqual([...PINNED_AUDIT_EVENT_COLUMNS]);
+    expect([...AUDIT_EVENT_COLUMNS.list]).toEqual([
+      ...PINNED_AUDIT_EVENT_COLUMNS,
+    ]);
   });
 
   it("never selects '*'", () => {
-    expect(AUDIT_EVENT_COLUMNS).not.toContain("*");
+    expect(AUDIT_EVENT_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the recent-audit read", async () => {

@@ -101,14 +101,14 @@ beforeEach(() => {
 describe("session profile column allowlist (#492)", () => {
   it("pins the exact allowlist — widening the session read must be a deliberate diff here", async () => {
     const { SESSION_PROFILE_COLUMNS } = await import("@/lib/auth/session");
-    expect([...SESSION_PROFILE_COLUMNS]).toEqual([
+    expect([...SESSION_PROFILE_COLUMNS.list]).toEqual([
       ...PINNED_SESSION_PROFILE_COLUMNS,
     ]);
   });
 
   it("never selects '*'", async () => {
     const { SESSION_PROFILE_COLUMNS } = await import("@/lib/auth/session");
-    expect(SESSION_PROFILE_COLUMNS).not.toContain("*");
+    expect(SESSION_PROFILE_COLUMNS.list).not.toContain("*");
   });
 
   it("passes exactly the joined allowlist to the profiles read", async () => {

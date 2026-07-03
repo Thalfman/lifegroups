@@ -4,11 +4,16 @@ import type {
   ProfilesRow,
 } from "@/types/database";
 import type { MembershipStatus, ProfileStatus, UserRole } from "@/types/enums";
-import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  columns,
+  wrapError,
+  type ReadClient,
+  type ReadResult,
+} from "./read-core";
 
 // Column allowlist for the active-membership fetcher (#495); every
 // GroupMembershipsRow column, pinned by a colocated test.
-export const GROUP_MEMBERSHIP_COLUMNS = [
+export const GROUP_MEMBERSHIP_COLUMNS = columns<GroupMembershipsRow>()(
   "id",
   "group_id",
   "member_id",
@@ -16,10 +21,8 @@ export const GROUP_MEMBERSHIP_COLUMNS = [
   "status",
   "joined_at",
   "ended_at",
-  "created_at",
-] as const satisfies readonly (keyof GroupMembershipsRow)[];
-
-const GROUP_MEMBERSHIP_SELECT = GROUP_MEMBERSHIP_COLUMNS.join(", ");
+  "created_at"
+);
 
 export async function fetchActiveMemberships(
   client: ReadClient,
@@ -27,7 +30,7 @@ export async function fetchActiveMemberships(
 ): Promise<ReadResult<GroupMembershipsRow[]>> {
   let query = client
     .from("group_memberships")
-    .select(GROUP_MEMBERSHIP_SELECT)
+    .select(GROUP_MEMBERSHIP_COLUMNS.select)
     .eq("status", "active");
   if (options.groupId) query = query.eq("group_id", options.groupId);
   const { data, error } = await query.returns<GroupMembershipsRow[]>();
@@ -40,7 +43,7 @@ export async function fetchActiveMemberships(
 // MembersRow column so the directory surfaces keep their data, while a future
 // members column (members carry pastoral signals like care_sensitivity_flag)
 // no longer flows to every caller by default. Pinned by a colocated test.
-export const MEMBER_COLUMNS = [
+export const MEMBER_COLUMNS = columns<MembersRow>()(
   "id",
   "full_name",
   "email",
@@ -49,10 +52,8 @@ export const MEMBER_COLUMNS = [
   "status",
   "care_sensitivity_flag",
   "created_at",
-  "updated_at",
-] as const satisfies readonly (keyof MembersRow)[];
-
-const MEMBER_SELECT = MEMBER_COLUMNS.join(", ");
+  "updated_at"
+);
 
 // Supabase REST responses default-cap rows at ~1000 (see GUEST_PAGE_LIMIT).
 // `fetchAllMembers` backs the People directory, the inline assign controls,
@@ -70,7 +71,7 @@ export async function fetchMembersByIds(
   if (ids.length === 0) return { data: [], error: null };
   const { data, error } = await client
     .from("members")
-    .select(MEMBER_SELECT)
+    .select(MEMBER_COLUMNS.select)
     .in("id", ids)
     .returns<MembersRow[]>();
   if (error)
@@ -84,7 +85,7 @@ export async function fetchAllMembers(
 ): Promise<ReadResult<MembersRow[]>> {
   let query = client
     .from("members")
-    .select(MEMBER_SELECT)
+    .select(MEMBER_COLUMNS.select)
     .order("full_name", { ascending: true })
     .range(0, MEMBER_PAGE_LIMIT - 1);
   if (options.statuses && options.statuses.length > 0)
@@ -99,7 +100,7 @@ export async function fetchAllMembers(
 // row type is the trust boundary — so a future profiles column cannot
 // silently widen this high-fan-out read. The per-request session profile
 // read has its own narrower allowlist in lib/auth/session.ts (#492).
-export const PROFILE_COLUMNS = [
+export const PROFILE_COLUMNS = columns<ProfilesRow>()(
   "id",
   "auth_user_id",
   "full_name",
@@ -108,10 +109,8 @@ export const PROFILE_COLUMNS = [
   "role",
   "status",
   "created_at",
-  "updated_at",
-] as const satisfies readonly (keyof ProfilesRow)[];
-
-const PROFILE_SELECT = PROFILE_COLUMNS.join(", ");
+  "updated_at"
+);
 
 export async function fetchProfilesForAdmin(
   client: ReadClient,
@@ -119,7 +118,7 @@ export async function fetchProfilesForAdmin(
 ): Promise<ReadResult<ProfilesRow[]>> {
   let query = client
     .from("profiles")
-    .select(PROFILE_SELECT)
+    .select(PROFILE_COLUMNS.select)
     .order("full_name", { ascending: true });
   if (options.roles && options.roles.length > 0)
     query = query.in("role", options.roles);
