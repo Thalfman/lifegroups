@@ -34,7 +34,9 @@ describe("PipelinePotentialCandidates — lock-in flow (#757)", () => {
     // Read-only until selected: no checklist yet.
     expect(screen.queryByText("12+ members")).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Lock in" }));
+    await user.click(
+      screen.getByRole("button", { name: "Lock in Tuesday Young Families" })
+    );
 
     for (const label of [
       "12+ members",
@@ -51,7 +53,9 @@ describe("PipelinePotentialCandidates — lock-in flow (#757)", () => {
     const user = userEvent.setup();
     render(<PipelinePotentialCandidates candidates={POTENTIAL} />);
 
-    await user.click(screen.getByRole("button", { name: "Lock in" }));
+    await user.click(
+      screen.getByRole("button", { name: "Lock in Tuesday Young Families" })
+    );
     // Tick two of the five boxes.
     await user.click(screen.getByLabelText("12+ members"));
     await user.click(screen.getByLabelText("Shepherd willing"));
@@ -76,7 +80,9 @@ describe("PipelinePotentialCandidates — lock-in flow (#757)", () => {
     const user = userEvent.setup();
     render(<PipelinePotentialCandidates candidates={POTENTIAL} />);
 
-    await user.click(screen.getByRole("button", { name: "Lock in" }));
+    await user.click(
+      screen.getByRole("button", { name: "Lock in Tuesday Young Families" })
+    );
     // Save immediately with nothing ticked.
     await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -104,7 +110,9 @@ describe("PipelinePotentialCandidates — lock-in flow (#757)", () => {
     const user = userEvent.setup();
     render(<PipelinePotentialCandidates candidates={POTENTIAL} />);
 
-    await user.click(screen.getByRole("button", { name: "Lock in" }));
+    await user.click(
+      screen.getByRole("button", { name: "Lock in Tuesday Young Families" })
+    );
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const alert = await screen.findByRole("alert");
