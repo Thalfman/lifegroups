@@ -92,6 +92,9 @@ test.describe("Care Note write pipeline", () => {
       await signIn(adminPage, creds.admin.email!, creds.admin.password!);
       await adminPage.goto(`/admin/shepherd-care/${profileId}`);
       const adminView = adminPage.getByRole("main");
+      // The detail surface is tabbed (LeaderDetailTabs); the Care Notes panel
+      // is not the default Overview tab, so open it first.
+      await adminPage.getByRole("tab", { name: "Care notes & prayer" }).click();
       await expect(
         adminView.getByText("Care notes & prayer requests")
       ).toBeVisible();
