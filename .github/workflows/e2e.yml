@@ -45,9 +45,14 @@ on:
       - "components/admin/care/**"
       - "components/admin/shepherd-care/**"
       - "components/over-shepherd/**"
-      - "lib/admin/care-note-visibility.ts"
-      - "lib/supabase/care-note-reads.ts"
-      - "lib/supabase/care-note-feed-reads.ts"
+      # The shared seams every write crosses (Codex review on #837): the write
+      # runners, RPC gateways, validators, auth guards, and the reads seam all
+      # sit between the form and the RPC, so a PR touching them must get this
+      # lane's advisory signal too.
+      - "lib/admin/**"
+      - "lib/shared/**"
+      - "lib/auth/**"
+      - "lib/supabase/**"
 
 # Never run more than one E2E lane per ref at a time; a newer run supersedes.
 concurrency:

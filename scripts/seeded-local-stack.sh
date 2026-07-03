@@ -68,6 +68,15 @@ esac
 
 log "Local stack: $SUPABASE_URL_LOCAL"
 
+# Diagnostic breadcrumbs for key/grant drift across Supabase CLI versions (the
+# values are throwaway local-dev credentials the CLI itself prints). The key
+# prefix distinguishes a legacy JWT ("eyJ...") from a new-style secret key
+# ("sb_secret_..."); the privilege probes say whether PostgREST-side table
+# grants exist for the roles a key can map to.
+log "Service key shape: ${SERVICE_ROLE_KEY_LOCAL:0:10}..."
+log "service_role SELECT on profiles: $(psql "$DB_URL_LOCAL" -tAc "select has_table_privilege('service_role','public.profiles','SELECT')" 2>&1 | head -n1)"
+log "anon SELECT on profiles: $(psql "$DB_URL_LOCAL" -tAc "select has_table_privilege('anon','public.profiles','SELECT')" 2>&1 | head -n1)"
+
 # --- 2. Apply the operational seed -------------------------------------------
 # `supabase start` applies migrations under supabase/migrations/. The seeded
 # auth tooling links profiles that the operational seed provides, so apply it

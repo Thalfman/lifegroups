@@ -18,11 +18,11 @@ import { e2eCreds, signIn, uniqueBody } from "./helpers";
 //
 // Seeded fixtures (scripts/test-auth-shared.ts + scripts/seed-test-auth-users.ts):
 // "Test Over-Shepherd" covers "Test Leader One" via shepherd_coverage_assignments;
-// "Test Ministry Admin" is the ladder viewer/author. Bodies are unique per run
-// and no transparency toggle is ever flipped, so re-runs against a persistent
-// local stack stay green (a left-on grant would break the sealed assertion).
-// Follow-up (out of scope here): the grant-ON ladder arm — flip the toggle,
-// assert the admin can read, flip it back.
+// "Test Ministry Admin" is the ladder viewer/author. Bodies are unique per run,
+// and the sealed check resets a left-on transparency grant through the real UI
+// first, so re-runs against a persistent local stack stay green. Follow-up
+// (out of scope here): the grant-ON ladder arm — flip the toggle, assert the
+// admin can read, flip it back.
 
 const creds = e2eCreds();
 const SUBJECT_NAME = "Test Leader One";
@@ -33,7 +33,7 @@ test.describe("Care Note write pipeline", () => {
   test("Over-Shepherd authors a Care Note: it round-trips for the author and stays sealed from the Ministry Admin", async ({
     page,
     browser,
-  }) => {
+  }, testInfo) => {
     test.skip(
       !creds.overShepherd.present || !creds.admin.present,
       "Seeded E2E creds not configured (run via scripts/e2e.sh)"
@@ -68,11 +68,34 @@ test.describe("Care Note write pipeline", () => {
     // grant OFF (seed default), must see the sealed notice and NOT the body —
     // the ministry_admin/grant-OFF arm of the pinned truth table, asserted
     // against real RLS rather than the unit-tested resolver.
-    const adminContext = await browser.newContext();
+    // A manually created context does not inherit the fixture context's
+    // baseURL — pass it through so signIn's relative goto("/login") resolves.
+    const adminContext = await browser.newContext({
+      baseURL: testInfo.project.use.baseURL,
+    });
     try {
       const adminPage = await adminContext.newPage();
       await signIn(adminPage, creds.admin.email!, creds.admin.password!);
       await adminPage.goto(`/admin/shepherd-care/${profileId}`);
+      await expect(
+        adminPage.getByText("Care notes & prayer requests")
+      ).toBeVisible();
+      // The sealed assertion assumes the seeded default (grant OFF). Nothing
+      // wipes note_transparency_grants between runs against a persistent
+      // local stack, so a manual flip or an aborted grant-ON experiment could
+      // leave it on — reset it through the same audited UI control an admin
+      // would use before asserting.
+      const sealButton = adminPage.getByRole("button", {
+        name: "Turn off (seal)",
+        exact: true,
+      });
+      if (await sealButton.isVisible()) {
+        await sealButton.click();
+        await expect(
+          adminPage.getByText("Sealed.", { exact: true })
+        ).toBeVisible();
+        await adminPage.reload();
+      }
       await expect(
         adminPage.getByText(/sealed to their author/).first()
       ).toBeVisible();
