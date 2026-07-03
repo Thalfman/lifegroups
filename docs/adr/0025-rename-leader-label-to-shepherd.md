@@ -49,7 +49,8 @@ created; the People-import CSV still accepts the literal value `leader`.)
 
 ## Consequences
 
-- `CONTEXT.md`, `CLAUDE.md`, `README.md`, and `okf/glossary/index.md` now teach
+- `CONTEXT.md`, `CLAUDE.md`, `README.md`, and `okf/glossary/index.md` (the
+  `okf/` doc tree has since been retired to git history, #830) now teach
   **Shepherd** / **Co-Shepherd** as the user-facing terms while flagging that the
   code identity stays `leader` / `co_leader`. The former "_Avoid_: Shepherd" rule
   is withdrawn for UI copy.
