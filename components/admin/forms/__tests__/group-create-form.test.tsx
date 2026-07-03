@@ -63,4 +63,24 @@ describe("GroupCreateForm", () => {
     // for a missing name.
     expect(html).not.toContain("Enter a group name to enable Create group.");
   });
+
+  // A biweekly draft must surface the week-parity select (shared
+  // MeetingFrequencyParityFields owns the biweekly-only rule).
+  it("renders the week-parity select for a biweekly draft", () => {
+    const html = renderToStaticMarkup(
+      <GroupCreateForm
+        defaultCapacity={12}
+        groupTypes={GROUP_TYPES}
+        draft={{
+          name: "Wednesday Westside",
+          meeting_frequency: "biweekly",
+          meeting_week_parity: "odd",
+        }}
+      />
+    );
+
+    expect(html).toContain('name="meeting_week_parity"');
+    expect(html).toContain('id="group-meeting_week_parity"');
+    expect(html).toContain("Which weeks does it meet?");
+  });
 });

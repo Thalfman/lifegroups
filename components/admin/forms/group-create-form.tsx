@@ -8,16 +8,15 @@ import { cn } from "@/lib/utils";
 import {
   fieldHintClassName,
   fieldInputClassName,
-  fieldLabelClassName,
-  fieldSelectClassName,
   formGridClassName,
   formNoteClassName,
 } from "./field-styles";
+import { FormField } from "./form-field";
 import {
-  MEETING_DAYS_ORDERED,
-  MEETING_FREQUENCY_OPTIONS,
-  MEETING_PARITY_OPTIONS,
-} from "./meeting-schedule-options";
+  CapacityField,
+  MeetingDayTimeFields,
+  MeetingFrequencyParityFields,
+} from "./meeting-schedule-fields";
 import type { MeetingFrequency } from "@/types/enums";
 import { GroupTypePicker } from "./group-type-picker";
 import type { FormDraft } from "@/lib/nav/draft-store";
@@ -101,8 +100,8 @@ export function GroupCreateForm({
     onPendingChange?.(pending);
   }, [pending, onPendingChange]);
 
-  const showParity = frequency === "biweekly";
   const canSubmit = groupName.trim().length > 0;
+  const idFor = (field: string) => `group-${field}`;
 
   return (
     <form
@@ -117,12 +116,9 @@ export function GroupCreateForm({
         group settles into a rhythm.
       </p>
       <div className={formGridClassName}>
-        <div>
-          <label htmlFor="group-name" className={fieldLabelClassName}>
-            Group name
-          </label>
+        <FormField htmlFor={idFor("name")} label="Group name">
           <input
-            id="group-name"
+            id={idFor("name")}
             name="name"
             type="text"
             required
@@ -132,38 +128,13 @@ export function GroupCreateForm({
             className={fieldInputClassName}
             placeholder="Wednesday Westside"
           />
-        </div>
-        <div>
-          <label htmlFor="group-meeting_day" className={fieldLabelClassName}>
-            Meeting day (optional)
-          </label>
-          <select
-            id="group-meeting_day"
-            name="meeting_day"
-            defaultValue={draft?.meeting_day ?? ""}
-            className={fieldSelectClassName}
-          >
-            <option value="">Not set</option>
-            {MEETING_DAYS_ORDERED.map((day) => (
-              <option key={day} value={day}>
-                {day}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="group-meeting_time" className={fieldLabelClassName}>
-            Meeting time (optional)
-          </label>
-          <input
-            id="group-meeting_time"
-            name="meeting_time"
-            type="time"
-            defaultValue={draft?.meeting_time ?? ""}
-            autoComplete="off"
-            className={fieldInputClassName}
-          />
-        </div>
+        </FormField>
+        <MeetingDayTimeFields
+          idFor={idFor}
+          optionalLabels
+          dayDefault={draft?.meeting_day ?? ""}
+          timeDefault={draft?.meeting_time ?? ""}
+        />
       </div>
       <button
         type="button"
@@ -177,60 +148,18 @@ export function GroupCreateForm({
           otherwise default back to weekly on the server — still submit
           with the form rather than being silently discarded. */}
       <div className={cn(formGridClassName, !showMore && "hidden")}>
-        <div>
-          <label
-            htmlFor="group-meeting_frequency"
-            className={fieldLabelClassName}
-          >
-            Meeting frequency
-          </label>
-          <select
-            id="group-meeting_frequency"
-            name="meeting_frequency"
-            value={frequency}
-            onChange={(e) => setFrequency(e.target.value as MeetingFrequency)}
-            className={fieldSelectClassName}
-          >
-            {MEETING_FREQUENCY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        {showParity ? (
-          <div>
-            <label
-              htmlFor="group-meeting_week_parity"
-              className={fieldLabelClassName}
-            >
-              Which weeks does it meet?
-            </label>
-            <select
-              id="group-meeting_week_parity"
-              name="meeting_week_parity"
-              defaultValue={draft?.meeting_week_parity ?? ""}
-              className={fieldSelectClassName}
-            >
-              <option value="">Choose weeks</option>
-              {MEETING_PARITY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p className={fieldHintClassName}>
-              For groups that meet every other week. Odd and even weeks
-              alternate through the year — pick the set this group gathers on.
-            </p>
-          </div>
-        ) : null}
-        <div>
-          <label htmlFor="group-location_area" className={fieldLabelClassName}>
-            Location area (optional)
-          </label>
+        <MeetingFrequencyParityFields
+          idFor={idFor}
+          frequency={frequency}
+          onFrequencyChange={setFrequency}
+          parityDefault={draft?.meeting_week_parity ?? ""}
+        />
+        <FormField
+          htmlFor={idFor("location_area")}
+          label="Location area (optional)"
+        >
           <input
-            id="group-location_area"
+            id={idFor("location_area")}
             name="location_area"
             type="text"
             defaultValue={draft?.location_area ?? ""}
@@ -238,16 +167,14 @@ export function GroupCreateForm({
             className={fieldInputClassName}
             placeholder="Westside"
           />
-        </div>
-        <div className="md:col-span-full">
-          <label
-            htmlFor="group-address_optional"
-            className={fieldLabelClassName}
-          >
-            Address (optional)
-          </label>
+        </FormField>
+        <FormField
+          htmlFor={idFor("address_optional")}
+          label="Address (optional)"
+          className="md:col-span-full"
+        >
           <input
-            id="group-address_optional"
+            id={idFor("address_optional")}
             name="address_optional"
             type="text"
             defaultValue={draft?.address_optional ?? ""}
@@ -255,44 +182,29 @@ export function GroupCreateForm({
             className={fieldInputClassName}
             placeholder="123 Vine St."
           />
-        </div>
-        <div>
-          <label htmlFor="group-capacity" className={fieldLabelClassName}>
-            Capacity (optional)
-          </label>
-          <input
-            id="group-capacity"
-            name="capacity"
-            // Expanded: a real number control with range checks for inline
-            // feedback. Collapsed: a plain text field so NONE of the number
-            // control's native validation (range, step/whole-number, bad
-            // input) can block submission from a non-focusable, hidden
-            // element. The server validator then surfaces any visible
-            // "Capacity must be a whole number / can't be negative / over
-            // 1000" error. inputMode stays numeric for the mobile keypad.
-            type={showMore ? "number" : "text"}
-            min={showMore ? 0 : undefined}
-            max={showMore ? 1000 : undefined}
-            inputMode="numeric"
-            autoComplete="off"
-            className={fieldInputClassName}
-            // G3 (#222): seed with the ministry default so the new group
-            // starts with a sensible capacity rather than Unknown. The field
-            // stays mounted while collapsed, so the default submits even when
-            // the operator never opens "More details". Clear it to leave the
-            // group's capacity Unknown. A restored draft (#781 OPP-3b) wins —
-            // including a deliberately-cleared "" — so the round trip is exact.
-            defaultValue={draft?.capacity ?? defaultCapacity ?? ""}
-            placeholder={
-              defaultCapacity != null ? String(defaultCapacity) : "Unknown"
-            }
-          />
-          <p className={fieldHintClassName}>
-            {defaultCapacity != null
+        </FormField>
+        <CapacityField
+          id={idFor("capacity")}
+          label="Capacity (optional)"
+          // Collapsed "More details" swaps the control to text so hidden
+          // native number validation can't block submission (see the prop doc).
+          asNumber={showMore}
+          // G3 (#222): seed with the ministry default so the new group
+          // starts with a sensible capacity rather than Unknown. The field
+          // stays mounted while collapsed, so the default submits even when
+          // the operator never opens "More details". Clear it to leave the
+          // group's capacity Unknown. A restored draft (#781 OPP-3b) wins —
+          // including a deliberately-cleared "" — so the round trip is exact.
+          defaultValue={draft?.capacity ?? defaultCapacity ?? ""}
+          placeholder={
+            defaultCapacity != null ? String(defaultCapacity) : "Unknown"
+          }
+          hint={
+            defaultCapacity != null
               ? `Defaults to the ministry capacity of ${defaultCapacity}. Change it for a group that's different, or clear it to leave capacity Unknown.`
-              : "No ministry default set, so capacity starts Unknown. Set a number for this group, or leave it blank."}
-          </p>
-        </div>
+              : "No ministry default set, so capacity starts Unknown. Set a number for this group, or leave it blank."
+          }
+        />
         <div>
           {/* #776 OPP-3 — the creatable group-type picker: choose an existing
               type or add a brand-new one in place (no Settings detour), still
@@ -313,31 +225,32 @@ export function GroupCreateForm({
             it blank to tag the group later.
           </p>
         </div>
-        <div>
-          <label htmlFor="group-launched_on" className={fieldLabelClassName}>
-            Launched on (optional)
-          </label>
+        <FormField
+          htmlFor={idFor("launched_on")}
+          label="Launched on (optional)"
+        >
           <input
-            id="group-launched_on"
+            id={idFor("launched_on")}
             name="launched_on"
             type="date"
             defaultValue={draft?.launched_on ?? ""}
             className={fieldInputClassName}
           />
-        </div>
-        <div className="md:col-span-full">
-          <label htmlFor="group-description" className={fieldLabelClassName}>
-            Description (optional)
-          </label>
+        </FormField>
+        <FormField
+          htmlFor={idFor("description")}
+          label="Description (optional)"
+          className="md:col-span-full"
+        >
           <textarea
-            id="group-description"
+            id={idFor("description")}
             name="description"
             rows={3}
             defaultValue={draft?.description ?? ""}
             className={cn(fieldInputClassName, "min-h-20 resize-y")}
             placeholder="Who this group is for, what makes it tick."
           />
-        </div>
+        </FormField>
       </div>
       <div className="flex flex-wrap gap-2.5">
         <Button
