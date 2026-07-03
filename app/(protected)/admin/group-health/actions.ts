@@ -116,9 +116,11 @@ const RECOMPUTE_SPEC: AdminWriteActionSpec<GroupIdPayload, { id: string }> = {
   },
   // The shared editor drawer also opens from the group detail Health tab, so
   // refresh that route too — otherwise its server-rendered grade goes stale.
+  // The admin dashboard (/admin) renders the health ratings as well (#810).
   revalidate: (value) => [
     "/admin/group-health",
     `/admin/groups/${value.group_id}`,
+    "/admin",
   ],
   noDataError: "The assessment wasn't saved. Please try again.",
 };
@@ -187,9 +189,11 @@ const RATINGS_SPEC: AdminWriteActionSpec<
   },
   // The shared editor drawer also opens from the group detail Health tab, so
   // refresh that route too — otherwise its server-rendered grade goes stale.
+  // The admin dashboard (/admin) renders the health ratings as well (#810).
   revalidate: (value) => [
     "/admin/group-health",
     `/admin/groups/${value.group_id}`,
+    "/admin",
   ],
   noDataError: "The ratings weren't saved. Please try again.",
 };

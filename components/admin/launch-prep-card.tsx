@@ -78,7 +78,7 @@ export function LaunchPrepCard({
   return (
     <DangerCard
       title="Prepare for launch — clean slate"
-      intro="One step to make the app read as a fresh start on launch day. It clears all accumulated history (attendance, follow-ups, guests, group-health, status history, church-attendance snapshots, and shepherd-care activity) and hides the time-based “Needs attention” warnings that show on Home for brand-new groups. People, groups, leaders, memberships, settings, care profiles & notes, and the audit log are kept. A recoverable snapshot is captured before anything is deleted, and the warnings can be un-hidden anytime from Feature flags."
+      intro="One step to make the app read as a fresh start on launch day. It clears all accumulated history (attendance, follow-ups, guests, group-health, status history, church-attendance snapshots, and shepherd-care activity) and hides the time-based “Needs attention” warnings that show on Home for brand-new groups. People, groups, shepherds, memberships, settings, care profiles & notes, and the audit log are kept. A recoverable snapshot is captured before anything is deleted, and the warnings can be un-hidden anytime from Feature flags."
     >
       <DangerSection
         variant="destructive"

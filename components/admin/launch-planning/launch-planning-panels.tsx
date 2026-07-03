@@ -21,8 +21,8 @@ import { SectionEyebrow } from "./section-styles";
 import type { LaunchPlanningPageData } from "./launch-planning-data";
 
 // The tab panels for launch planning, built once from the shared loader and
-// reused by both the frozen /admin/launch-planning route (inside
-// LaunchPlanningShell) and the Planning area (#303). Keeping the markup here
+// reused by both the frozen /admin/launch-planning route (which alias-renders
+// the Planning view) and the Planning area (#303). Keeping the markup here
 // means the two hosts can't drift in what they render.
 export type LaunchPlanningPanels = {
   notice: ReactNode;
