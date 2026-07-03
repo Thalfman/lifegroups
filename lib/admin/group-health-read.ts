@@ -40,7 +40,7 @@ import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 // the same numbers through the audited RPC.
 //
 // ADR 0015: the orchestration is split into pure `build*` functions over the
-// `GroupHealthReads` seam, so the grading fold, error precedence, and fallback
+// `GroupHealthRecomputeReads` seam, so the grading fold, error precedence, and fallback
 // rules are testable through an in-memory adapter. The exported client-bound
 // entry points (`fetchGroupHealthRubric`, `listGroupHealthOverview`, …) keep
 // their signatures and are thin bindings of the live client onto those builds.
@@ -207,7 +207,7 @@ async function fetchLatestFollowUpFlagForGroup(
 // ---------------------------------------------------------------------------
 // The reads seam (ADR 0015): every leaf read this module's orchestration
 // consumes, in one fetcher map. Production binds the live client below; a test
-// binds an in-memory adapter satisfying GroupHealthReads.
+// binds an in-memory adapter satisfying GroupHealthRecomputeReads.
 // ---------------------------------------------------------------------------
 
 const GROUP_HEALTH_READ_FETCHERS = {
@@ -223,9 +223,13 @@ const GROUP_HEALTH_READ_FETCHERS = {
   fetchLatestFollowUpFlagForGroup,
 };
 
-export type GroupHealthReads = BoundReads<typeof GROUP_HEALTH_READ_FETCHERS>;
+export type GroupHealthRecomputeReads = BoundReads<
+  typeof GROUP_HEALTH_READ_FETCHERS
+>;
 
-function bindGroupHealthReads(client: AppSupabaseClient): GroupHealthReads {
+function bindGroupHealthReads(
+  client: AppSupabaseClient
+): GroupHealthRecomputeReads {
   return bindReads(client, GROUP_HEALTH_READ_FETCHERS, "group_health_read");
 }
 
@@ -241,7 +245,7 @@ function bindGroupHealthReads(client: AppSupabaseClient): GroupHealthReads {
 // rather than silently falling back, so a transient error can't quietly grade on
 // the wrong rubric.
 export async function buildGroupHealthRubric(
-  reads: GroupHealthReads
+  reads: GroupHealthRecomputeReads
 ): Promise<ReadResult<GroupHealthRubricConfig>> {
   const rubricRes = await reads.fetchGroupHealthRubricSetting();
   if (rubricRes.error)
@@ -273,7 +277,7 @@ export async function buildGroupHealthRubric(
 // failures propagate: a caller must not treat an errored read as "no
 // attendance" and overwrite a previously valid grade.
 export async function buildGroupAttendanceWeeks(
-  reads: GroupHealthReads,
+  reads: GroupHealthRecomputeReads,
   groupId: string,
   limitWeeks: number = BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks
 ): Promise<ReadResult<AttendanceWeekTally[]>> {
@@ -322,7 +326,7 @@ export async function buildGroupAttendanceWeeks(
 }
 
 export async function buildGroupHealthRatings(
-  reads: GroupHealthReads,
+  reads: GroupHealthRecomputeReads,
   groupId: string,
   periodMonthIso: string = currentPeriodMonthIso()
 ): Promise<ReadResult<GroupHealthRatings>> {
@@ -348,7 +352,7 @@ export async function buildGroupHealthRatings(
 // grade, recomputed live from the configured rubric. On a per-group attendance
 // read error we fall back to the last persisted assessment and flag it stale.
 export async function buildGroupHealthOverview(
-  reads: GroupHealthReads,
+  reads: GroupHealthRecomputeReads,
   periodMonthIso: string = currentPeriodMonthIso()
 ): Promise<ReadResult<GroupHealthOverviewRow[]>> {
   const groupsRes = await reads.fetchAllGroups();
@@ -548,7 +552,7 @@ function buildOverviewRow(args: {
 // attendance read per group just to keep one row. The bulk overview keeps using
 // the list path; this is the targeted variant for a single record.
 export async function buildGroupHealthOverviewForGroup(
-  reads: GroupHealthReads,
+  reads: GroupHealthRecomputeReads,
   groupId: string,
   periodMonthIso: string = currentPeriodMonthIso()
 ): Promise<ReadResult<GroupHealthOverviewRow | null>> {

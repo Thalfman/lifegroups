@@ -14,7 +14,7 @@ import {
   buildGroupHealthOverviewForGroup,
   buildGroupHealthRatings,
   buildGroupHealthRubric,
-  type GroupHealthReads,
+  type GroupHealthRecomputeReads,
 } from "@/lib/admin/group-health-read";
 import {
   ATTENDANCE_TREND_WINDOW_WEEKS,
@@ -58,7 +58,9 @@ const setting = (setting_value: unknown) =>
 // The persisted-assessment row shape, derived through the seam so the fixture
 // tracks the module's own (unexported) type.
 type Assessment = NonNullable<
-  Awaited<ReturnType<GroupHealthReads["fetchGroupHealthAssessment"]>>["data"]
+  Awaited<
+    ReturnType<GroupHealthRecomputeReads["fetchGroupHealthAssessment"]>
+  >["data"]
 >;
 
 const assessment = (
@@ -79,8 +81,8 @@ const assessment = (
 });
 
 function emptyReads(
-  overrides: Partial<GroupHealthReads> = {}
-): GroupHealthReads {
+  overrides: Partial<GroupHealthRecomputeReads> = {}
+): GroupHealthRecomputeReads {
   return {
     fetchAllGroups: async () => ok([]),
     fetchGroupsByIds: async () => ok([]),
