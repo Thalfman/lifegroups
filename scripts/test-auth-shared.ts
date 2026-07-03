@@ -1,4 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { WebSocketLikeConstructor } from "@supabase/realtime-js";
+import ws from "ws";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -270,6 +272,14 @@ export function preflight(
 export function makeServiceClient(env: RuntimeEnv): SupabaseClient {
   return createClient(env.supabaseUrl, env.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    // supabase-js constructs its Realtime client eagerly and refuses to run on
+    // Node 20 without a WebSocket implementation, even though these scripts
+    // never open a realtime channel. CI pins Node 20 (package.json engines),
+    // which has no native WebSocket, so hand it the ws transport explicitly —
+    // the library's own documented Node-20 workaround. ws's constructor
+    // signature is wider than realtime-js's WebSocketLikeConstructor (it also
+    // accepts string | URL addresses), so the cast narrows, never widens.
+    realtime: { transport: ws as unknown as WebSocketLikeConstructor },
   });
 }
 
