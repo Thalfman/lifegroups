@@ -27,9 +27,10 @@ on:
     # check, not a merge gate.
     - cron: "0 8 * * 1"
   pull_request:
-    # Advisory signal on the PRs most likely to break the write pipeline this
+    # Advisory signal on the PRs most likely to break the write pipelines this
     # lane pins: the lane itself, the stack/seed tooling, schema/seed changes,
-    # and the Care Note pipeline (form → action → reads → surfaces).
+    # the Care Note pipeline (form → action → reads → surfaces), and the
+    # Interest Funnel + Multiply lock-in pipelines (#826/#827).
     paths:
       - "tests/e2e/**"
       - "playwright.e2e.config.ts"
@@ -45,6 +46,18 @@ on:
       - "components/admin/care/**"
       - "components/admin/shepherd-care/**"
       - "components/over-shepherd/**"
+      # The Interest Funnel spec (#826) drives /admin/plan; the readiness spec
+      # (#827) drives /admin/multiply plus its Groups-editor precondition (the
+      # lock-in actions live under launch-planning, its legacy home).
+      - "app/(protected)/admin/plan/**"
+      - "app/(protected)/admin/multiply/**"
+      - "app/(protected)/admin/groups/**"
+      - "app/(protected)/admin/launch-planning/**"
+      - "components/admin/plan/**"
+      - "components/admin/multiply/**"
+      - "components/admin/groups/**"
+      - "components/admin/groups-directory.tsx"
+      - "components/admin/forms/**"
       # The shared seams every write crosses (Codex review on #837): the write
       # runners, RPC gateways, validators, auth guards, and the reads seam all
       # sit between the form and the RPC, so a PR touching them must get this

@@ -38,7 +38,8 @@ export default defineConfig({
   // Each spec crosses several full page loads of force-dynamic surfaces on a
   // cold `next start` against the local stack; a busy CI runner has blown the
   // default 30s budget on a single navigation. Generous is cheap here — the
-  // lane is advisory, single-worker, and two specs long.
+  // lane is advisory, single-worker, and a handful of specs long (Care Note,
+  // Interest Funnel, Multiply readiness).
   timeout: 90_000,
   reporter: process.env.CI
     ? [
