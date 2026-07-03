@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test";
-import { e2eCreds, signIn, uniqueBody } from "./helpers";
+import { test, expect, e2eCreds, signIn, uniqueBody } from "./helpers";
 
 // Happy-path Interest Funnel advance, end to end (#826; funnel from PRD #371 /
 // ADR 0016). Nothing here is stubbed: the spec signs in as the seeded Ministry
