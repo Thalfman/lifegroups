@@ -10,6 +10,7 @@ import { isUuid } from "@/lib/shared/uuid";
 // the admin validator clusters so the record/uuid trust checks have one home.
 import {
   isRecord,
+  makeBooleanFlagReader,
   normalizeUuid,
   type ValidationResult,
 } from "@/lib/shared/validation-primitives";
@@ -56,14 +57,9 @@ function isIsoDate(value: unknown): value is string {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
 
-function readBool(value: unknown): boolean {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") {
-    const v = value.trim().toLowerCase();
-    return v === "true" || v === "on" || v === "1" || v === "yes";
-  }
-  return false;
-}
+// The leader vocabulary deliberately also accepts "yes" (tested contract);
+// only the accepted set differs from the admin reader.
+const readBool = makeBooleanFlagReader(["true", "on", "1", "yes"]);
 
 function readOptionalString(value: unknown): string | null {
   if (value === undefined || value === null) return null;
