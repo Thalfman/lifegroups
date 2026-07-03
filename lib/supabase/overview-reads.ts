@@ -1,4 +1,5 @@
 import { churchDayStartUtcIso } from "@/lib/shared/church-time";
+import { readBatch } from "./read-batch";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 // fetchOpenFollowUps is a leader-safe dashboard reader; it uses the follow-up
 // column allowlist + row type that live in follow-up-reads.
@@ -66,26 +67,35 @@ export async function fetchOverviewActivityCounts(
       churchDayStartUtcIso(range.fromIso)
     );
 
-  const [membersRes, followUpsRes, interactionsRes, prospectsRes] =
-    await Promise.all([membersQ, followUpsQ, interactionsQ, prospectsQ]);
-
-  const firstError =
-    membersRes.error ||
-    followUpsRes.error ||
-    interactionsRes.error ||
-    prospectsRes.error;
-  if (firstError)
-    return {
-      data: null,
-      error: wrapError("fetchOverviewActivityCounts", firstError),
+  // Gather-and-degrade through readBatch (ADR 0015) instead of a hand-rolled
+  // error chain; declaration order keeps the members-first error precedence.
+  const countThunk =
+    (query: PromiseLike<{ count: number | null; error: unknown }>) =>
+    async (): Promise<ReadResult<number>> => {
+      const { count, error } = await query;
+      if (error)
+        return {
+          data: null,
+          error: wrapError("fetchOverviewActivityCounts", error),
+        };
+      return { data: count ?? 0, error: null };
     };
+
+  const batch = await readBatch({
+    members: countThunk(membersQ),
+    followUps: countThunk(followUpsQ),
+    interactions: countThunk(interactionsQ),
+    prospects: countThunk(prospectsQ),
+  });
+  if (batch.firstError !== null)
+    return { data: null, error: new Error(batch.firstError) };
 
   return {
     data: {
-      membersJoined: membersRes.count ?? 0,
-      followUpsCompleted: followUpsRes.count ?? 0,
-      careTouchpoints: interactionsRes.count ?? 0,
-      prospectsAdded: prospectsRes.count ?? 0,
+      membersJoined: batch.results.members.data ?? 0,
+      followUpsCompleted: batch.results.followUps.data ?? 0,
+      careTouchpoints: batch.results.interactions.data ?? 0,
+      prospectsAdded: batch.results.prospects.data ?? 0,
     },
     error: null,
   };

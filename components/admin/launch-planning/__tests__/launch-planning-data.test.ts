@@ -35,7 +35,6 @@ const EMPTY_EXTRAS: CapacityBoardExtras = {
   apprentices: [],
   candidateGroupIds: [],
   groupTypeByGroup: {},
-  error: null,
 };
 
 function emptyReads(
@@ -47,7 +46,7 @@ function emptyReads(
     fetchLaunchPlanningScenariosForAdmin: async () => ok([]),
     fetchLeaderPipelineForAdmin: async () => ok([]),
     fetchMultiplicationCandidatesForAdmin: async () => ok([]),
-    fetchCapacityBoardExtras: async () => EMPTY_EXTRAS,
+    fetchCapacityBoardExtras: async () => ok(EMPTY_EXTRAS),
     ...overrides,
   };
 }
@@ -91,10 +90,7 @@ describe("buildLaunchPlanningData", () => {
   it("surfaces a capacity-extras read failure as a capacity error", async () => {
     const data = await buildLaunchPlanningData(
       emptyReads({
-        fetchCapacityBoardExtras: async () => ({
-          ...EMPTY_EXTRAS,
-          error: "extras boom",
-        }),
+        fetchCapacityBoardExtras: async () => fail("extras boom"),
       })
     );
 

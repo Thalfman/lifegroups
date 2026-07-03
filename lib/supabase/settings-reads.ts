@@ -9,6 +9,7 @@ import type {
   PlatformConfigRow,
 } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
+import { readBatch } from "./read-batch";
 import {
   columns,
   wrapError,
@@ -353,24 +354,20 @@ export type LaunchPlanningInputsBundle = {
 export async function fetchLaunchPlanningInputsForAdmin(
   client: ReadClient
 ): Promise<LaunchPlanningInputsBundle> {
-  const [groupsRes, overridesRes, membershipsRes, defaultsRes] =
-    await Promise.all([
-      fetchAllGroups(client),
-      fetchAllGroupMetricSettings(client),
-      fetchActiveMemberships(client),
-      fetchMetricDefaults(client),
-    ]);
+  // Gather-and-degrade through readBatch (ADR 0015); the bundle's per-key
+  // errors bag is the batch's errors map, not a hand-maintained copy.
+  const batch = await readBatch({
+    groups: () => fetchAllGroups(client),
+    overrides: () => fetchAllGroupMetricSettings(client),
+    memberships: () => fetchActiveMemberships(client),
+    metricDefaults: () => fetchMetricDefaults(client),
+  });
   return {
-    groups: groupsRes.data ?? [],
-    groupMetricSettings: overridesRes.data ?? [],
-    memberships: membershipsRes.data ?? [],
-    metricDefaultsRow: defaultsRes.data ?? null,
-    errors: {
-      groups: groupsRes.error?.message ?? null,
-      overrides: overridesRes.error?.message ?? null,
-      memberships: membershipsRes.error?.message ?? null,
-      metricDefaults: defaultsRes.error?.message ?? null,
-    },
+    groups: batch.results.groups.data ?? [],
+    groupMetricSettings: batch.results.overrides.data ?? [],
+    memberships: batch.results.memberships.data ?? [],
+    metricDefaultsRow: batch.results.metricDefaults.data ?? null,
+    errors: batch.errors,
   };
 }
 

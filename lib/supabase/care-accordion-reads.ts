@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type { GroupHealthLetter, LeaderHealthLetter } from "@/types/enums";
+import { readBatch } from "@/lib/supabase/read-batch";
 import {
   columns,
   wrapError,
@@ -239,31 +240,38 @@ export async function loadCareAccordionEnrichment(
     error: null,
   };
 
-  const [
-    leaderRubricRes,
-    groupRubricRes,
-    leaderGradesRes,
-    groupGradesRes,
-    grantsRes,
-    careNoteIdsRes,
-    prayerIdsRes,
-  ] = await Promise.all([
-    inYear ? fetchLeaderHealthRubric(client) : Promise.resolve(emptyRubric),
-    inYear
-      ? fetchHealthRubric(client, "group")
-      : Promise.resolve({ data: null, error: null } as ReadResult<{
-          criteria: unknown;
-        } | null>),
-    inYear && ministryYear !== null
-      ? fetchLeaderRubricGradesForYear(client, ministryYear)
-      : Promise.resolve(emptyLeaderRows),
-    inYear && ministryYear !== null
-      ? fetchGroupRubricGradesForYear(client, ministryYear)
-      : Promise.resolve(emptyGroupRows),
-    fetchGrantedSubjectIds(client),
-    fetchSubjectProfileIds(client, "care_notes"),
-    fetchSubjectProfileIds(client, "prayer_requests"),
-  ]);
+  // Gather-and-degrade through readBatch (ADR 0015). Declaration order pins
+  // the same error precedence the old hand-rolled ?? chain encoded.
+  const batch = await readBatch({
+    leaderRubric: () =>
+      inYear ? fetchLeaderHealthRubric(client) : Promise.resolve(emptyRubric),
+    groupRubric: () =>
+      inYear
+        ? fetchHealthRubric(client, "group")
+        : Promise.resolve({ data: null, error: null } as ReadResult<{
+            criteria: unknown;
+          } | null>),
+    leaderGrades: () =>
+      inYear && ministryYear !== null
+        ? fetchLeaderRubricGradesForYear(client, ministryYear)
+        : Promise.resolve(emptyLeaderRows),
+    groupGrades: () =>
+      inYear && ministryYear !== null
+        ? fetchGroupRubricGradesForYear(client, ministryYear)
+        : Promise.resolve(emptyGroupRows),
+    grants: () => fetchGrantedSubjectIds(client),
+    careNoteIds: () => fetchSubjectProfileIds(client, "care_notes"),
+    prayerIds: () => fetchSubjectProfileIds(client, "prayer_requests"),
+  });
+  const {
+    leaderRubric: leaderRubricRes,
+    groupRubric: groupRubricRes,
+    leaderGrades: leaderGradesRes,
+    groupGrades: groupGradesRes,
+    grants: grantsRes,
+    careNoteIds: careNoteIdsRes,
+    prayerIds: prayerIdsRes,
+  } = batch.results;
 
   // Leader-Health letters (#378). Resolve only when in a year and both the
   // rubric and grade rows read cleanly; otherwise leave the map empty (ungraded).
@@ -320,22 +328,12 @@ export async function loadCareAccordionEnrichment(
     groupGradesAvailable: !groupRubricRes.error && !groupGradesRes.error,
   };
 
-  const error =
-    leaderRubricRes.error?.message ??
-    groupRubricRes.error?.message ??
-    leaderGradesRes.error?.message ??
-    groupGradesRes.error?.message ??
-    grantsRes.error?.message ??
-    careNoteIdsRes.error?.message ??
-    prayerIdsRes.error?.message ??
-    null;
-
   return {
     leaderHealthByLeaderId,
     groupHealthByGroupId,
     noteStateByLeaderId,
     gradeEntry,
-    error,
+    error: batch.firstError,
   };
 }
 
