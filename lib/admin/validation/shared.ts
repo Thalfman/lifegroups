@@ -119,3 +119,14 @@ export function readBooleanFlag(value: unknown): boolean {
   }
   return false;
 }
+
+// Pure UTC "today" so a near-midnight server time doesn't flip a
+// future-date guard for a date the admin entered moments ago. Shared by the
+// shepherd-care interaction and over-shepherd coverage validators.
+export function todayIsoUtc(now: Date = new Date()): string {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  )
+    .toISOString()
+    .slice(0, 10);
+}

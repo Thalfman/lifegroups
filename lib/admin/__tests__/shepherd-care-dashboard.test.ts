@@ -6,13 +6,13 @@ import {
   type CareAttentionReason,
   type CareDashboardSummary,
 } from "@/lib/admin/shepherd-care-dashboard";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
+import type { ShepherdCareRecentInteractionRow } from "@/lib/supabase/shepherd-care-interaction-reads";
+import type { CareFollowUpDashboardRow } from "@/lib/supabase/shepherd-care-follow-up-reads";
 import type {
   ActiveShepherdCoverageAssignmentSummary,
-  CareFollowUpDashboardRow,
   OverShepherdListRow,
-  ShepherdCareDirectoryEntry,
-  ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-coverage-reads";
 
 const TODAY = "2026-05-22";
 const STALE_OLD = "2026-01-01"; // ~141 days before TODAY -> stale

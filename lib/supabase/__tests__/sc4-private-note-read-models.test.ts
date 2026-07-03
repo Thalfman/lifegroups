@@ -4,7 +4,7 @@ import { bytesToBase64 } from "@/lib/crypto/encoding";
 import {
   fetchPrivateNoteKeySlotsForCreator,
   fetchShepherdCarePrivateNoteCiphertextForCreator,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-private-note-reads";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 
 const CARE = "11111111-1111-1111-1111-111111111111";

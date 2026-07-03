@@ -30,8 +30,8 @@ import {
   type ShepherdCareDirectorySummary,
   SHEPHERD_CARE_DIRECTORY_COLUMNS,
   buildCareDirectoryEntries,
-  fetchShepherdCareInteractionsForAdmin,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-directory-reads";
+import { fetchShepherdCareInteractionsForAdmin } from "@/lib/supabase/shepherd-care-interaction-reads";
 import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
 
 type ReadClient = AppSupabaseClient;

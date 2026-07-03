@@ -4,12 +4,12 @@ import {
   openFollowUpCountsByQueue,
   type BuildCareAreaInput,
 } from "@/lib/admin/care-area";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
+import type { ShepherdCareRecentInteractionRow } from "@/lib/supabase/shepherd-care-interaction-reads";
 import type {
   CareFollowUpCompletedRow,
   CareFollowUpDashboardRow,
-  ShepherdCareDirectoryEntry,
-  ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-follow-up-reads";
 import type { CareAttentionItem } from "@/lib/admin/shepherd-care-dashboard";
 
 const TODAY = "2026-06-03";

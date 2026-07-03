@@ -4,22 +4,28 @@ import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
-  fetchActiveShepherdCoverageAssignmentByShepherdId,
   fetchAdminShepherdProfileById,
-  fetchGenericFollowUpCountForAssignee,
   fetchLedGroupSummariesForProfile,
-  fetchOverShepherdsForAdmin,
-  fetchPrivateNoteKeySlotsForCreator,
-  fetchShepherdCareFollowUpsForProfile,
-  fetchShepherdCareInteractionsForAdmin,
-  fetchShepherdCarePrivateNoteCiphertextForCreator,
   fetchShepherdCareProfileByShepherdId,
-  type ActiveShepherdCoverageAssignmentSummary,
   type LedGroupSummary,
+} from "@/lib/supabase/shepherd-care-directory-reads";
+import { fetchShepherdCareInteractionsForAdmin } from "@/lib/supabase/shepherd-care-interaction-reads";
+import {
+  fetchGenericFollowUpCountForAssignee,
+  fetchShepherdCareFollowUpsForProfile,
+} from "@/lib/supabase/shepherd-care-follow-up-reads";
+import {
+  fetchActiveShepherdCoverageAssignmentByShepherdId,
+  fetchOverShepherdsForAdmin,
+  type ActiveShepherdCoverageAssignmentSummary,
   type OverShepherdListRow,
+} from "@/lib/supabase/shepherd-coverage-reads";
+import {
+  fetchPrivateNoteKeySlotsForCreator,
+  fetchShepherdCarePrivateNoteCiphertextForCreator,
   type PrivateNoteCiphertext,
   type PrivateNoteKeySlot,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-private-note-reads";
 import {
   fetchAuthoredGroupCareNotes,
   fetchAuthoredGroupPrayerRequests,

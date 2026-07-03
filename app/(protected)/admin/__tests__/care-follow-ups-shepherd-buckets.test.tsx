@@ -4,11 +4,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { buildCareArea, type BuildCareAreaInput } from "@/lib/admin/care-area";
 import { CareItemList } from "@/components/admin/care/care-item-list";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
 import type {
   CareFollowUpCompletedRow,
   CareFollowUpDashboardRow,
-  ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-follow-up-reads";
 
 // #334 P1 — "Keep shepherd-care follow-ups visible". The re-key folded the old
 // Due Soon / Completed Care tabs into a single Follow-ups tab. But that tab's

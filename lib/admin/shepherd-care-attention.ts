@@ -1,7 +1,7 @@
 // The single source of truth for "does this Leader need attention, and why".
 //
 // This predicate used to live in two places that could drift apart: a boolean
-// `computeNeedsAttention` in lib/supabase/shepherd-care-reads.ts (the directory chip +
+// `computeNeedsAttention` in lib/supabase/shepherd-care-directory-reads.ts (the directory chip +
 // filter) and a richer `detectReasons` in lib/admin/shepherd-care-dashboard.ts
 // (the triage queue). The boolean is exactly the chip-worthy subset of the
 // reasons, so deriving one from the other means the count, the filter, and the
@@ -19,7 +19,7 @@ import { laterIso } from "@/lib/admin/care-temporal";
 import type { ShepherdCareProfilesRow } from "@/types/database";
 
 // Only the care fields the attention predicate reads. ShepherdCareDirectorySummary
-// (shepherd-care-reads) is structurally assignable to this.
+// (shepherd-care-directory-reads) is structurally assignable to this.
 export type CareAttentionRow = Pick<
   ShepherdCareProfilesRow,
   "current_status" | "last_contact_at" | "next_touchpoint_due"

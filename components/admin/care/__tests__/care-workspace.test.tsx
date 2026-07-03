@@ -21,7 +21,7 @@ import {
 } from "@/components/admin/care/care-data";
 import { EMPTY_ADMIN_FOLLOW_UPS_DATA } from "@/components/admin/follow-ups/follow-ups-data";
 import { group, profile } from "@/lib/dashboard/group-fixtures";
-import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-reads";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
 
 const TODAY = "2026-06-12";
 

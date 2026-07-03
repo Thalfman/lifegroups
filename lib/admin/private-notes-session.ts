@@ -38,7 +38,7 @@ import type { ActionResult } from "@/lib/shared/action-result";
 import type {
   PrivateNoteCiphertext,
   PrivateNoteKeySlot,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-private-note-reads";
 
 // dek_version 1 is the only generation today; the column exists so a future key
 // rotation (#113+) can introduce generation 2 without a destructive migration.

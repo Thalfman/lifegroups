@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import type { OverShepherdListRow } from "@/lib/supabase/shepherd-care-reads";
+import type { OverShepherdListRow } from "@/lib/supabase/shepherd-coverage-reads";
 import {
   buildShepherdCareViewHref,
   type CoverageFilter,

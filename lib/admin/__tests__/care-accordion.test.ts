@@ -20,11 +20,11 @@ import type {
   ShepherdCareStatus,
 } from "@/types/enums";
 import type { Rubric } from "@/lib/admin/health-rubric";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
 import type {
   ActiveShepherdCoverageAssignmentSummary,
   OverShepherdListRow,
-  ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-coverage-reads";
 
 // #373 — the Care accordion model. Pure grouping of Leaders under their
 // Over-Shepherd (coverage assignments are the backbone), with group-name

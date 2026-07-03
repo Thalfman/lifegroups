@@ -27,11 +27,13 @@ import { buildLaunchPlanningSnapshot } from "./launch-planning-snapshot";
 import { buildShepherdCareSummary } from "./shepherd-care-summary";
 import {
   buildCareDirectoryEntries,
-  type ActiveShepherdCoverageAssignmentSummary,
-  type OverShepherdListRow,
   type ShepherdCareDirectoryEntry,
   type ShepherdCareDirectorySummary,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-directory-reads";
+import {
+  type ActiveShepherdCoverageAssignmentSummary,
+  type OverShepherdListRow,
+} from "@/lib/supabase/shepherd-coverage-reads";
 import { EMPTY_ATTENTION_BASELINES } from "@/lib/admin/attention-reset";
 import { churchTodayIso } from "@/lib/shared/church-time";
 import {

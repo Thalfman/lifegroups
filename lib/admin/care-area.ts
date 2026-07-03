@@ -1,10 +1,10 @@
 import { differenceInDaysIso } from "@/lib/supabase/read-core";
+import { type ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
+import { type ShepherdCareRecentInteractionRow } from "@/lib/supabase/shepherd-care-interaction-reads";
 import {
   type CareFollowUpCompletedRow,
   type CareFollowUpDashboardRow,
-  type ShepherdCareDirectoryEntry,
-  type ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-follow-up-reads";
 import { type AdminFollowUpEntry } from "@/lib/supabase/follow-up-reads";
 import type { CareAttentionItem } from "@/lib/admin/shepherd-care-dashboard";
 import { formatDueLabel } from "@/lib/admin/care-temporal";

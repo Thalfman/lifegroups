@@ -6,11 +6,11 @@
 // hardcoding counts that drift when the rule changes.
 
 import type { ReadResult } from "@/lib/supabase/read-core";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
 import type {
   ActiveShepherdCoverageAssignmentSummary,
   OverShepherdListRow,
-  ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-coverage-reads";
 import {
   buildShepherdCareDashboardModel,
   countAllAttentionItems,

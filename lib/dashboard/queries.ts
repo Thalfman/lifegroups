@@ -1,10 +1,12 @@
 import {
-  fetchActiveShepherdCoverageAssignmentsForAdmin,
-  fetchOverShepherdsForAdmin,
   fetchShepherdCareDirectoryRowsForAdmin,
   buildCareDirectoryEntries,
   type ShepherdCareDirectoryEntry,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-directory-reads";
+import {
+  fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchOverShepherdsForAdmin,
+} from "@/lib/supabase/shepherd-coverage-reads";
 import { type LeaderFollowUpRow } from "@/lib/supabase/follow-up-reads";
 import {
   fetchActiveGroupCount,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeNeedsAttention,
   type ShepherdCareDirectorySummary,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-care-directory-reads";
 
 const TODAY = "2026-05-30";
 const RECENT = "2026-05-28"; // 2 days ago -> fresh contact, no touchpoint due

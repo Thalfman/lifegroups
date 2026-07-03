@@ -3,19 +3,25 @@ import { measureReadBundle } from "@/lib/observability/read-timing";
 import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
-  fetchActiveShepherdCoverageAssignmentsForAdmin,
-  fetchOutstandingCareFollowUpsForAdmin,
-  fetchOverShepherdsForAdmin,
-  fetchRecentShepherdCareInteractionsForAdmin,
-  fetchRecentlyCompletedCareFollowUpsForAdmin,
   fetchShepherdCareDirectoryForAdmin,
-  type ActiveShepherdCoverageAssignmentSummary,
+  type ShepherdCareDirectoryEntry,
+} from "@/lib/supabase/shepherd-care-directory-reads";
+import {
+  fetchRecentShepherdCareInteractionsForAdmin,
+  type ShepherdCareRecentInteractionRow,
+} from "@/lib/supabase/shepherd-care-interaction-reads";
+import {
+  fetchOutstandingCareFollowUpsForAdmin,
+  fetchRecentlyCompletedCareFollowUpsForAdmin,
   type CareFollowUpCompletedRow,
   type CareFollowUpDashboardRow,
+} from "@/lib/supabase/shepherd-care-follow-up-reads";
+import {
+  fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchOverShepherdsForAdmin,
+  type ActiveShepherdCoverageAssignmentSummary,
   type OverShepherdListRow,
-  type ShepherdCareDirectoryEntry,
-  type ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/shepherd-care-reads";
+} from "@/lib/supabase/shepherd-coverage-reads";
 import { fetchAllGroupLeaders } from "@/lib/supabase/group-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
