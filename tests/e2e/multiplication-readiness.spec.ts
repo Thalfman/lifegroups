@@ -57,7 +57,7 @@ const CHECKED = ["12+ members", "Shepherd willing", "Need for similar group"];
 const UNCHECKED = ["3+ years", "Co-Shepherd 1+ yr"];
 
 test.describe("Multiplication-readiness assessment pipeline", () => {
-  test("Ministry Admin locks in a candidate with a readiness assessment: the Pipeline reflects it without a reload and it survives one", async ({
+  test("Ministry Admin locks in a candidate with a readiness assessment: the recorded grid state round-trips and survives reloads", async ({
     page,
   }) => {
     test.skip(
