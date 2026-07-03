@@ -38,8 +38,10 @@ const CALENDAR_LINK = /^Calendar for /;
 
 async function signInAsLeader(page: Page): Promise<void> {
   await page.goto("/login", { waitUntil: "networkidle" });
-  await page.getByLabel("Email").fill(EMAIL!);
-  await page.getByLabel("Password").fill(PASSWORD!);
+  // exact: true, matching harness.ts's signIn — a bare "Password" label match
+  // also catches the "Show password" toggle button (strict-mode violation).
+  await page.getByLabel("Email", { exact: true }).fill(EMAIL!);
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD!);
   await page.getByRole("button", { name: "Sign in" }).click();
   // Leave the login route on success; then land on the dashboard explicitly so
   // we don't depend on the post-login redirect target.
