@@ -129,9 +129,17 @@ describe("fitness: every write action's revalidate-path set is pinned", () => {
       (key) => !(key in entries)
     );
     const present = new Set(ACTION_FILES.map((f) => f.relPath));
+    // A file revalidates when it has a `#direct` entry OR now declares runner
+    // specs — either way its exemption is stale.
+    const specFiles = new Set(
+      ACTION_FILES.filter((f) =>
+        /\bname:\s*["'][a-z0-9_]+(?:\.[a-z0-9_]+)+["']/.test(f.text)
+      ).map((f) => f.relPath)
+    );
     const staleExempt = Object.keys(EXEMPT).filter(
       (p) =>
         !present.has(p) ||
+        specFiles.has(p) ||
         Object.keys(entries).some((k) => k === `file:${p}#direct`)
     );
     expect(

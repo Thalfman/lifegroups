@@ -28,6 +28,15 @@ describe("revalidateValueExtent", () => {
     );
   });
 
+  it("terminates at the first depth-0 comma after an inline template literal", () => {
+    const text =
+      'revalidate: (value) => [PATHS, `/admin/groups/${value.group_id}`],\n  noDataError: "nope",';
+    const extent = revalidateValueExtent(text, "revalidate:".length);
+    expect(extent).toBe(
+      " (value) => [PATHS, `/admin/groups/${value.group_id}`]"
+    );
+  });
+
   it("ignores commas and braces inside strings and template expressions", () => {
     const text =
       'revalidate: (v) => [`/a/${v.x ? v.y : v.z}`, "/b,c", { path: "/d", type: "page" }],';
@@ -118,6 +127,62 @@ describe("extractRevalidateFingerprints", () => {
       "/admin/x",
       "page:/admin/x/[id]",
     ]);
+  });
+
+  it("does not leak a later spec's paths into a template-bearing spec", () => {
+    const { entries, errors } = extractRevalidateFingerprints([
+      file(
+        "app/x/actions.ts",
+        [
+          `const FIRST = {`,
+          `  name: "admin.x.first",`,
+          `  revalidate: (value) => ["/admin/x", \`/admin/x/\${value.id}\`],`,
+          `  noDataError: "nope",`,
+          `};`,
+          ``,
+          `const SECOND = {`,
+          `  name: "admin.x.second",`,
+          `  revalidate: () => ["/admin/y"],`,
+          `};`,
+        ].join("\n")
+      ),
+    ]);
+    expect(errors).toEqual([]);
+    expect(entries["admin.x.first"]).toEqual(["/admin/x", "/admin/x/${*}"]);
+    expect(entries["admin.x.second"]).toEqual(["/admin/y"]);
+  });
+
+  it("keeps the type prefix when a typed direct call passes a const path", () => {
+    const { entries, errors } = extractRevalidateFingerprints([
+      file(
+        "app/y/actions.ts",
+        [
+          `const DETAIL = "/admin/x/[id]";`,
+          ``,
+          `export async function act() {`,
+          `  revalidatePath(DETAIL, "page");`,
+          `}`,
+        ].join("\n")
+      ),
+    ]);
+    expect(errors).toEqual([]);
+    expect(entries["file:app/y/actions.ts#direct"]).toEqual([
+      "page:/admin/x/[id]",
+    ]);
+  });
+
+  it("errors on a typed direct call with an unresolvable identifier", () => {
+    const { errors } = extractRevalidateFingerprints([
+      file(
+        "app/y/actions.ts",
+        [
+          `export async function act(target) {`,
+          `  revalidatePath(target, "page");`,
+          `}`,
+        ].join("\n")
+      ),
+    ]);
+    expect(errors.some((e) => e.includes("cannot resolve"))).toBe(true);
   });
 
   it("keys hand-rolled revalidatePath callers as file:<path>#direct", () => {

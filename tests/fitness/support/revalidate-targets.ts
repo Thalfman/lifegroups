@@ -42,6 +42,10 @@ const DIRECT_CALL_RE = /\brevalidatePath\(/;
 const DIRECT_TYPED_CALL_RE =
   /\brevalidatePath\(\s*(["'`])([^"'`]*)\1\s*,\s*["'](page|layout)["']\s*\)/;
 
+/** Two-arg identifier form: `revalidatePath(DETAIL, "page")`. */
+const DIRECT_TYPED_IDENT_CALL_RE =
+  /\brevalidatePath\(\s*([A-Za-z_$][\w$]*)\s*,\s*["'](page|layout)["']\s*\)/;
+
 /** `{ path: "...", type: "page" }` typed target (either property order). */
 const TYPED_TARGET_RES = [
   /\{\s*path:\s*(["'`])([^"'`]+)\1\s*,\s*type:\s*["'](page|layout)["']\s*,?\s*\}/g,
@@ -105,7 +109,10 @@ export function revalidateValueExtent(text: string, start: number): string {
       if (c === "\\") i += 1;
       else if (c === "`") stack.pop();
       else if (c === "$" && text[i + 1] === "{") {
+        // Record the depth BEFORE the interpolation brace, then count it, so
+        // the matching `}` below pops back into the template string.
         stack.push({ kind: "${", depth });
+        depth += 1;
         i += 1;
       }
       continue;
@@ -119,9 +126,13 @@ export function revalidateValueExtent(text: string, start: number): string {
     } else if (c === ")" || c === "]") {
       depth -= 1;
     } else if (c === "}") {
+      if (top?.kind === "${" && depth - 1 === top.depth) {
+        stack.pop();
+        depth -= 1;
+        continue;
+      }
       if (depth === 0) return text.slice(start, i);
       depth -= 1;
-      if (top?.kind === "${" && depth === top.depth) stack.pop();
     } else if (c === "," && depth === 0) {
       return text.slice(start, i);
     }
@@ -281,6 +292,31 @@ export function extractRevalidateFingerprints(
           `${file.relPath} (direct)`
         );
         directPaths.add(`${typed[3]}:${normalized}`);
+        continue;
+      }
+      // Typed call with an identifier path — resolve it and keep the type
+      // prefix, so a const wildcard target never degrades to an exact path.
+      const typedIdent = DIRECT_TYPED_IDENT_CALL_RE.exec(line);
+      if (typedIdent) {
+        const harvest: Harvest = { paths: new Set(), errors: [] };
+        harvestBlock(
+          declarations.get(typedIdent[1]) ?? "",
+          declarations,
+          new Set([typedIdent[1]]),
+          harvest,
+          `${file.relPath} (direct)`
+        );
+        errors.push(...harvest.errors);
+        if (harvest.paths.size === 0) {
+          errors.push(
+            `${file.relPath}: typed revalidatePath call whose path ` +
+              `identifier the extractor cannot resolve: ${line.trim()}`
+          );
+          continue;
+        }
+        for (const p of harvest.paths) {
+          directPaths.add(p.includes(":/") ? p : `${typedIdent[2]}:${p}`);
+        }
         continue;
       }
       const harvest: Harvest = { paths: new Set(), errors: [] };

@@ -209,23 +209,16 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
     "/admin/shepherd-care/over-shepherds/${*}",
     "page:/admin/shepherd-care/[profileId]",
   ],
-  "admin.people.add_person_to_group": [
-    "/admin/groups/${*}",
-    "/admin/people",
-    "/admin/people/member/${*}",
-    "/admin/people/profile/${*}",
-  ],
+  "admin.people.add_person_to_group": ["/admin/groups/${*}", "/admin/people"],
   "admin.people.assign_leader_to_group": [
     "/admin/groups/${*}",
     "/admin/people",
-    "/admin/people/member/${*}",
     "/admin/people/profile/${*}",
   ],
   "admin.people.assign_member_to_group": [
     "/admin/groups/${*}",
     "/admin/people",
     "/admin/people/member/${*}",
-    "/admin/people/profile/${*}",
   ],
   "admin.people.change_leader_role": ["/admin/people"],
   "admin.people.create_leader": ["/admin/people"],
@@ -240,7 +233,6 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
   "admin.people.unassign_leader_from_group": [
     "/admin/groups/${*}",
     "/admin/people",
-    "/admin/people/member/${*}",
     "/admin/people/profile/${*}",
   ],
   "admin.plan.add_group_type": ["/admin", "/admin/multiply", "/admin/plan"],
@@ -393,11 +385,7 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
   ],
   "leader.care_note.write": ["/leader", "/leader/${*}/care"],
   "leader.checkin.quick_did_not_meet": ["/leader"],
-  "leader.checkin.submit": [
-    "/leader",
-    "/leader/${*}/checkin",
-    "/leader?checkin=saved",
-  ],
+  "leader.checkin.submit": ["/leader", "/leader/${*}/checkin"],
   "leader.follow_up.update_status": ["/admin", "/admin/follow-ups", "/leader"],
   "leader.prayer_request.write": ["/leader", "/leader/${*}/care"],
   "over_shepherd.log_broad_note": ["/over-shepherd/${*}"],
@@ -428,7 +416,6 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
   "super_admin.reset_audit_logs": ["/admin/super-admin"],
   "super_admin.reset_care_attention": [
     "/admin",
-    "/admin/group-health",
     "/admin/shepherd-care",
     "/admin/shepherd-care/${*}",
     "/admin/super-admin",

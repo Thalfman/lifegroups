@@ -241,10 +241,11 @@ _Avoid_: Launch planning (the superseded framing), split; cell (retired unit).
 
 **Multiplication Pillar**:
 A computed readiness signal assessed per group type, each in its **natural
-unit** (not all A–F): **Interest** (a count of `interested` prospects whose
-desired group type matches), **Capacity** (a derived issue / no-issue — see
-Derived Capacity), **Group Health** and **Leader Health** (A–F roll-ups of that
-type's grades over the Ministry Year). The standalone **overflow** pillar was dropped (#401), folded
+unit** (not all A–F): **Interest** (a count of `interested` Prospects — note
+the **Desired group type** stays capture/display-only and does **not** feed
+this count or the trigger, see that entry), **Capacity** (a derived issue /
+no-issue — see Derived Capacity), **Group Health** and **Leader Health** (A–F
+roll-ups of that type's grades over the Ministry Year). The standalone **overflow** pillar was dropped (#401), folded
 into Capacity Facet A. There is no single overall multiplication letter — the
 pillars stand on their own.
 _Avoid_: Metric, score, criterion (that word belongs to a rubric's inputs);
