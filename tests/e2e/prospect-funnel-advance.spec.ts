@@ -58,10 +58,24 @@ test.describe("Interest Funnel advance pipeline", () => {
     await addButton.click();
     // Success surfaces as the (auto-dismissing, 5s) "Prospect added." flash or
     // as the new card once revalidation lands — accept either, .first()
-    // because both can be visible at once.
-    await expect(
-      page.getByText("Prospect added.").or(main.getByText(name)).first()
-    ).toBeVisible();
+    // because both can be visible at once. The create is SETUP for the
+    // transition under test, so it tolerates the CI stack's intermittent
+    // >30s server-action stalls (#839): if no live signal lands, reload —
+    // the RPC commits before the response stream stalls, so the card must
+    // render from the fresh force-dynamic read (and if it doesn't, the POST
+    // never reached the server, which is exactly what #839 wants to know).
+    const liveCreate = await page
+      .getByText("Prospect added.")
+      .or(main.getByText(name))
+      .first()
+      .waitFor({ state: "visible", timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!liveCreate) {
+      console.log("[e2e] prospect create: no live signal in 15s, reloading");
+      await page.reload();
+    }
+    await expect(main.getByText(name)).toBeVisible();
 
     // The card is the innermost <div> containing both the unique name and a
     // "Move to" control (the name-only <div> has no select; ancestor wrappers
@@ -74,10 +88,14 @@ test.describe("Interest Funnel advance pipeline", () => {
 
     // Advance Interested → Matched through the real card form. Matched
     // requires a group: picking it reveals the (unlabelled) group_id select,
-    // which doubles as the proof React processed the selection.
-    await card.getByLabel("Move to").selectOption("matched");
+    // which doubles as the proof React processed the selection — retried
+    // because the fallback-reload path above lands on a freshly-loaded page
+    // whose controlled select ignores a pre-hydration selection.
     const groupSelect = card.locator('select[name="group_id"]');
-    await expect(groupSelect).toBeVisible();
+    await expect(async () => {
+      await card.getByLabel("Move to").selectOption("matched");
+      await expect(groupSelect).toBeVisible({ timeout: 2_000 });
+    }).toPass();
     await groupSelect.selectOption({ label: MATCH_GROUP });
     await card.getByRole("button", { name: "Apply" }).click();
 
