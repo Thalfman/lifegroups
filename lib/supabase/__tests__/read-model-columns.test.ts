@@ -7,10 +7,18 @@ import {
 import {
   fetchAllGroupLeaders,
   fetchAllGroups,
+  fetchGroupRefs,
   fetchGroupsByIds,
+  fetchLeaderGroupsByIds,
   GROUP_COLUMNS,
   GROUP_LEADER_COLUMNS,
 } from "@/lib/supabase/group-reads";
+import {
+  fetchApprenticePickerRefs,
+  fetchLeaderPipelineForAdmin,
+  fetchMultiplicationCandidatesForAdmin,
+} from "@/lib/supabase/multiplication-reads";
+import { fetchRecentUsageEvents } from "@/lib/supabase/super-admin-console-reads";
 import {
   fetchActiveMemberships,
   fetchAllMembers,
@@ -21,6 +29,7 @@ import {
   PROFILE_COLUMNS,
 } from "@/lib/supabase/membership-reads";
 import {
+  fetchGuests,
   fetchNewGuestsForGroupSince,
   GUEST_COLUMNS,
 } from "@/lib/supabase/guest-reads";
@@ -42,9 +51,12 @@ import {
 } from "@/lib/supabase/calendar-reads";
 import {
   APP_SETTINGS_COLUMNS,
+  fetchChurchAttendanceSnapshots,
   fetchGroupHealthRubricSetting,
   fetchGroupMetricSettings,
+  fetchGroupTypeConfigs,
   fetchLaunchPlanningAssumptions,
+  fetchLaunchPlanningScenariosForAdmin,
   fetchMetricDefaults,
   fetchAllGroupMetricSettings,
   GROUP_METRIC_SETTINGS_COLUMNS,
@@ -722,6 +734,94 @@ describe("care-accordion grade-year read column allowlists (#830)", () => {
     ]);
     expect(calls.get("leader_rubric_grades")).toEqual([
       ADMIN_LEADER_RUBRIC_GRADE_YEAR_COLUMNS.select,
+    ]);
+  });
+});
+
+// ── #830 M9: allowlists migrated off raw select strings ─────────────────────
+//
+// These allowlists are module-local columns<Row>() sets, so the pin asserts
+// the select string each live fetcher passes — the same freeze the exported
+// families get above, without re-exporting constants nobody consumes.
+
+describe("raw-string allowlist migrations pass pinned selects (#830 M9)", () => {
+  it("guest directory read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchGuests(client);
+    });
+    expect(calls.get("guests")).toEqual([
+      "id, full_name, email, phone, first_attended_group_id, " +
+        "first_attended_date, pipeline_stage, assigned_group_id, " +
+        "follow_up_owner_id, notes, created_at",
+    ]);
+  });
+
+  it("leader-safe group read stays admin_notes-free", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchLeaderGroupsByIds(client, [UUID_A]);
+    });
+    expect(calls.get("groups")).toEqual([
+      "id, name, lifecycle_status, meeting_day, meeting_time, " +
+        "meeting_frequency, meeting_week_parity",
+    ]);
+    expect(String(calls.get("groups")?.[0])).not.toContain("admin_notes");
+  });
+
+  it("group-ref picker read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchGroupRefs(client);
+    });
+    expect(calls.get("groups")).toEqual([
+      "id, name, lifecycle_status, group_type",
+    ]);
+  });
+
+  it("settings reads: group-type configs, church attendance, scenarios", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchGroupTypeConfigs(client);
+      await fetchChurchAttendanceSnapshots(client);
+      await fetchLaunchPlanningScenariosForAdmin(client);
+    });
+    expect(calls.get("group_type_configs")).toEqual([
+      "group_type, target_count, readiness_rule, in_pipeline",
+    ]);
+    expect(calls.get("church_attendance_snapshots")).toEqual([
+      "id, snapshot_date, attendance_count, note, created_by_profile_id, " +
+        "created_at, updated_at",
+    ]);
+    expect(calls.get("launch_planning_scenarios")).toEqual([
+      "id, name, description, assumptions, is_current, archived_at, " +
+        "created_by, updated_by, created_at, updated_at",
+    ]);
+  });
+
+  it("multiplication reads: candidates, pipeline, picker", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchMultiplicationCandidatesForAdmin(client);
+      await fetchLeaderPipelineForAdmin(client);
+      await fetchApprenticePickerRefs(client);
+    });
+    expect(calls.get("multiplication_candidates")).toEqual([
+      "id, group_id, target_year, status, shepherd_willing, " +
+        "needs_similar_stage, enough_members, established_long_enough, " +
+        "co_shepherd_tenured, notes, successor_designate, meeting_time, " +
+        "leader_pipeline_id, manual_member_count, archived_at, created_by, " +
+        "updated_by, created_at, updated_at",
+    ]);
+    expect(calls.get("leader_pipeline")).toEqual([
+      "id, group_id, display_name, member_id, readiness_stage, " +
+        "expected_ready_on, notes, archived_at, created_by, updated_by, " +
+        "created_at, updated_at",
+      "id, group_id, display_name, readiness_stage",
+    ]);
+  });
+
+  it("super-admin usage-events read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchRecentUsageEvents(client);
+    });
+    expect(calls.get("usage_events")).toEqual([
+      "id, actor_profile_id, event_type, area, created_at",
     ]);
   });
 });

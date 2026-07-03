@@ -84,6 +84,14 @@ export type CareFollowUpDashboardRow = {
   due_date: string | null;
 };
 
+const SHEPHERD_CARE_DASHBOARD_FOLLOW_UP_COLUMNS =
+  columns<CareFollowUpDashboardRow>()(
+    "id",
+    "care_profile_id",
+    "status",
+    "due_date"
+  );
+
 /**
  * Admin-only feed of every OUTSTANDING (not-done) care follow-up across all
  * profiles, used by the SC.3 dashboard to roll up overdue/open tasks per
@@ -95,7 +103,7 @@ export async function fetchOutstandingCareFollowUpsForAdmin(
 ): Promise<ReadResult<CareFollowUpDashboardRow[]>> {
   const { data, error } = await client
     .from("shepherd_care_follow_ups")
-    .select("id, care_profile_id, status, due_date")
+    .select(SHEPHERD_CARE_DASHBOARD_FOLLOW_UP_COLUMNS.select)
     .neq("status", "done")
     // Archived (soft-deleted) follow-ups never surface in the outstanding feed.
     .is("archived_at", null)
@@ -122,6 +130,15 @@ export type CareFollowUpCompletedRow = {
   completed_at: string | null;
 };
 
+const SHEPHERD_CARE_COMPLETED_FOLLOW_UP_COLUMNS =
+  columns<CareFollowUpCompletedRow>()(
+    "id",
+    "care_profile_id",
+    "status",
+    "due_date",
+    "completed_at"
+  );
+
 /**
  * Admin-only feed of recently COMPLETED (done) care follow-ups across all
  * profiles, used by the Care area's Completed tab (#301). Ordered by
@@ -135,7 +152,7 @@ export async function fetchRecentlyCompletedCareFollowUpsForAdmin(
   const limit = options.limit ?? 50;
   const { data, error } = await client
     .from("shepherd_care_follow_ups")
-    .select("id, care_profile_id, status, due_date, completed_at")
+    .select(SHEPHERD_CARE_COMPLETED_FOLLOW_UP_COLUMNS.select)
     .eq("status", "done")
     // Archived (soft-deleted) follow-ups drop out of the completed feed too.
     .is("archived_at", null)

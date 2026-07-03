@@ -163,6 +163,8 @@ function projectCoverageAssignmentRows(
   });
 }
 
+// Raw select string by necessity: columns<Row>() cannot express embed
+// fragments (FK hints + !inner markers), so this stays hand-written.
 const ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT =
   "id, shepherd_profile_id, over_shepherd_id, assigned_at, " +
   "over_shepherd:over_shepherds!shepherd_coverage_assignments_over_shepherd_id_fkey ( id, full_name, active ), " +

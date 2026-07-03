@@ -11,6 +11,28 @@ import {
   type PermanentDeletionItem,
 } from "@/lib/admin/permanent-deletion";
 import type { TombstonesRow } from "@/types/database";
+import { columns } from "./read-core";
+
+const SUPER_ADMIN_TOMBSTONE_COLUMNS = columns<
+  Pick<
+    TombstonesRow,
+    | "id"
+    | "entity_type"
+    | "table_name"
+    | "entity_id"
+    | "row_snapshot"
+    | "deleted_at"
+    | "restored_at"
+  >
+>()(
+  "id",
+  "entity_type",
+  "table_name",
+  "entity_id",
+  "row_snapshot",
+  "deleted_at",
+  "restored_at"
+);
 
 export type PermanentDeletionTargetGroup = {
   entityType: string;
@@ -57,9 +79,7 @@ export async function fetchRecentTombstones(
 ): Promise<RecentTombstone[]> {
   const { data } = await client
     .from("tombstones")
-    .select(
-      "id, entity_type, table_name, entity_id, row_snapshot, deleted_at, restored_at"
-    )
+    .select(SUPER_ADMIN_TOMBSTONE_COLUMNS.select)
     .order("deleted_at", { ascending: false })
     .limit(limit);
 

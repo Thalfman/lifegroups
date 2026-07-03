@@ -66,6 +66,21 @@ type MultiplicationGroupProjection = {
   name: string;
 };
 
+const ADMIN_MULTIPLICATION_GROUP_COLUMNS =
+  columns<MultiplicationGroupProjection>()(
+    "id",
+    "name",
+    "group_type",
+    "launched_on",
+    "lifecycle_status"
+  );
+
+// The linked apprentice's identity + stage for the planner's inline
+// enrichment (see MultiplicationCandidateApprentice).
+const ADMIN_LINKED_APPRENTICE_COLUMNS = columns<
+  Pick<LeaderPipelineRow, "id" | "display_name" | "readiness_stage">
+>()("id", "display_name", "readiness_stage");
+
 // Return the first non-null read error from a set of batched reads, wrapped
 // with its scope, or null when every read succeeded. Collapses the repetitive
 // per-read error guards in `fetchMultiplicationCandidatesForAdmin`.
@@ -162,7 +177,7 @@ export async function fetchMultiplicationCandidatesForAdmin(
       ? Promise.resolve({ data: [], error: null })
       : client
           .from("groups")
-          .select("id, name, group_type, launched_on, lifecycle_status")
+          .select(ADMIN_MULTIPLICATION_GROUP_COLUMNS.select)
           .in("id", groupIds),
     noGroups
       ? Promise.resolve({ data: [], error: null })
@@ -174,7 +189,7 @@ export async function fetchMultiplicationCandidatesForAdmin(
     apprenticeIds.length > 0
       ? client
           .from("leader_pipeline")
-          .select("id, display_name, readiness_stage")
+          .select(ADMIN_LINKED_APPRENTICE_COLUMNS.select)
           .in("id", apprenticeIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
@@ -314,12 +329,21 @@ export type ApprenticePickerRef = Pick<
   "id" | "group_id" | "display_name" | "readiness_stage"
 >;
 
+// Shared by the candidate picker and the capacity-board apprentice read —
+// both need exactly the identity/group/stage projection.
+const ADMIN_APPRENTICE_PICKER_COLUMNS = columns<ApprenticePickerRef>()(
+  "id",
+  "group_id",
+  "display_name",
+  "readiness_stage"
+);
+
 export async function fetchApprenticePickerRefs(
   client: ReadClient
 ): Promise<ReadResult<{ apprentice: ApprenticePickerRef }[]>> {
   const { data, error } = await client
     .from("leader_pipeline")
-    .select("id, group_id, display_name, readiness_stage")
+    .select(ADMIN_APPRENTICE_PICKER_COLUMNS.select)
     .is("archived_at", null)
     .order("created_at", { ascending: true });
   if (error) {
@@ -363,7 +387,7 @@ export async function fetchCapacityBoardExtras(
   const [apprenticesRes, candidatesRes, groupsRes] = await Promise.all([
     client
       .from("leader_pipeline")
-      .select("id, group_id, display_name, readiness_stage")
+      .select(ADMIN_APPRENTICE_PICKER_COLUMNS.select)
       .is("archived_at", null),
     client
       .from("multiplication_candidates")

@@ -19,7 +19,7 @@ import type {
   ShepherdCareInteractionsRow,
   ShepherdCareProfilesRow,
 } from "@/types/database";
-import { type ReadResult } from "@/lib/supabase/read-core";
+import { columns, type ReadResult } from "@/lib/supabase/read-core";
 import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
 import {
   fetchCareNotesForSubject,
@@ -57,6 +57,11 @@ export type OverShepherdCareProfile = Omit<
   "admin_summary"
 >;
 
+// The covered-Shepherd identity projection for the directory's profiles read.
+const OVER_SHEPHERD_COVERED_PROFILE_COLUMNS = columns<
+  Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">
+>()("id", "full_name", "email", "role", "status");
+
 /**
  * Directory of the Shepherds an Over-Shepherd actively covers, joined with
  * each Shepherd's care summary (or null when no care row exists yet). Scoped
@@ -83,7 +88,7 @@ export async function fetchOverShepherdCareDirectory(
   const [profilesQuery, careQuery] = await Promise.all([
     client
       .from("profiles")
-      .select("id, full_name, email, role, status")
+      .select(OVER_SHEPHERD_COVERED_PROFILE_COLUMNS.select)
       .in("id", coveredShepherdIds)
       .eq("status", "active")
       .order("full_name", { ascending: true }),

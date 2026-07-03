@@ -60,12 +60,19 @@ export type GroupRef = Pick<
   "id" | "name" | "lifecycle_status" | "group_type"
 >;
 
+const ADMIN_GROUP_REF_COLUMNS = columns<GroupRef>()(
+  "id",
+  "name",
+  "lifecycle_status",
+  "group_type"
+);
+
 export async function fetchGroupRefs(
   client: ReadClient
 ): Promise<ReadResult<GroupRef[]>> {
   const { data, error } = await client
     .from("groups")
-    .select("id, name, lifecycle_status, group_type")
+    .select(ADMIN_GROUP_REF_COLUMNS.select)
     .order("name", { ascending: true });
   if (error) return { data: null, error: wrapError("fetchGroupRefs", error) };
   return { data: (data ?? []) as GroupRef[], error: null };
