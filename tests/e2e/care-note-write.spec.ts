@@ -60,9 +60,12 @@ test.describe("Care Note write pipeline", () => {
     // AND author-reads-own-row RLS holds with the grant OFF. (The action
     // revalidates only /admin/* paths, so the reload is what refreshes this
     // surface.)
+    // Scope to <main>: the streamed shell can leave a hidden duplicate of the
+    // page body outside it after a reload, which trips strict mode.
     await page.reload();
-    await expect(page.getByText(/Your care notes \(\d+\)/)).toBeVisible();
-    await expect(page.getByText(body)).toBeVisible();
+    const authorView = page.getByRole("main");
+    await expect(authorView.getByText(/Your care notes \(\d+\)/)).toBeVisible();
+    await expect(authorView.getByText(body)).toBeVisible();
 
     // Visibility ladder: the Ministry Admin, with this Leader's transparency
     // grant OFF (seed default), must see the sealed notice and NOT the body —
@@ -77,8 +80,9 @@ test.describe("Care Note write pipeline", () => {
       const adminPage = await adminContext.newPage();
       await signIn(adminPage, creds.admin.email!, creds.admin.password!);
       await adminPage.goto(`/admin/shepherd-care/${profileId}`);
+      const adminView = adminPage.getByRole("main");
       await expect(
-        adminPage.getByText("Care notes & prayer requests")
+        adminView.getByText("Care notes & prayer requests")
       ).toBeVisible();
       // The sealed assertion assumes the seeded default (grant OFF). Nothing
       // wipes note_transparency_grants between runs against a persistent
@@ -96,9 +100,7 @@ test.describe("Care Note write pipeline", () => {
         ).toBeVisible();
         await adminPage.reload();
       }
-      await expect(
-        adminPage.getByText(/sealed to their author/).first()
-      ).toBeVisible();
+      await expect(adminView.getByText(/sealed to their author/)).toBeVisible();
       await expect(adminPage.getByText(body)).toHaveCount(0);
     } finally {
       await adminContext.close();
