@@ -47,7 +47,7 @@ export const ADMIN_ROUTE_REGISTRY: readonly RouteEntry[] = [
   {
     path: "/admin/plan",
     status: "active",
-    note: "Plan — the Interest Funnel.",
+    note: "Plan — the Interest Funnel (ADR 0016 spine). NOT /admin/planning, the off-nav pre-pivot launch/calendar host.",
   },
   {
     path: "/admin/multiply",
@@ -106,7 +106,7 @@ export const ADMIN_ROUTE_REGISTRY: readonly RouteEntry[] = [
   {
     path: "/admin/planning",
     status: "active",
-    note: "Flag-gated nav area (nav_show_planning), seeded OFF — has its own nav entry, so it is not an alias. PRODUCT REVIEW: candidate to retire into Multiply.",
+    note: "Flag-gated nav area (nav_show_planning), seeded OFF — has its own nav entry, so it is not an alias. NOT /admin/plan (the Interest Funnel, ADR 0016): this is the pre-pivot Job-2 launch/calendar host (ADR 0013), KEPT off-nav per ADR 0033 as the canonical Planning host for its aliases. Consolidating it into Multiply needs a new ADR superseding 0033 — do not retire it from a registry note.",
   },
 
   // --- Aliases (no nav entry; 200-resolve; mark a canonical area active) ----

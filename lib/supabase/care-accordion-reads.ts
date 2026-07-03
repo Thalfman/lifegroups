@@ -1,17 +1,18 @@
 import "server-only";
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
-import type {
-  GroupHealthLetter,
-  LeaderHealthLetter,
-  GroupHealthOverrideScope,
-} from "@/types/enums";
+import type { GroupHealthLetter, LeaderHealthLetter } from "@/types/enums";
 import {
+  columns,
   wrapError,
   decodeNumericRecord,
   type ReadResult,
 } from "@/lib/supabase/read-core";
-import { fetchHealthRubric } from "@/lib/supabase/rubric-grade-reads";
+import {
+  fetchHealthRubric,
+  type PersistedGroupGrade,
+  type PersistedLeaderGrade,
+} from "@/lib/supabase/rubric-grade-reads";
 import { fetchLeaderHealthRubric } from "@/lib/admin/leader-health-read";
 import { decodeRubricCriteria, type Rubric } from "@/lib/admin/health-rubric";
 import {
@@ -30,18 +31,33 @@ import {
 // slots in a fixed handful of admin-only reads — never one read per leader.
 //
 // Admin-only data; these run behind the admin layout guard and the tables'
-// admin-only RLS. The grade tables are not in the generated supabase schema
-// types, so their selects are cast here — the same trust seam the per-leader
-// grade reads use. The note/prayer/grant reads go through the typed client and
-// return only what the caller's RLS admits (sealed Leaders contribute nothing).
+// admin-only RLS. The grade tables are in the typed schema (types/database.ts ›
+// group_rubric_grades / leader_rubric_grades), so the selects are fully typed —
+// no `as never` casts. The note/prayer/grant reads go through the typed client
+// and return only what the caller's RLS admits (sealed Leaders contribute
+// nothing).
 
-type PersistedLeaderGrade = {
-  profile_id: string;
-  criterion_scores: unknown;
-  override_letter: LeaderHealthLetter | null;
-  override_scope: GroupHealthOverrideScope | null;
-  override_period_month: string | null;
-};
+// The year readers select a deliberately narrower slice of the raw grade
+// shapes than the single-row readers (rubric-grade-reads.ts) — just what the
+// letter resolvers need — so they pin their own allowlists rather than
+// widening the read to reuse the 8-column ones.
+type LeaderGradeYearRow = Pick<
+  PersistedLeaderGrade,
+  | "profile_id"
+  | "criterion_scores"
+  | "override_letter"
+  | "override_scope"
+  | "override_period_month"
+>;
+
+export const ADMIN_LEADER_RUBRIC_GRADE_YEAR_COLUMNS =
+  columns<LeaderGradeYearRow>()(
+    "profile_id",
+    "criterion_scores",
+    "override_letter",
+    "override_scope",
+    "override_period_month"
+  );
 
 // All persisted Leader-Health Grade rows for a ministry year (one per graded
 // leader), reduced to what the letter resolver needs.
@@ -49,20 +65,18 @@ export async function fetchLeaderRubricGradesForYear(
   client: AppSupabaseClient,
   ministryYear: number
 ): Promise<ReadResult<LeaderHealthGradeInput[]>> {
-  const { data, error } = await (client as AppSupabaseClient)
-    .from("leader_rubric_grades" as never)
-    .select(
-      "profile_id, criterion_scores, override_letter, override_scope, override_period_month" as never
-    )
-    .eq("ministry_year" as never, ministryYear as never);
+  const { data, error } = await client
+    .from("leader_rubric_grades")
+    .select(ADMIN_LEADER_RUBRIC_GRADE_YEAR_COLUMNS.select)
+    .eq("ministry_year", ministryYear)
+    .returns<LeaderGradeYearRow[]>();
   if (error)
     return {
       data: null,
       error: wrapError("fetchLeaderRubricGradesForYear", error),
     };
-  const rows = (data ?? []) as unknown as PersistedLeaderGrade[];
   return {
-    data: rows.map((r) => ({
+    data: (data ?? []).map((r) => ({
       profile_id: r.profile_id,
       criterion_scores: decodeNumericRecord(r.criterion_scores),
       override_letter: r.override_letter,
@@ -73,13 +87,23 @@ export async function fetchLeaderRubricGradesForYear(
   };
 }
 
-type PersistedGroupGrade = {
-  group_id: string;
-  criterion_scores: unknown;
-  override_letter: GroupHealthLetter | null;
-  override_scope: GroupHealthOverrideScope | null;
-  override_period_month: string | null;
-};
+type GroupGradeYearRow = Pick<
+  PersistedGroupGrade,
+  | "group_id"
+  | "criterion_scores"
+  | "override_letter"
+  | "override_scope"
+  | "override_period_month"
+>;
+
+export const ADMIN_GROUP_RUBRIC_GRADE_YEAR_COLUMNS =
+  columns<GroupGradeYearRow>()(
+    "group_id",
+    "criterion_scores",
+    "override_letter",
+    "override_scope",
+    "override_period_month"
+  );
 
 // All persisted Group-Health Grade rows for a ministry year (one per graded
 // group), reduced to what the letter resolver needs.
@@ -87,20 +111,18 @@ export async function fetchGroupRubricGradesForYear(
   client: AppSupabaseClient,
   ministryYear: number
 ): Promise<ReadResult<GroupHealthGradeInput[]>> {
-  const { data, error } = await (client as AppSupabaseClient)
-    .from("group_rubric_grades" as never)
-    .select(
-      "group_id, criterion_scores, override_letter, override_scope, override_period_month" as never
-    )
-    .eq("ministry_year" as never, ministryYear as never);
+  const { data, error } = await client
+    .from("group_rubric_grades")
+    .select(ADMIN_GROUP_RUBRIC_GRADE_YEAR_COLUMNS.select)
+    .eq("ministry_year", ministryYear)
+    .returns<GroupGradeYearRow[]>();
   if (error)
     return {
       data: null,
       error: wrapError("fetchGroupRubricGradesForYear", error),
     };
-  const rows = (data ?? []) as unknown as PersistedGroupGrade[];
   return {
-    data: rows.map((r) => ({
+    data: (data ?? []).map((r) => ({
       group_id: r.group_id,
       criterion_scores: decodeNumericRecord(r.criterion_scores),
       override_letter: r.override_letter,

@@ -86,5 +86,6 @@ has been archived.
 Everything not on the North-Star path — the former blueprint, the old product roadmap,
 the feature backlog, per-feature specs, process docs, and historical phase specs — has
 been removed from the tree and lives in git history (`git log -- docs/archive` to list
-it, `git show <commit>:docs/archive/<file>` to read one). It is history, not the source
-of truth for what to build next.
+it, `git show <commit>:docs/archive/<file>` to read one). The former root-level `okf/`
+parallel doc tree and `plans/` worklog were retired the same way (#830; `git log -- okf`
+/ `git log -- plans`). It is history, not the source of truth for what to build next.

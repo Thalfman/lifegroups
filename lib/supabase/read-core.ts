@@ -65,6 +65,33 @@ export function unwrapEmbed<T>(value: T | T[] | null | undefined): T | null {
   return value ?? null;
 }
 
+/**
+ * The shape PostgREST gives an embedded to-one relation: the object itself, a
+ * one-element array, or null (see `unwrapEmbed`). Join-row types spell their
+ * embeds with this alias instead of re-declaring the three-arm union inline.
+ */
+export type EmbeddedToOne<T> = T | T[] | null;
+
+/**
+ * Project raw join rows into a typed output, skipping rows the projection
+ * rejects (returns null for) — a missing embed, an empty note body. The reads
+ * seam used to re-spell this loop / unwrap / null-skip / push dance in every
+ * projector that flattens a join; the per-site skip conditions stay in each
+ * `project` closure, this helper owns only the iteration. Order is preserved,
+ * and a `null`/`undefined` row set projects to an empty list.
+ */
+export function projectJoinRows<In, Out>(
+  rows: readonly In[] | null | undefined,
+  project: (row: In) => Out | null
+): Out[] {
+  const out: Out[] = [];
+  for (const row of rows ?? []) {
+    const projected = project(row);
+    if (projected !== null) out.push(projected);
+  }
+  return out;
+}
+
 // The Supabase filter builder a `fetchByIds` refinement receives. Derived from
 // the live client so the helper tracks the installed `@supabase/postgrest-js`
 // surface (`.eq`, `.is`, `.order`, …) without importing the transitive package

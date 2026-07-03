@@ -4,6 +4,7 @@ import type { FollowUpsRow } from "@/types/database";
 import {
   columns,
   fetchByIds,
+  projectJoinRows,
   unwrapEmbed,
   type ReadClient,
   type RowOf,
@@ -33,6 +34,36 @@ describe("unwrapEmbed — PostgREST embed normalisation", () => {
     expect(unwrapEmbed(null)).toBeNull();
     expect(unwrapEmbed(undefined)).toBeNull();
     expect(unwrapEmbed([])).toBeNull();
+  });
+});
+
+// ── projectJoinRows (#830 M10) ───────────────────────────────────────────────
+
+describe("projectJoinRows — join projection with per-row skip", () => {
+  it("projects rows in order", () => {
+    const out = projectJoinRows([1, 2, 3], (n) => n * 10);
+    expect(out).toEqual([10, 20, 30]);
+  });
+
+  it("drops rows the projection rejects, keeping the rest in order", () => {
+    const out = projectJoinRows(
+      [
+        { id: "a", embed: { name: "A" } },
+        { id: "b", embed: null },
+        { id: "c", embed: { name: "C" } },
+      ],
+      (r) => (r.embed === null ? null : { id: r.id, name: r.embed.name })
+    );
+    expect(out).toEqual([
+      { id: "a", name: "A" },
+      { id: "c", name: "C" },
+    ]);
+  });
+
+  it("projects empty, null, and undefined row sets to an empty list", () => {
+    expect(projectJoinRows([], () => 1)).toEqual([]);
+    expect(projectJoinRows(null, () => 1)).toEqual([]);
+    expect(projectJoinRows(undefined, () => 1)).toEqual([]);
   });
 });
 

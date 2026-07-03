@@ -5,8 +5,10 @@ import type {
 } from "@/types/database";
 import {
   columns,
+  projectJoinRows,
   unwrapEmbed,
   wrapError,
+  type EmbeddedToOne,
   type ReadClient,
   type ReadResult,
 } from "./read-core";
@@ -129,23 +131,25 @@ export async function fetchOverShepherdByIdForAdmin(
   return { data: data as OverShepherdsRow, error: null };
 }
 
+type CoverageAssignmentJoinRow = {
+  id: string;
+  shepherd_profile_id: string;
+  over_shepherd_id: string;
+  assigned_at: string;
+  over_shepherd: EmbeddedToOne<{
+    id: string;
+    full_name: string;
+    active: boolean;
+  }>;
+};
+
 function projectCoverageAssignmentRows(
   rows: unknown[]
 ): ActiveShepherdCoverageAssignmentSummary[] {
-  const summaries: ActiveShepherdCoverageAssignmentSummary[] = [];
-  for (const r of rows as Array<{
-    id: string;
-    shepherd_profile_id: string;
-    over_shepherd_id: string;
-    assigned_at: string;
-    over_shepherd:
-      | { id: string; full_name: string; active: boolean }
-      | { id: string; full_name: string; active: boolean }[]
-      | null;
-  }>) {
+  return projectJoinRows(rows as CoverageAssignmentJoinRow[], (r) => {
     const embedded = unwrapEmbed(r.over_shepherd);
-    if (embedded === null) continue;
-    summaries.push({
+    if (embedded === null) return null;
+    return {
       id: r.id,
       shepherd_profile_id: r.shepherd_profile_id,
       over_shepherd_id: r.over_shepherd_id,
@@ -155,9 +159,8 @@ function projectCoverageAssignmentRows(
         full_name: embedded.full_name,
         active: embedded.active,
       },
-    });
-  }
-  return summaries;
+    };
+  });
 }
 
 const ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT =
@@ -281,16 +284,17 @@ export async function fetchShepherdsCoveredByOverShepherdForAdmin(
     shepherd_profile_id: string;
     over_shepherd_id: string;
     assigned_at: string;
-    shepherd:
-      | { id: string; full_name: string; role: string; status: string }
-      | { id: string; full_name: string; role: string; status: string }[]
-      | null;
+    shepherd: EmbeddedToOne<{
+      id: string;
+      full_name: string;
+      role: string;
+      status: string;
+    }>;
   }>;
-  const out: ShepherdCoveredByOverShepherd[] = [];
-  for (const r of rows) {
+  const out = projectJoinRows(rows, (r) => {
     const embedded = unwrapEmbed(r.shepherd);
-    if (embedded === null) continue;
-    out.push({
+    if (embedded === null) return null;
+    return {
       assignment: {
         id: r.id,
         shepherd_profile_id: r.shepherd_profile_id,
@@ -298,8 +302,8 @@ export async function fetchShepherdsCoveredByOverShepherdForAdmin(
         assigned_at: r.assigned_at,
       },
       shepherd: { id: embedded.id, full_name: embedded.full_name },
-    });
-  }
+    };
+  });
   out.sort((a, b) => a.shepherd.full_name.localeCompare(b.shepherd.full_name));
   return { data: out, error: null };
 }
