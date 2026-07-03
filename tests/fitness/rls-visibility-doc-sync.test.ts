@@ -27,16 +27,21 @@ describe("fitness: RLS_VISIBILITY.md stays in sync with the enforced matrix", ()
 
   it("names every table classified by the sweep-test MATRIX", () => {
     const text = doc?.text ?? "";
+    // Match the doc's backtick-wrapped convention (`table_name`), not a raw
+    // substring — a bare includes() would false-pass on names contained in
+    // longer ones (`members` inside `group_memberships`, `audit_events`
+    // inside `audit_events_archive`), letting a removed entry go unnoticed.
     const missing = [...new Set(MATRIX.map((entry) => entry.table))]
       .sort()
-      .filter((table) => !text.includes(table));
+      .filter((table) => !text.includes(`\`${table}\``));
     expect(
       missing,
       missing.length === 0
         ? ""
         : `These MATRIX table(s) are classified by ` +
-            `lib/admin/__tests__/rls-visibility-matrix.ts but never mentioned ` +
-            `in ${DOC_PATH} — add each to its visibility-class section:\n` +
+            `lib/admin/__tests__/rls-visibility-matrix.ts but not listed ` +
+            `(backtick-wrapped) in ${DOC_PATH} — add each to its ` +
+            `visibility-class section:\n` +
             missing.map((t) => `  ${t}`).join("\n")
     ).toEqual([]);
   });

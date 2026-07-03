@@ -9,10 +9,7 @@
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
-import {
-  fetchGroupsByIds,
-  fetchLeaderGroupsByIds,
-} from "@/lib/supabase/group-reads";
+import { fetchLeaderGroupsByIds } from "@/lib/supabase/group-reads";
 import {
   fetchGroupCareNotes,
   fetchGroupPrayerRequests,
@@ -29,12 +26,15 @@ import { fetchLatestHealthUpdates } from "@/lib/supabase/health-reads";
 import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 
+// Deliberately NO full-projection group reader here: leader routes read groups
+// only through fetchLeaderGroupsByIds (LEADER_SAFE_GROUP_COLUMNS), so the
+// admin-only groups.admin_notes column can never reach a leader context via
+// this map (group RLS filters rows, not columns).
 const LEADER_FETCHERS = {
   fetchLeaderGroupsByIds,
   fetchGroupCareNotes,
   fetchGroupPrayerRequests,
   // Check-in page reads (the surface stays behind its own check_ins gate).
-  fetchGroupsByIds,
   fetchActiveMemberships,
   fetchMembersByIds,
   fetchAttendanceSessions,

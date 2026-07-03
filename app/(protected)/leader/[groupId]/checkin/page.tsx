@@ -25,7 +25,6 @@ import {
 import type {
   AttendanceSessionsRow,
   GroupHealthUpdatesRow,
-  GroupsRow,
   MembersRow,
 } from "@/types/database";
 
@@ -98,7 +97,7 @@ export default async function CheckInPage({
     metricDefaultsResult,
     calendarEventsResult,
   ] = await Promise.all([
-    reads.fetchGroupsByIds([groupId]),
+    reads.fetchLeaderGroupsByIds([groupId]),
     reads.fetchActiveMemberships({ groupId }),
     reads.fetchAttendanceSessions({ groupId, meetingWeek }),
     reads.fetchLatestHealthUpdates({ groupId }),
@@ -112,7 +111,7 @@ export default async function CheckInPage({
   ]);
 
   if (groupResult.error) throw groupResult.error;
-  const group = (groupResult.data ?? [])[0] as GroupsRow | undefined;
+  const group = (groupResult.data ?? [])[0];
   if (!group) notFound();
 
   if (group.lifecycle_status === "closed") {
