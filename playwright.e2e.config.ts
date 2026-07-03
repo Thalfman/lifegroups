@@ -39,8 +39,9 @@ export default defineConfig({
   // cold `next start` against the local stack; a busy CI runner has blown the
   // default 30s budget on a single navigation. Generous is cheap here — the
   // lane is advisory, single-worker, and a handful of specs long (Care Note,
-  // Interest Funnel, Multiply readiness).
-  timeout: 90_000,
+  // Interest Funnel, Multiply readiness). 120s so a spec that hits two
+  // worst-case (~30s) write round-trips plus reloads still fits.
+  timeout: 120_000,
   reporter: process.env.CI
     ? [
         ["list"],
@@ -48,9 +49,13 @@ export default defineConfig({
       ]
     : [["html", { outputFolder: "playwright-report-e2e" }]],
   expect: {
-    // A submit's response carries the revalidated RSC payload; give the
-    // post-write assertions headroom on cold CI runners.
-    timeout: 15_000,
+    // A submit's response carries the revalidated RSC payload for every
+    // revalidated path, rebuilt while the runner also hosts the whole
+    // Supabase container stack. The 2026-07-03 lane runs caught submits
+    // still pending ("Saving…") 15s after the click — each time a different
+    // spec, each passing on other runs — so 15s was inside the runner's
+    // normal jitter for a write round-trip. 30s clears it with margin.
+    timeout: 30_000,
   },
   use: {
     baseURL: BASE_URL,
