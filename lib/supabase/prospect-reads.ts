@@ -1,4 +1,5 @@
 import type { GroupLifecycleStatus, ProspectState } from "@/types/enums";
+import type { ProspectsRow } from "@/types/database";
 import {
   decodeNextStep,
   dueFollowUps,
@@ -14,28 +15,27 @@ import {
 
 // Read-model for the Interest Funnel board (#375, extended in #379). Column-
 // allowlisted: the board needs identity, state, the attached group, plus the
-// #379 Next Step + Additional Note fields. It never reads the audit / mutation
-// columns (created_by, updated_by, updated_at). The row type is declared locally
-// rather than Pick-ed from a generated ProspectsRow, since types/database.ts is
-// not regenerated in this slice; the allowlist string and this type are the
-// single place the board's shape is named. next_step arrives as raw jsonb and is
+// #379 Next Step + Additional Note fields and the #746 desired Group type. It
+// never reads the audit / mutation columns (created_by, updated_by,
+// updated_at). Pick-ed from the generated ProspectsRow so the allowlist keys
+// are checked against the DB row type; next_step arrives as raw jsonb and is
 // decoded at the trust boundary (decodeNextStep) into the typed NextStep.
 
-export type ProspectBoardEntry = {
-  id: string;
-  full_name: string;
-  email: string | null;
-  phone: string | null;
-  state: ProspectState;
-  group_id: string | null;
-  archived: boolean;
-  created_at: string;
-  // #379: the single current Next Step (decoded from jsonb) and the separate
-  // Additional Note. Either may be absent.
+export type ProspectBoardEntry = Pick<
+  ProspectsRow,
+  | "id"
+  | "full_name"
+  | "email"
+  | "phone"
+  | "state"
+  | "group_id"
+  | "archived"
+  | "created_at"
+  | "additional_note"
+  | "desired_group_type"
+> & {
+  // #379: the single current Next Step, decoded from the row's raw jsonb.
   next_step: NextStep | null;
-  additional_note: string | null;
-  // #746: the optional free-text desired Group type (null = not set).
-  desired_group_type: string | null;
 };
 
 // The raw row as it comes back from PostgREST: next_step is untyped jsonb.
