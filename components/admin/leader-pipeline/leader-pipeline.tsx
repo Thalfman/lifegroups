@@ -182,7 +182,7 @@ function AdvanceStageButton({ a }: { a: ApprenticeView }) {
         type="submit"
         tone="solid"
         size="sm"
-        aria-label={`Advance ${a.displayName} to ${STAGE_LABEL[next]}`}
+        aria-label={`Advance to ${STAGE_LABEL[next]} for ${a.displayName}`}
         disabled={pending}
       >
         {pending ? "…" : `Advance to ${STAGE_LABEL[next]}`}
