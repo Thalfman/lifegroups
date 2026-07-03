@@ -178,7 +178,13 @@ function AdvanceStageButton({ a }: { a: ApprenticeView }) {
     <form action={formAction} className="inline">
       <input type="hidden" name="apprentice_id" value={a.id} />
       <input type="hidden" name="readiness_stage" value={next} />
-      <PButton type="submit" tone="solid" size="sm" disabled={pending}>
+      <PButton
+        type="submit"
+        tone="solid"
+        size="sm"
+        aria-label={`Advance ${a.displayName} to ${STAGE_LABEL[next]}`}
+        disabled={pending}
+      >
         {pending ? "…" : `Advance to ${STAGE_LABEL[next]}`}
       </PButton>
       <FormStatus state={state} />
@@ -213,6 +219,11 @@ function ApprenticeRow({
           type="button"
           variant="subtle"
           size="sm"
+          aria-label={
+            editing
+              ? `Close editor for ${a.displayName}`
+              : `Edit ${a.displayName}`
+          }
           onClick={() => setEditing((v) => !v)}
         >
           {editing ? "Close" : "Edit"}
@@ -228,9 +239,11 @@ function ApprenticeRow({
 function AddApprenticeForm({
   availableGroups,
   memberOptionsByGroup,
+  idPrefix,
 }: {
   availableGroups: { id: string; name: string }[];
   memberOptionsByGroup: Record<string, PipelineMemberOption[]>;
+  idPrefix: string;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminCreateApprentice
@@ -280,11 +293,11 @@ function AddApprenticeForm({
     <form action={formAction} className="grid gap-2.5">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
         <div>
-          <label htmlFor="ap-group" className={LABEL}>
+          <label htmlFor={`${idPrefix}-group`} className={LABEL}>
             Group
           </label>
           <select
-            id="ap-group"
+            id={`${idPrefix}-group`}
             name="group_id"
             value={groupId}
             onChange={(e) => {
@@ -305,14 +318,14 @@ function AddApprenticeForm({
           </select>
         </div>
         <div>
-          <label htmlFor="ap-member" className={LABEL}>
+          <label htmlFor={`${idPrefix}-member`} className={LABEL}>
             Group member
           </label>
           {/* The dropdown is the primary path; member_id rides a hidden field
               (below) because this select's value can be the fallback sentinel,
               which is not a uuid. */}
           <select
-            id="ap-member"
+            id={`${idPrefix}-member`}
             value={memberSelection}
             onChange={(e) => setMemberSelection(e.target.value)}
             disabled={groupId === ""}
@@ -351,11 +364,11 @@ function AddApprenticeForm({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
         {nameSource.mode === "fallback" ? (
           <div>
-            <label htmlFor="ap-name" className={LABEL}>
+            <label htmlFor={`${idPrefix}-name`} className={LABEL}>
               Apprentice name
             </label>
             <input
-              id="ap-name"
+              id={`${idPrefix}-name`}
               name="display_name"
               type="text"
               maxLength={APPRENTICE_DISPLAY_NAME_MAX}
@@ -367,11 +380,11 @@ function AddApprenticeForm({
           </div>
         ) : null}
         <div>
-          <label htmlFor="ap-stage" className={LABEL}>
+          <label htmlFor={`${idPrefix}-stage`} className={LABEL}>
             Stage
           </label>
           <select
-            id="ap-stage"
+            id={`${idPrefix}-stage`}
             name="readiness_stage"
             defaultValue="identified"
             className={INPUT}
@@ -386,22 +399,22 @@ function AddApprenticeForm({
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
         <div>
-          <label htmlFor="ap-date" className={LABEL}>
+          <label htmlFor={`${idPrefix}-date`} className={LABEL}>
             Expected ready by
           </label>
           <input
-            id="ap-date"
+            id={`${idPrefix}-date`}
             name="expected_ready_on"
             type="date"
             className={INPUT}
           />
         </div>
         <div>
-          <label htmlFor="ap-notes" className={LABEL}>
+          <label htmlFor={`${idPrefix}-notes`} className={LABEL}>
             Notes
           </label>
           <textarea
-            id="ap-notes"
+            id={`${idPrefix}-notes`}
             name="notes"
             maxLength={APPRENTICE_NOTES_MAX}
             rows={3}
@@ -437,10 +450,15 @@ export function LeaderPipeline({
   rollup,
   availableGroups,
   memberOptionsByGroup,
+  // Namespaces the add-form's field ids so a second mounted instance (People's
+  // Apprentices tab and the Multiply Shepherds tab render the same component)
+  // can't break the label→control associations with duplicate ids.
+  idPrefix = "ap",
 }: {
   rollup: PipelineRollup;
   availableGroups: { id: string; name: string }[];
   memberOptionsByGroup: Record<string, PipelineMemberOption[]>;
+  idPrefix?: string;
 }) {
   return (
     <section className="grid gap-5 rounded-lg border border-line bg-surface p-card">
@@ -460,6 +478,7 @@ export function LeaderPipeline({
       <AddApprenticeForm
         availableGroups={availableGroups}
         memberOptionsByGroup={memberOptionsByGroup}
+        idPrefix={idPrefix}
       />
 
       {rollup.stages.map((section) => (

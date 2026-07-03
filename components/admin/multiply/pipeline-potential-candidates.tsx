@@ -70,6 +70,11 @@ export function PipelinePotentialCandidates({
                     tone={open ? "ghost" : "terra"}
                     size="sm"
                     aria-expanded={open}
+                    aria-label={
+                      open
+                        ? `Cancel lock-in for ${g.groupName}`
+                        : `Lock in ${g.groupName}`
+                    }
                     onClick={() =>
                       setOpenGroupId((cur) =>
                         cur === g.groupId ? null : g.groupId

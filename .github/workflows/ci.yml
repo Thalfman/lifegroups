@@ -13,7 +13,10 @@ jobs:
   ci:
     name: lint + typecheck + build + test
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 10 minutes covers the base lane; the ceiling allows for the RLS harness
+    # steps below (local Supabase stack start + integration specs) on the PRs
+    # whose changed paths trigger them. No cost when those steps skip.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -36,6 +39,89 @@ jobs:
 
       - name: Test
         run: npm run test:run
+
+      # ---- RLS / action-pipeline integration harness (issue #811) ----------
+      # The harness gates RLS-relevant PRs from INSIDE this required job.
+      # Branch protection matches required checks on the exact job name and
+      # treats a skipped required JOB as satisfied, so a separate path-filtered
+      # job (or a `needs:` chain) cannot reliably block — instead the harness
+      # steps live here behind a step-level changed-paths gate, and a red
+      # harness fails the required check directly, with no settings change.
+      #
+      # Scope decisions:
+      #   • pull_request only. push-to-main and quiet weeks are covered by the
+      #     scheduled weekly run (plus manual workflow_dispatch) that remains
+      #     in rls-integration.yml.
+      #   • components/**/*-data.ts is deliberately NOT in the filter: those
+      #     modules are reads-seam orchestration only — every PostgREST read
+      #     they compose lives in lib/supabase/*-reads.ts, which the
+      #     lib/**/*read*.ts glob below already covers.
+      - name: Detect RLS-relevant changes
+        id: rls-paths
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            rls:
+              - "supabase/migrations/**"
+              - "supabase/seed/**" # repo uses the seed/ DIRECTORY, not a single seed.sql
+              - "supabase/functions/**"
+              - "lib/auth/**"
+              - "lib/**/*read*.ts" # *-reads.ts, read-model*.ts, *-read.ts read paths
+              - "lib/**/*rpc*.ts" # typed SECURITY DEFINER write wrappers (rpc.ts, *-rpc.ts)
+              - "app/**/*actions.ts" # server actions: actions.ts AND *-actions.ts suffixes
+              - "lib/security/data-classification.ts" # sensitive-table source of truth
+              - "lib/admin/permanent-deletion.ts" # danger-zone per-entity RLS read loaders (no "read" in the filename)
+              - "lib/account/own-name.ts" # ADR 0032 own-name profiles read (no "read" in the filename)
+              - "tests/integration/**"
+              - "tests/fitness/**"
+              - ".github/workflows/ci.yml" # this workflow (hosts the harness steps)
+
+      # Node 22+ ships a native global WebSocket, which @supabase/realtime-js
+      # (pulled in by createClient in the harness fixtures) requires — on Node
+      # 20 it throws "Node.js 20 detected without native WebSocket support"
+      # before any assertion runs. This flips PATH for the remaining steps
+      # only; the Node-20 `npm ci` above stays valid (the integration path is
+      # pure JS, and the standalone workflow runs the same lockfile on 22).
+      - name: Use Node 22 for the harness
+        if: steps.rls-paths.outputs.rls == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Supabase CLI
+        if: steps.rls-paths.outputs.rls == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase stack
+        if: steps.rls-paths.outputs.rls == 'true'
+        run: supabase start
+
+      - name: Export local stack credentials
+        if: steps.rls-paths.outputs.rls == 'true'
+        # `supabase status -o env` prints KEY="value" lines for the local stack.
+        # We only ever use these LOCAL keys; no production secret is involved.
+        # The service-role key is consumed solely by the test harness for fixture
+        # provisioning — it is never imported into any Next runtime path.
+        run: |
+          supabase status -o env > stack.env
+          {
+            echo "RUN_RLS_INTEGRATION=true"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$(grep '^API_URL=' stack.env | cut -d= -f2- | tr -d '\"')"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$(grep '^ANON_KEY=' stack.env | cut -d= -f2- | tr -d '\"')"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$(grep '^SERVICE_ROLE_KEY=' stack.env | cut -d= -f2- | tr -d '\"')"
+          } >> "$GITHUB_ENV"
+
+      - name: Run RLS / action-pipeline integration harness
+        if: steps.rls-paths.outputs.rls == 'true'
+        run: npm run test:integration
+
+      - name: Stop local Supabase stack
+        if: always() && steps.rls-paths.outputs.rls == 'true'
+        run: supabase stop --no-backup
 
   a11y:
     name: accessible-name check (playwright + axe)

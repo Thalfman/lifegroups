@@ -80,6 +80,16 @@ import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 import { ShepherdCareDirectoryTable } from "@/components/admin/shepherd-care/directory-table";
 import { MultiplyGridView } from "@/components/admin/multiply/multiply-grid";
 import type { MultiplyTypeRow } from "@/components/admin/multiply/multiply-grid-data";
+import { PipelineView } from "@/components/admin/multiply/pipeline-view";
+import { LeaderPipeline } from "@/components/admin/leader-pipeline/leader-pipeline";
+import {
+  buildPipelineView,
+  evaluateReadiness,
+  type CandidateView,
+} from "@/lib/admin/multiplication";
+import { ContextualActionProvider } from "@/components/lg/admin/contextual-action-provider";
+import { CARE_CONTEXTUAL_BODIES } from "@/components/admin/care/contextual-care-bodies";
+import { CareLeaderActionsMenu } from "@/components/admin/care/care-row-actions";
 import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
 import type { ActiveShepherdCoverageAssignmentSummary } from "@/lib/supabase/shepherd-coverage-reads";
 import { SuperAdminCollapsibleSection } from "@/components/admin/super-admin-collapsible-section";
@@ -734,6 +744,131 @@ const MULTIPLY_ROWS: MultiplyTypeRow[] = [
     readinessRule: null,
   },
 ];
+
+// Multiply Pipeline tab (ADR 0030, #815). Built with the real pure builder so
+// the fixture partitions exactly like the live page: two pipelined types, two
+// potential candidates + two locked-in candidates + a matched shepherd under
+// "Men's" (repeated Remove / Lock in / per-candidate controls must carry the
+// group name), and one saved candidate of a non-pipelined type in the fallback.
+function multiplyLockedInCandidate(
+  overrides: Pick<CandidateView, "candidateId" | "groupId" | "groupName"> &
+    Partial<CandidateView>
+): CandidateView {
+  const flags = {
+    enoughMembers: true,
+    establishedLongEnough: true,
+    coShepherdTenured: false,
+    shepherdWilling: true,
+    needsSimilarStage: false,
+  };
+  return {
+    groupType: "Men's",
+    segment: "Men's",
+    targetYear: 2027,
+    status: "planned",
+    ...flags,
+    notes: null,
+    successorDesignate: null,
+    meetingTime: null,
+    activeMemberCount: 14,
+    manualMemberCount: null,
+    memberCount: 14,
+    readiness: evaluateReadiness(flags),
+    leaderPipelineId: null,
+    linkedApprentice: null,
+    ...overrides,
+  };
+}
+
+const MULTIPLY_GROUP_TYPES = ["Men's", "Women's", "Married Couples"];
+
+const MULTIPLY_PIPELINE = buildPipelineView(
+  ["Men's", "Women's"],
+  [
+    { id: "mp-group-1", name: "Riverside Men", groupType: "Men's" },
+    { id: "mp-group-2", name: "Northside Men", groupType: "Men's" },
+    { id: "mp-group-3", name: "Harbor Women", groupType: "Women's" },
+  ],
+  [
+    multiplyLockedInCandidate({
+      candidateId: "mp-cand-1",
+      groupId: "mp-group-4",
+      groupName: "Tuesday Men's",
+    }),
+    multiplyLockedInCandidate({
+      candidateId: "mp-cand-2",
+      groupId: "mp-group-5",
+      groupName: "Saturday Men's Breakfast",
+    }),
+  ],
+  [
+    {
+      id: "mp-appr-1",
+      displayName: "Miguel Torres",
+      groupName: "Riverside Men",
+      groupType: "Men's",
+      stage: "ready_to_lead",
+    },
+    {
+      id: "mp-appr-2",
+      displayName: "Evan Brooks",
+      groupName: "Northside Men",
+      groupType: "Men's",
+      stage: "in_training",
+    },
+  ]
+);
+
+const MULTIPLY_UNPIPELINED: CandidateView[] = [
+  multiplyLockedInCandidate({
+    candidateId: "mp-cand-3",
+    groupId: "mp-group-6",
+    groupName: "Kingsway Couples",
+    groupType: "Married Couples",
+    segment: "Married Couples",
+  }),
+];
+
+// Multiply Shepherds tab (#815): the same LeaderPipeline the People surface
+// embeds, mounted standalone with its own id namespace. Two apprentices at the
+// SAME stage so the repeated Advance / Edit controls must stay unique by name,
+// plus one group with no apprentice for the gap list.
+const MULTIPLY_SHEPHERD_GROUPS = [
+  { id: "ms-group-1", name: "Riverside Men" },
+  { id: "ms-group-2", name: "Harbor Women" },
+  { id: "ms-group-3", name: "Kingsway Couples" },
+];
+const MULTIPLY_SHEPHERD_ROLLUP = buildPipelineRollup(
+  [
+    {
+      id: "ms-appr-1",
+      groupId: "ms-group-1",
+      groupName: "Riverside Men",
+      displayName: "Miguel Torres",
+      memberId: "ms-mem-1",
+      stage: "in_training",
+      expectedReadyOn: "2026-09-01",
+      notes: null,
+    },
+    {
+      id: "ms-appr-2",
+      groupId: "ms-group-2",
+      groupName: "Harbor Women",
+      displayName: "Dana Whitfield",
+      memberId: null,
+      stage: "in_training",
+      expectedReadyOn: null,
+      notes: null,
+    },
+  ],
+  MULTIPLY_SHEPHERD_GROUPS
+);
+const MULTIPLY_SHEPHERD_MEMBER_OPTIONS = {
+  "ms-group-1": [
+    { id: "ms-mem-1", name: "Miguel Torres" },
+    { id: "ms-mem-2", name: "Caleb Ruiz" },
+  ],
+};
 
 const SETTINGS_DATA: SettingsShellData = {
   defaults: DEMO_METRIC_DEFAULTS,
@@ -1424,6 +1559,31 @@ export function A11yHarnessClient() {
         />
       </Surface>
 
+      {/* Contextual entity-action menu + shared drawer (#815). The generic
+          EntityActionMenu bound to the leader entity, inside its own
+          ContextualActionProvider (the harness has no admin layout, so the
+          shared host is mounted here) with the real Care drawer bodies. Two
+          instances so the repeated trigger must carry each shepherd's name. */}
+      <Surface
+        id="care-contextual-actions"
+        heading="Contextual actions (entity menu + drawer)"
+      >
+        <ContextualActionProvider bodies={CARE_CONTEXTUAL_BODIES}>
+          <div style={{ display: "flex", gap: 12 }}>
+            <CareLeaderActionsMenu
+              leaderProfileId="00000000-0000-4000-8000-000000000021"
+              leaderName="Anderson Lee"
+              viewerRole="ministry_admin"
+            />
+            <CareLeaderActionsMenu
+              leaderProfileId="00000000-0000-4000-8000-000000000022"
+              leaderName="Priya Nair"
+              viewerRole="ministry_admin"
+            />
+          </div>
+        </ContextualActionProvider>
+      </Surface>
+
       <Surface id="group-health" heading="Group health (triage)">
         <GroupHealthTriage
           rows={GROUP_HEALTH_ROWS}
@@ -1449,6 +1609,30 @@ export function A11yHarnessClient() {
           grid is readable at 375px without horizontal scroll. */}
       <Surface id="multiply-readiness-grid" heading="Multiply readiness grid">
         <MultiplyGridView rows={MULTIPLY_ROWS} ministryYear={2026} />
+      </Surface>
+
+      {/* Multiply Pipeline tab (#815). The type-first pipeline with potential /
+          locked-in candidates, matched shepherds, and the unpipelined fallback.
+          The imported server actions never run — the specs open the lock-in
+          checklist but never submit. */}
+      <Surface id="multiply-pipeline" heading="Multiply pipeline (type-first)">
+        <PipelineView
+          pipeline={MULTIPLY_PIPELINE}
+          groupTypes={MULTIPLY_GROUP_TYPES}
+          unpipelinedCandidates={MULTIPLY_UNPIPELINED}
+        />
+      </Surface>
+
+      {/* Multiply Shepherds tab (#815). The same LeaderPipeline the People
+          surface embeds in its Apprentices tab; idPrefix namespaces the add
+          form's field ids so the two mounted instances can't collide. */}
+      <Surface id="multiply-shepherds" heading="Multiply shepherds (pipeline)">
+        <LeaderPipeline
+          rollup={MULTIPLY_SHEPHERD_ROLLUP}
+          availableGroups={MULTIPLY_SHEPHERD_GROUPS}
+          memberOptionsByGroup={MULTIPLY_SHEPHERD_MEMBER_OPTIONS}
+          idPrefix="ms-ap"
+        />
       </Surface>
 
       {/* #469: the toggle swaps the ONE Settings instance to the read-error

@@ -191,6 +191,7 @@ function PipelineTypeSection({
           type="button"
           tone="ghost"
           size="sm"
+          aria-label={`Remove ${type.type} from the pipeline`}
           onClick={onRemove}
           disabled={pending}
         >
