@@ -15,14 +15,18 @@ import {
 import { adminRpc } from "@/lib/admin/rpc";
 import { toRpcArgs } from "@/lib/shared/rpc-args";
 
-const REVALIDATE_PATH = "/admin/groups";
+// The admin Home dashboard renders group-derived state (active-group vital
+// signs, the group setup attention queue), so every group write must
+// revalidate "/admin" alongside the list — otherwise Home keeps stale counts
+// after a create/close/reopen.
+const GROUP_REVALIDATE_PATHS = ["/admin/groups", "/admin"] as const;
 
 // Lifecycle (close/reopen) can be driven from the group DETAIL header (#776
 // OPP-2), not just the list, so revalidate the specific detail route too —
 // otherwise restoring/archiving from the detail page leaves it stale until a
 // manual refresh (the list-only revalidate never touches `/admin/groups/[id]`).
 function groupLifecyclePaths(groupId: string): string[] {
-  return [REVALIDATE_PATH, `/admin/groups/${groupId}`];
+  return [...GROUP_REVALIDATE_PATHS, `/admin/groups/${groupId}`];
 }
 
 // Doubles as the toRpcArgs key list: the RPC args are exactly these fields,
@@ -53,7 +57,7 @@ const CREATE_GROUP_SPEC: AdminWriteActionSpec<
   okFields: (_value, id) => ({ new_group_id: id }),
   rpc: (client, value) =>
     adminRpc(client, "admin_create_group", toRpcArgs(value, GROUP_KEYS)),
-  revalidate: () => REVALIDATE_PATH,
+  revalidate: () => GROUP_REVALIDATE_PATHS,
   noDataError: "The group was not created. Please try again.",
 };
 
@@ -83,7 +87,7 @@ const UPDATE_GROUP_SPEC: AdminWriteActionSpec<
       p_group_id: value.group_id,
       ...toRpcArgs(value, GROUP_KEYS),
     }),
-  revalidate: () => REVALIDATE_PATH,
+  revalidate: () => GROUP_REVALIDATE_PATHS,
   noDataError: "The group was not updated. Please try again.",
 };
 

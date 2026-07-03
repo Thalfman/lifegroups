@@ -101,10 +101,10 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
     "/admin/shepherd-care",
     "page:/admin/shepherd-care/[profileId]",
   ],
-  "admin.groups.close": ["/admin/groups", "/admin/groups/${*}"],
-  "admin.groups.create": ["/admin/groups"],
-  "admin.groups.reopen": ["/admin/groups", "/admin/groups/${*}"],
-  "admin.groups.update": ["/admin/groups"],
+  "admin.groups.close": ["/admin", "/admin/groups", "/admin/groups/${*}"],
+  "admin.groups.create": ["/admin", "/admin/groups"],
+  "admin.groups.reopen": ["/admin", "/admin/groups", "/admin/groups/${*}"],
+  "admin.groups.update": ["/admin", "/admin/groups"],
   "admin.guests.create": ["/admin", "/admin/follow-ups", "/admin/guests"],
   "admin.guests.update_pipeline": [
     "/admin",
@@ -261,12 +261,14 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
     "/admin",
     "/admin/groups",
     "/admin/multiply",
+    "/admin/plan",
     "/admin/settings",
   ],
   "admin.settings.set_group_types": [
     "/admin",
     "/admin/groups",
     "/admin/multiply",
+    "/admin/plan",
     "/admin/settings",
   ],
   "admin.settings.set_health_rubric": [
@@ -276,7 +278,11 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
     "/admin/settings",
     "/leader",
   ],
-  "admin.settings.set_readiness_rule": ["/admin/multiply", "/admin/settings"],
+  "admin.settings.set_readiness_rule": [
+    "/admin",
+    "/admin/multiply",
+    "/admin/settings",
+  ],
   "admin.settings.update_metric_defaults": [
     "/admin",
     "/admin/group-health",
@@ -300,6 +306,7 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
     "/admin/shepherd-care/${*}",
   ],
   "admin.shepherd_care.log_interaction": [
+    "/admin",
     "/admin/shepherd-care",
     "/admin/shepherd-care/${*}",
   ],
@@ -332,6 +339,7 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
     "/admin/shepherd-care/${*}",
   ],
   "admin.shepherd_care.upsert_profile": [
+    "/admin",
     "/admin/shepherd-care",
     "/admin/shepherd-care/${*}",
   ],
@@ -394,9 +402,11 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
   "super_admin.clean_slate_wipe": ["/admin", "/admin/super-admin"],
   "super_admin.clear_activity_reset": ["/admin", "/admin/super-admin"],
   "super_admin.end_coverage": ["/admin/super-admin"],
-  // inline_delete also revalidates a client-derived `path` (usePathname,
-  // validated to start with /admin) — only the static "/admin" fallback is
-  // statically pinnable.
+  // inline_delete's primary target is a client-derived `path` (usePathname,
+  // /admin-prefix-validated) that no static fingerprint can represent; only
+  // the static "/admin" fallback is pinned here. The dynamic element itself
+  // is pinned by the "inline_delete still revalidates the submitted current
+  // pathname" sentinel in write-action-revalidate-paths.test.ts.
   "super_admin.inline_delete": ["/admin"],
   "super_admin.launch_prep": ["/admin", "/admin/super-admin"],
   "super_admin.permanent_delete": ["/admin", "/admin/super-admin"],

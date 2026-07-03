@@ -26,12 +26,18 @@ import { EXPECTED_REVALIDATE_PATHS } from "./support/revalidate-path-map";
 //   extraction error, never a silent []).
 // - Path revalidation only; cache tags (`updateTag`) are out of scope.
 
+// Server actions live under app/ AND lib/ (e.g. lib/usage/actions.ts, the
+// usage beacon). The `"use server"` pre-filter keeps non-action modules that
+// merely match the filename convention (lib/admin/contextual-actions.ts) out
+// of scope.
 const ACTION_FILES = stripFiles(
   readSourceFiles({
-    roots: ["app"],
+    roots: ["app", "lib"],
     extensions: [".ts"],
     exclude: [...TEST_FILE_EXCLUDES],
-  }).filter((f) => /(^|\/)(actions|[a-z-]+-actions)\.ts$/.test(f.relPath)),
+  })
+    .filter((f) => /(^|\/)(actions|[a-z-]+-actions)\.ts$/.test(f.relPath))
+    .filter((f) => f.text.includes('"use server"')),
   stripComments
 );
 
@@ -56,6 +62,9 @@ const EXEMPT: Readonly<Record<string, string>> = {
   // Narrow adminRpc write whose surface re-reads on navigation.
   "app/(protected)/admin/super-admin/invite-link-actions.ts":
     "invite-link write; the super-admin page re-reads per request",
+  // Fire-and-forget usage telemetry — nothing rendered reads it live.
+  "lib/usage/actions.ts":
+    "usage-beacon log write (best-effort telemetry, no cached surface)",
 };
 
 describe("fitness: every write action's revalidate-path set is pinned", () => {
@@ -175,5 +184,27 @@ describe("fitness: every write action's revalidate-path set is pinned", () => {
             `appear in the EXEMPT ledger. Add revalidation (or a justified ` +
             `exemption):\n${uncovered.map((p) => `  ${p}`).join("\n")}`
     ).toEqual([]);
+  });
+
+  it("inline_delete still revalidates the submitted current pathname", () => {
+    // super_admin.inline_delete's map entry pins only the static "/admin"
+    // fallback — its primary target is the client-derived `path` (usePathname,
+    // /admin-prefix-validated), which no static fingerprint can represent.
+    // This sentinel pins the dynamic element itself: if a future edit drops
+    // the raw-path read or the /admin prefix guard, this fails even though
+    // the map still matches.
+    const file = ACTION_FILES.find((f) =>
+      f.relPath.endsWith("super-admin/permanent-delete-actions.ts")
+    );
+    expect(file, "permanent-delete-actions.ts not found").toBeDefined();
+    const body = file?.text ?? "";
+    expect(
+      /readStr\(raw,\s*["']path["']\)/.test(body) &&
+        /startsWith\(["']\/admin["']\)/.test(body),
+      `super_admin.inline_delete no longer derives a revalidate target from ` +
+        `the submitted pathname (readStr(raw, "path") + the "/admin" prefix ` +
+        `guard). Restore it, or redesign the dynamic revalidation and update ` +
+        `this sentinel.`
+    ).toBe(true);
   });
 });

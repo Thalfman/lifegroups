@@ -241,7 +241,12 @@ const UPSERT_PROFILE_SPEC: AdminWriteActionSpec<
       "admin_upsert_shepherd_care_profile",
       toRpcArgs(value, UPSERT_KEYS)
     ),
-  revalidate: (value) => shepherdCarePaths(value.shepherd_profile_id),
+  // Care status feeds the Home dashboard's care cell (needs-attention count),
+  // so revalidate "/admin" alongside the care surfaces.
+  revalidate: (value) => [
+    ...shepherdCarePaths(value.shepherd_profile_id),
+    "/admin",
+  ],
   noDataError: "The care profile wasn't saved. Please try again.",
 };
 
@@ -274,7 +279,12 @@ const LOG_INTERACTION_SPEC: AdminWriteActionSpec<
       "admin_log_shepherd_care_interaction",
       toRpcArgs(value, LOG_INTERACTION_KEYS)
     ),
-  revalidate: (value) => shepherdCarePaths(value.shepherd_profile_id),
+  // last_contact_at feeds the Home dashboard's care cell (needs-attention
+  // count), so revalidate "/admin" alongside the care surfaces.
+  revalidate: (value) => [
+    ...shepherdCarePaths(value.shepherd_profile_id),
+    "/admin",
+  ],
   noDataError: "The interaction wasn't saved. Please try again.",
 };
 
