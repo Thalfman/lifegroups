@@ -27,9 +27,10 @@ on:
     # check, not a merge gate.
     - cron: "0 8 * * 1"
   pull_request:
-    # Advisory signal on the PRs most likely to break the write pipeline this
+    # Advisory signal on the PRs most likely to break the write pipelines this
     # lane pins: the lane itself, the stack/seed tooling, schema/seed changes,
-    # and the Care Note pipeline (form → action → reads → surfaces).
+    # the Care Note pipeline (form → action → reads → surfaces), and the
+    # Interest Funnel + Multiply lock-in pipelines (#826/#827).
     paths:
       - "tests/e2e/**"
       - "playwright.e2e.config.ts"
@@ -45,6 +46,23 @@ on:
       - "components/admin/care/**"
       - "components/admin/shepherd-care/**"
       - "components/over-shepherd/**"
+      # The Interest Funnel spec (#826) drives /admin/plan; the readiness spec
+      # (#827) drives /admin/multiply plus its Groups-editor precondition (the
+      # lock-in actions live under launch-planning, its legacy home, and the
+      # Pipeline data flows through the shared launch-planning view builder;
+      # the Groups list is hosted by group-management-shell before the
+      # directory renders the editor drawer).
+      - "app/(protected)/admin/plan/**"
+      - "app/(protected)/admin/multiply/**"
+      - "app/(protected)/admin/groups/**"
+      - "app/(protected)/admin/launch-planning/**"
+      - "components/admin/plan/**"
+      - "components/admin/multiply/**"
+      - "components/admin/groups/**"
+      - "components/admin/groups-directory.tsx"
+      - "components/admin/group-management-shell.tsx"
+      - "components/admin/launch-planning/**"
+      - "components/admin/forms/**"
       # The shared seams every write crosses (Codex review on #837): the write
       # runners, RPC gateways, validators, auth guards, and the reads seam all
       # sit between the form and the RPC, so a PR touching them must get this
@@ -98,6 +116,14 @@ jobs:
         # applies the operational seed, seeds throwaway Auth users, then serves
         # the real app and runs the tests/e2e/ Playwright specs.
         run: ./scripts/e2e.sh
+
+      - name: Print failure page snapshots
+        # The lane is only debuggable remotely: surface each failing test's
+        # error-context.md (Playwright's ARIA snapshot of the page at failure,
+        # which includes any role="alert" action-error text) straight in the
+        # job log, so a diagnosis doesn't require downloading the artifact.
+        if: failure()
+        run: find test-results -name 'error-context.md' -print -exec cat {} \; || true
 
       - name: Upload Playwright report on failure
         if: failure()
