@@ -112,6 +112,14 @@ jobs:
         # the real app and runs the tests/e2e/ Playwright specs.
         run: ./scripts/e2e.sh
 
+      - name: Print failure page snapshots
+        # The lane is only debuggable remotely: surface each failing test's
+        # error-context.md (Playwright's ARIA snapshot of the page at failure,
+        # which includes any role="alert" action-error text) straight in the
+        # job log, so a diagnosis doesn't require downloading the artifact.
+        if: failure()
+        run: find test-results -name 'error-context.md' -print -exec cat {} \; || true
+
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
