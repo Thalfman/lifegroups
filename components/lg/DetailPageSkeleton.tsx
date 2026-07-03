@@ -53,8 +53,8 @@ export function DetailPageSkeleton() {
 
         {/* Tab row */}
         <div className="mb-5 flex flex-wrap gap-2.5">
-          {[88, 110, 84, 96, 120].map((w, i) => (
-            <Bar key={i} style={{ height: 30, width: w, borderRadius: 9999 }} />
+          {[88, 110, 84, 96, 120].map((w) => (
+            <Bar key={w} style={{ height: 30, width: w, borderRadius: 9999 }} />
           ))}
         </div>
 
