@@ -49,6 +49,15 @@ So the keep verdict rests on two rationales: the five entangled surfaces are
 > (Shepherds tab) and People (Apprentices tab). Same verdict (**Keep**), same
 > point-of-edit annotations, applied retroactively.
 
+> **Erratum (2026-07-03, #823):** the `guests` row overstated its case. The
+> canonical Prospect/Interest-Funnel surface **does** exist — `/admin/plan`
+> over the `prospects` table (ADR 0016, PRD #371). `guests` is a
+> self-contained **legacy** surface over the separate legacy `guests` table:
+> it is kept to preserve that historical pipeline data, not because no funnel
+> replacement exists. The **Keep** verdict stands; only the rationale is
+> corrected — read "not yet replaceable" below as applying to the legacy
+> `guests` _data window_ (and to `check-ins`), not to the funnel itself.
+
 ## What does NOT change
 
 - **No banners / warn-logs / re-exports / route deletions.** The existing

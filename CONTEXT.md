@@ -3,9 +3,9 @@
 Julian's admin operating system for shepherding Life Group leaders and
 planning group launches, organised as three areas — **Care · Plan · Multiply**
 (ADR 0016). The oversight tiers (Ministry Admin, Over-Shepherd) work it day to
-day; Over-Shepherds log in to their own coverage-scoped Care surface, and a
-Leader Care surface is built and re-audited behind a Super-Admin switch
-(ADR 0017).
+day; Over-Shepherds log in to their own coverage-scoped Care surface, and
+Shepherds log in to a group-scoped Care surface that is live by default
+(ADR 0017/0024; the Super-Admin console keeps the off-switch).
 
 ## Language
 
@@ -15,10 +15,10 @@ Leader Care surface is built and re-audited behind a Super-Admin switch
 A person who leads a Life Group (the `leader` role; `co_leader` → Co-Shepherd).
 Shepherds are the people the ministry cares for. Their login surface is a
 group-scoped **Care** surface — Care Notes + Prayer Requests over their own
-members, plus the group calendar (ADR 0017/0020) — built and RLS-re-audited but
-held behind the Super-Admin `leader_surface` switch until Tom flips it on and
-Julian gives the go-ahead (LDR.1; ADR 0009 verify-before-flip). Weekly check-ins
-(the source of the Health Pulse) remain separately frozen. **Front-facing copy
+members, plus the group calendar (ADR 0017/0020) — RLS-re-audited and **live by
+default** (ADR 0024 seeded the verified `leader_surface` flag on per the ADR
+0009 verify-before-flip discipline; the Super-Admin console can re-freeze it).
+Weekly check-ins (the source of the Health Pulse) stay behind their own gate. **Front-facing copy
 says "Shepherd" / "Co-Shepherd" (ADR 0025); the code identity stays `leader` /
 `co_leader`** — the role enum values, RPCs, routes (`/leader`), and types are
 unchanged, mirroring the existing `shepherd_care_*` / `over_shepherd` naming.
@@ -50,9 +50,9 @@ below sees, and more:
 **Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Shepherd**
 
 The Shepherd tier's login surface is a group-scoped **Care** surface (Care Notes +
-Prayer Requests + group calendar; ADR 0017/0020), built and re-audited but gated
-off behind the Super-Admin `leader_surface` switch until Julian's go-ahead
-(LDR.1). The deliberate exceptions to "higher tiers see everything below" are the
+Prayer Requests + group calendar; ADR 0017/0020), **live by default** per ADR
+0024 — the Super-Admin `leader_surface` switch remains as the off-switch, and
+weekly check-ins stay behind their own gate. The deliberate exceptions to "higher tiers see everything below" are the
 author-private **Care Note** (sealed to its author unless the Ministry Admin
 flips that person's transparency toggle) and the Ministry Admin's own **Private
 Care Note** (hidden even from the Super Admin) — see the Care concepts below.
@@ -235,17 +235,16 @@ _Avoid_: Group health, health status (when you mean the grade).
 
 **Multiplication**:
 The app's third area — deciding when to launch another group. Assessed per
-**cell** (Audience × Category); the per-type boards roll their cells up. The
-unit moves onto the Multiply grid (rows = categories, columns = the three types)
-in a later slice.
-_Avoid_: Launch planning (the superseded framing), split.
+**group type** (ADR 0034 collapsed the retired Audience × Category cell model);
+the Readiness tab lists each type with its pillars and coverage.
+_Avoid_: Launch planning (the superseded framing), split; cell (retired unit).
 
 **Multiplication Pillar**:
-A computed readiness signal assessed per cell, each in its **natural unit** (not
-all A–F): **Interest** (a count of `interested` prospects whose desired cell
-matches), **Capacity** (a derived issue / no-issue — see Derived Capacity),
-**Group Health** and **Leader Health** (A–F roll-ups of that cell's grades over
-the Ministry Year). The standalone **overflow** pillar was dropped (#401), folded
+A computed readiness signal assessed per group type, each in its **natural
+unit** (not all A–F): **Interest** (a count of `interested` prospects whose
+desired group type matches), **Capacity** (a derived issue / no-issue — see
+Derived Capacity), **Group Health** and **Leader Health** (A–F roll-ups of that
+type's grades over the Ministry Year). The standalone **overflow** pillar was dropped (#401), folded
 into Capacity Facet A. There is no single overall multiplication letter — the
 pillars stand on their own.
 _Avoid_: Metric, score, criterion (that word belongs to a rubric's inputs);
@@ -253,37 +252,35 @@ overflow (the retired pillar).
 
 **Derived Capacity** (capacity issue):
 Capacity is **derived, not fed** (#401). With a universal cap of **12** members
-per group, a cell has a capacity issue when **either** facet trips: **Facet A —
-over-capacity** (any active group in the cell has > 12 members) or **Facet B —
-thin availability** (≤ 1 _joinable_ group, i.e. an active group under 12). An
-**active cell with no active groups** still counts — it has no joinable group, so
-Facet B trips. Capacity is **required by default** in the trigger, so a required
+per group, a group type has a capacity issue when **either** facet trips:
+**Facet A — over-capacity** (any active group of the type has > 12 members) or
+**Facet B — thin availability** (≤ 1 _joinable_ group, i.e. an active group
+under 12). A **group type with no active groups** still counts — it has no
+joinable group, so Facet B trips. Capacity is **required by default** in the trigger, so a required
 capacity issue **blocks readiness** (it is not merely a side banner). The old fed
 headroom / full-group-count / "offerings" inputs on `multiplication_config` are
 retired.
 _Avoid_: Headroom, offerings, fed capacity, overflow (all retired).
 
 **Target & Coverage** (`have X of Y`):
-A per-cell **target group count** the admin sets ("40-50s Men should have 2"),
-read against **coverage** `have X of Y`, where **X = active + actively-launching**
-groups in the cell (`lifecycle_status` ∈ active, launching*soon; mere plans do not
-count) and **Y = target_count**. Targets are **tracking only** — they never feed
+A per-type **target group count** the admin sets ("Men's should have 2", stored
+in `group_type_configs`), read against **coverage** `have X of Y`, where **X =
+active + actively-launching** groups of the type (`lifecycle_status` ∈ active,
+launching*soon; mere plans do not count) and **Y = target_count**. Targets are **tracking only** — they never feed
 the multiply trigger.
 \_Avoid*: Quota, goal, capacity (the target is a group _count_, not a member cap).
 
 **Multiplication Trigger** (readiness rule):
-The Ministry-Admin-configured rule over the pillars that signals a cell is ready
-to multiply — each pillar **required or not**, with a threshold in its natural
-unit. Interest is a **count (≥ N people), never a letter**; Capacity is
-required/not; Group/Leader Health are ≥ a letter. The rule resolves as a
-**three-tier cascade — global → per-type (Audience) → per-cell** — each level
-inheriting the level above per pillar unless it overrides (ADR 0021, amending the
-global-plus-per-cell-only model of #402). One global rule per ministry year
-(`multiplication_readiness_rule`), an optional per-type rule per Audience, and any
-cell may override a pillar wholesale (`category_type_targets.trigger_overrides`). A
-cell reads **ready** when every _required_ pillar clears; not-required pillars are
-ignored. Julian owns the rule; the app surfaces the signal, it does not decide for
-him.
+The Ministry-Admin-configured rule over the pillars that signals a group type is
+ready to multiply — each pillar **required or not**, with a threshold in its
+natural unit. Interest is a **count (≥ N people), never a letter**; Capacity is
+required/not; Group/Leader Health are ≥ a letter. The rule resolves as **global
+→ per-type override** (ADR 0034 collapsed ADR 0021's three-tier cascade): one
+global rule per ministry year (`multiplication_readiness_rule`), and any group
+type may carry its own rule (`group_type_configs.readiness_rule`, `null` =
+inherit the global). A type reads **ready** when every _required_ pillar clears;
+not-required pillars are ignored. Julian owns the rule; the app surfaces the
+signal, it does not decide for him.
 _Avoid_: Alert, threshold (when you mean the whole configured rule); overflow;
 per-pillar letter grade for Interest (it is a count).
 
@@ -318,9 +315,9 @@ that Julian ticks by hand for a multiplication candidate — **12+ members**, **
 years as a group**, **Co-Shepherd 1+ year**, **Shepherd willing**, **Need for a
 similar group**. Purely his judgment, stored on the candidate (ADR 0029); the
 numbers are advisory labels, not computed comparisons. Distinct from the
-computed, per-cell **Multiplication Pillars / Trigger** — same "12 / 3 / 1"
+computed, per-type **Multiplication Pillars / Trigger** — same "12 / 3 / 1"
 numbers, different concept and surface. "A group does not need to meet each."
-_Avoid_: Pillar, Trigger (those are the computed per-cell signal); criteria-as-
+_Avoid_: Pillar, Trigger (those are the computed per-type signal); criteria-as-
 gate (the checklist annotates, it never blocks).
 
 ### Surfaces
@@ -352,11 +349,12 @@ dashboard.
 **Settings**:
 The Ministry-Admin configuration surface — ministry/pastoral knobs and all
 Julian-owned pastoral copy and rubrics: the Health Rubric, the Leader-Health
-Rubric, and the multiplication setup (ADR 0007/0018/0019/0021). Multiplication setup
+Rubric, and the multiplication setup (ADR 0007/0018/0034). Multiplication setup
 spans **two** sub-tabs: a **Groups** sub-tab where the admin _creates_ the group
-types (a cell at a time — pick an Audience, type a free-text category — and sets each
-one's tracking target), and a **Multiply** sub-tab where the admin sets the readiness
-trigger through a tiered control (global → per-type → per-cell) over those cells.
+types (free-text names on the admin-managed list, each with its tracking
+target), and a **Multiply** sub-tab where the admin sets the readiness trigger
+through a two-tier control (global rule → optional per-type override) over those
+types.
 "Multiply" deliberately overloads the area name: the area reads the signal, this
 sub-tab configures it. Visible to Ministry Admin and Super Admin. The per-person Care
 Note transparency toggle is _not_ here — it lives inline on each person in Care.
