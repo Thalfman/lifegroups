@@ -12,6 +12,18 @@ const PAGE = readFileSync(
   "utf8"
 );
 
+// The tab panels' markup lives in the presentational view (#822); the page is
+// guard + spine load + hand-off.
+const VIEW = readFileSync(
+  fileURLToPath(
+    new URL(
+      "../../../../../../components/admin/group-detail/group-detail-view.tsx",
+      import.meta.url
+    )
+  ),
+  "utf8"
+);
+
 const ROSTER = readFileSync(
   fileURLToPath(
     new URL(
@@ -47,21 +59,21 @@ describe("group detail tab actions", () => {
   });
 
   it("links Attendance to the group calendar", () => {
-    expect(PAGE).toMatch(
+    expect(VIEW).toMatch(
       /<TabAction href=\{`\/admin\/groups\/\$\{groupId\}\/calendar`\}>/
     );
-    expect(PAGE).toContain("Open the group calendar →");
+    expect(VIEW).toContain("Open the group calendar →");
   });
 
   it("links Follow-ups to Care", () => {
-    expect(PAGE).toContain('<TabAction href="/admin/care">Open Care →');
+    expect(VIEW).toContain('<TabAction href="/admin/care">Open Care →');
   });
 
   it("lets the Health tab edit in place and keeps the triage cross-link", () => {
     // The same shared editor drawer the triage uses, scoped to this group…
-    expect(PAGE).toContain("<GroupHealthEditButton");
+    expect(VIEW).toContain("<GroupHealthEditButton");
     // …with the all-groups triage still one link away.
-    expect(PAGE).toContain('<Link href="/admin/group-health"');
-    expect(PAGE).toContain("Group health triage");
+    expect(VIEW).toContain('<Link href="/admin/group-health"');
+    expect(VIEW).toContain("Group health triage");
   });
 });

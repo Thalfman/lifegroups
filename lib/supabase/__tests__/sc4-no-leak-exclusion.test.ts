@@ -195,15 +195,16 @@ describe("SC.4 no-leak — the creator-scoped readers are consumed only on the a
     ).toEqual([]);
   });
 
-  it("the admin detail page passes the ministry_admin gate into the seam loader", () => {
+  it("the admin detail view passes the ministry_admin gate into the seam loader", () => {
     // requireAdmin() admits super_admin, so the readers must not be CALLED on a
-    // super_admin request — not merely hidden from the UI. The page resolves
-    // the gate from the actor's role and hands it to the loader.
-    const page = readFileSync(
-      `${REPO_ROOT}app/(protected)/admin/shepherd-care/[profileId]/page.tsx`,
+    // super_admin request — not merely hidden from the UI. The detail view
+    // (the page's presentational body, #822) resolves the gate from the
+    // actor's role and hands it to the loader at the single call site.
+    const view = readFileSync(
+      `${REPO_ROOT}components/admin/shepherd-care/shepherd-care-detail-view.tsx`,
       "utf8"
     );
-    expect(page).toMatch(
+    expect(view).toMatch(
       /loadShepherdCareDetailData\(\{[^}]*canReadPrivateNotes: actorRole === "ministry_admin"/
     );
   });
