@@ -8,7 +8,7 @@ P2 points against `admin_set_audience_readiness_rule` that both turned out to be
 direction for the whole family so the conventions stay consistent and reviewers
 stop re-litigating them per RPC.
 
-Status: accepted (#415). One fix — the audit advisory lock — was applied to
+**Status:** Accepted (#415). One fix — the audit advisory lock — was applied to
 `admin_set_audience_readiness_rule` in #414 ahead of this decision; this ADR
 generalises it.
 

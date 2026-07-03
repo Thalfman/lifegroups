@@ -8,14 +8,8 @@ import { requireLeader } from "@/lib/auth/session";
 import { toShellUser } from "@/lib/auth/shell-user";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  fetchGroupCareNotes,
-  fetchGroupPrayerRequests,
-} from "@/lib/supabase/care-note-reads";
-import {
-  fetchLeaderGroupsByIds,
-  type LeaderSafeGroupRow,
-} from "@/lib/supabase/group-reads";
+import { type LeaderSafeGroupRow } from "@/lib/supabase/group-reads";
+import { bindLeaderReads } from "@/lib/leader/leader-reads";
 import type { PrayerRequestsRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -43,10 +37,11 @@ export default async function LeaderGroupCarePage({
   const client = await createSupabaseServerClient();
   if (!client) notFound();
 
+  const reads = bindLeaderReads(client);
   const [groupResult, careNotesResult, prayerResult] = await Promise.all([
-    fetchLeaderGroupsByIds(client, [groupId]),
-    fetchGroupCareNotes(client, groupId),
-    fetchGroupPrayerRequests(client, groupId),
+    reads.fetchLeaderGroupsByIds([groupId]),
+    reads.fetchGroupCareNotes(groupId),
+    reads.fetchGroupPrayerRequests(groupId),
   ]);
 
   if (groupResult.error) throw groupResult.error;

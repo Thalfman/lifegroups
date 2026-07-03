@@ -44,7 +44,17 @@ Over-Shepherd and reserves "Shepherd" as non-existent as a standalone tier.
 **Disposition:** ✅ done — landed as mechanical copy fixes in `78fea60` (#194). No
 user-facing string remains in violation of `CONTEXT.md`.
 
-## B — Deprecated `staff_viewer` role still present 🗑️ / 🧊
+## B — Deprecated `staff_viewer` role still present ✅ RESOLVED
+
+> ✅ **Resolved (#190).** The remove call was made (Julian/Tom, recorded on
+> #190) and landed in migration `20260531140000_remove_staff_viewer_role.sql`:
+> any `staff_viewer` rows were reassigned, and `auth_is_staff_viewer()` /
+> `auth_is_admin_or_staff()` were neutralized so the role grants nothing (the
+> Postgres enum value is left inert rather than physically dropped — dropping
+> an enum value is unsupported in-place). No runtime code references the role;
+> the removal is pinned by
+> `lib/admin/__tests__/remove-staff-viewer-migration.test.ts`. The inventory
+> below is retained for history.
 
 `staff_viewer` is retained in the role enum/union for back-compat and is treated as
 no-access (never assignable from the UI). It is a remnant of the original multi-tier vision
@@ -56,8 +66,8 @@ and clutters the role system for new readers.
 - `app/(protected)/admin/super-admin/actions.ts` — guards against assignment.
 - `components/admin/super-admin-console-shell.tsx` — surfaces "Legacy staff_viewer rows" counts.
 
-**Disposition:** 🗑️/🧊 needs a call — either remove the enum value (and migrate any rows) or
-explicitly quarantine it (e.g. an "archived roles" grouping) so it reads as dead, not live.
+**Disposition:** ✅ done — removed by `20260531140000_remove_staff_viewer_role.sql` (#190);
+the inert enum value is documented, machine-tested dead weight, not a live role.
 
 ## C — Frozen / dormant surfaces still reachable by URL ✅ RESOLVED
 
@@ -93,13 +103,19 @@ paths, while the UI reads "Leader care" / "My Leaders".
 glossary only; renaming the schema is explicitly _not_ wanted (migration risk). Recorded here
 only so it stops being re-discovered as a surprise. **Do not "fix" the schema.**
 
-## E — Leader Care Status vocabulary mismatch 🔀
+## E — Leader Care Status vocabulary mismatch ✅ RESOLVED
+
+> ✅ **Resolved (#122).** Julian's five values landed in migration
+> `20260530030000_julian_q2_shepherd_care_status_five.sql` (with the ADR 0004 /
+> D2 backfill: `healthy → doing_well`, `watch → needs_encouragement`,
+> `needs_attention → needs_follow_up`) and the five-value `ShepherdCareStatus`
+> union is live in `types/enums.ts`.
 
 Shipped enum is `healthy / watch / needs_attention`; Julian adopted five values verbatim —
 `doing_well / needs_encouragement / needs_follow_up / concern / inactive` (ADR 0004 / D2).
 
-**Disposition:** 🔀 in-flight — the backfill/migration is already tracked in **#122**. No new
-decision; just not yet landed.
+**Disposition:** ✅ done — the five-value enum and backfill landed in
+`20260530030000_julian_q2_shepherd_care_status_five.sql` (#122).
 
 ## F — Disconnected Job-2 surfaces / no Leader pipeline 🔀
 
@@ -117,12 +133,12 @@ functionally built but **not** "done"; that plan is the live spec.
 Each row is owner-actionable in a future session:
 
 - **✅ (A)** — done; the mechanical copy fixes landed in `78fea60` (#194).
-- **🔀 (E, F)** — already ticketed; track in their issues/plans, nothing new owed.
-- **🟢 (D)** — no action; documented so it reads as decided, not accidental.
-- **🗑️ (B)** — needs a Julian/Tom decision before code changes (remove the `staff_viewer`
-  enum value vs. quarantine it).
+- **✅ (B)** — done; `staff_viewer` was removed by `20260531140000` (#190).
 - **✅ (C)** — done; the frozen surfaces were gated behind default-off ADR 0009 flags in
   `7a23c5d` (#198).
+- **🟢 (D)** — no action; documented so it reads as decided, not accidental.
+- **✅ (E)** — done; the five-value status enum landed in `20260530030000` (#122).
+- **🔀 (F)** — already ticketed; track in its plan, nothing new owed.
 
 When an item is resolved, strike it here and, if it changes intent, fold the outcome into
 [`../PRD.md`](../PRD.md) and the relevant ADR.

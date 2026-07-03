@@ -1,5 +1,13 @@
 "use server";
 
+// Canonical home — do NOT retire or warn-log on invoke (ADR 0033, applied to
+// this eighth surface retroactively). Although this file lives in the
+// pre-pivot-named /admin/leader-pipeline folder, these actions are invoked via
+// components/admin/leader-pipeline/leader-pipeline.tsx, which the canonical
+// Multiply (components/admin/multiply/lazy-panels.tsx) and People
+// (components/admin/people-management-shell.tsx) surfaces render, so any
+// deprecation here would fire on canonical use.
+
 import {
   validateAdvanceApprenticeStagePayload,
   validateApprenticeIdPayload,

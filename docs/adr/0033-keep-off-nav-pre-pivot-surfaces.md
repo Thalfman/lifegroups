@@ -43,6 +43,12 @@ So the keep verdict rests on two rationales: the five entangled surfaces are
 **not duplicates** (alias-render + canonical-imported actions), and `guests` /
 `check-ins` are **not yet replaceable** (no canonical surface covers them).
 
+> **Addendum (2026-07-03, #820):** `leader-pipeline` is an **eighth** surface
+> in the same class — off-nav with `frozenBanner`, but its component, data
+> builder, and `actions.ts` are the canonical home rendered by live Multiply
+> (Shepherds tab) and People (Apprentices tab). Same verdict (**Keep**), same
+> point-of-edit annotations, applied retroactively.
+
 ## What does NOT change
 
 - **No banners / warn-logs / re-exports / route deletions.** The existing

@@ -9,7 +9,12 @@ that already lived there. This is a **partial, intentional reversal of ADR 0016'
 hiding** of those surfaces: the data and routes were always retained; this moves
 the surface back into view and connects the three views into one story.
 
-Status: accepted — amends ADR 0016 (for the multiplication surfaces only).
+**Status:** Accepted — amends ADR 0016 (for the multiplication surfaces only).
+Tab set, order, and default amended by
+[ADR 0030](./0030-multiply-readiness-first-and-type-intent-pipeline.md)
+(Readiness · Pipeline · Shepherds, Readiness first); the per-cell readiness
+grid it references was collapsed to group types by
+[ADR 0034](./0034-collapse-cells-to-group-type-list.md).
 
 ## Why
 

@@ -1,5 +1,11 @@
 # Oversight ladder, Over-Shepherd login, and gating the leader surface
 
+**Status:** Accepted — the ladder stands; the leader-surface gate was amended by
+[ADR 0009](./0009-runtime-flags-may-reenable-frozen-surfaces.md) (runtime flags),
+[ADR 0017](./0017-reopen-leader-os-logins-and-care-notes.md) (logins re-opened),
+and [ADR 0024](./0024-default-on-leader-surface-and-groups-people-nav.md)
+(default-on).
+
 The app is repositioned as an oversight operating system for the ministry's
 upper tiers only — **not** a tool for group leaders (Shepherds) yet. We adopt
 a strict downward-visibility ladder and gate the entire leader-facing surface.
@@ -38,7 +44,7 @@ Over-Shepherds can never create or read private notes.
 - **Over-Shepherds reuse `ministry_admin`** instead of a new role. Rejected:
   no privacy boundary between coaches, and no row-scoping to their coverage.
 - **Delete the leader surface** rather than gate it. Rejected: this is a
-  deferral ("not for leaders *yet*"), not a permanent removal. Gating keeps the
+  deferral ("not for leaders _yet_"), not a permanent removal. Gating keeps the
   work recoverable cheaply; git history is not a substitute for a working,
   dormant surface.
 

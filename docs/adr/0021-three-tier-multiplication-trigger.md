@@ -8,7 +8,10 @@ per-type pillar trigger of ADR 0019): Julian wants to set, e.g., Men's interest 
 while Women's ≥ 3 without overriding every cell. Interest stays a **count, never a
 letter**, at every tier.
 
-Status: accepted — amends #402.
+**Status:** Accepted — amends #402. Superseded by
+[ADR 0034](./0034-collapse-cells-to-group-type-list.md): the cell → group-type
+collapse (#738) retired the Audience and per-cell tiers; the cascade is now
+global → per-type override on `group_type_configs`.
 
 ## Considered options
 

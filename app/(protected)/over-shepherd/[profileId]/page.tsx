@@ -16,14 +16,7 @@ import {
   fetchOverShepherdCoverageForCaller,
   isCoveredShepherd,
 } from "@/lib/over-shepherd/coverage";
-import {
-  fetchOverShepherdCareInteractions,
-  fetchOverShepherdCareProfileByShepherdId,
-} from "@/lib/over-shepherd/read-models";
-import {
-  fetchCareNotesForSubject,
-  fetchPrayerRequestsForSubject,
-} from "@/lib/supabase/care-note-reads";
+import { bindOverShepherdReads } from "@/lib/over-shepherd/over-shepherd-reads";
 import type {
   CareNotesRow,
   PrayerRequestsRow,
@@ -71,6 +64,7 @@ export default async function OverShepherdShepherdPage({
   // and independent, so issue them in parallel. Only the interaction history
   // below genuinely depends on the resolved care row. (RLS scopes both reads to
   // covered profiles.)
+  const reads = bindOverShepherdReads(client);
   const [profileQuery, careResult, careNotesResult, prayerRequestsResult] =
     await Promise.all([
       client
@@ -78,12 +72,12 @@ export default async function OverShepherdShepherdPage({
         .select("id, full_name, email")
         .eq("id", profileId)
         .maybeSingle<ShepherdProfileRow>(),
-      fetchOverShepherdCareProfileByShepherdId(client, profileId),
+      reads.fetchOverShepherdCareProfileByShepherdId(profileId),
       // The caller's OWN author-private notes/prayers about this Leader, read
       // back so they can verify what they saved. RLS returns the author's rows
       // regardless of the transparency toggle.
-      fetchCareNotesForSubject(client, profileId),
-      fetchPrayerRequestsForSubject(client, profileId),
+      reads.fetchCareNotesForSubject(profileId),
+      reads.fetchPrayerRequestsForSubject(profileId),
     ]);
   const myCareNotes: CareNotesRow[] = careNotesResult.data ?? [];
   const myPrayerRequests: PrayerRequestsRow[] = prayerRequestsResult.data ?? [];
@@ -91,8 +85,7 @@ export default async function OverShepherdShepherdPage({
 
   let interactions: ShepherdCareInteractionsRow[] = [];
   if (careResult.data) {
-    const inter = await fetchOverShepherdCareInteractions(
-      client,
+    const inter = await reads.fetchOverShepherdCareInteractions(
       careResult.data.id
     );
     if (!inter.error) interactions = inter.data;

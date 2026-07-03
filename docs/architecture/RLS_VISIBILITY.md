@@ -41,7 +41,15 @@ Read access is enforced in Postgres by RLS `USING` predicates, gating on
 | **PRIVATE_NOTE_EXCEPTION** | Creator-only Ministry Admin — **Super Admin excluded**          | `auth_role() = 'ministry_admin' and created_by = self` |
 | **NO_READ**                | Nobody via SQL — reachable only through `SECURITY DEFINER` RPCs | _(no SELECT policy)_                                   |
 
-## The matrix (53 RLS-enabled tables)
+## The matrix (56 RLS-enabled tables)
+
+The count matches the sweep test's coverage guard, which classifies every table
+that ever had RLS enabled in migration history — including the four retired
+cell tables the collapse-cells migration later dropped (their
+`enable row level security` statements survive in the migration record, so the
+static sweep still asserts their policies). A doc-sync fitness check
+(`tests/fitness/rls-visibility-doc-sync.test.ts`) fails the build if a
+classified table is missing from this document or this header count drifts.
 
 ### ADMIN_READ — both admins, nothing below
 
@@ -53,9 +61,10 @@ Read access is enforced in Postgres by RLS `USING` predicates, gating on
 `multiplication_candidates`, `multiplication_readiness_rule`, `over_shepherds`,
 `launch_planning_scenarios`, `attention_reset_baselines`,
 `activity_reset_baselines`, `note_transparency_grants` (the transparency toggle
-table itself is admin-only). The retired cell tables (`group_categories`,
-`category_type_targets`, `multiplication_config`, `audience_readiness_rule`) were
-dropped by the collapse-cells migration.
+table itself is admin-only). The four retired cell tables — `group_categories`,
+`category_type_targets`, `multiplication_config`, `audience_readiness_rule` —
+were dropped by the collapse-cells migration (ADR 0034) but stay classified
+ADMIN_READ in the sweep matrix, per the counting rule above.
 
 ### CONFIG_SCOPED — admins read all keys; non-admins read one shared key
 
@@ -67,7 +76,9 @@ fixed leak) and `group_health_rubric` stay admin-only, as does any future key.
 
 `audit_events`, `audit_events_archive`, `platform_config`, `usage_events`,
 `invitations`, `tombstones`, `clean_slate_snapshots`, `history_reset_snapshots`,
-`attention_reset_snapshots`.
+`attention_reset_snapshots`, `account_deletion_requests` (`20260704000000` — a
+requester's row is written via the RPC path; only the Super Admin can list
+requests).
 
 ### LEADER_SCOPED — admins read all; leaders read their group's rows
 
@@ -82,6 +93,17 @@ fixed leak) and `group_health_rubric` stay admin-only, as does any future key.
 `shepherd_coverage_assignments` (an OS reads only their **own active**
 assignments).
 
+**`profiles` also carries a deliberate self-read arm** beyond the
+OVER_SHEPHERD_SCOPED shape (`20260602020000`, `profiles_read`):
+`auth_user_id = (select auth.uid())` — any signed-in user can SELECT **their
+own** profile row. It intentionally has **no `status = 'active'` filter**: the
+session bootstrap (`lib/auth/session.ts`) must read the row to decide the
+guard verdict, and every app guard denies an inactive profile, so nothing is
+reachable app-side. Do not "fix" this in either direction during a future
+policy consolidation — adding a status filter breaks session bootstrap for
+deactivated users (they'd read as anonymous rather than denied), and widening
+it beyond self would leak the directory.
+
 ### CARE_NOTE_EXCEPTION
 
 `care_notes`, `prayer_requests`.
@@ -92,7 +114,9 @@ assignments).
 
 ### NO_READ — RPC-only
 
-`invite_redeem_throttle`.
+`invite_redeem_throttle`, `first_run_orientations` (`20260705000000` — RLS on,
+deliberately no SELECT policy; orientation state is read and written only
+through its `SECURITY DEFINER` RPCs).
 
 ## The two deliberate exceptions
 
@@ -119,13 +143,17 @@ auth_profile_id()`. The **Super Admin cannot read it** (the policy never
 
 - **`SUPER_ADMIN_ONLY` set** — the audit trail (`audit_events`,
   `audit_events_archive`), platform configuration (`platform_config`),
-  usage telemetry (`usage_events`), shareable invites (`invitations`), and the
+  usage telemetry (`usage_events`), shareable invites (`invitations`), the
   danger-zone snapshots (`tombstones`, `clean_slate_snapshots`,
-  `history_reset_snapshots`, `attention_reset_snapshots`) are Tom-only. The
-  ladder puts Super Admin above Ministry Admin, so these being invisible to
-  Julian is consistent with the ladder, not a gap.
-- **`NO_READ` (`invite_redeem_throttle`)** — RLS on, no SELECT policy; touched
-  only inside `SECURITY DEFINER` RPCs.
+  `history_reset_snapshots`, `attention_reset_snapshots`), and the
+  account-deletion request queue (`account_deletion_requests`) are Tom-only.
+  The ladder puts Super Admin above Ministry Admin, so these being invisible
+  to Julian is consistent with the ladder, not a gap.
+- **`NO_READ` (`invite_redeem_throttle`, `first_run_orientations`)** — RLS on,
+  no SELECT policy; touched only inside `SECURITY DEFINER` RPCs.
+- **`profiles` self-read arm** — see the OVER_SHEPHERD_SCOPED section above:
+  own-row SELECT with no status filter, required by session bootstrap and
+  fenced by the app guards.
 
 > ⚠️ **Confirm-intent (no code change):** the audit log and platform config are
 > deliberately invisible to the **Ministry Admin**. If Julian should be able to

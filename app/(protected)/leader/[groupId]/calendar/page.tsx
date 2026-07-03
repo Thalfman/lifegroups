@@ -15,8 +15,7 @@ import { requireLeader } from "@/lib/auth/session";
 import { toShellUser } from "@/lib/auth/shell-user";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchLeaderGroupsByIds } from "@/lib/supabase/group-reads";
-import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
+import { bindLeaderReads } from "@/lib/leader/leader-reads";
 import {
   generateMonthOccurrences,
   mergeOverrides,
@@ -77,9 +76,10 @@ export default async function LeaderCalendarPage({
   // the RPC's own date checks, not by widening the read window. We deliberately
   // do NOT clamp fromDate to today, so the past stays visible (read) while the
   // surface remains group-scoped.
+  const reads = bindLeaderReads(client);
   const [groupResult, eventsResult] = await Promise.all([
-    fetchLeaderGroupsByIds(client, [groupId]),
-    fetchGroupCalendarEvents(client, {
+    reads.fetchLeaderGroupsByIds([groupId]),
+    reads.fetchGroupCalendarEvents({
       groupId,
       fromDate: bounds.firstIso,
       toDate: bounds.lastIso,

@@ -1,5 +1,7 @@
 # Invitees choose their own name
 
+**Status:** Accepted
+
 The named invite flows (email invite and "Copy invite link" on the
 super-admin Invite-someone card) required the inviter to type the invitee's
 full name. `super_admin_complete_invite` wrote that name into

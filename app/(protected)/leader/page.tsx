@@ -9,10 +9,8 @@ import { buttonClassName } from "@/components/ui/button";
 import { requireLeader } from "@/lib/auth/session";
 import { toShellUser } from "@/lib/auth/shell-user";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  fetchLeaderGroupsByIds,
-  type LeaderSafeGroupRow,
-} from "@/lib/supabase/group-reads";
+import { type LeaderSafeGroupRow } from "@/lib/supabase/group-reads";
+import { bindLeaderReads } from "@/lib/leader/leader-reads";
 import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
 import { FirstRunCard } from "@/components/orientation/first-run-card";
 
@@ -43,10 +41,11 @@ export default async function LeaderPage() {
   let orientationSeen = true;
   let groups: LeaderSafeGroupRow[] = [];
   if (client) {
+    const reads = bindLeaderReads(client);
     const [seen, groupsResult] = await Promise.all([
       readFirstRunOrientationSeen(client),
       groupIds.length > 0
-        ? fetchLeaderGroupsByIds(client, groupIds)
+        ? reads.fetchLeaderGroupsByIds(groupIds)
         : Promise.resolve(null),
     ]);
     orientationSeen = seen;
