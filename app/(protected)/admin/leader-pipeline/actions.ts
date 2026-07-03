@@ -32,12 +32,16 @@ const REVALIDATE_PATH_PEOPLE = "/admin/people";
 // and its Plan tab's apprentice picker reads the same data (ADR 0022), so an
 // apprentice create/advance/archive must refresh /admin/multiply too.
 const REVALIDATE_PATH_MULTIPLY = "/admin/multiply";
+// The admin dashboard (/admin) renders the pipeline card, so a stage change
+// must refresh it too (#810).
+const REVALIDATE_PATH_ADMIN = "/admin";
 
 const APPRENTICE_REVALIDATE = [
   REVALIDATE_PATH_PIPELINE,
   REVALIDATE_PATH_LAUNCH_PLANNING,
   REVALIDATE_PATH_PEOPLE,
   REVALIDATE_PATH_MULTIPLY,
+  REVALIDATE_PATH_ADMIN,
 ] as const;
 
 // Translate a FormData (or plain object) into the validator's expected shape.

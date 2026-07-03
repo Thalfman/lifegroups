@@ -49,8 +49,15 @@ const SET_GRADE_SPEC: AdminWriteActionSpec<
   rpc: (client, value) => writeRubricGrade(client, "group", value),
   // The grade-entry control lives on the per-leader Care surface (the group
   // panel of /admin/shepherd-care/[id]) and surfaces on the Care area; revalidate
-  // both so a saved grade shows immediately.
-  revalidate: () => ["/admin/care", "/admin/shepherd-care"],
+  // both so a saved grade shows immediately. The payload carries only group_id —
+  // no profile id — so the detail pages that seed the form's initialScores are
+  // invalidated via the wildcard page target; without it the Router Cache keeps
+  // stale scores and a re-edit can overwrite the just-saved grade (#810).
+  revalidate: () => [
+    "/admin/care",
+    "/admin/shepherd-care",
+    { path: "/admin/shepherd-care/[profileId]", type: "page" },
+  ],
   noDataError: "The grade wasn't saved. Please try again.",
 };
 
