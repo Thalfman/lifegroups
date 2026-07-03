@@ -685,6 +685,9 @@ export interface ProspectsRow {
   archived: boolean;
   next_step: Record<string, unknown> | null;
   additional_note: string | null;
+  // #746: optional free-text desired Group type (null = not set; length capped
+  // by a DB check constraint, 20260710000000).
+  desired_group_type: string | null;
   created_by: UUID | null;
   updated_by: UUID | null;
   created_at: Timestamp;
