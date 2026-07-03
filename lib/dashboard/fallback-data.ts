@@ -64,8 +64,9 @@ const FALLBACK_WEEK_LABEL = "Week of May 18, 2026";
 // Phase 5A.6 demo calendar for the leader fallback group. Models the
 // 5-week rotation (Community Night, Men's Transformation, Study,
 // Women's Transformation, Study) starting at the fallback week with
-// one OFF date and one Cancelled date sprinkled in. Used by
-// /leader-preview and the seasonal sketches on /admin-preview when no
+// one OFF date and one Cancelled date sprinkled in. The old public
+// /leader-preview and /admin-preview routes are retired; the surviving
+// demo-data surface is the env-gated /a11y-harness, rendered when no
 // Supabase client is configured.
 const fallbackLeaderUpcoming: UpcomingCalendarEvent[] = [
   {
@@ -123,7 +124,7 @@ export const MULTIPLY_READINESS_FALLBACK: MultiplyReadinessDashboardSummary = {
 };
 
 // Default-grain (all-time) activity for the period band when no Supabase client
-// is configured (e.g. /admin-preview sketches). Exported because the
+// is configured (e.g. the env-gated /a11y-harness). Exported because the
 // "Recent activity" section is now its own streamed boundary
 // (RecentActivitySection) and renders this demo summary on the no-client path.
 export const fallbackActivity: OverviewActivitySummary = {
