@@ -67,6 +67,13 @@ function expiredIdleValue(): string {
   return String(Date.now() - IDLE_LIMIT_MS - 1000);
 }
 
+// A recent last-active timestamp (well within the idle window). Authenticated
+// requests must carry a marker now that an absent one fails closed, so tests
+// exercising non-idle behavior pass this explicitly.
+function freshIdleValue(): string {
+  return String(Date.now() - 1000);
+}
+
 describe("updateSupabaseSession idle timeout", () => {
   it("force-signs-out an idle authenticated GET and redirects (303) to /login?reason=timeout", async () => {
     setSession(true);
@@ -145,13 +152,84 @@ describe("updateSupabaseSession idle timeout", () => {
     expect(Number(bumped?.value)).toBeGreaterThanOrEqual(Number(recent));
   });
 
-  it("starts a window on a first authenticated request with no marker", async () => {
+  it("signs out an authenticated request with no marker (fail closed)", async () => {
+    // Login always seeds the marker, so an authenticated request without one
+    // means the cookie was deleted (e.g. from devtools at an unattended
+    // machine). Re-issuing a fresh window here was the fail-open hole: deleting
+    // one cookie kept the session alive forever.
     setSession(true);
     const res = await updateSupabaseSession(request("/admin"));
 
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
+    const cleared = res.cookies.get(IDLE_COOKIE);
+    expect(cleared?.value).toBe("");
+    expect(cleared?.maxAge).toBe(0);
+  });
+
+  it("signs out an authenticated request with a garbled marker (fail closed)", async () => {
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/admin", { cookies: { [IDLE_COOKIE]: "garbage" } })
+    );
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?reason=timeout`);
+  });
+
+  it("does not sign out a password-setup-pending session with no marker", async () => {
+    // Invite / recovery sessions are created by /auth/confirm WITHOUT an idle
+    // marker (login is the sole seeder); the pw-setup waiver must keep covering
+    // them or the fail-closed marker check would brick the invite flow.
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/reset-password", {
+        cookies: { [PW_SETUP_COOKIE]: PW_SETUP_COOKIE_VALUE },
+      })
+    );
+
     expect(mockSignOut).not.toHaveBeenCalled();
-    const set = res.cookies.get(IDLE_COOKIE);
-    expect(Number.isFinite(Number(set?.value))).toBe(true);
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("does not sign out the /auth/confirm handshake with no marker", async () => {
+    for (const qs of ["code=abc", "token_hash=xyz&type=recovery"]) {
+      setSession(true);
+      const res = await updateSupabaseSession(request(`/auth/confirm?${qs}`));
+      expect(mockSignOut).not.toHaveBeenCalled();
+      expect(res.headers.get("location")).toBeNull();
+    }
+  });
+
+  it("carries a link token through the no-marker sign-out on /reset-password", async () => {
+    // Same token-preservation path as an expired marker: the now-anonymous
+    // browser is forwarded to /reset-password keeping the params.
+    setSession(true);
+    const res = await updateSupabaseSession(
+      request("/reset-password?token_hash=xyz&type=recovery")
+    );
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(
+      `${ORIGIN}/reset-password?token_hash=xyz&type=recovery`
+    );
+  });
+
+  it("does not sign out a future-timestamp marker (clock skew) and slides it forward", async () => {
+    setSession(true);
+    const future = String(Date.now() + 60_000);
+    const res = await updateSupabaseSession(
+      request("/admin", { cookies: { [IDLE_COOKIE]: future } })
+    );
+
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(res.headers.get("location")).toBeNull();
+    const slid = res.cookies.get(IDLE_COOKIE);
+    expect(Number.isFinite(Number(slid?.value))).toBe(true);
+    expect(Number(slid?.value)).toBeLessThanOrEqual(Number(future));
   });
 
   it("never signs out or sets a marker for an anonymous request", async () => {
@@ -237,10 +315,18 @@ describe("updateSupabaseSession idle timeout", () => {
 });
 
 describe("updateSupabaseSession landing-hint fast path", () => {
+  // These authenticated requests carry a fresh idle marker: an absent marker
+  // now fails closed (signed out) before the landing-hint logic runs, and a
+  // real signed-in browser always has one (login seeds it).
   it("redirects an authenticated `/` with a valid hint straight to the surface", async () => {
     setSession(true);
     const res = await updateSupabaseSession(
-      request("/", { cookies: { [LANDING_HINT_COOKIE]: "/admin" } })
+      request("/", {
+        cookies: {
+          [LANDING_HINT_COOKIE]: "/admin",
+          [IDLE_COOKIE]: freshIdleValue(),
+        },
+      })
     );
 
     expect(res.status).toBe(307);
@@ -251,7 +337,12 @@ describe("updateSupabaseSession landing-hint fast path", () => {
     for (const hint of ["/admin", "/leader", "/over-shepherd"]) {
       setSession(true);
       const res = await updateSupabaseSession(
-        request("/", { cookies: { [LANDING_HINT_COOKIE]: hint } })
+        request("/", {
+          cookies: {
+            [LANDING_HINT_COOKIE]: hint,
+            [IDLE_COOKIE]: freshIdleValue(),
+          },
+        })
       );
       expect(res.headers.get("location")).toBe(`${ORIGIN}${hint}`);
     }
@@ -260,7 +351,12 @@ describe("updateSupabaseSession landing-hint fast path", () => {
   it("ignores an invalid hint and does not redirect (falls through to `/`)", async () => {
     setSession(true);
     const res = await updateSupabaseSession(
-      request("/", { cookies: { [LANDING_HINT_COOKIE]: "/admin/groups" } })
+      request("/", {
+        cookies: {
+          [LANDING_HINT_COOKIE]: "/admin/groups",
+          [IDLE_COOKIE]: freshIdleValue(),
+        },
+      })
     );
 
     // No redirect: authenticated `/` continues to the dynamic Home Hub.
@@ -269,7 +365,9 @@ describe("updateSupabaseSession landing-hint fast path", () => {
 
   it("ignores a missing hint", async () => {
     setSession(true);
-    const res = await updateSupabaseSession(request("/"));
+    const res = await updateSupabaseSession(
+      request("/", { cookies: { [IDLE_COOKIE]: freshIdleValue() } })
+    );
 
     expect(res.headers.get("location")).toBeNull();
   });
@@ -278,7 +376,12 @@ describe("updateSupabaseSession landing-hint fast path", () => {
     for (const qs of ["code=abc", "token_hash=xyz&type=recovery"]) {
       setSession(true);
       const res = await updateSupabaseSession(
-        request(`/?${qs}`, { cookies: { [LANDING_HINT_COOKIE]: "/admin" } })
+        request(`/?${qs}`, {
+          cookies: {
+            [LANDING_HINT_COOKIE]: "/admin",
+            [IDLE_COOKIE]: freshIdleValue(),
+          },
+        })
       );
       // The hint must not steal the email-link callback off `/`.
       expect(res.headers.get("location")).not.toBe(`${ORIGIN}/admin`);
@@ -290,7 +393,10 @@ describe("updateSupabaseSession landing-hint fast path", () => {
     const res = await updateSupabaseSession(
       request("/", {
         method: "POST",
-        cookies: { [LANDING_HINT_COOKIE]: "/admin" },
+        cookies: {
+          [LANDING_HINT_COOKIE]: "/admin",
+          [IDLE_COOKIE]: freshIdleValue(),
+        },
       })
     );
 
@@ -323,7 +429,12 @@ describe("updateSupabaseSession stale-hint self-heal", () => {
     // through the same redirect.
     setSession(true);
     const res = await updateSupabaseSession(
-      request("/unauthorized", { cookies: { [LANDING_HINT_COOKIE]: "/admin" } })
+      request("/unauthorized", {
+        cookies: {
+          [LANDING_HINT_COOKIE]: "/admin",
+          [IDLE_COOKIE]: freshIdleValue(),
+        },
+      })
     );
 
     const cleared = res.cookies.get(LANDING_HINT_COOKIE);
@@ -333,7 +444,9 @@ describe("updateSupabaseSession stale-hint self-heal", () => {
 
   it("does not touch cookies on /unauthorized when no hint is present", async () => {
     setSession(true);
-    const res = await updateSupabaseSession(request("/unauthorized"));
+    const res = await updateSupabaseSession(
+      request("/unauthorized", { cookies: { [IDLE_COOKIE]: freshIdleValue() } })
+    );
 
     expect(res.cookies.get(LANDING_HINT_COOKIE)).toBeUndefined();
   });

@@ -18,6 +18,25 @@
 // the Supabase session cookies are cleared, so getCurrentSession() resolves
 // anonymous and the route guards redirect to /login regardless.
 //
+// Threat model: the marker is a server-written integrity signal (httpOnly, only
+// our code sets it), but it lives in the browser's cookie jar — the person at
+// the keyboard can delete or garble it from devtools. The guard therefore FAILS
+// CLOSED for authenticated sessions: an absent or unparseable marker on a
+// request that carries a live session is treated as idle-expired and signed
+// out, so deleting the cookie cannot mint a fresh idle window (the unattended-
+// machine attack this feature exists to stop). Anonymous requests never consult
+// the marker at all — the middleware guard runs only when session claims are
+// present — so a genuine first visit is unaffected.
+//
+// Seeding contract (why fail-closed is safe): loginAction is the sole seeder of
+// the marker for a persisting session. Every other session creator is either
+// waived from the guard while its password-setup marker is present (invite /
+// recovery sessions, plus the /auth/confirm handshake itself) or ends in an
+// immediate sign-out (reset-password completion). Residual risk after
+// hardening: an attacker who can WRITE cookies (not just delete them) can still
+// forge a fresh timestamp — indistinguishable from real activity without a
+// server-side session store, and out of scope here.
+//
 // This module is intentionally free of Next.js imports so the decision logic
 // stays pure and unit-testable; callers do the cookie read/write and clock read.
 
@@ -29,15 +48,14 @@ export const IDLE_COOKIE = "lg_last_active";
 // interrupt an active working session, short enough to end an abandoned one.
 export const IDLE_LIMIT_MS = 60 * 60 * 1000;
 
-// The marker must OUTLIVE the idle window, not merely exceed it: the timestamp
-// comparison is the sole authority on idleness, so the cookie has to still be
-// PRESENT (just stale) when a long-idle request finally arrives. If the cookie
-// expired first — as it would with a max-age near IDLE_LIMIT_MS — that request
-// would carry no marker, `isIdleExpired(undefined)` would fail open to "fresh",
-// and an overnight / long-abandoned session would never be signed out (the exact
-// case this feature exists for). So match the Supabase session cookie's own
-// lifetime (the same 400-day constant the password-setup marker uses) — the
-// marker then never lapses before the session it guards.
+// The marker outlives the idle window by matching the Supabase session cookie's
+// own lifetime (the same 400-day constant the password-setup marker uses). This
+// is no longer load-bearing for correctness — a lapsed marker now fails CLOSED
+// (treated as idle-expired), so a shorter max-age could not reopen the
+// overnight-session hole — but the long lifetime keeps behavior stable for
+// long-lived active sessions: the marker never expires out from under a session
+// that is still making requests, so an active user is only ever signed out by
+// genuine inactivity, never by cookie lapse.
 const IDLE_COOKIE_MAX_AGE_SECONDS = PW_SETUP_COOKIE_MAX_AGE_SECONDS;
 
 type IdleCookieOptions = {
@@ -70,18 +88,22 @@ export function idleCookieClearOptions(): IdleCookieOptions {
   return baseOptions(0);
 }
 
-// True only when a parseable last-active timestamp is older than the idle limit.
-// An absent, empty, or unparseable value is treated as a FRESH window (false),
-// never an expiry — so a first visit (no cookie yet) and any malformed value
-// fail open to "not idle" and let the session continue rather than bouncing the
-// user to /login on garbage input. A future timestamp (clock skew) is likewise
-// not idle.
+// True when a parseable last-active timestamp is older than the idle limit —
+// and also when the marker is absent, empty, or unparseable. Call this only for
+// requests that carry an authenticated session: login always seeds the marker,
+// so a session without a trustworthy one means the cookie was deleted or
+// tampered with, and the only safe reading is "idle-expired" (fail closed).
+// Anonymous requests must not reach this predicate — the middleware guard is
+// gated on session claims, so a true first visit is never bounced. A parseable
+// FUTURE timestamp (clock skew across instances, a corrected clock) is not
+// idle: it is a server-written marker whatever its sign, and the same request
+// slides it to "now", so skew self-heals in one hop.
 export function isIdleExpired(
   lastActiveValue: string | undefined,
   nowMs: number
 ): boolean {
-  if (!lastActiveValue) return false;
+  if (!lastActiveValue) return true;
   const lastActiveMs = Number(lastActiveValue);
-  if (!Number.isFinite(lastActiveMs)) return false;
+  if (!Number.isFinite(lastActiveMs)) return true;
   return nowMs - lastActiveMs > IDLE_LIMIT_MS;
 }
