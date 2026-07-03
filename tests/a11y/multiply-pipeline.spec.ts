@@ -100,10 +100,12 @@ test.describe("Multiply shepherds tab (leader pipeline)", () => {
     const shepherds = surface(page, "multiply-shepherds");
 
     // Two apprentices at the SAME stage: their Advance buttons only stay
-    // distinct through the record context in the accessible name.
+    // distinct through the record context in the accessible name. The name
+    // keeps the visible "Advance to <stage>" phrase intact (WCAG 2.5.3
+    // label-in-name) and appends the apprentice for uniqueness.
     expectAllUnique(
       await accessibleNames(
-        shepherds.getByRole("button", { name: /^Advance .+ to .+/ })
+        shepherds.getByRole("button", { name: /^Advance to .+ for .+/ })
       ),
       "advance-stage buttons"
     );

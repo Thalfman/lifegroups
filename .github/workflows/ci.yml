@@ -76,6 +76,7 @@ jobs:
               - "tests/integration/**"
               - "tests/fitness/**"
               - ".github/workflows/ci.yml" # this workflow (hosts the harness steps)
+              - ".github/workflows/rls-integration.yml" # scheduled/manual copy of the same steps — edits must prove the harness still runs
 
       # Node 22+ ships a native global WebSocket, which @supabase/realtime-js
       # (pulled in by createClient in the harness fixtures) requires — on Node
