@@ -14,7 +14,7 @@ import {
 function row(overrides: Partial<GroupsTableSortRow> = {}): GroupsTableSortRow {
   return {
     name: "Group",
-    leaderText: "Pat Lee · Lead",
+    leaderText: "Pat Lee · Shepherd",
     setup: "complete",
     health: "no_concerns",
     healthGrade: "B",

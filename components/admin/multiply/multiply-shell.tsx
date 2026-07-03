@@ -17,8 +17,8 @@ import {
 
 // The Multiply area's tabs (ADR 0022 / 0030). Multiply unifies the three faces of
 // the church's multiplication tracking into one surface:
-//   • Readiness — the per-cell category × top-type grid (ADR 0019/0021): the
-//                 at-a-glance "which cells are ready to multiply" signal. The
+//   • Readiness — the per-group-type grid (ADR 0019/0021): the at-a-glance
+//                 "which group types are ready to multiply" signal. The
 //                 default tab.
 //   • Pipeline  — the per-group multiplication plan (Julian's Doc, ADR 0006):
 //                 named groups by group type, with target year, successor/

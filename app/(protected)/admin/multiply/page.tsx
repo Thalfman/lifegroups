@@ -20,8 +20,8 @@ import { PipelineView } from "@/components/admin/multiply/pipeline-view";
 // Multiply area (ADR 0016 / 0019 / 0022 / 0030). One tabbed surface that unifies
 // the church's three faces of multiplication tracking, mirroring the Care tab
 // shell:
-//   • Readiness (default) — the per-cell category × top-type grid (#403): the
-//     at-a-glance "which cells are ready to multiply" signal. Setup lives in
+//   • Readiness (default) — the per-group-type grid (#403): the at-a-glance
+//     "which group types are ready to multiply" signal. Setup lives in
 //     Settings.
 //   • Pipeline — the per-group multiplication plan seeded from Julian's Doc
 //     (ADR 0006): named groups by group type, with target year, successor/
@@ -163,7 +163,7 @@ export default adminPage({
     eyebrow: "Multiply",
     title: "Plan your",
     italic: "multiplication",
-    lede: "Which groups are slated to multiply, which cells are ready, and who's in the shepherd pipeline — in one place.",
+    lede: "Which groups are slated to multiply, which group types are ready, and who's in the shepherd pipeline — in one place.",
   }),
   render: ({ tabs }) => (
     <PageBody>
