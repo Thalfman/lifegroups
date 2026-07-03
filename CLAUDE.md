@@ -38,6 +38,7 @@ but stay hidden behind Super-Admin nav flags (turned off, not deleted).
 | `npm test`                 | Vitest, watch mode                          |
 | `npm run test:run`         | Vitest once (what CI runs)                  |
 | `npm run test:a11y`        | Playwright + axe accessibility suite        |
+| `npm run test:e2e`         | E2E specs vs a local seeded Supabase stack  |
 | `npm run seed:test-auth`   | Create local test Auth users (`tsx` script) |
 | `npm run remove:test-auth` | Remove local test Auth users                |
 
@@ -198,6 +199,13 @@ result-returning guards (`requireAdminSession`, …) in server actions.
 - **Accessibility:** Playwright + `@axe-core/playwright` under `tests/a11y/`,
   driven against the `NEXT_PUBLIC_A11Y_HARNESS` build route. Shared helpers and
   the documented non-blocking-rule carve-out live in `tests/a11y/harness.ts`.
+- **E2E (happy-path writes):** Playwright under `tests/e2e/`
+  (`playwright.e2e.config.ts`), driving the **real** app — local seeded
+  Supabase stack, real sign-in, real Server Actions/RPCs/RLS, no harness or
+  stubs. One command: `npm run test:e2e` (`scripts/e2e.sh`; needs Docker + the
+  Supabase CLI — it starts the stack, seeds, serves, and runs). Opt-in lane:
+  CI runs it advisory-only via `.github/workflows/e2e.yml` (dispatch + weekly
+  cron + path-filtered PRs), never as a required check.
 - Add or update tests alongside behavior changes; CI gates on both suites.
 
 ## Git / PR / CI
