@@ -36,7 +36,7 @@ export function PlatformConfigTracerForm({ value }: { value: string }) {
           className={fieldInputClassName}
         />
         <p className={fieldHintClassName}>
-          Saving stores this note and reloads it from the database — a quick
+          Saving stores this note and reloads it from the database: a quick
           check that owner settings persist. Up to{" "}
           {APP_CONFIG_TRACER_MAX_LENGTH} characters.
         </p>

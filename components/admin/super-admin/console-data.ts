@@ -230,14 +230,14 @@ export function buildSuperAdminChecklist(
       key: "is_super_admin",
       label: "Current user is super_admin",
       description:
-        "You wouldn’t see this page otherwise — the route guard redirects every other role to /unauthorized.",
+        "You wouldn’t see this page otherwise: the route guard redirects every other role to /unauthorized.",
       tone: "info",
     },
     {
       key: "groups",
       label: "Groups exist",
       description: !hasClient
-        ? "Unknown — the database isn’t configured in this environment."
+        ? "Unknown: the database isn’t configured in this environment."
         : errors.groups
           ? `Couldn’t load groups: ${errors.groups}`
           : groups.length > 0
@@ -254,7 +254,7 @@ export function buildSuperAdminChecklist(
       key: "leaders",
       label: "Shepherds exist",
       description: !hasClient
-        ? "Unknown — the database isn’t configured in this environment."
+        ? "Unknown: the database isn’t configured in this environment."
         : errors.profiles
           ? `Couldn’t load profiles: ${errors.profiles}`
           : leaderProfiles.length > 0
@@ -273,7 +273,7 @@ export function buildSuperAdminChecklist(
       key: "members",
       label: "Members exist",
       description: !hasClient
-        ? "Unknown — the database isn’t configured in this environment."
+        ? "Unknown: the database isn’t configured in this environment."
         : errors.members
           ? `Couldn’t load members: ${errors.members}`
           : members.length > 0
@@ -290,7 +290,7 @@ export function buildSuperAdminChecklist(
       key: "leader_assignment",
       label: "At least one shepherd has an active group assignment",
       description: !hasClient
-        ? "Unknown — the database isn’t configured in this environment."
+        ? "Unknown: the database isn’t configured in this environment."
         : errors.leaders
           ? `Couldn’t load group_leaders: ${errors.leaders}`
           : leadersWithAssignment.size > 0
@@ -309,7 +309,7 @@ export function buildSuperAdminChecklist(
       key: "audit_access",
       label: "Audit log access available",
       description: !hasClient
-        ? "Unknown — the database isn’t configured in this environment."
+        ? "Unknown: the database isn’t configured in this environment."
         : errors.audit
           ? `Audit fetch failed: ${errors.audit}`
           : "audit_events readable; the panel above is the canonical surface.",

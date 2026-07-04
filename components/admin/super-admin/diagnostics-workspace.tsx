@@ -32,7 +32,7 @@ export function DiagnosticsWorkspace({
         <div className="flex flex-wrap items-start justify-between gap-2.5">
           <SubsectionHeader
             title="Read-only checks"
-            hint="Safe to look at anytime — nothing on this half changes the app."
+            hint="Safe to look at anytime: nothing on this half changes the app."
           />
           <StatusBadge label="Read-only" tone="readonly" />
         </div>

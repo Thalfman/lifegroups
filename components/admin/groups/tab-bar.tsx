@@ -16,12 +16,12 @@ export const TABS: { key: ListTab; label: string }[] = [
 export const EMPTY_TAB_COPY: Record<ListTab, string> = {
   all: "No groups yet. Create your first with “New group” above.",
   needs_setup:
-    "Nothing needs setup — every group has a shepherd, meeting details, and a capacity.",
+    "Nothing needs setup. Every group has a shepherd, meeting details, and a capacity.",
   needs_health_check:
-    "Nothing to check — every group has a Group-Health Grade and its required ratings.",
+    "Nothing to check. Every group has a Group-Health Grade and its required ratings.",
   needs_attention: "Nothing needs attention right now.",
   archived:
-    "No archived groups. Archiving is reversible — an archived group would appear here, ready to restore.",
+    "No archived groups. Archiving is reversible. An archived group would appear here, ready to restore.",
 };
 
 export function TabBar({

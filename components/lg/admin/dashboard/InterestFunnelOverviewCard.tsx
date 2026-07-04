@@ -58,7 +58,7 @@ export function InterestFunnelOverviewCard({
     >
       {activeTotal === 0 && joined === 0 ? (
         <CardNote>
-          No Prospects in the Interest Funnel yet — new interest will gather
+          No Prospects in the Interest Funnel yet. New interest will gather
           here.
         </CardNote>
       ) : (

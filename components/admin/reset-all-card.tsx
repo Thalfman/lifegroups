@@ -73,8 +73,8 @@ export function ResetAllCard({
   return (
     <DangerCard
       emphasis
-      title="Reset everything — one clean launch state"
-      intro="The single step most operators want before launch. It does everything the granular workflows do in one guarded action: clears all accumulated history, hides the time-based “Needs attention” launch warnings, and resets the shepherd-care and health-check attention cards to a clean baseline. People, groups, shepherds, memberships, settings, care profiles & notes, and the audit log are kept. Recoverable snapshots are captured first — undo each piece from its own workflow. Running it again when everything is already clean is a safe no-op."
+      title="Reset everything: one clean launch state"
+      intro="The single step most operators want before launch. It does everything the granular workflows do in one guarded action: clears all accumulated history, hides the time-based “Needs attention” launch warnings, and resets the shepherd-care and health-check attention cards to a clean baseline. People, groups, shepherds, memberships, settings, care profiles & notes, and the audit log are kept. Recoverable snapshots are captured first. Undo each piece from its own workflow. Running it again when everything is already clean is a safe no-op."
     >
       <DangerSection
         variant="destructive"
@@ -88,7 +88,7 @@ export function ResetAllCard({
         {/* Impact preview. */}
         {impactUnavailable ? (
           <p className="m-0 font-sans text-sm text-ink2">
-            Impact preview unavailable — the history counts couldn&rsquo;t be
+            Impact preview unavailable. The history counts couldn&rsquo;t be
             loaded. Reset everything is disabled until they read successfully.
           </p>
         ) : (

@@ -94,11 +94,11 @@ export function ActivityResetControl({
 
       <FormStatus
         state={reset.state}
-        successText="Recent activity reset — the tiles will climb again from today."
+        successText="Recent activity reset. The tiles will climb again from today."
       />
       <FormStatus
         state={clear.state}
-        successText="Reset cleared — the tiles show all-time counts again."
+        successText="Reset cleared. The tiles show all-time counts again."
       />
     </div>
   );

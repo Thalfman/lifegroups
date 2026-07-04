@@ -106,7 +106,7 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
         <strong>Held</strong> only record your intent: the surface stays off
         until it passes a safety review, so nothing is re-exposed by accident.
         Flags marked <strong>Nav</strong> show or hide a tab in the admin
-        navigation — hiding a tab does not block access to its pages.
+        navigation. Hiding a tab does not block access to its pages.
       </p>
       <div className="grid gap-2.5">
         {rows.map((row) => (
@@ -171,7 +171,7 @@ function FeatureFlagTechnicalNotes() {
   return (
     <details className="rounded-sm border border-line">
       <summary className="lg-sac-summary flex items-center gap-2 px-3 py-2.5 font-sans text-sm font-semibold text-ink2">
-        Technical notes — how flags are enforced
+        Technical notes: how flags are enforced
       </summary>
       <ul className="m-0 grid gap-1.5 pb-3 pl-7 pr-3 pt-0 font-sans text-xs leading-relaxed text-ink2">
         <li>
@@ -182,7 +182,7 @@ function FeatureFlagTechnicalNotes() {
         </li>
         <li>
           Nav flags govern the top-level tabs the Care · Plan · Multiply pivot
-          (ADR 0016) hides by default — Groups, People, and Planning. The flag
+          (ADR 0016) hides by default: Groups, People, and Planning. The flag
           controls nav visibility only; the routes themselves keep resolving by
           direct URL whether or not the tab is shown.
         </li>

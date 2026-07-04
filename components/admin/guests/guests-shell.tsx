@@ -139,7 +139,7 @@ export function GuestsManagementShell({
         <SectionHeader
           eyebrow="Pipeline at a glance"
           title="Where everyone stands"
-          description="A count by stage. The pipeline is manual — no auto-advance, no SMS, no email; you move each person forward yourself."
+          description="A count by stage. The pipeline is manual: no auto-advance, no SMS, no email; you move each person forward yourself."
         />
         <div className="lg-m-grid-stack grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2.5">
           {GUEST_PIPELINE_STAGES.map((stage) => (
@@ -242,8 +242,8 @@ export function GuestsManagementShell({
             }
             description={
               guests.length === 0
-                ? "Add your first guest using the form above. A name is enough to start — the rest can come later."
-                : "Adjust the search or filters above — or add a new guest at the top."
+                ? "Add your first guest using the form above. A name is enough to start. The rest can come later."
+                : "Adjust the search or filters above, or add a new guest at the top."
             }
           />
         ) : (

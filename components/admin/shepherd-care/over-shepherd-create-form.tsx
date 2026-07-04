@@ -64,7 +64,7 @@ export function OverShepherdCreateForm() {
         </div>
         <div className="col-span-full">
           <label htmlFor="os-create-notes" className={FIELD_LABEL}>
-            Notes (optional, max 2000 chars) — admin-only
+            Notes (optional, max 2000 chars, admin-only)
           </label>
           <textarea
             id="os-create-notes"

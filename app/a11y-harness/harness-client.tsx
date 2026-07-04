@@ -375,7 +375,7 @@ const NOTES_FEED_ITEMS: CareFeedItem[] = [
   {
     kind: "care_note",
     id: "note-1",
-    body: "Checked in after the move — settling in well.",
+    body: "Checked in after the move. Settling in well.",
     occurredAt: "2026-06-03T10:00:00+00:00",
     recordedAt: "2026-06-03T10:00:00+00:00",
     authorProfileId: "00000000-0000-4000-8000-0000000000b1",
@@ -1582,7 +1582,7 @@ export function A11yHarnessClient() {
           rows={GROUP_HEALTH_ROWS}
           period="2026-05-01"
           spiritualGrowthLabel="Spiritual growth (1–5)"
-          groupQuestionLabel="Group engagement — shepherd-reported (1–5)"
+          groupQuestionLabel="Group engagement, shepherd-reported (1–5)"
           watchGrade="C"
         />
       </Surface>

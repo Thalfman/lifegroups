@@ -110,7 +110,7 @@ export function PermanentDeleteCard({
   return (
     <DangerCard
       title="Permanent deletion"
-      intro="Physically removes a curated record. This is the bounded exception to archive-everywhere — a backup copy is captured first so it can be recovered, and the act is audited. Records that other records still depend on are refused until those are cleared; confidential records cannot be deleted (disable instead)."
+      intro="Physically removes a curated record. This is the bounded exception to archive-everywhere: a backup copy is captured first so it can be recovered, and the act is audited. Records that other records still depend on are refused until those are cleared; confidential records cannot be deleted (disable instead)."
     >
       <DangerSection
         variant="destructive"
@@ -208,7 +208,7 @@ export function PermanentDeleteCard({
           </div>
           {report !== null && !report.deletable ? (
             <p className="m-0 font-sans text-xs text-ink2">
-              This record can&rsquo;t be deleted yet — see the blockers above.
+              This record can&rsquo;t be deleted yet. See the blockers above.
             </p>
           ) : null}
           <FormStatus state={del.state} />
@@ -242,7 +242,7 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
         <>
           <div className="font-bold text-ink">
             Blocked by {report.blockers.length} dependent
-            {report.blockers.length === 1 ? "" : "s"} — clear these first:
+            {report.blockers.length === 1 ? "" : "s"}. Clear these first:
           </div>
           {report.blockers.map((b) => (
             <div
@@ -257,7 +257,7 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
           ))}
         </>
       ) : (
-        <div className="text-ink">No blocking dependents — safe to delete.</div>
+        <div className="text-ink">No blocking dependents. Safe to delete.</div>
       )}
       {report.setNull.length > 0 ? (
         <div className="mt-1">
@@ -287,7 +287,7 @@ function TombstoneRecovery({ tombstones }: { tombstones: RecentTombstone[] }) {
     >
       {tombstones.length === 0 ? (
         <p className="m-0 font-sans text-sm text-ink2">
-          No backups yet — nothing has been permanently deleted.
+          No backups yet. Nothing has been permanently deleted.
         </p>
       ) : (
         <div className="grid gap-2">

@@ -58,9 +58,9 @@ export function DangerZoneConsole({
         </h2>
         <p className="m-0 max-w-lede font-sans text-sm text-ink2">
           Guarded actions grouped by risk, lowest first. The cards below are
-          launchers, not buttons — opening one only reveals its workflow.
-          Nothing runs until you type that workflow&rsquo;s confirmation phrase,
-          and resets capture a recoverable snapshot before anything is removed.
+          launchers, not buttons: opening one only reveals its workflow. Nothing
+          runs until you type that workflow&rsquo;s confirmation phrase, and
+          resets capture a recoverable snapshot before anything is removed.
         </p>
       </div>
 

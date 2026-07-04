@@ -68,7 +68,7 @@ export function ThisWeekCard({
         </p>
       ) : rows.length === 0 ? (
         <p className="m-0 font-sans text-sm text-ink3">
-          The week ahead is clear — no follow-ups are due.
+          The week ahead is clear. No follow-ups are due.
         </p>
       ) : (
         <div>

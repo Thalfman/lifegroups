@@ -51,8 +51,8 @@ export function MultiplyOverviewCard({
     >
       {summary.activeCells === 0 ? (
         <CardNote>
-          No active group types yet — readiness will gather here once group
-          types are set up in Settings.
+          No active group types yet. Readiness will gather here once group types
+          are set up in Settings.
         </CardNote>
       ) : (
         <StatTileGrid>

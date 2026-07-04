@@ -79,13 +79,13 @@ export function AttentionResetCard({
 }) {
   return (
     <DangerCard
-      title="Reset attention — fresh start for the time-based Home cards"
+      title="Reset attention: fresh start for the time-based Home cards"
       intro={
         <p className="m-0 font-sans text-sm text-ink2">
           The “overdue or missing health checks” and “leaders needing care”
           cards are driven by elapsed time, so deleting history never clears
           them and muting only hides them. A reset records a recoverable “as-of”
-          baseline so the card drops to zero <em>without</em> hiding it — then
+          baseline so the card drops to zero <em>without</em> hiding it. It then
           re-surfaces naturally once real time passes. Unlike the mute flags,
           this is a genuine fresh start, not a permanent hide.
         </p>
@@ -93,7 +93,7 @@ export function AttentionResetCard({
     >
       {state === null ? (
         <p className="m-0 font-sans text-sm text-ink2">
-          Impact preview unavailable — the reset state couldn&rsquo;t be loaded.
+          Impact preview unavailable. The reset state couldn&rsquo;t be loaded.
           Resets are disabled until it reads successfully.
         </p>
       ) : (
@@ -202,7 +202,7 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
         </div>
         {reset.state?.ok ? (
           <span className={successTextClassName}>
-            Reset done — the card will read clear.{" "}
+            Reset done. The card will read clear.{" "}
             {surface.surface === "care"
               ? `${reset.state.value.affected} care profile${
                   reset.state.value.affected === 1 ? "" : "s"
@@ -252,7 +252,7 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
           </div>
           {revert.state?.ok ? (
             <span className={successTextClassName}>
-              Reset reverted — the card returns to its pre-reset state.
+              Reset reverted. The card returns to its pre-reset state.
             </span>
           ) : null}
           <FormStatus state={revert.state} />

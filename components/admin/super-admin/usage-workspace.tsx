@@ -40,7 +40,7 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
         />
       </div>
       <p className="m-0 font-sans text-sm text-ink2">
-        Coarse usage telemetry — sign-ins and which top-level area each user
+        Coarse usage telemetry: sign-ins and which top-level area each user
         opens. Recording is gated by the{" "}
         <strong>Usage &amp; login tracking</strong> flag in Config → Feature
         flags; while it&rsquo;s off, nothing is recorded. Areas are structural
@@ -61,7 +61,7 @@ export function UsageWorkspace({ data }: { data: SuperAdminConsoleData }) {
     <div className="grid min-w-0 gap-5">
       <WorkspaceHeader
         title="Usage"
-        description="Read-only telemetry of sign-ins and which top-level area each user opens — recorded only while the Usage & login tracking flag is on."
+        description="Read-only telemetry of sign-ins and which top-level area each user opens, recorded only while the Usage & login tracking flag is on."
       />
       <UsagePanel data={data} />
     </div>

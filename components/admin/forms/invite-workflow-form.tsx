@@ -415,8 +415,8 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
             <div className="grid gap-1.5">
               <span className={successTextClassName}>
                 Invite link generated and copied to your clipboard. Share it
-                directly — using it, the person chooses their name and sets
-                their password.
+                directly. Using it, the person chooses their name and sets their
+                password.
               </span>
               <div className="flex items-center gap-2">
                 <input
@@ -545,8 +545,8 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                 Invite link generated and copied to your clipboard. Anyone who
                 opens it sets their own login as {ROLE_LABELS[shareResult.role]}
                 {shareResult.singleUse
-                  ? " — single use"
-                  : " — reusable until it expires"}
+                  ? ", single use"
+                  : ", reusable until it expires"}
                 . Expires {formatExpiry(shareResult.expiresAt)}.
               </span>
               <div className="flex items-center gap-2">

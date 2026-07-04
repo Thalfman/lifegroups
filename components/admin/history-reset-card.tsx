@@ -48,12 +48,12 @@ export function HistoryResetCard({
 }) {
   return (
     <DangerCard
-      title="Reset by category — clear one kind of history"
-      intro="Clear a single category of accumulated history at a time — useful before launch to remove invalid test data without wiping everything. Each reset captures a recoverable snapshot of just that category before deleting, and is audited. People, groups, shepherds, memberships, settings, and other categories are untouched. To clear every category at once, use Clean Slate instead."
+      title="Reset by category: clear one kind of history"
+      intro="Clear a single category of accumulated history at a time: useful before launch to remove invalid test data without wiping everything. Each reset captures a recoverable snapshot of just that category before deleting, and is audited. People, groups, shepherds, memberships, settings, and other categories are untouched. To clear every category at once, use Clean Slate instead."
     >
       {state === null ? (
         <p className="m-0 font-sans text-sm text-ink2">
-          Impact preview unavailable — the per-category counts couldn&rsquo;t be
+          Impact preview unavailable. The per-category counts couldn&rsquo;t be
           loaded. Resets are disabled until they read successfully.
         </p>
       ) : (
@@ -157,7 +157,7 @@ function CategoryResetRow({
         {reset.state?.ok ? (
           reset.state.value.nothingToClear ? (
             <span className="font-sans text-xs text-ink2">
-              Already clear — there was nothing in this category to clear.
+              Already clear. There was nothing in this category to clear.
             </span>
           ) : (
             <span className={successTextClassName}>

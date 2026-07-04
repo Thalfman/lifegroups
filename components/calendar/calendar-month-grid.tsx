@@ -50,7 +50,7 @@ function buildTriggerAriaLabel(
   const parts = [typePart];
   if (clock && occurrence.status === "scheduled") parts.push(clock);
   parts.push(statusLabel);
-  return `Edit ${friendlyDate} — ${parts.join(", ")}`;
+  return `Edit ${friendlyDate}: ${parts.join(", ")}`;
 }
 
 // Phase 5A.6 (corrected) monthly calendar grid. Generates the cells for

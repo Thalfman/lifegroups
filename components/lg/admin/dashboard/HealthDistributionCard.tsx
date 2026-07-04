@@ -37,8 +37,8 @@ export function HealthDistributionCard({
     >
       {total === 0 ? (
         <CardNote>
-          No groups are meeting yet — the health pulse will gather here as
-          groups begin.
+          No groups are meeting yet. The health pulse will gather here as groups
+          begin.
         </CardNote>
       ) : (
         <div>

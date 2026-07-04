@@ -91,7 +91,7 @@ export function GroupRosterManager({
               {data.leaders.length === 0 ? (
                 <p className={cn("m-0", BODY_TEXT)}>
                   No shepherd assigned yet
-                  {data.archived ? "." : " — assign one below."}
+                  {data.archived ? "." : ". Assign one below."}
                 </p>
               ) : (
                 <ul className={LIST_RESET}>
@@ -157,7 +157,7 @@ export function GroupRosterManager({
               {data.members.length === 0 ? (
                 <p className={cn("m-0", BODY_TEXT)}>
                   No active members on the roster
-                  {data.archived ? "." : " — assign one below."}
+                  {data.archived ? "." : ". Assign one below."}
                 </p>
               ) : (
                 <ul className={LIST_RESET}>
@@ -212,8 +212,8 @@ export function GroupRosterManager({
           <div className={LABEL_TEXT}>Interest Funnel</div>
           {data.prospectSignals === null ? (
             <p role="alert" className={READ_ERROR_TEXT}>
-              The Interest Funnel couldn&apos;t be read right now — this is not
-              a confirmation that no Prospects are matched to this group.
+              The Interest Funnel couldn&apos;t be read right now. This is not a
+              confirmation that no Prospects are matched to this group.
             </p>
           ) : (
             <>
@@ -233,7 +233,7 @@ export function GroupRosterManager({
                         Matched
                       </Badge>
                       <span className="font-sans text-sm text-ink3">
-                        being matched to this group — follow-up under way
+                        being matched to this group; follow-up under way
                       </span>
                     </li>
                   ))}
@@ -311,7 +311,7 @@ export function GroupRosterManager({
 
 // One confirm voice for both kinds: removal ends only this group link.
 function removeConfirmMessage(name: string, groupName: string): string {
-  return `Remove ${name} from ${groupName}? They stay in People — this only ends the group assignment.`;
+  return `Remove ${name} from ${groupName}? They stay in People. This only ends the group assignment.`;
 }
 
 // The inline assign control under each roster list: pick a person (+ role for

@@ -118,7 +118,7 @@ export function CareAttentionQueue({
           {remaining > 0 ? (
             <div className="mt-2.5 text-right font-sans text-sm italic text-ink3">
               {rosterFiltered
-                ? `+${remaining} more — switch the roster filter to All to see everyone`
+                ? `+${remaining} more. Switch the roster filter to All to see everyone`
                 : `+${remaining} more in the full roster below`}
             </div>
           ) : null}

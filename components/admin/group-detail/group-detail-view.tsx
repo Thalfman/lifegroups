@@ -352,8 +352,8 @@ function FollowUpsTab({ data }: { data: GroupFollowUpsTabData }) {
       <Card>
         {data.followUps === null ? (
           <p role="alert" className={READ_ERROR_TEXT}>
-            Follow-ups couldn&apos;t be loaded right now — a read failed. This
-            is not a confirmation that the group has none.
+            Follow-ups couldn&apos;t be loaded right now. A read failed. This is
+            not a confirmation that the group has none.
           </p>
         ) : data.followUps.length === 0 ? (
           <p className={cn("m-0", BODY_TEXT)}>
@@ -406,7 +406,7 @@ function EventsTab({
       <div className="grid gap-3.5">
         <Card>
           <p role="alert" className={READ_ERROR_TEXT}>
-            Upcoming meetings are unavailable right now — the calendar read
+            Upcoming meetings are unavailable right now. The calendar read
             failed. Retry in a moment or open the group calendar.
           </p>
         </Card>

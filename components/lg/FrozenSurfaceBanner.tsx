@@ -24,9 +24,9 @@ export function FrozenSurfaceBanner({
         <span className="font-semibold text-ink">
           Preserved, not actively maintained.
         </span>{" "}
-        This is a pre-pivot surface kept available by direct link but frozen —
-        it isn&rsquo;t being updated and may not reflect the current Care · Plan
-        · Multiply model.
+        This is a pre-pivot surface kept available by direct link but frozen. It
+        isn&rsquo;t being updated and may not reflect the current Care · Plan ·
+        Multiply model.
       </p>
     </div>
   );

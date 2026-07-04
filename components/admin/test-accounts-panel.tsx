@@ -158,7 +158,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
       <SectionHeader
         eyebrow="Test accounts"
         title="Temporary login accounts for role and mobile testing"
-        description="Use these temporary accounts for role and mobile testing. Disable them before launch — known-password accounts must not remain active for production."
+        description="Use these temporary accounts for role and mobile testing. Disable them before launch: known-password accounts must not remain active for production."
       />
 
       <div
@@ -166,7 +166,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
         className="rounded-sm border border-amber bg-amberSoft px-3.5 py-2.5 font-sans text-sm text-ink"
       >
         These are real user accounts that sign in through the normal /login
-        page. Passwords live only in the Edge Function environment — never
+        page. Passwords live only in the Edge Function environment, never
         displayed here.
       </div>
 

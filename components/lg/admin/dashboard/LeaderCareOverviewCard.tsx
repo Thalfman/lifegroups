@@ -46,7 +46,7 @@ export function LeaderCareOverviewCard({
     >
       {summary.error ? (
         <p className="m-0 mb-3 rounded-[8px] border border-clay bg-claySoft px-2.5 py-2 font-sans text-[12.5px] text-clayDeep">
-          Coverage data couldn’t be loaded — unassigned-coverage is hidden until
+          Coverage data couldn’t be loaded. Unassigned-coverage is hidden until
           this clears.
         </p>
       ) : null}

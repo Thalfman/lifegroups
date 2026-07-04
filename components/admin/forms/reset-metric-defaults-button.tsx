@@ -13,7 +13,7 @@ export const resetMetricDefaultsConfirmMessage =
   "Restore the built-in metric defaults?\n\n" +
   "This resets the global thresholds (capacity, healthy attendance, " +
   "check-in due offset, missed check-in window) to their baseline " +
-  "values. Per-group overrides are NOT touched — clear those " +
+  "values. Per-group overrides are NOT touched. Clear those " +
   "separately from the overrides list below if you also want them " +
   "cleared. This action is audited.";
 
@@ -31,8 +31,8 @@ export function ResetMetricDefaultsButton() {
       helperText={
         <p className="m-0 max-w-[480px] font-sans text-xs text-ink3">
           Restores the built-in baseline (capacity 80% / 100% thresholds,
-          24-hour check-in due offset, etc.). Per-group overrides stay intact
-          &mdash; clear those individually from the list below.
+          24-hour check-in due offset, etc.). Per-group overrides stay intact.
+          Clear those individually from the list below.
         </p>
       }
     />
