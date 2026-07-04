@@ -11,11 +11,11 @@ import {
   type SuggestedMultiplicationGroup,
 } from "@/lib/admin/capacity-board";
 import { STAGE_LABEL } from "@/lib/admin/leader-pipeline";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
@@ -23,34 +23,25 @@ import {
 } from "@/components/admin/forms/action-form";
 import type { CapacityStatus } from "@/lib/admin/metrics";
 
+// The small uppercase eyebrow label sitting above a section title.
+const EYEBROW =
+  "font-sans text-[10px] font-semibold uppercase tracking-[1.5px] text-ink3";
+
 // Status → swatch colour. Full reads "action implied" (terra); Open by choice
 // is intentional (sage); Filling is the warning band; Room is calm.
-const STATUS_STYLE: Record<
-  CapacityStatus,
-  { bg: string; border: string; color: string }
-> = {
-  ok: { bg: P.bg, border: P.line, color: P.ink2 },
-  warning: { bg: "#f5e6c8", border: "#e0c98a", color: "#7a5a1e" },
-  full: { bg: P.terraSoft, border: P.terra, color: "#7d3621" },
-  open_by_choice: { bg: P.sageSoft, border: P.sage, color: "#3e4f29" },
-  unknown: { bg: P.bg, border: P.line, color: P.ink3 },
-  excluded: { bg: P.bg, border: P.line, color: P.ink3 },
+const STATUS_STYLE: Record<CapacityStatus, string> = {
+  ok: "border-line bg-bg text-ink2",
+  warning: "border-amber bg-amberSoft text-amberText",
+  full: "border-clay bg-claySoft text-clayDeep",
+  open_by_choice: "border-sage bg-sageSoft text-sageDeep",
+  unknown: "border-line bg-bg text-ink3",
+  excluded: "border-line bg-bg text-ink3",
 };
 
 function StatusPill({ status }: { status: CapacityStatus }) {
-  const s = STATUS_STYLE[status];
   return (
     <span
-      style={{
-        fontFamily: fontBody,
-        fontSize: 11,
-        padding: "2px 8px",
-        borderRadius: 999,
-        border: `1px solid ${s.border}`,
-        background: s.bg,
-        color: s.color,
-        whiteSpace: "nowrap",
-      }}
+      className={`whitespace-nowrap rounded-pill border px-2 py-0.5 font-sans text-2xs ${STATUS_STYLE[status]}`}
     >
       {CAPACITY_STATUS_LABEL[status]}
     </span>
@@ -59,19 +50,7 @@ function StatusPill({ status }: { status: CapacityStatus }) {
 
 function ReadyToMultiplyBadge() {
   return (
-    <span
-      style={{
-        fontFamily: fontBody,
-        fontSize: 11,
-        fontWeight: 600,
-        padding: "2px 8px",
-        borderRadius: 999,
-        border: `1px solid ${P.sage}`,
-        background: P.sageSoft,
-        color: "#3e4f29",
-        whiteSpace: "nowrap",
-      }}
-    >
+    <span className="whitespace-nowrap rounded-pill border border-sage bg-sageSoft px-2 py-0.5 font-sans text-2xs font-semibold text-sageDeep">
       ✓ Ready to multiply
     </span>
   );
@@ -82,10 +61,7 @@ function TargetEditor({ row }: { row: CapacityBoardRow }) {
     adminSetGroupCapacityTarget
   );
   return (
-    <form
-      action={formAction}
-      style={{ display: "flex", gap: 6, alignItems: "center" }}
-    >
+    <form action={formAction} className="flex items-center gap-1.5">
       <input type="hidden" name="group_id" value={row.groupId} />
       <input
         name="target"
@@ -95,7 +71,7 @@ function TargetEditor({ row }: { row: CapacityBoardRow }) {
         inputMode="numeric"
         defaultValue={row.effectiveTarget ?? ""}
         aria-label={`Target size for ${row.groupName}`}
-        style={{ ...fieldInputStyle, width: 72, padding: "6px 8px" }}
+        className={cn(fieldInputClassName, "w-[72px] px-2 py-1.5")}
       />
       <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
         {pending ? "…" : "Set"}
@@ -107,60 +83,28 @@ function TargetEditor({ row }: { row: CapacityBoardRow }) {
 
 function BoardRow({ row }: { row: CapacityBoardRow }) {
   return (
-    <div
-      style={{
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "12px 14px",
-        display: "grid",
-        gap: 8,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 10,
-          alignItems: "baseline",
-          flexWrap: "wrap",
-        }}
-      >
-        <strong style={{ fontFamily: fontBody, fontSize: 14, color: P.ink }}>
+    <div className="grid gap-2 rounded-sm border border-line px-3.5 py-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2.5">
+        <strong className="font-sans text-base text-ink">
           {row.groupName}
         </strong>
-        <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3 }}>
-          {row.segment}
-        </span>
+        <span className="font-sans text-xs text-ink3">{row.segment}</span>
       </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <span style={{ fontFamily: fontBody, fontSize: 13, color: P.ink }}>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <span className="font-sans text-sm text-ink">
           {row.activeMemberCount} / {row.effectiveTarget ?? "—"} members
         </span>
         <StatusPill status={row.status} />
         {row.readyToMultiply ? <ReadyToMultiplyBadge /> : null}
         {row.readyApprentice ? (
-          <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
+          <span className="font-sans text-xs text-ink2">
             Apprentice: {row.readyApprentice.displayName} (
             {STAGE_LABEL[row.readyApprentice.stage]})
           </span>
         ) : null}
       </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <span style={fieldLabelStyle}>Target</span>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <span className={fieldLabelClassName}>Target</span>
         <TargetEditor row={row} />
       </div>
     </div>
@@ -169,33 +113,14 @@ function BoardRow({ row }: { row: CapacityBoardRow }) {
 
 function SuggestionRow({ s }: { s: SuggestedMultiplicationGroup }) {
   return (
-    <div
-      style={{
-        border: `1px solid ${P.sage}`,
-        background: P.sageSoft,
-        borderRadius: 10,
-        padding: "10px 14px",
-        display: "grid",
-        gap: 4,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 10,
-          alignItems: "baseline",
-          flexWrap: "wrap",
-        }}
-      >
-        <strong style={{ fontFamily: fontBody, fontSize: 14, color: P.ink }}>
-          {s.groupName}
-        </strong>
+    <div className="grid gap-1 rounded-sm border border-sage bg-sageSoft px-3.5 py-2.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2.5">
+        <strong className="font-sans text-base text-ink">{s.groupName}</strong>
         {/* ADR 0029 decision 3: no "meets X/5" — a pre-candidate group has no
             stored readiness flags to assess, so the annotation is suppressed
             rather than reporting a false zero. */}
       </div>
-      <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
+      <span className="font-sans text-xs text-ink2">
         {s.segment} · {s.activeMemberCount}/{s.effectiveTarget ?? "—"} ·{" "}
         {CAPACITY_STATUS_LABEL[s.status]} · {s.readyApprentice.displayName}{" "}
         ready to lead
@@ -228,40 +153,12 @@ export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
   );
 
   return (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       {model.suggestions.length > 0 ? (
-        <section
-          style={{
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 14,
-            padding: "20px 22px",
-            display: "grid",
-            gap: 12,
-          }}
-        >
+        <section className="grid gap-3 rounded-lg border border-line bg-surface px-[22px] py-5">
           <header>
-            <span
-              style={{
-                fontFamily: fontSans,
-                fontSize: 10,
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
-                color: P.ink3,
-                fontWeight: 600,
-              }}
-            >
-              Suggested to multiply
-            </span>
-            <p
-              style={{
-                margin: "6px 0 0",
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: P.ink3,
-                lineHeight: 1.5,
-              }}
-            >
+            <span className={EYEBROW}>Suggested to multiply</span>
+            <p className="m-0 mt-1.5 font-sans text-xs leading-normal text-ink3">
               Groups at or over target with an apprentice ready to lead. The
               5-criterion readiness is shown as context (&ldquo;meets
               N/5&rdquo;), not a gate.
@@ -273,55 +170,24 @@ export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
         </section>
       ) : null}
 
-      <section
-        style={{
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 14,
-          padding: "22px 24px",
-          display: "grid",
-          gap: 16,
-        }}
-      >
+      <section className="grid gap-4 rounded-lg border border-line bg-surface px-6 py-[22px]">
         <header>
-          <span
-            style={{
-              fontFamily: fontSans,
-              fontSize: 10,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 600,
-            }}
-          >
-            Capacity board
-          </span>
-          <h2
-            style={{
-              margin: "4px 0 0",
-              fontFamily: fontBody,
-              fontSize: 18,
-              color: P.ink,
-              fontWeight: 600,
-            }}
-          >
+          <span className={EYEBROW}>Capacity board</span>
+          <h2 className="m-0 mt-1 font-sans text-[18px] font-semibold text-ink">
             All active groups · {model.rows.length}
           </h2>
         </header>
 
-        <div
-          className="lg-m-grid-stack"
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
-        >
+        <div className="lg-m-grid-stack grid grid-cols-2 gap-2.5">
           <div>
-            <label htmlFor="cb-segment" style={fieldLabelStyle}>
+            <label htmlFor="cb-segment" className={fieldLabelClassName}>
               Group type
             </label>
             <select
               id="cb-segment"
               value={segment}
               onChange={(e) => setSegment(e.target.value)}
-              style={fieldSelectStyle}
+              className={fieldSelectClassName}
             >
               <option value="all">All group types</option>
               {model.segments.map((seg) => (
@@ -332,7 +198,7 @@ export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
             </select>
           </div>
           <div>
-            <label htmlFor="cb-status" style={fieldLabelStyle}>
+            <label htmlFor="cb-status" className={fieldLabelClassName}>
               Status
             </label>
             <select
@@ -341,7 +207,7 @@ export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
               onChange={(e) =>
                 setStatus(e.target.value as CapacityStatus | "all")
               }
-              style={fieldSelectStyle}
+              className={fieldSelectClassName}
             >
               <option value="all">All statuses</option>
               {STATUS_OPTIONS.map((st) => (
@@ -354,14 +220,7 @@ export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
         </div>
 
         {visible.length === 0 ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm text-ink2">
             No groups match these filters.
           </p>
         ) : (
