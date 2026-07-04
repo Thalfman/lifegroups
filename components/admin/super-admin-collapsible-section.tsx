@@ -10,11 +10,11 @@ import { cn } from "@/lib/utils";
 // status vocabulary, and the same component is exercised in the a11y harness.
 
 export type SuperAdminSectionAccent = {
-  // Border + summary text colour marking the section as visually separated from
-  // routine controls. Caller-resolved values (e.g. var(--c-rose)), so they stay
-  // inline styles here — the only dynamic colors this primitive carries.
-  border: string;
-  color: string;
+  // Border + summary text tone marking the section as visually separated from
+  // routine controls. Caller-resolved Tailwind classes (e.g. "border-rose",
+  // "text-rose") so this primitive stays free of console-specific vocabulary.
+  borderClassName: string;
+  textClassName: string;
   // A small status chip rendered in the summary (e.g. "Guarded", "Isolated").
   badge: ReactNode;
 };
@@ -54,16 +54,14 @@ export function SuperAdminCollapsibleSection({
       open={defaultOpen}
       className={cn(
         "scroll-mt-5 rounded-md border bg-surface",
-        !accent && "border-line"
+        accent ? accent.borderClassName : "border-line"
       )}
-      style={accent ? { borderColor: accent.border } : undefined}
     >
       <summary
         className={cn(
           "lg-sac-summary flex items-center gap-2.5 px-[18px] py-3.5 font-sans text-sm font-semibold",
-          !accent && "text-ink2"
+          accent ? accent.textClassName : "text-ink2"
         )}
-        style={accent ? { color: accent.color } : undefined}
       >
         <SectionChevron />
         <span className="flex-1">{label}</span>

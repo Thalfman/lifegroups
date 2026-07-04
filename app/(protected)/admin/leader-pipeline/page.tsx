@@ -24,7 +24,7 @@ export default adminPage({
   }),
   render: (data) => (
     <PageBody>
-      <div style={{ display: "grid", gap: 24 }}>
+      <div className="grid gap-6">
         {data.error ? (
           <p className="m-0 rounded-md bg-roseSoft px-3.5 py-2.5 font-sans text-sm text-rose">
             The shepherd pipeline could not be loaded: {data.error}

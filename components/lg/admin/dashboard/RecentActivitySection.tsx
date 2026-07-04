@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type { OverviewActivitySummary } from "@/lib/dashboard/types";
 import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
 import { ActivityBand } from "./ActivityBand";
@@ -52,12 +51,11 @@ export function RecentActivitySection({
 // Streaming fallback: the section heading paints immediately (no layout shift on
 // the heading row) and a pulse bar reserves the band's height. Presentational,
 // so the page can use it as the boundary's Suspense fallback.
-function Bar({ style }: { style?: CSSProperties }) {
+function Bar({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className="animate-pulse rounded-md bg-lineSoft"
-      style={style}
+      className={"animate-pulse bg-lineSoft " + className}
     />
   );
 }
@@ -76,7 +74,7 @@ export function RecentActivitySkeleton() {
         </div>
       </div>
       <span className="sr-only">Loading recent activity…</span>
-      <Bar style={{ height: 96, borderRadius: 12 }} />
+      <Bar className="h-24 rounded-md" />
     </section>
   );
 }

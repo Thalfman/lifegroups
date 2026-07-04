@@ -174,7 +174,7 @@ export function LockedInCandidateRow({
           onClick={remove}
           disabled={pending}
           aria-label={`Remove ${c.groupName} from the plan`}
-          style={{ marginLeft: "auto" }}
+          className="ml-auto"
         >
           {pending ? "Removing…" : "Remove"}
         </PButton>

@@ -19,7 +19,6 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
-import { P, fontSans } from "@/lib/pastoral";
 
 export function ActivityResetControl({
   baselineOn,
@@ -43,32 +42,17 @@ export function ActivityResetControl({
   const busy = reset.pending || clear.pending;
 
   return (
-    <div
-      style={{
-        display: "inline-flex",
-        flexDirection: "column",
-        gap: 4,
-        alignItems: "flex-end",
-      }}
-    >
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          flexWrap: "wrap",
-          justifyContent: "flex-end",
-        }}
-      >
+    <div className="inline-flex flex-col items-end gap-1">
+      <div className="inline-flex flex-wrap items-center justify-end gap-2">
         {baselineOn ? (
-          <span style={{ fontFamily: fontSans, fontSize: 12, color: P.ink3 }}>
+          <span className="font-sans text-xs text-ink3">
             Reset {baselineOn} · counts climb from the next day
           </span>
         ) : null}
 
         {confirming ? (
           <>
-            <span style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
+            <span className="font-sans text-xs text-ink2">
               Reset counts to zero?
             </span>
             <form action={reset.formAction}>
