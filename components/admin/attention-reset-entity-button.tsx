@@ -9,7 +9,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { PButton } from "@/components/pastoral/button";
 import {
   superAdminResetCareAttention,
   superAdminResetHealthAttention,
@@ -53,14 +52,14 @@ export function AttentionResetEntityButton({
 
   if (!armed) {
     return (
-      <PButton
+      <Button
         type="button"
-        tone="ghost"
+        variant="ghost"
         size="sm"
         onClick={() => setArmed(true)}
       >
         Reset attention
-      </PButton>
+      </Button>
     );
   }
 
@@ -82,15 +81,15 @@ export function AttentionResetEntityButton({
       >
         {form.pending ? "Resetting…" : "Confirm reset"}
       </Button>
-      <PButton
+      <Button
         type="button"
-        tone="ghost"
+        variant="ghost"
         size="sm"
         onClick={() => setArmed(false)}
         disabled={form.pending}
       >
         Cancel
-      </PButton>
+      </Button>
       <FormStatus state={form.state} />
     </form>
   );

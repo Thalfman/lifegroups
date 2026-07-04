@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
-import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveMultiplicationCandidate,
   adminUpdateMultiplicationCandidate,
@@ -13,6 +12,7 @@ import {
   type MultiplicationCriterion,
 } from "@/lib/admin/multiplication";
 import { errorTextClassName as ERROR } from "@/components/admin/forms/field-styles";
+import { Button } from "@/components/ui/button";
 
 // The five readiness criteria in display order. Mirrors evaluateReadiness's key
 // order (and readiness-checklist.tsx's CRITERIA_ORDER) so the inline toggle
@@ -167,9 +167,9 @@ export function LockedInCandidateRow({
         <span className="font-sans text-xs text-ink3">
           {metCount}/{CRITERIA_ORDER.length} ready
         </span>
-        <PButton
+        <Button
           type="button"
-          tone="ghost"
+          variant="ghost"
           size="sm"
           onClick={remove}
           disabled={pending}
@@ -177,7 +177,7 @@ export function LockedInCandidateRow({
           className="ml-auto"
         >
           {pending ? "Removing…" : "Remove"}
-        </PButton>
+        </Button>
       </div>
       {/* OPP-5 (#781): the five criteria are inline checkboxes now — a one-box
           change no longer costs a full drawer round trip. Each toggle is

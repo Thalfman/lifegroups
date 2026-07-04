@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PBadge } from "@/components/pastoral/atoms";
-import { PLinkButton } from "@/components/pastoral/button";
 import { dateLabel, formatClock } from "@/lib/calendar/occurrences";
 import {
   friendlyEventStatusLabel,
@@ -19,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
 import { occurrenceStatusTone } from "./admin-master-calendar-status";
+import { LinkButton } from "@/components/ui/button";
 
 export function AdminMasterCalendarDrawer({
   monthIso,
@@ -143,22 +143,22 @@ function DrawerBody({
       </div>
 
       <footer className="flex flex-wrap justify-end gap-2.5 border-t border-line bg-surface px-5 py-3.5">
-        <PLinkButton
+        <LinkButton
           href={groupDetailHref}
-          tone="ghost"
+          variant="ghost"
           size="sm"
           aria-label={`View ${occurrence.groupName} group`}
         >
           View group
-        </PLinkButton>
-        <PLinkButton
+        </LinkButton>
+        <LinkButton
           href={groupCalendarHref}
-          tone="terra"
+          variant="primary"
           size="sm"
           aria-label={`Open ${occurrence.groupName} calendar — ${dateLabel(occurrence.date)}`}
         >
           Open group calendar
-        </PLinkButton>
+        </LinkButton>
       </footer>
     </>
   );

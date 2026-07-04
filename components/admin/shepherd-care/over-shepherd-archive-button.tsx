@@ -52,7 +52,7 @@ export function OverShepherdArchiveButton({
       ]}
       idleLabel={active ? "Archive" : "Restore"}
       pendingLabel={active ? "Archiving…" : "Restoring…"}
-      tone="ghost"
+      variant="ghost"
       ariaLabel={`${active ? "Archive" : "Restore"} over-shepherd ${fullName}`}
       gap={4}
       alignEnd={false}

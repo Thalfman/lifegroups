@@ -168,7 +168,7 @@ function PersonActionBody({
           ]}
           idleLabel="Archive"
           pendingLabel="Archiving…"
-          tone="terra"
+          variant="primary"
           ariaLabel={`Archive ${person.fullName}`}
           onSuccess={onSaved}
           onPendingChange={onPendingChange}

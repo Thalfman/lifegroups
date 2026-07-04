@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, type ReactNode } from "react";
+import { Button, type ButtonVariant } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -12,7 +13,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { PButton, type PButtonTone } from "@/components/pastoral/button";
 
 // A reusable, non-blocking confirmation dialog. It replaces the synchronous
 // `window.confirm` gate: opening it paints immediately (the initiating click
@@ -22,7 +22,7 @@ import { PButton, type PButtonTone } from "@/components/pastoral/button";
 //
 //   - Trigger mode (default): pass `trigger`, the opener control. Radix renders
 //     it via `AlertDialogTrigger` (asChild) — it must forward props/ref to a
-//     real focusable element (PButton does) — and owns open/close plus focus
+//     real focusable element (Button does) — and owns open/close plus focus
 //     restore to it on dismissal. Used by confirm-then-submit button flows.
 //   - Controlled mode: pass `open` + `onOpenChange` and omit `trigger`. The host
 //     raises the dialog programmatically — used by discard-on-close flows, where
@@ -40,7 +40,7 @@ export function ConfirmDialog({
   message,
   confirmLabel,
   cancelLabel = "Cancel",
-  confirmTone = "terra",
+  confirmVariant = "primary",
   onConfirm,
 }: {
   // The opener control (trigger mode). Omit it for controlled mode.
@@ -57,7 +57,7 @@ export function ConfirmDialog({
   message: ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
-  confirmTone?: PButtonTone;
+  confirmVariant?: ButtonVariant;
   // Fired when the operator confirms; Radix then closes the dialog. It runs
   // synchronously, so the submit it triggers fires before the close settles.
   onConfirm: () => void;
@@ -108,19 +108,19 @@ export function ConfirmDialog({
           </AlertDialogDescription>
           <div className="mt-1 flex justify-end gap-2">
             <AlertDialogCancel asChild>
-              <PButton type="button" tone="ghost" size="sm">
+              <Button type="button" variant="ghost" size="sm">
                 {cancelLabel}
-              </PButton>
+              </Button>
             </AlertDialogCancel>
             <AlertDialogAction asChild>
-              <PButton
+              <Button
                 type="button"
-                tone={confirmTone}
+                variant={confirmVariant}
                 size="sm"
                 onClick={onConfirm}
               >
                 {confirmLabel}
-              </PButton>
+              </Button>
             </AlertDialogAction>
           </div>
         </AlertDialogContent>

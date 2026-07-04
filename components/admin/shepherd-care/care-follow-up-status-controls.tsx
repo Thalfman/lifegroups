@@ -1,6 +1,5 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveShepherdCareFollowUp,
   adminUpdateShepherdCareFollowUpStatus,
@@ -11,11 +10,12 @@ import {
 } from "@/components/admin/forms/action-form";
 import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
 import type { ShepherdCareFollowUpStatus } from "@/types/enums";
+import { Button } from "@/components/ui/button";
 
 type Transition = {
   status: ShepherdCareFollowUpStatus;
   label: string;
-  tone: "solid" | "ghost" | "terra";
+  variant: "solid" | "ghost" | "primary";
 };
 
 // Status transitions mirror the SQL rule (any state may move to any other);
@@ -24,18 +24,18 @@ function transitionsFor(status: ShepherdCareFollowUpStatus): Transition[] {
   switch (status) {
     case "open":
       return [
-        { status: "in_progress", label: "Start", tone: "solid" },
-        { status: "done", label: "Mark done", tone: "terra" },
+        { status: "in_progress", label: "Start", variant: "solid" },
+        { status: "done", label: "Mark done", variant: "primary" },
       ];
     case "in_progress":
       return [
-        { status: "done", label: "Mark done", tone: "terra" },
-        { status: "open", label: "Reopen", tone: "ghost" },
+        { status: "done", label: "Mark done", variant: "primary" },
+        { status: "open", label: "Reopen", variant: "ghost" },
       ];
     case "done":
       return [
-        { status: "in_progress", label: "Reopen", tone: "ghost" },
-        { status: "open", label: "Reopen as open", tone: "ghost" },
+        { status: "in_progress", label: "Reopen", variant: "ghost" },
+        { status: "open", label: "Reopen as open", variant: "ghost" },
       ];
   }
 }
@@ -76,9 +76,9 @@ export function CareFollowUpStatusControls({
               name="shepherd_profile_id"
               value={shepherdProfileId}
             />
-            <PButton
+            <Button
               type="submit"
-              tone={t.tone}
+              variant={t.variant}
               size="sm"
               disabled={pending}
               aria-label={`${t.label} follow-up: ${followUpTitle}${
@@ -86,7 +86,7 @@ export function CareFollowUpStatusControls({
               }`}
             >
               {pending ? "Saving…" : t.label}
-            </PButton>
+            </Button>
           </form>
         ))}
         {/* Archive is its own action with its own pending/error state (the
@@ -102,7 +102,7 @@ export function CareFollowUpStatusControls({
           ]}
           idleLabel="Archive"
           pendingLabel="Archiving…"
-          tone="ghost"
+          variant="ghost"
           ariaLabel={`Archive follow-up: ${followUpTitle}${
             followUpDueDate ? ` (due ${followUpDueDate})` : ""
           }`}

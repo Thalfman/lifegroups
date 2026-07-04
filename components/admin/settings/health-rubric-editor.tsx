@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import { adminSetHealthRubric } from "@/app/(protected)/admin/settings/actions";
 import { cn } from "@/lib/utils";
 import {
@@ -175,9 +175,9 @@ export function HealthRubricEditor({
                 className={fieldInputClassName}
               />
             </div>
-            <PButton
+            <Button
               type="button"
-              tone="ghost"
+              variant="ghost"
               size="sm"
               onClick={() => remove(row.id)}
               disabled={rows.length <= 1}
@@ -188,15 +188,15 @@ export function HealthRubricEditor({
               }`}
             >
               Remove
-            </PButton>
+            </Button>
           </div>
         ))}
       </div>
 
       <div className="flex items-center gap-3.5">
-        <PButton type="button" tone="ghost" size="sm" onClick={add}>
+        <Button type="button" variant="ghost" size="sm" onClick={add}>
           + Add criterion
-        </PButton>
+        </Button>
         <span
           className={cn(
             "font-sans text-sm font-semibold",
@@ -208,9 +208,9 @@ export function HealthRubricEditor({
       </div>
 
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={!canSave}>
+        <Button type="submit" variant="primary" size="md" disabled={!canSave}>
           {pending ? "Saving…" : "Save rubric"}
-        </PButton>
+        </Button>
         <FormStatus state={state} successText="Rubric saved." />
       </div>
     </form>

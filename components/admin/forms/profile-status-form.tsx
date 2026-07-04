@@ -1,6 +1,6 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import { superAdminSetProfileStatus } from "@/app/(protected)/admin/super-admin/account-actions";
 import { useActionForm, FormStatus } from "./action-form";
 
@@ -28,9 +28,9 @@ export function ProfileStatusForm({
     <form action={formAction} className="grid gap-1.5">
       <input type="hidden" name="profile_id" value={profileId} />
       <input type="hidden" name="status" value={nextStatus} />
-      <PButton
+      <Button
         type="submit"
-        tone="ghost"
+        variant="ghost"
         size="sm"
         disabled={pending}
         aria-label={
@@ -44,7 +44,7 @@ export function ProfileStatusForm({
         className={isActive ? "border-clay text-clayDeep" : undefined}
       >
         {pending ? "Saving…" : isActive ? "Disable" : "Re-enable"}
-      </PButton>
+      </Button>
       <FormStatus state={state} successText="Saved." />
     </form>
   );

@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import {
   errorTextClassName,
   fieldInputClassName,
@@ -9,6 +8,7 @@ import {
   successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import { forgotPasswordAction, type ForgotPasswordState } from "./actions";
+import { Button } from "@/components/ui/button";
 
 const INITIAL_STATE: ForgotPasswordState = {};
 
@@ -54,9 +54,14 @@ export function ForgotPasswordForm() {
         </p>
       ) : null}
 
-      <PButton type="submit" tone="terra" disabled={pending} className="w-full">
+      <Button
+        type="submit"
+        variant="primary"
+        disabled={pending}
+        className="w-full"
+      >
         {pending ? "Sending…" : "Send reset link"}
-      </PButton>
+      </Button>
     </form>
   );
 }

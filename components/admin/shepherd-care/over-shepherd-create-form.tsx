@@ -1,12 +1,12 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { adminCreateOverShepherd } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { Button } from "@/components/ui/button";
 import {
   fieldInputClassName as FIELD_INPUT,
   fieldLabelClassName as FIELD_LABEL,
@@ -76,9 +76,9 @@ export function OverShepherdCreateForm() {
           />
         </div>
         <div>
-          <PButton type="submit" tone="solid" size="md" disabled={pending}>
+          <Button type="submit" variant="solid" size="md" disabled={pending}>
             {pending ? "Saving…" : "Add over-shepherd"}
-          </PButton>
+          </Button>
         </div>
       </div>
       <FormStatus state={state} successText="Over-shepherd added." />

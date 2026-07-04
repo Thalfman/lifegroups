@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { PButton } from "@/components/pastoral/button";
 import {
   ALL_TYPE_OPTIONS,
   calendarActiveFilterChips,
@@ -21,6 +20,7 @@ import { GroupsDetailsField } from "./groups-details-field";
 import { MultiCheckboxField } from "./multi-checkbox-field";
 import { SelectField } from "./select-field";
 import { ViewToggle } from "./view-toggle";
+import { Button } from "@/components/ui/button";
 
 type ViewMode = CalendarViewMode;
 
@@ -135,9 +135,9 @@ export function FilterBar({
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           {hasActiveFilters ? (
-            <PButton type="button" onClick={onReset} tone="ghost" size="sm">
+            <Button type="button" onClick={onReset} variant="ghost" size="sm">
               Reset filters
-            </PButton>
+            </Button>
           ) : null}
           {hideViewToggle ? null : (
             <ViewToggle viewMode={viewMode} onChange={onChangeView} />

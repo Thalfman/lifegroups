@@ -1,6 +1,5 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { adminUpdateLaunchPlanningAssumptions } from "@/app/(protected)/admin/launch-planning/actions";
 import {
   fieldInputClassName,
@@ -11,6 +10,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import { eyebrowClassName, sectionClassName } from "./section-styles";
+import { Button } from "@/components/ui/button";
 
 export type ChurchAttendanceCardProps = {
   // L4 (#223): the single source of truth for the headline denominator — the
@@ -88,9 +88,9 @@ export function ChurchAttendanceCard({
           />
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <PButton type="submit" tone="terra" size="md" disabled={pending}>
+          <Button type="submit" variant="primary" size="md" disabled={pending}>
             {pending ? "Saving…" : "Save"}
-          </PButton>
+          </Button>
           <FormStatus state={state} successText="Saved." />
         </div>
       </form>

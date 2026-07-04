@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { adminSetGroupTypeInPipeline } from "@/app/(protected)/admin/multiply/actions";
 import {
   segmentShepherdsAnchorId,
@@ -17,6 +16,7 @@ import { PipelinePotentialCandidates } from "@/components/admin/multiply/pipelin
 import { PipelineLockedInCandidates } from "@/components/admin/multiply/pipeline-locked-in-candidates";
 import { PipelineMatchedShepherds } from "@/components/admin/multiply/pipeline-matched-shepherds";
 import { PipelineUnpipelinedCandidates } from "@/components/admin/multiply/pipeline-unpipelined-candidates";
+import { Button } from "@/components/ui/button";
 
 // Multiply Pipeline (ADR 0030, slices #755 + #756): the type-first Pipeline. The
 // admin pipelines a group type — recording the intent to launch another of it —
@@ -130,15 +130,15 @@ export function PipelineView({
                 </option>
               ))}
             </select>
-            <PButton
+            <Button
               type="button"
-              tone="terra"
+              variant="primary"
               size="md"
               onClick={() => selected && setInPipeline(selected, true)}
               disabled={pending || selected.length === 0}
             >
               {pending ? "Saving…" : "Add"}
-            </PButton>
+            </Button>
           </div>
         </div>
 
@@ -187,16 +187,16 @@ function PipelineTypeSection({
         <h4 className="m-0 font-sans text-sm font-semibold text-ink">
           {type.type}
         </h4>
-        <PButton
+        <Button
           type="button"
-          tone="ghost"
+          variant="ghost"
           size="sm"
           aria-label={`Remove ${type.type} from the pipeline`}
           onClick={onRemove}
           disabled={pending}
         >
           Remove
-        </PButton>
+        </Button>
       </div>
 
       <PipelinePotentialCandidates candidates={type.potentialCandidates} />

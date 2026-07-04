@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { PBadge } from "@/components/pastoral/atoms";
 import { adminUpdateGuestPipeline } from "@/app/(protected)/admin/guests/actions";
 import {
@@ -23,6 +22,7 @@ import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-de
 import { formatIsoDate } from "@/lib/shared/date";
 import type { GroupsRow, ProfilesRow } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
+import { Button } from "@/components/ui/button";
 
 const NOTES_PREVIEW_CHARS = 140;
 
@@ -127,14 +127,14 @@ export function GuestCard({
       ) : null}
 
       <div className="flex items-center gap-2">
-        <PButton
+        <Button
           type="button"
-          tone="ghost"
+          variant="ghost"
           size="sm"
           onClick={() => setEditing((v) => !v)}
         >
           {editing ? "Cancel" : "Update"}
-        </PButton>
+        </Button>
         {isSuperAdmin ? (
           <SuperAdminInlineDelete
             entityType="guest"
@@ -213,18 +213,18 @@ export function GuestCard({
             />
           </FormField>
           <div className="flex flex-wrap gap-2.5">
-            <PButton type="submit" tone="solid" size="sm" disabled={pending}>
+            <Button type="submit" variant="solid" size="sm" disabled={pending}>
               {pending ? "Saving…" : "Save changes"}
-            </PButton>
-            <PButton
+            </Button>
+            <Button
               type="button"
-              tone="ghost"
+              variant="ghost"
               size="sm"
               disabled={pending}
               onClick={() => setEditing(false)}
             >
               Done
-            </PButton>
+            </Button>
           </div>
           <FormStatus state={state} successText="Saved." />
         </form>

@@ -1,9 +1,9 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { superAdminAssignCoverage } from "@/app/(protected)/admin/super-admin/coverage-actions";
 import { fieldLabelClassName, fieldSelectClassName } from "./field-styles";
 import { useActionForm, FormStatus } from "./action-form";
+import { Button } from "@/components/ui/button";
 
 type OverShepherd = { id: string; full_name: string };
 type Leader = { profile_id: string; full_name: string };
@@ -77,14 +77,14 @@ export function CoverageAssignForm({
           ))}
         </select>
       </div>
-      <PButton
+      <Button
         type="submit"
-        tone="terra"
+        variant="primary"
         size="md"
         disabled={pending || noOptions}
       >
         {pending ? "Saving…" : "Assign"}
-      </PButton>
+      </Button>
       <FormStatus state={state} successText="Coverage assigned." />
     </form>
   );

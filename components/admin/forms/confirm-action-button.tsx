@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { PButton, type PButtonTone } from "@/components/pastoral/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import {
   confirmActionButtonView,
   confirmActionSubmitMode,
 } from "@/lib/forms/confirm-action-view";
+import { Button, type ButtonVariant } from "@/components/ui/button";
 import {
   useActionForm,
   FormStatusLine,
@@ -39,7 +39,7 @@ export function ConfirmActionButton<T>({
   hiddenFields = [],
   idleLabel,
   pendingLabel,
-  tone,
+  variant,
   ariaLabel,
   successText,
   gap = 6,
@@ -56,7 +56,7 @@ export function ConfirmActionButton<T>({
   hiddenFields?: readonly ConfirmActionHiddenField[];
   idleLabel: string;
   pendingLabel: string;
-  tone: PButtonTone;
+  variant: ButtonVariant;
   // Record-context accessible name (e.g. "Archive {group}") so repeated
   // controls in a list/table stay uniquely named for screen readers. Falls
   // back to the visible label when omitted.
@@ -101,15 +101,15 @@ export function ConfirmActionButton<T>({
   const gated = confirmActionSubmitMode(confirmMessage) === "confirm";
 
   const opener = (
-    <PButton
+    <Button
       type={gated ? "button" : "submit"}
-      tone={tone}
+      variant={variant}
       size="sm"
       disabled={view.disabled}
       aria-label={ariaLabel}
     >
       {view.label}
-    </PButton>
+    </Button>
   );
 
   return (
@@ -134,7 +134,7 @@ export function ConfirmActionButton<T>({
             title={idleLabel}
             message={confirmMessage}
             confirmLabel={idleLabel}
-            confirmTone={tone}
+            confirmVariant={variant}
             onConfirm={() => formRef.current?.requestSubmit()}
           />
         ) : (

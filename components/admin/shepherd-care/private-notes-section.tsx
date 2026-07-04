@@ -9,7 +9,6 @@ import {
   adminRotatePrivateNoteRecovery,
   adminUpsertShepherdCarePrivateNote,
 } from "@/app/(protected)/admin/shepherd-care/actions";
-import { PButton } from "@/components/pastoral/button";
 import {
   errorTextClassName,
   fieldInputClassName as FIELD_INPUT,
@@ -22,6 +21,7 @@ import {
   passkeySlotsOf,
 } from "@/lib/admin/private-notes-session";
 import { isPrfPasskeySupported } from "@/lib/crypto/private-notes";
+import { Button } from "@/components/ui/button";
 import type {
   PrivateNoteCiphertext,
   PrivateNoteKeySlot,
@@ -151,13 +151,13 @@ export function PrivateNotesSection({
             </span>
           </label>
           <div>
-            <PButton
-              tone="solid"
+            <Button
+              variant="solid"
               onClick={session.confirmRotateRecovery}
               disabled={!state.rotationAck || state.busy}
             >
               {state.busy ? "Rotating…" : "Confirm new recovery code"}
-            </PButton>
+            </Button>
           </div>
         </div>
       ) : /* Enrollment: show the recovery code once, require capture. */
@@ -181,32 +181,36 @@ export function PrivateNotesSection({
             </span>
           </label>
           <div>
-            <PButton
-              tone="solid"
+            <Button
+              variant="solid"
               onClick={session.confirmEnrollment}
               disabled={!state.recoveryAck || state.busy}
             >
               {state.busy ? "Finishing…" : "Finish setup"}
-            </PButton>
+            </Button>
           </div>
         </div>
       ) : !state.enrolled ? (
         <div>
-          <PButton tone="solid" onClick={session.enroll} disabled={state.busy}>
+          <Button
+            variant="solid"
+            onClick={session.enroll}
+            disabled={state.busy}
+          >
             {state.busy ? "Setting up…" : "Set up private notes"}
-          </PButton>
+          </Button>
         </div>
       ) : !state.unlocked ? (
         <div className="grid max-w-[420px] gap-3">
           {passkeySlots.length > 0 ? (
             <div>
-              <PButton
-                tone="solid"
+              <Button
+                variant="solid"
                 onClick={session.unlockWithPasskey}
                 disabled={state.busy}
               >
                 Unlock with passkey
-              </PButton>
+              </Button>
             </div>
           ) : null}
           <div className="grid gap-1.5">
@@ -223,13 +227,13 @@ export function PrivateNotesSection({
               placeholder="XXXXX-XXXXX-…"
             />
             <div>
-              <PButton
-                tone="ghost"
+              <Button
+                variant="ghost"
                 onClick={session.unlockWithRecovery}
                 disabled={state.busy || state.recoveryInput.trim().length === 0}
               >
                 Unlock with recovery code
-              </PButton>
+              </Button>
             </div>
           </div>
         </div>
@@ -243,12 +247,20 @@ export function PrivateNotesSection({
             placeholder="A note only you can read…"
           />
           <div className="flex gap-2.5">
-            <PButton tone="solid" onClick={session.save} disabled={state.busy}>
+            <Button
+              variant="solid"
+              onClick={session.save}
+              disabled={state.busy}
+            >
               {state.busy ? "Saving…" : "Save private note"}
-            </PButton>
-            <PButton tone="ghost" onClick={session.lock} disabled={state.busy}>
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={session.lock}
+              disabled={state.busy}
+            >
               Lock
-            </PButton>
+            </Button>
           </div>
 
           {/* Manage unlock methods (#113). */}
@@ -277,8 +289,8 @@ export function PrivateNotesSection({
                       </span>
                     ) : state.confirmRemoveId === slot.id ? (
                       <span className="flex gap-1.5">
-                        <PButton
-                          tone="terra"
+                        <Button
+                          variant="primary"
                           size="sm"
                           onClick={() => {
                             session.setConfirmRemoveId(null);
@@ -287,25 +299,25 @@ export function PrivateNotesSection({
                           disabled={state.busy}
                         >
                           Confirm remove
-                        </PButton>
-                        <PButton
-                          tone="ghost"
+                        </Button>
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => session.setConfirmRemoveId(null)}
                           disabled={state.busy}
                         >
                           Cancel
-                        </PButton>
+                        </Button>
                       </span>
                     ) : (
-                      <PButton
-                        tone="ghost"
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => session.setConfirmRemoveId(slot.id)}
                         disabled={state.busy}
                       >
                         Remove
-                      </PButton>
+                      </Button>
                     )
                   ) : null}
                 </li>
@@ -320,23 +332,23 @@ export function PrivateNotesSection({
             ) : null}
             <div className="flex flex-wrap gap-2.5">
               {isPrfPasskeySupported() ? (
-                <PButton
-                  tone="ghost"
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={session.addPasskey}
                   disabled={state.busy}
                 >
                   Add a passkey
-                </PButton>
+                </Button>
               ) : null}
-              <PButton
-                tone="ghost"
+              <Button
+                variant="ghost"
                 size="sm"
                 onClick={session.startRotateRecovery}
                 disabled={state.busy}
               >
                 Rotate recovery code
-              </PButton>
+              </Button>
             </div>
             <p className="m-0 font-sans text-xs leading-normal text-ink2">
               Lose every unlock method and these notes can never be recovered —

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { adminSetGroupTypes } from "@/app/(protected)/admin/settings/actions";
 import {
   fieldInputClassName,
@@ -13,6 +12,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 // Settings > Groups: the admin-managed free-text group-type list. A single
 // textarea, one type name per line. The validator (validateSetGroupTypesPayload)
@@ -51,9 +51,9 @@ export function GroupTypesEditor({
         />
       </div>
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save group types"}
-        </PButton>
+        </Button>
         <FormStatus state={state} successText="Group types saved." />
       </div>
     </form>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { adminSetGroupCapacityTarget } from "@/app/(protected)/admin/launch-planning/actions";
 import {
   CAPACITY_STATUS_LABEL,
@@ -22,6 +21,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import type { CapacityStatus } from "@/lib/admin/metrics";
+import { Button } from "@/components/ui/button";
 
 // The small uppercase eyebrow label sitting above a section title.
 const EYEBROW =
@@ -73,9 +73,9 @@ function TargetEditor({ row }: { row: CapacityBoardRow }) {
         aria-label={`Target size for ${row.groupName}`}
         className={cn(fieldInputClassName, "w-[72px] px-2 py-1.5")}
       />
-      <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+      <Button type="submit" variant="ghost" size="sm" disabled={pending}>
         {pending ? "…" : "Set"}
-      </PButton>
+      </Button>
       <FormStatus state={state} />
     </form>
   );

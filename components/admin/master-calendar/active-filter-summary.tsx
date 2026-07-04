@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { PButton } from "@/components/pastoral/button";
 import {
   calendarFilterSummarySegments,
   type CalendarFilters,
 } from "@/lib/admin/master-calendar-view";
 import type { PlanningViewKey } from "@/lib/admin/planning-views";
 import type { MasterCalendarLeader } from "@/lib/admin/master-calendar";
+import { Button } from "@/components/ui/button";
 
 // A compact, plain-language summary of WHY the current list is filtered (#371),
 // sitting between the filters and the meeting list with a one-tap "Clear
@@ -40,15 +40,15 @@ export function ActiveFilterSummary({
         <span className="font-semibold text-ink3">Showing: </span>
         {parts.join(" · ")}
       </div>
-      <PButton
+      <Button
         type="button"
-        tone="ghost"
+        variant="ghost"
         size="sm"
         onClick={onClear}
         disabled={!active}
       >
         Clear filters
-      </PButton>
+      </Button>
     </div>
   );
 }

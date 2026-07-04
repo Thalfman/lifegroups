@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { adminCreateFollowUp } from "@/app/(protected)/admin/follow-ups/actions";
 import {
   followUpPriorityLabel,
@@ -13,6 +12,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { Button } from "@/components/ui/button";
 import {
   fieldLabelClassName as FIELD_LABEL,
   fieldInputBaseClassName as FIELD_INPUT,
@@ -239,24 +239,24 @@ export function FollowUpCreateForm({
         </div>
         <div className="col-span-full flex flex-col gap-1.5">
           <div className="flex flex-wrap gap-2.5">
-            <PButton
+            <Button
               type="submit"
-              tone="terra"
+              variant="primary"
               size="md"
               disabled={pending || !canSubmit}
             >
               {pending ? "Saving…" : "Add follow-up"}
-            </PButton>
+            </Button>
             {onCancel ? (
-              <PButton
+              <Button
                 type="button"
-                tone="ghost"
+                variant="ghost"
                 size="md"
                 disabled={pending}
                 onClick={onCancel}
               >
                 Cancel
-              </PButton>
+              </Button>
             ) : null}
           </div>
           {!canSubmit ? (

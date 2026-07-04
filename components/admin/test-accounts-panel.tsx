@@ -2,9 +2,9 @@
 
 import { useCallback, useState, useTransition } from "react";
 import { SectionHeader } from "@/components/layout/shell";
-import { PButton } from "@/components/pastoral/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   testAccountsDiagnose,
   testAccountsDisable,
@@ -209,22 +209,22 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
                 Read-only
               </span>
               <div className="flex flex-wrap gap-2">
-                <PButton
-                  tone="ghost"
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={handleRefresh}
                   disabled={pending !== null}
                 >
                   {pending === "refresh" ? "Refreshing…" : "Refresh status"}
-                </PButton>
-                <PButton
-                  tone="ghost"
+                </Button>
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={handleDiagnose}
                   disabled={pending !== null}
                 >
                   {pending === "diagnose" ? "Diagnosing…" : "Diagnose"}
-                </PButton>
+                </Button>
               </div>
             </div>
             <div
@@ -238,22 +238,26 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
               <div className="flex flex-wrap gap-2">
                 <ConfirmDialog
                   trigger={
-                    <PButton tone="terra" size="sm" disabled={pending !== null}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={pending !== null}
+                    >
                       {pending === "enable"
                         ? "Enabling…"
                         : "Enable test accounts"}
-                    </PButton>
+                    </Button>
                   }
                   title="Enable test accounts"
                   message={enableConfirmMessage}
                   confirmLabel="Enable test accounts"
-                  confirmTone="terra"
+                  confirmVariant="primary"
                   onConfirm={() => run("enable")}
                 />
                 <ConfirmDialog
                   trigger={
-                    <PButton
-                      tone="ghost"
+                    <Button
+                      variant="ghost"
                       size="sm"
                       disabled={pending !== null}
                       className="border-amber text-amberText"
@@ -261,12 +265,12 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
                       {pending === "disable"
                         ? "Disabling…"
                         : "Disable test accounts"}
-                    </PButton>
+                    </Button>
                   }
                   title="Disable test accounts"
                   message={disableConfirmMessage}
                   confirmLabel="Disable test accounts"
-                  confirmTone="terra"
+                  confirmVariant="primary"
                   onConfirm={() => run("disable")}
                 />
               </div>

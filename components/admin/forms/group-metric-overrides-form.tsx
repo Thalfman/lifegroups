@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { adminUpsertGroupMetricSettings } from "@/app/(protected)/admin/settings/actions";
 import { cn } from "@/lib/utils";
 import {
@@ -15,6 +14,7 @@ import {
 import type { GroupHealthStatus } from "@/types/enums";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
 import { useActionForm, FormStatus } from "./action-form";
+import { Button } from "@/components/ui/button";
 import {
   GROUP_HEALTH_STATUSES,
   GROUP_HEALTH_STATUS_LABEL,
@@ -263,9 +263,14 @@ export function GroupMetricOverridesForm({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <PButton type="submit" tone="terra" size="md" disabled={pending}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={pending}
+            >
               {pending ? "Saving…" : "Save overrides"}
-            </PButton>
+            </Button>
             <FormStatus state={state} successText="Overrides saved." />
           </div>
         </form>

@@ -36,7 +36,7 @@ export function ArchiveGroupButton({
       hiddenFields={[{ name: "group_id", value: groupId }]}
       idleLabel="Archive group"
       pendingLabel="Archiving…"
-      tone="ghost"
+      variant="ghost"
       ariaLabel={groupName ? `Archive ${groupName}` : undefined}
       onSuccess={onArchived}
       onPendingChange={onPendingChange}

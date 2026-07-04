@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { adminSetLeaderRubricGrade } from "@/app/(protected)/admin/shepherd-care/leader-grade-actions";
 import type { Rubric, RubricCriterion } from "@/lib/admin/health-rubric";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
@@ -13,6 +12,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { Button } from "@/components/ui/button";
 import {
   fieldInputClassName as FIELD_INPUT,
   fieldLabelClassName as FIELD_LABEL,
@@ -257,9 +257,9 @@ export function LeaderHealthGradeEditor({
       </div>
 
       <div className="flex items-center gap-2.5">
-        <PButton
+        <Button
           type="submit"
-          tone="terra"
+          variant="primary"
           size="md"
           disabled={!canSave}
           // Repeated per Leader in the Care accordion (ADR 0023): start with
@@ -267,7 +267,7 @@ export function LeaderHealthGradeEditor({
           aria-label={`Save grade for ${leaderName}`}
         >
           {pending ? "Saving…" : "Save grade"}
-        </PButton>
+        </Button>
         <FormStatus state={state} successText="Shepherd-Health Grade saved." />
       </div>
     </form>

@@ -3,7 +3,6 @@
 import { useEffect, useState, useTransition } from "react";
 import type { FormEvent } from "react";
 import { useValueChange } from "@/lib/hooks/use-value-change";
-import { PButton } from "@/components/pastoral/button";
 import { Icon } from "@/components/lg/Icon";
 import {
   superAdminInviteUser,
@@ -25,6 +24,7 @@ import {
   successTextClassName,
 } from "./field-styles";
 import { useActionForm, FormStatus } from "./action-form";
+import { Button } from "@/components/ui/button";
 
 // One invite workflow with a delivery choice (#460). Merges the old
 // InviteUserForm (email invite + "Copy invite link") and InviteLinkForm
@@ -381,24 +381,24 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
           </p>
 
           <div className="flex flex-wrap gap-2">
-            <PButton
+            <Button
               type="submit"
-              tone="terra"
+              variant="primary"
               size="md"
               disabled={pending || namedLinkPending}
             >
               {pending ? "Sending invite…" : "Send invite"}
-            </PButton>
-            <PButton
+            </Button>
+            <Button
               type="button"
-              tone="ghost"
+              variant="ghost"
               size="md"
               onClick={handleGenerateNamedLink}
               disabled={pending || namedLinkPending}
             >
               <Icon name="clipboard" size={16} />
               {namedLinkPending ? "Generating link…" : "Copy invite link"}
-            </PButton>
+            </Button>
           </div>
 
           <FormStatus state={state} />
@@ -427,9 +427,9 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                   className={cn(fieldInputClassName, "text-xs")}
                   aria-label="Invite link"
                 />
-                <PButton
+                <Button
                   type="button"
-                  tone="ghost"
+                  variant="ghost"
                   size="sm"
                   onClick={handleCopyNamedLink}
                 >
@@ -438,7 +438,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                     size={16}
                   />
                   {namedLinkCopied ? "Copied!" : "Copy"}
-                </PButton>
+                </Button>
               </div>
             </div>
           ) : null}
@@ -524,15 +524,15 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
           </label>
 
           <div className="flex flex-wrap gap-2">
-            <PButton
+            <Button
               type="submit"
-              tone="terra"
+              variant="primary"
               size="md"
               disabled={sharePending}
             >
               <Icon name="clipboard" size={16} />
               {sharePending ? "Generating…" : "Generate link"}
-            </PButton>
+            </Button>
           </div>
 
           {shareError ? (
@@ -558,15 +558,15 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                   className={cn(fieldInputClassName, "text-xs")}
                   aria-label="Invite link"
                 />
-                <PButton
+                <Button
                   type="button"
-                  tone="ghost"
+                  variant="ghost"
                   size="sm"
                   onClick={() => handleCopyShareLink(shareResult.url)}
                 >
                   <Icon name={shareCopied ? "check" : "clipboard"} size={16} />
                   {shareCopied ? "Copied!" : "Copy"}
-                </PButton>
+                </Button>
               </div>
             </div>
           ) : null}

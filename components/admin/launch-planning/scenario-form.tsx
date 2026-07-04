@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { useValueChange } from "@/lib/hooks/use-value-change";
-import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveLaunchPlanningScenario,
   adminCreateLaunchPlanningScenario,
@@ -25,6 +24,7 @@ import type {
   LaunchPlanningScenario,
 } from "@/lib/admin/launch-planning";
 import { eyebrowClassName } from "./section-styles";
+import { Button } from "@/components/ui/button";
 
 const hintClassName = "m-0 mt-1 font-sans text-2xs leading-[1.4] text-ink3";
 
@@ -338,19 +338,19 @@ export function CreateScenarioForm({
       </label>
 
       <div className="flex flex-wrap items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save scenario"}
-        </PButton>
+        </Button>
         {onClose ? (
-          <PButton
+          <Button
             type="button"
-            tone="ghost"
+            variant="ghost"
             size="md"
             onClick={onClose}
             disabled={pending}
           >
             Cancel
-          </PButton>
+          </Button>
         ) : null}
         <FormStatus state={state} successText="Scenario saved." />
       </div>
@@ -464,9 +464,14 @@ export function EditScenarioForm({
         </label>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <PButton type="submit" tone="terra" size="md" disabled={editPending}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            disabled={editPending}
+          >
             {editPending ? "Saving…" : "Save scenario"}
-          </PButton>
+          </Button>
           <FormStatus state={editState} successText="Saved." />
         </div>
       </form>
@@ -475,28 +480,28 @@ export function EditScenarioForm({
         {!scenario.is_current ? (
           <form action={setCurrentAction}>
             <input type="hidden" name="scenario_id" value={scenario.id} />
-            <PButton
+            <Button
               type="submit"
-              tone="ghost"
+              variant="ghost"
               size="sm"
               disabled={setCurrentPending}
             >
               {setCurrentPending ? "Updating…" : "Make current"}
-            </PButton>
+            </Button>
           </form>
         ) : null}
         <FormStatus state={setCurrentState} successText="Marked current." />
 
         <form action={archiveAction}>
           <input type="hidden" name="scenario_id" value={scenario.id} />
-          <PButton
+          <Button
             type="submit"
-            tone="ghost"
+            variant="ghost"
             size="sm"
             disabled={archivePending}
           >
             {archivePending ? "Archiving…" : "Archive scenario"}
-          </PButton>
+          </Button>
         </form>
         <FormStatus state={archiveState} successText="Archived." />
       </div>

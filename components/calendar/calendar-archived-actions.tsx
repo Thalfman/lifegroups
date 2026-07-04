@@ -1,11 +1,11 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import type { ActionResult } from "@/lib/shared/action-result";
+import { Button } from "@/components/ui/button";
 
 type ServerAction = (
   prev: ActionResult<{ id: string }> | undefined,
@@ -31,9 +31,9 @@ export function ArchivedRestoreButton({
     <form action={formAction} className="inline-flex flex-col items-end gap-1">
       <input type="hidden" name="event_id" value={eventId} />
       <input type="hidden" name="group_id" value={groupId} />
-      <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+      <Button type="submit" variant="ghost" size="sm" disabled={pending}>
         {pending ? "Restoring…" : "Restore override"}
-      </PButton>
+      </Button>
       <FormStatus state={state} />
     </form>
   );

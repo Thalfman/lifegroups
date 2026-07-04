@@ -1,6 +1,5 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { adminUpdateMetricDefaults } from "@/app/(protected)/admin/settings/actions";
 import { cn } from "@/lib/utils";
 import {
@@ -13,6 +12,7 @@ import {
 } from "./field-styles";
 import type { MetricDefaults } from "@/lib/admin/metrics";
 import { useActionForm, FormStatus } from "./action-form";
+import { Button } from "@/components/ui/button";
 
 // The grouping containers keep the `.lg-m-grid-stack` marker class: the
 // Settings a11y spec resolves related threshold fields to their shared
@@ -261,9 +261,9 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
       </details>
 
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save defaults"}
-        </PButton>
+        </Button>
         <FormStatus state={state} successText="Defaults saved." />
       </div>
     </form>

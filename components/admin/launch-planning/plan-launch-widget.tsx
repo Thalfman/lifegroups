@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { PButton } from "@/components/pastoral/button";
 import {
   eyebrowClassName,
   panelTitleClassName,
   sectionClassName,
 } from "./section-styles";
 import type { LaunchPlanningAssumptions } from "@/lib/admin/launch-planning";
+import { Button } from "@/components/ui/button";
 
 // The scenario form is only mounted after "Plan a launch" is clicked, so its
 // (sizable) code is deferred to a chunk that loads on first open. ssr:false is
@@ -36,14 +36,14 @@ export function PlanLaunchWidget({
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center gap-2.5">
-        <PButton
+        <Button
           type="button"
-          tone="terra"
+          variant="primary"
           size="md"
           onClick={() => setPlanning((open) => !open)}
         >
           {planning ? "Cancel" : "Plan a launch"}
-        </PButton>
+        </Button>
         {!planning ? (
           <span className="font-sans text-xs text-ink3">
             Save a named scenario from your current forecast, or tune the

@@ -8,13 +8,13 @@
 // team); the server action is hard-gated to super_admin regardless.
 
 import { useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { useValueChange } from "@/lib/hooks/use-value-change";
 import {
   superAdminResetActivity,
   superAdminClearActivityReset,
 } from "@/app/(protected)/admin/super-admin/activity-reset-actions";
 import type { ActivityResetSuccess } from "@/lib/admin/danger-zone";
+import { Button } from "@/components/ui/button";
 import {
   useActionForm,
   FormStatus,
@@ -56,36 +56,36 @@ export function ActivityResetControl({
               Reset counts to zero?
             </span>
             <form action={reset.formAction}>
-              <PButton type="submit" tone="terra" size="sm" disabled={busy}>
+              <Button type="submit" variant="primary" size="sm" disabled={busy}>
                 {reset.pending ? "Resetting…" : "Confirm reset"}
-              </PButton>
+              </Button>
             </form>
-            <PButton
+            <Button
               type="button"
-              tone="ghost"
+              variant="ghost"
               size="sm"
               onClick={() => setConfirming(false)}
               disabled={busy}
             >
               Cancel
-            </PButton>
+            </Button>
           </>
         ) : (
           <>
-            <PButton
+            <Button
               type="button"
-              tone="ghost"
+              variant="ghost"
               size="sm"
               onClick={() => setConfirming(true)}
               disabled={busy}
             >
               Reset
-            </PButton>
+            </Button>
             {baselineOn ? (
               <form action={clear.formAction}>
-                <PButton type="submit" tone="ghost" size="sm" disabled={busy}>
+                <Button type="submit" variant="ghost" size="sm" disabled={busy}>
                   {clear.pending ? "Undoing…" : "Undo reset"}
-                </PButton>
+                </Button>
               </form>
             ) : null}
           </>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { adminSetReadinessRule } from "@/app/(protected)/admin/settings/actions";
 import {
   fieldInputClassName,
@@ -12,6 +11,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { Button } from "@/components/ui/button";
 import type {
   ReadinessLetter,
   ReadinessRule,
@@ -265,14 +265,14 @@ export function MultiplyTriggerEditor({
       </PillarRow>
 
       <div className="flex items-center gap-2.5">
-        <PButton
+        <Button
           type="submit"
-          tone="terra"
+          variant="primary"
           size="md"
           disabled={pending || !countsValid}
         >
           {pending ? "Saving…" : "Save readiness rule"}
-        </PButton>
+        </Button>
         <FormStatus state={state} successText="Readiness rule saved." />
       </div>
       {!countsValid ? (

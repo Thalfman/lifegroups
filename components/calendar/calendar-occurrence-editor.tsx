@@ -10,7 +10,6 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PButton } from "@/components/pastoral/button";
 import {
   fieldInputClassName,
   fieldLabelClassName,
@@ -27,6 +26,7 @@ import {
 import { dateLabel, formatClock } from "@/lib/calendar/occurrences";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/shared/action-result";
+import { Button } from "@/components/ui/button";
 import type {
   GroupCalendarEventStatus,
   GroupCalendarEventType,
@@ -400,18 +400,18 @@ function EditorModal({
 
             <div className="mt-1 flex flex-wrap justify-end gap-2">
               <DialogClose asChild>
-                <PButton type="button" tone="ghost" size="md">
+                <Button type="button" variant="ghost" size="md">
                   Cancel
-                </PButton>
+                </Button>
               </DialogClose>
-              <PButton
+              <Button
                 type="submit"
-                tone="terra"
+                variant="primary"
                 size="md"
                 disabled={savePending}
               >
                 {savePending ? "Saving…" : "Save changes"}
-              </PButton>
+              </Button>
             </div>
           </form>
 
@@ -453,9 +453,9 @@ function ClearOverrideRow({
       <form action={action} className="flex justify-end">
         <input type="hidden" name="event_id" value={eventId} />
         <input type="hidden" name="group_id" value={groupId} />
-        <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+        <Button type="submit" variant="ghost" size="sm" disabled={pending}>
           {pending ? "Clearing…" : "Clear override"}
-        </PButton>
+        </Button>
       </form>
     </div>
   );

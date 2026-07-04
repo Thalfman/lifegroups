@@ -2,12 +2,12 @@
 
 import { useEffect } from "react";
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
-import { PButton } from "@/components/pastoral/button";
 import { adminCreateShepherdCareFollowUp } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { Button } from "@/components/ui/button";
 import {
   fieldInputClassName as FIELD_INPUT,
   fieldLabelClassName as FIELD_LABEL,
@@ -117,19 +117,19 @@ export function CareFollowUpCreateForm({
           />
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <PButton type="submit" tone="terra" size="md" disabled={pending}>
+          <Button type="submit" variant="primary" size="md" disabled={pending}>
             {pending ? "Saving…" : "Add follow-up"}
-          </PButton>
+          </Button>
           {onCancel ? (
-            <PButton
+            <Button
               type="button"
-              tone="ghost"
+              variant="ghost"
               size="md"
               disabled={pending}
               onClick={onCancel}
             >
               Cancel
-            </PButton>
+            </Button>
           ) : null}
         </div>
       </div>

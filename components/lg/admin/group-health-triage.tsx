@@ -18,8 +18,7 @@ import { gradeAtOrBelow } from "@/lib/admin/group-health";
 import type { GroupHealthLetter } from "@/types/enums";
 import { GroupHealthEditorDrawer } from "@/components/admin/group-health/group-health-editor";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { PButton } from "@/components/pastoral/button";
-import { buttonClassName } from "@/components/ui/button";
+import { buttonClassName, Button } from "@/components/ui/button";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import { dateLabel } from "@/lib/calendar/occurrences";
 import { cn } from "@/lib/utils";
@@ -270,8 +269,8 @@ export function GroupHealthTriage({
                     </td>
                     <td className={TD}>{dateCell(row.last_saved_at)}</td>
                     <td className={cn(TD, "text-right")}>
-                      <PButton
-                        tone="ghost"
+                      <Button
+                        variant="ghost"
                         size="sm"
                         aria-label={`Open ${row.group_name} health editor`}
                         onClick={() => {
@@ -280,7 +279,7 @@ export function GroupHealthTriage({
                         }}
                       >
                         Open
-                      </PButton>
+                      </Button>
                     </td>
                   </tr>
                 );

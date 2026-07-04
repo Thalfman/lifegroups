@@ -1,7 +1,7 @@
 import { PublicPageShell } from "@/components/lg/PublicPageShell";
-import { PButton, PLinkButton } from "@/components/pastoral/button";
 import { logoutAction } from "@/app/(protected)/actions";
 import { getCurrentSession } from "@/lib/auth/session";
+import { Button, LinkButton } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -47,19 +47,19 @@ export default async function UnauthorizedPage({
                 : "Your account doesn't have access here. If you think this is wrong, contact a ministry admin."}
           </p>
           <div className="mt-6 flex flex-wrap gap-2.5">
-            <PLinkButton href="/" tone="ghost">
+            <LinkButton href="/" variant="ghost">
               Back to home
-            </PLinkButton>
+            </LinkButton>
             {isSignedIn ? (
               <form action={logoutAction}>
-                <PButton type="submit" tone="solid">
+                <Button type="submit" variant="solid">
                   Sign out
-                </PButton>
+                </Button>
               </form>
             ) : (
-              <PLinkButton href="/login" tone="terra">
+              <LinkButton href="/login" variant="primary">
                 Sign in
-              </PLinkButton>
+              </LinkButton>
             )}
           </div>
         </div>

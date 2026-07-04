@@ -28,7 +28,7 @@ export function DeactivateProfileButton({
       hiddenFields={[{ name: "profile_id", value: profileId }]}
       idleLabel={label}
       pendingLabel="Archiving…"
-      tone="terra"
+      variant="primary"
       ariaLabel={fullName ? `${label} ${fullName}` : undefined}
     />
   );

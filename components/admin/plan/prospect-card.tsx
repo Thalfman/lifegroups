@@ -4,7 +4,6 @@ import { useState } from "react";
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import type { ProspectState } from "@/types/enums";
 import { cn } from "@/lib/utils";
-import { PButton } from "@/components/pastoral/button";
 import {
   adminTransitionProspect,
   adminSetProspectNextStep,
@@ -29,6 +28,7 @@ import {
 import type { ProspectBoardEntry } from "@/lib/supabase/prospect-reads";
 import type { PlanGroupOption } from "@/components/admin/plan/plan-data";
 import { fieldInputBaseClassName as INPUT } from "@/components/admin/forms/field-styles";
+import { Button } from "@/components/ui/button";
 
 // A tighter label than the shared field label (mb-0.5 vs mb-1.5) so the card's
 // three collapsed editors stay compact; the input adopts the shared base.
@@ -134,14 +134,14 @@ export function ProspectCard({
             </select>
           ) : null}
           <div>
-            <PButton
+            <Button
               type="submit"
-              tone="ghost"
+              variant="ghost"
               size="sm"
               disabled={pending || target === ""}
             >
               {pending ? "Moving…" : "Apply"}
-            </PButton>
+            </Button>
           </div>
           {/* Operation-specific confirmation so the message says where the
               prospect went ("Moved to Not at this time.") rather than a bare
@@ -219,9 +219,9 @@ function EditProspectDetails({ prospect }: { prospect: ProspectBoardEntry }) {
         />
 
         <div>
-          <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+          <Button type="submit" variant="ghost" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save details"}
-          </PButton>
+          </Button>
         </div>
         <FormStatus state={state} successText="Details saved." />
       </form>
@@ -252,7 +252,7 @@ function ArchiveProspectControl({
         hiddenFields={[{ name: "prospect_id", value: prospect.id }]}
         idleLabel="Archive"
         pendingLabel="Archiving…"
-        tone="ghost"
+        variant="ghost"
         ariaLabel={`Archive prospect ${prospect.full_name}`}
         successText="Prospect archived."
         gap={4}
@@ -367,9 +367,9 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
         </p>
 
         <div>
-          <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+          <Button type="submit" variant="ghost" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save next step"}
-          </PButton>
+          </Button>
         </div>
         <FormStatus state={state} successText="Saved." />
       </form>

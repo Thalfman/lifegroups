@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import {
   adminWriteCareNote,
   adminWritePrayerRequest,
@@ -111,9 +111,9 @@ export function CareNoteWriteForm({
           />
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <PButton
+          <Button
             type="submit"
-            tone="terra"
+            variant="primary"
             size="md"
             disabled={pending}
             // Starts with the visible label (axe label-in-name) then adds the
@@ -123,17 +123,17 @@ export function CareNoteWriteForm({
             }
           >
             {pending ? "Saving…" : submitLabel}
-          </PButton>
+          </Button>
           {onCancel ? (
-            <PButton
+            <Button
               type="button"
-              tone="ghost"
+              variant="ghost"
               size="md"
               disabled={pending}
               onClick={onCancel}
             >
               Cancel
-            </PButton>
+            </Button>
           ) : null}
         </div>
       </div>

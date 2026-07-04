@@ -1,6 +1,5 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { adminUpdateLaunchPlanningAssumptions } from "@/app/(protected)/admin/launch-planning/actions";
 import { PercentField } from "@/components/admin/launch-planning/percent-field";
@@ -14,6 +13,7 @@ import {
 } from "@/components/admin/forms/action-form";
 import { ratioToPercent } from "@/lib/admin/launch-planning";
 import type { LaunchPlanningAssumptions } from "@/lib/admin/launch-planning";
+import { Button } from "@/components/ui/button";
 
 // L5 (#224): the default forecast asks only for the two inputs that need a
 // ministry-specific answer — current church attendance (set in the Church
@@ -73,9 +73,9 @@ export function LaunchPlanningAssumptionsForm({
       </div>
 
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save forecast"}
-        </PButton>
+        </Button>
         <FormStatus state={state} successText="Forecast saved." />
       </div>
     </form>

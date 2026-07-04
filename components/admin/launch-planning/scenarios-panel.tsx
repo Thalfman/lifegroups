@@ -3,7 +3,6 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
-import { PButton } from "@/components/pastoral/button";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
 import type {
   LaunchPlanningAssumptions,
@@ -13,6 +12,7 @@ import type {
   LaunchPlanningScenarioComparisonEntry,
 } from "@/lib/admin/launch-planning";
 import { fmtNumber, riskTone } from "@/lib/admin/launch-planning";
+import { Button } from "@/components/ui/button";
 import {
   eyebrowClassName,
   panelTitleClassName as titleClassName,
@@ -76,9 +76,9 @@ export function ScenariosPanel({
             <span className={eyebrowClassName}>Scenarios</span>
             <h2 className={titleClassName}>Saved forecast scenarios</h2>
           </div>
-          <PButton
+          <Button
             type="button"
-            tone={createOpen ? "ghost" : "terra"}
+            variant={createOpen ? "ghost" : "primary"}
             size="sm"
             onClick={() => setCreateOpen((open) => !open)}
           >
@@ -87,7 +87,7 @@ export function ScenariosPanel({
               : hasScenarios
                 ? "Create scenario"
                 : "Create scenario from current assumptions"}
-          </PButton>
+          </Button>
         </header>
 
         {!hasScenarios && !createOpen ? (
@@ -226,14 +226,14 @@ function ScenarioList({
                 Editing
               </span>
             ) : (
-              <PButton
+              <Button
                 type="button"
-                tone="ghost"
+                variant="ghost"
                 size="sm"
                 onClick={() => onSelect(scenario.id)}
               >
                 Open
-              </PButton>
+              </Button>
             )}
           </li>
         );

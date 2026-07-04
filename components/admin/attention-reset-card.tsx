@@ -10,7 +10,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { PButton } from "@/components/pastoral/button";
 import { useValueChange } from "@/lib/hooks/use-value-change";
 import {
   superAdminResetCareAttention,
@@ -242,14 +241,14 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
               value={restoreConfirm}
               onChange={setRestoreConfirm}
             />
-            <PButton
+            <Button
               type="submit"
-              tone="ghost"
+              variant="ghost"
               size="sm"
               disabled={revert.pending || !restoreMatches}
             >
               {revert.pending ? "Restoring…" : "Revert"}
-            </PButton>
+            </Button>
           </div>
           {revert.state?.ok ? (
             <span className={successTextClassName}>
@@ -296,14 +295,14 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
                 {es.entityId.slice(0, 8)}… ·{" "}
                 {formatIsoDateTimeUtc(es.createdAt)} UTC
               </span>
-              <PButton
+              <Button
                 type="submit"
-                tone="ghost"
+                variant="ghost"
                 size="sm"
                 disabled={entityRevert.pending || !entityRestoreMatches}
               >
                 {entityRevert.pending ? "Restoring…" : "Revert"}
-              </PButton>
+              </Button>
             </form>
           ))}
           {entityRevert.state?.ok ? (

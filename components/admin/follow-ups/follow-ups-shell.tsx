@@ -10,7 +10,6 @@ import {
   followUpTypeLabel,
 } from "@/lib/dashboard/labels";
 import { PBadge } from "@/components/pastoral/atoms";
-import { PButton } from "@/components/pastoral/button";
 import type { GroupsRow, MembersRow, ProfilesRow } from "@/types/database";
 import type { FollowUpPriority, FollowUpStatus } from "@/types/enums";
 import type { AdminFollowUpEntry } from "@/lib/supabase/follow-up-reads";
@@ -33,6 +32,7 @@ import { FollowUpCreateForm } from "./follow-up-create-form";
 import { FollowUpStatusControls } from "./follow-up-status-controls";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import {
   fieldLabelClassName as FIELD_LABEL,
   fieldInputBaseClassName as FIELD_INPUT,
@@ -226,22 +226,22 @@ export function AdminFollowUpsShell({
           description="The status-grouped queue leads with open items, sorted by due date. Add a follow-up or open the filters when you need them."
         />
         <div className="flex flex-wrap items-center gap-2.5">
-          <PButton
+          <Button
             type="button"
-            tone="terra"
+            variant="primary"
             size="md"
             onClick={() => drawer.open(true)}
           >
             Add follow-up
-          </PButton>
-          <PButton
+          </Button>
+          <Button
             type="button"
-            tone="ghost"
+            variant="ghost"
             size="md"
             onClick={() => setShowFilters((v) => !v)}
           >
             {showFilters ? "Hide filters" : "Filter"}
-          </PButton>
+          </Button>
         </div>
 
         {showFilters ? (

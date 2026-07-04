@@ -1,6 +1,5 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { adminCreateGuest } from "@/app/(protected)/admin/guests/actions";
 import { cn } from "@/lib/utils";
 import {
@@ -17,6 +16,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import type { GroupsRow, ProfilesRow } from "@/types/database";
+import { Button } from "@/components/ui/button";
 
 export function GuestCreateForm({
   activeGroups,
@@ -175,9 +175,9 @@ export function GuestCreateForm({
           />
         </FormField>
         <div>
-          <PButton type="submit" tone="terra" size="md" disabled={pending}>
+          <Button type="submit" variant="primary" size="md" disabled={pending}>
             {pending ? "Saving…" : "Add guest"}
-          </PButton>
+          </Button>
         </div>
       </div>
       <FormStatus state={state} successText="Guest added." />

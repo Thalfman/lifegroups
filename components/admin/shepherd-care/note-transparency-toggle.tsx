@@ -1,6 +1,6 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import { setNoteTransparencyGrant } from "@/app/(protected)/admin/shepherd-care/care-notes-actions";
 import {
   useActionForm,
@@ -49,9 +49,9 @@ export function NoteTransparencyToggle({
       >
         Leadership visibility: {granted ? "On" : "Sealed"}
       </span>
-      <PButton
+      <Button
         type="submit"
-        tone={granted ? "ghost" : "terra"}
+        variant={granted ? "ghost" : "primary"}
         size="sm"
         disabled={pending}
         // Starts with the visible label (axe label-in-name) then adds the
@@ -61,7 +61,7 @@ export function NoteTransparencyToggle({
         }
       >
         {pending ? "Saving…" : buttonLabel}
-      </PButton>
+      </Button>
       <FormStatus
         state={state}
         successText={next ? "Leadership can now read." : "Sealed."}
