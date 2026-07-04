@@ -357,12 +357,12 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
 
         {type === "connect_to_group_leader" ? (
           <p className="m-0 mt-0.5 font-sans text-xs text-ink3">
-            Back-office only — nothing is shown to the group shepherd.
+            Back-office only: nothing is shown to the group shepherd.
           </p>
         ) : null}
 
         <p className="m-0 mt-0.5 rounded-sm border border-dashed border-line px-2 py-1.5 font-sans text-xs text-ink3">
-          No messaging provider is wired yet — to be configured. Nothing is
+          No messaging provider is wired yet (to be configured). Nothing is
           sent; a follow-up with a date just appears as a due task.
         </p>
 

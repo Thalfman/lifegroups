@@ -124,7 +124,7 @@ function AssumptionFields({
           defaultRatio={defaults.target_group_participation_pct}
           required
           maxPercent={100}
-          hint="Share of attendees in a group — e.g. 60 means 60%."
+          hint="Share of attendees in a group, e.g. 60 means 60%."
         />
 
         <div>
@@ -157,7 +157,7 @@ function AssumptionFields({
           defaultRatio={defaults.launch_buffer_pct}
           required
           maxPercent={95}
-          hint="Spare-capacity headroom above projected demand — e.g. 15 reserves 15%. Max 95."
+          hint="Spare-capacity headroom above projected demand, e.g. 15 reserves 15%. Max 95."
         />
 
         <div>

@@ -120,7 +120,7 @@ export function LaunchPlanningResultsPanel({
           <strong className="text-ink">
             {outputs.suggested_launch_by_date}
           </strong>
-          {" — "}
+          {", "}
           about 30 days before your{" "}
           <strong className="text-ink">
             {assumptions.expected_growth_date}

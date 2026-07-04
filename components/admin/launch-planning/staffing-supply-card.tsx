@@ -43,7 +43,7 @@ export function StaffingSupplyCard({
       <header>
         <span className={eyebrowClassName}>Staffing supply (leaders)</span>
         <p className="m-0 mt-1.5 font-sans text-xs leading-normal text-ink3">
-          The leader gap — separate from seat capacity, never summed. From{" "}
+          The leader gap, separate from seat capacity, never summed. From{" "}
           {sourceLabel}.
         </p>
       </header>

@@ -222,7 +222,7 @@ export function AdminFollowUpsShell({
             that lead the Care Follow-ups tab above this shell. */}
         <SectionHeader
           eyebrow="Follow-ups"
-          title="General follow-ups — groups and tasks"
+          title="General follow-ups: groups and tasks"
           description="The status-grouped queue leads with open items, sorted by due date. Add a follow-up or open the filters when you need them."
         />
         <div className="flex flex-wrap items-center gap-2.5">
@@ -377,8 +377,8 @@ export function AdminFollowUpsShell({
               followUps.length === 0
                 ? drawer.isOpen
                   ? "Fill in the details in the panel and save to create it."
-                  : "Use Add follow-up to create the first one. Tie it to a guest, member, or group — and add a note if helpful."
-                : "Adjust the filters — or add a new follow-up."
+                  : "Use Add follow-up to create the first one. Tie it to a guest, member, or group, and add a note if helpful."
+                : "Adjust the filters, or add a new follow-up."
             }
           />
         ) : (

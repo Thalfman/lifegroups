@@ -339,7 +339,7 @@ function AddApprenticeForm({
               {groupId === ""
                 ? "Select a group first…"
                 : memberOptions.length === 0
-                  ? "No active members — choose “not listed” below"
+                  ? "No active members; choose “not listed” below"
                   : "Select a member…"}
             </option>
             {memberOptions.map((m) => (
@@ -348,7 +348,7 @@ function AddApprenticeForm({
               </option>
             ))}
             <option value={APPRENTICE_NAME_FALLBACK}>
-              Not listed — enter a name
+              Not listed: enter a name
             </option>
           </select>
         </div>

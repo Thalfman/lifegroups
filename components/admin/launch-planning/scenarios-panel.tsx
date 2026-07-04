@@ -93,7 +93,7 @@ export function ScenariosPanel({
         {!hasScenarios && !createOpen ? (
           <p className="m-0 font-sans text-sm leading-[1.55] text-ink2">
             No saved scenarios yet. The baseline assumptions above are still the
-            source of truth — create Conservative / Expected / Stretch here to
+            source of truth: create Conservative / Expected / Stretch here to
             compare alternatives.
           </p>
         ) : null}

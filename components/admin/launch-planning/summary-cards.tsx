@@ -52,7 +52,7 @@ export function LaunchPlanningAnswerCards({
               ? "Current capacity covers projected demand."
               : outputs.risk_level === "watch"
                 ? "Gap is within configured buffer headroom."
-                : "Gap exceeds configured buffer — plan a launch."
+                : "Gap exceeds configured buffer. Plan a launch."
           }
           accentClassName={risk.text}
           valueClassName={risk.text}
