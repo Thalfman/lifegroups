@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { measureReadBundle } from "@/lib/observability/read-timing";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -121,12 +120,11 @@ export async function MultiplyOverviewSection({
 // Streaming fallback for the snapshot boundary: a bordered pulse block sized like
 // the vital-signs band plus a collapsed-overview placeholder, so the section
 // reserves its space (no layout shift) while the two slow reads resolve.
-function Bar({ style }: { style?: CSSProperties }) {
+function Bar({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className="animate-pulse rounded-md bg-lineSoft"
-      style={style}
+      className={`animate-pulse rounded-md bg-lineSoft ${className ?? ""}`}
     />
   );
 }
@@ -135,8 +133,8 @@ export function MinistrySnapshotSkeleton() {
   return (
     <div role="status" aria-live="polite" className="grid gap-3">
       <span className="sr-only">Loading ministry snapshot…</span>
-      <Bar style={{ height: 150, borderRadius: 12 }} />
-      <Bar style={{ height: 56, borderRadius: 12 }} />
+      <Bar className="h-[150px]" />
+      <Bar className="h-14" />
     </div>
   );
 }

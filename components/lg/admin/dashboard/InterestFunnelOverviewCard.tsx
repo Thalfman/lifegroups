@@ -1,5 +1,4 @@
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { P, fontBody } from "@/lib/pastoral";
 import type { ProspectState } from "@/types/enums";
 import { PROSPECT_STATE_LABEL } from "@/lib/admin/prospect-funnel";
 import { ACTIVE_BOARD_STATES } from "@/lib/supabase/prospect-reads";
@@ -9,10 +8,10 @@ import { CardNote, MiniBarRow, OpenLink } from "./overview-primitives";
 // Tone the funnel by state, matching the board's colour story: interested is
 // the warm intake (yellow), matched is in-flight, not-at-this-time reads as
 // parked/muted. Joined renders as the roll-up footer, not a bar.
-function stateTone(state: ProspectState): string {
-  if (state === "interested") return P.mustard;
-  if (state === "matched") return P.terra;
-  return P.ink3;
+function stateToneClassName(state: ProspectState): string {
+  if (state === "interested") return "bg-amber";
+  if (state === "matched") return "bg-clay";
+  return "bg-ink3";
 }
 
 // Interest Funnel overview (#470, ADR 0016): Prospects by state on the Home
@@ -70,17 +69,10 @@ export function InterestFunnelOverviewCard({
               label={PROSPECT_STATE_LABEL[state]}
               count={summary.counts[state]}
               total={activeTotal}
-              tone={stateTone(state)}
+              toneClassName={stateToneClassName(state)}
             />
           ))}
-          <p
-            style={{
-              margin: "10px 0 0",
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink3,
-            }}
-          >
+          <p className="m-0 mt-2.5 font-sans text-xs text-ink3">
             {activeTotal} in the funnel · {joined} joined a group
           </p>
         </div>

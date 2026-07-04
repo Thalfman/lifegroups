@@ -12,7 +12,7 @@ import type {
   LaunchPlanningScenario,
   LaunchPlanningScenarioComparisonEntry,
 } from "@/lib/admin/launch-planning";
-import { fmtNumber, riskToneClasses } from "@/lib/admin/launch-planning";
+import { fmtNumber, riskTone } from "@/lib/admin/launch-planning";
 import {
   eyebrowClassName,
   panelTitleClassName as titleClassName,
@@ -171,7 +171,7 @@ function ScenarioList({
     <ul className="m-0 grid list-none gap-px overflow-hidden rounded-sm border border-line bg-lineSoft p-0">
       {scenarios.map((scenario) => {
         const entry = comparisonByScenarioId.get(scenario.id);
-        const risk = entry ? riskToneClasses(entry.outputs.risk_level) : null;
+        const risk = entry ? riskTone(entry.outputs.risk_level) : null;
         const isSelected = selectedId === scenario.id;
         return (
           <li
@@ -371,7 +371,7 @@ function ScenarioComparisonTable({
                 Risk level
               </th>
               {columns.map((col) => {
-                const risk = riskToneClasses(col.outputs.risk_level);
+                const risk = riskTone(col.outputs.risk_level);
                 return (
                   <td
                     key={col.key}

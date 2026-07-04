@@ -1,5 +1,4 @@
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { P, fontBody } from "@/lib/pastoral";
 import type { ShepherdCareDashboardSummary } from "@/lib/dashboard/types";
 import { OpenLink, StatTile, StatTileGrid } from "./overview-primitives";
 
@@ -46,18 +45,7 @@ export function LeaderCareOverviewCard({
       }
     >
       {summary.error ? (
-        <p
-          style={{
-            margin: "0 0 12px",
-            padding: "8px 10px",
-            borderRadius: 8,
-            background: P.terraSoft,
-            color: P.terraTextStrong,
-            border: `1px solid ${P.terra}`,
-            fontFamily: fontBody,
-            fontSize: 12.5,
-          }}
-        >
+        <p className="m-0 mb-3 rounded-[8px] border border-clay bg-claySoft px-2.5 py-2 font-sans text-[12.5px] text-clayDeep">
           Coverage data couldn’t be loaded — unassigned-coverage is hidden until
           this clears.
         </p>
@@ -67,23 +55,29 @@ export function LeaderCareOverviewCard({
           label="Needs attention"
           value={summary.needsAttention}
           hint={`of ${summary.totalActiveShepherds}`}
-          valueColor={summary.needsAttention > 0 ? P.terra : P.ink}
+          valueClassName={summary.needsAttention > 0 ? "text-clay" : "text-ink"}
         />
         <StatTile
           label="Overdue touchpoints"
           value={summary.overdueTouchpoints}
-          valueColor={summary.overdueTouchpoints > 0 ? P.terra : P.ink}
+          valueClassName={
+            summary.overdueTouchpoints > 0 ? "text-clay" : "text-ink"
+          }
         />
         <StatTile
           label="Stale contact"
           value={summary.notContactedRecently}
-          valueColor={summary.notContactedRecently > 0 ? P.mustard : P.ink}
+          valueClassName={
+            summary.notContactedRecently > 0 ? "text-amber" : "text-ink"
+          }
         />
         {summary.coverageAvailable ? (
           <StatTile
             label="Unassigned coverage"
             value={summary.unassignedCoverage}
-            valueColor={summary.unassignedCoverage > 0 ? P.mustard : P.ink}
+            valueClassName={
+              summary.unassignedCoverage > 0 ? "text-amber" : "text-ink"
+            }
           />
         ) : null}
         <StatTile
@@ -91,16 +85,7 @@ export function LeaderCareOverviewCard({
           value={summary.activeOverShepherds ?? "—"}
         />
       </StatTileGrid>
-      <p
-        style={{
-          margin: "14px 0 0",
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink3,
-        }}
-      >
-        {footer}
-      </p>
+      <p className="m-0 mt-3.5 font-sans text-[12.5px] text-ink3">{footer}</p>
     </StatusCard>
   );
 }

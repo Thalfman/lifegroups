@@ -1,5 +1,4 @@
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { P, fontSans } from "@/lib/pastoral";
 import type {
   LaunchPlanningDashboardSnapshot,
   MultiplicationDashboardSummary,
@@ -12,20 +11,16 @@ import {
   launchRiskDisplay,
 } from "./overview-primitives";
 
-function RiskPill({ label, tone }: { label: string; tone: string }) {
+function RiskPill({
+  label,
+  toneTextClassName,
+}: {
+  label: string;
+  toneTextClassName: string;
+}) {
   return (
     <span
-      style={{
-        display: "inline-block",
-        padding: "3px 10px",
-        borderRadius: 999,
-        background: `${tone}22`,
-        color: tone,
-        fontFamily: fontSans,
-        fontSize: 12,
-        fontWeight: 600,
-        letterSpacing: 0,
-      }}
+      className={`inline-block rounded-pill px-2.5 py-[3px] font-sans text-xs font-semibold ${toneTextClassName}`}
     >
       {label}
     </span>
@@ -80,8 +75,11 @@ export function LaunchPlanningOverviewCard({
         <OpenLink href="/admin/multiply?tab=plan" label="View launch plan" />
       }
     >
-      <div style={{ marginBottom: 12 }}>
-        <RiskPill label={risk.label} tone={risk.tone} />
+      <div className="mb-3">
+        <RiskPill
+          label={risk.label}
+          toneTextClassName={risk.toneTextClassName}
+        />
       </div>
       <StatTileGrid>
         <StatTile
@@ -92,12 +90,14 @@ export function LaunchPlanningOverviewCard({
         <StatTile
           label={gap > 0 ? "Capacity gap" : "Headroom"}
           value={Math.abs(gap)}
-          valueColor={gap > 0 ? P.terra : P.sage}
+          valueClassName={gap > 0 ? "text-clay" : "text-sage"}
         />
         <StatTile
           label="Recommend new"
           value={snapshot.recommendedNewGroups}
-          valueColor={snapshot.recommendedNewGroups > 0 ? P.mustard : P.ink}
+          valueClassName={
+            snapshot.recommendedNewGroups > 0 ? "text-amber" : "text-ink"
+          }
         />
       </StatTileGrid>
 

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import type { LaunchPlanningRiskLevel } from "@/lib/admin/launch-planning";
 import { CANDIDATE_STATUS_LABEL } from "@/lib/admin/multiplication";
 import type { MultiplicationCandidateStatus } from "@/types/enums";
@@ -27,12 +27,12 @@ export function MiniBarRow({
   label,
   count,
   total,
-  tone = P.terra,
+  toneClassName = "bg-clay",
 }: {
   label: string;
   count: number;
   total: number;
-  tone?: string;
+  toneClassName?: string;
 }) {
   // Clamp to 100 so a stray count > total can never overflow the track.
   const pct = total > 0 ? Math.min(100, Math.round((count / total) * 100)) : 0;
@@ -41,8 +41,9 @@ export function MiniBarRow({
       <span className="font-sans text-sm text-ink2">{label}</span>
       <div className="h-1.5 overflow-hidden rounded-pill bg-lineSoft">
         <div
-          className="h-full rounded-pill"
-          style={{ width: `${pct}%`, background: tone }}
+          className={`h-full rounded-pill ${toneClassName}`}
+          // Data-driven fill width — stays inline.
+          style={{ width: `${pct}%` }}
         />
       </div>
       <span className="min-w-6 text-right font-display text-md tabular-nums text-ink">
@@ -57,12 +58,12 @@ export function MiniBarRow({
 export function StatTile({
   label,
   value,
-  valueColor,
+  valueClassName,
   hint,
 }: {
   label: string;
   value: ReactNode;
-  valueColor?: string;
+  valueClassName?: string;
   hint?: ReactNode;
 }) {
   return (
@@ -70,8 +71,10 @@ export function StatTile({
       <div className="font-sans text-xs text-ink3">{label}</div>
       <div className="flex items-baseline gap-1.5">
         <span
-          className="font-display text-2xl tabular-nums leading-none"
-          style={{ color: valueColor ?? P.ink }}
+          className={
+            "font-display text-2xl tabular-nums leading-none " +
+            (valueClassName ?? "text-ink")
+          }
         >
           {value}
         </span>
@@ -85,20 +88,9 @@ export function StatTile({
 
 // The muted empty-state paragraph shared by the overview cards' "nothing here
 // yet" branch (health pulse, Interest Funnel, multiplication readiness, leader
-// pipeline, guest funnel). Renders the exact inline style the cards used inline.
+// pipeline, guest funnel). Renders the exact style the cards used inline.
 export function CardNote({ children }: { children: ReactNode }) {
-  return (
-    <p
-      style={{
-        margin: 0,
-        fontFamily: fontBody,
-        fontSize: 12.5,
-        color: P.ink3,
-      }}
-    >
-      {children}
-    </p>
-  );
+  return <p className="m-0 font-sans text-[12.5px] text-ink3">{children}</p>;
 }
 
 export function StatTileGrid({ children }: { children: ReactNode }) {
@@ -165,36 +157,15 @@ export function CandidateCountsLine({
   multiplication: MultiplicationDashboardSummary;
 }) {
   return (
-    <div
-      style={{
-        marginTop: 14,
-        paddingTop: 12,
-        borderTop: `1px solid ${P.line2}`,
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        flexWrap: "wrap",
-      }}
-    >
-      <span
-        style={{
-          fontFamily: fontSans,
-          fontSize: 12,
-          textTransform: "uppercase",
-          letterSpacing: 0,
-          color: P.ink3,
-          fontWeight: 600,
-        }}
-      >
+    <div className="mt-3.5 flex flex-wrap items-center gap-3 border-t border-lineSoft pt-3">
+      <span className="font-sans text-xs font-semibold uppercase text-ink3">
         {eyebrow}
       </span>
       <span
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: multiplication.available ? P.ink2 : P.ink3,
-          fontStyle: multiplication.available ? "normal" : "italic",
-        }}
+        className={cn(
+          "font-sans text-[12.5px]",
+          multiplication.available ? "text-ink2" : "italic text-ink3"
+        )}
       >
         {multiplication.available
           ? CANDIDATE_ORDER.map(
@@ -209,14 +180,15 @@ export function CandidateCountsLine({
   );
 }
 
-// Shared launch-risk → {label, tone} mapping so the vital-signs tile and the
-// Launch planning overview card agree on wording and color.
+// Shared launch-risk → {label, tone class} mapping so the vital-signs tile and
+// the Launch planning overview card agree on wording and color.
 export function launchRiskDisplay(level: LaunchPlanningRiskLevel): {
   label: string;
-  tone: string;
+  toneTextClassName: string;
 } {
   if (level === "launch_needed")
-    return { label: "Launch needed", tone: P.terra };
-  if (level === "watch") return { label: "Watch", tone: P.mustard };
-  return { label: "On track", tone: P.sage };
+    return { label: "Launch needed", toneTextClassName: "text-clay" };
+  if (level === "watch")
+    return { label: "Watch", toneTextClassName: "text-amber" };
+  return { label: "On track", toneTextClassName: "text-sage" };
 }

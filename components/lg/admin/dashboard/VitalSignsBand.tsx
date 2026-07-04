@@ -1,4 +1,3 @@
-import { P } from "@/lib/pastoral";
 import type {
   AdminDashboardData,
   InterestFunnelDashboardSummary,
@@ -36,13 +35,13 @@ function VitalSign({
   title,
   value,
   meta,
-  valueColor,
+  valueClassName,
   empty = false,
 }: {
   title: string;
   value: string;
   meta: string;
-  valueColor?: string;
+  valueClassName?: string;
   empty?: boolean;
 }) {
   return (
@@ -54,8 +53,10 @@ function VitalSign({
         </div>
       ) : (
         <div
-          className="font-display text-3xl tabular-nums leading-none"
-          style={{ color: valueColor ?? P.ink }}
+          className={
+            "font-display text-3xl tabular-nums leading-none " +
+            (valueClassName ?? "text-ink")
+          }
         >
           {value}
         </div>
@@ -154,7 +155,7 @@ export function VitalSignsBand({
                 ? `of ${care.totalActiveShepherds} active shepherds`
                 : "Care queue is clear"
           }
-          valueColor={careOk && needsCare > 0 ? P.terraTextStrong : undefined}
+          valueClassName={careOk && needsCare > 0 ? "text-clayDeep" : undefined}
         />
         <VitalSign
           title="Prospects in funnel"
@@ -177,9 +178,9 @@ export function VitalSignsBand({
                 ? "No active group types yet"
                 : `of ${multiplyReadiness.activeCells} active group types`
           }
-          valueColor={
+          valueClassName={
             readinessOk && multiplyReadiness.readyCells > 0
-              ? P.sageTextStrong
+              ? "text-sageDeep"
               : undefined
           }
         />
@@ -190,8 +191,8 @@ export function VitalSignsBand({
           meta={
             degraded ? "Follow-up data unavailable" : "Due in the next 7 days"
           }
-          valueColor={
-            !degraded && dueThisWeek > 0 ? P.mustardTextStrong : undefined
+          valueClassName={
+            !degraded && dueThisWeek > 0 ? "text-amberText" : undefined
           }
         />
         {showLaunchPlanning ? (
@@ -201,7 +202,7 @@ export function VitalSignsBand({
               value={participationValue}
               empty={!planning || participation == null}
               meta={participationMeta}
-              valueColor={P.sageTextStrong}
+              valueClassName="text-sageDeep"
             />
             <VitalSign
               title="People in groups"
@@ -222,9 +223,9 @@ export function VitalSignsBand({
                     ? "No capacity configured"
                     : `${lp.currentParticipants} of ${lp.effectiveTotalCapacity} seats`
               }
-              valueColor={
+              valueClassName={
                 capacityUsedPct != null && capacityUsedPct >= 85
-                  ? P.mustardTextStrong
+                  ? "text-amberText"
                   : undefined
               }
             />
@@ -239,7 +240,7 @@ export function VitalSignsBand({
                     : "Capacity holds for now"
                   : "Planning data unavailable"
               }
-              valueColor={risk.tone}
+              valueClassName={risk.toneTextClassName}
             />
             {/* Fillers square off the 10-cell band at the 3- and 6-column
                 breakpoints so no empty grid slot shows the line color. */}

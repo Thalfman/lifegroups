@@ -1,5 +1,4 @@
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { P } from "@/lib/pastoral";
 import {
   LEADER_READINESS_STAGES,
   STAGE_LABEL,
@@ -8,10 +7,10 @@ import type { LeaderReadinessStage } from "@/types/enums";
 import type { LeaderPipelineDashboardSummary } from "@/lib/dashboard/types";
 import { CardNote, MiniBarRow, OpenLink } from "./overview-primitives";
 
-function stageTone(stage: LeaderReadinessStage): string {
-  if (stage === "ready_to_lead") return P.sage;
-  if (stage === "launched") return P.sageTextStrong;
-  return P.mustard;
+function stageToneClassName(stage: LeaderReadinessStage): string {
+  if (stage === "ready_to_lead") return "bg-sage";
+  if (stage === "launched") return "bg-sageDeep";
+  return "bg-amber";
 }
 
 // Leadership supply by readiness stage — the apprentice pipeline that feeds
@@ -62,7 +61,7 @@ export function LeaderPipelineOverviewCard({
               label={STAGE_LABEL[stage]}
               count={summary.counts[stage]}
               total={summary.total}
-              tone={stageTone(stage)}
+              toneClassName={stageToneClassName(stage)}
             />
           ))}
         </div>

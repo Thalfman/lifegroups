@@ -1,5 +1,4 @@
 import { MetricCard } from "@/components/dashboard/cards";
-import { P } from "@/lib/pastoral";
 import type {
   LaunchPlanningInputs,
   LaunchPlanningOutputs,
@@ -55,14 +54,14 @@ export function LaunchPlanningAnswerCards({
                 ? "Gap is within configured buffer headroom."
                 : "Gap exceeds configured buffer — plan a launch."
           }
-          accent={risk.accent}
-          valueColor={risk.accent}
+          accentClassName={risk.text}
+          valueClassName={risk.text}
         />
         <MetricCard
           title="Recommended new groups"
           {...metricValue(outputs.recommended_new_groups)}
           meta="To meet projected demand with buffer."
-          accent={P.sage}
+          accentClassName="text-sage"
         />
         <MetricCard
           title="Available seats"
@@ -112,13 +111,13 @@ export function LaunchPlanningBreakdownCards({
           title="Projected demand"
           {...metricValue(outputs.projected_group_demand)}
           meta="Attendance × target participation %."
-          accent={P.sage}
+          accentClassName="text-sage"
         />
         <MetricCard
           title="Estimated new shepherds"
           {...metricValue(outputs.estimated_new_leaders_needed)}
           meta="New groups × shepherds per new group."
-          accent={P.sage}
+          accentClassName="text-sage"
         />
       </div>
     </section>

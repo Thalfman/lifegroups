@@ -34,7 +34,6 @@ import {
   countActiveMembersByGroup,
   indexOverridesByGroup,
 } from "@/lib/admin/group-capacity-inputs";
-import { P } from "@/lib/pastoral";
 
 // ---------------------------------------------------------------------------
 // Presentation helpers (shared across the launch-planning panels)
@@ -53,30 +52,11 @@ export function fmtNumber(n: number, fractionDigits = 0): string {
 }
 
 /**
- * The label + accent color for a launch-planning risk level. Shared by the
- * results / scenarios / summary panels so they read identically.
+ * The label + accent classes for a launch-planning risk level. Shared by the
+ * results / scenarios / summary panels so they read identically — the accent
+ * is expressed as text / border Tailwind utilities.
  */
 export function riskTone(level: LaunchPlanningRiskLevel): {
-  label: string;
-  accent: string;
-} {
-  switch (level) {
-    case "ok":
-      return { label: "OK", accent: P.sage };
-    case "watch":
-      return { label: "Watch", accent: P.terra };
-    case "launch_needed":
-      return { label: "Launch needed", accent: "#923220" };
-  }
-}
-
-/**
- * Tailwind-class variant of `riskTone` for surfaces migrated off inline
- * styles (#847): the same label, with the accent expressed as text / border
- * utility classes. `riskTone` above stays for callers that feed the raw
- * color into component props (e.g. MetricCard `accent`).
- */
-export function riskToneClasses(level: LaunchPlanningRiskLevel): {
   label: string;
   text: string;
   border: string;
@@ -87,12 +67,12 @@ export function riskToneClasses(level: LaunchPlanningRiskLevel): {
     case "watch":
       return { label: "Watch", text: "text-clay", border: "border-clay" };
     case "launch_needed":
-      // Deliberate off-token accent (see riskTone) — arbitrary values keep
-      // exact visual parity.
+      // The legacy off-token #923220 accent converged onto the clayDeep
+      // token (the same convergence #846 applied in field-styles).
       return {
         label: "Launch needed",
-        text: "text-[#923220]",
-        border: "border-[#923220]",
+        text: "text-clayDeep",
+        border: "border-clayDeep",
       };
   }
 }

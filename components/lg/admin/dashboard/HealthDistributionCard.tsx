@@ -1,5 +1,4 @@
 import { StatusCard } from "@/components/dashboard/cards";
-import { P } from "@/lib/pastoral";
 import type { HealthSummary } from "@/lib/dashboard/types";
 import { CardNote, MiniBarRow, OpenLink } from "./overview-primitives";
 
@@ -47,19 +46,19 @@ export function HealthDistributionCard({
             label="Healthy"
             count={healthy}
             total={total}
-            tone={P.sage}
+            toneClassName="bg-sage"
           />
           <MiniBarRow
             label="Watch"
             count={watch}
             total={total}
-            tone={P.mustard}
+            toneClassName="bg-amber"
           />
           <MiniBarRow
             label="Needs follow-up"
             count={needsFollowUp}
             total={total}
-            tone={P.terra}
+            toneClassName="bg-clay"
           />
         </div>
       )}

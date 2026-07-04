@@ -3,7 +3,7 @@ import type {
   LaunchPlanningInputs,
   LaunchPlanningOutputs,
 } from "@/lib/admin/launch-planning";
-import { fmtNumber, riskToneClasses } from "@/lib/admin/launch-planning";
+import { fmtNumber, riskTone } from "@/lib/admin/launch-planning";
 import { eyebrowClassName } from "./section-styles";
 
 function fmtPct(ratio: number): string {
@@ -45,7 +45,7 @@ export function LaunchPlanningResultsPanel({
   inputs: LaunchPlanningInputs;
   outputs: LaunchPlanningOutputs;
 }) {
-  const risk = riskToneClasses(outputs.risk_level);
+  const risk = riskTone(outputs.risk_level);
   return (
     <section className="grid gap-[18px] rounded-lg border border-line bg-surface px-6 py-[22px]">
       <header className="grid gap-1.5">
