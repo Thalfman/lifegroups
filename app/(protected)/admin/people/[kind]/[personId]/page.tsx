@@ -54,7 +54,7 @@ export default async function AdminPersonDetailPage({
         eyebrow="People"
         title={person.fullName}
         italic={person.roleLabel.toLowerCase()}
-        lede="One person, end to end — overview, group, care, activity, and access."
+        lede="One person, end to end: overview, group, care, activity, and access."
       />
       <PageBody>
         <div className="grid gap-[18px]">

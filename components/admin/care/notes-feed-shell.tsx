@@ -158,7 +158,7 @@ function SealedSummaryBlock({
   if (sealedSummary.length === 0) {
     return (
       <p className={MUTED_NOTE}>
-        Nothing is sealed away from you right now — every note on record is in
+        Nothing is sealed away from you right now. Every note on record is in
         the list below.
       </p>
     );
@@ -166,8 +166,8 @@ function SealedSummaryBlock({
   return (
     <div className="grid gap-3">
       <p className="m-0 font-sans text-sm text-ink2">
-        These people hold notes that are sealed to their author. Counts only —
-        turn a person&apos;s toggle on to let leadership read them.
+        These people hold notes that are sealed to their author. Counts only.
+        Turn a person&apos;s toggle on to let leadership read them.
       </p>
       <ul className="m-0 grid gap-3 p-0">
         {sealedSummary.map((s) => (

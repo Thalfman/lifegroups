@@ -35,7 +35,7 @@ export default adminPage({
     eyebrow: "Groups",
     title: "Groups",
     italic: "setup · health · capacity",
-    lede: "The single home for group setup, health, capacity, and lifecycle. Each group's standing reads as four independent labels — lifecycle, setup, health (the Group-Health Grade), and capacity. Open a group for its Health, Attendance, Follow-ups, and Events.",
+    lede: "The single home for group setup, health, capacity, and lifecycle. Each group's standing reads as four independent labels: lifecycle, setup, health (the Group-Health Grade), and capacity. Open a group for its Health, Attendance, Follow-ups, and Events.",
   }),
   render: ({ data, viewerId, isSuperAdmin }, { initialTab, fromSetup }) => (
     <PageBody>

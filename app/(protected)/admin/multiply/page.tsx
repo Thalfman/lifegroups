@@ -163,7 +163,7 @@ export default adminPage({
     eyebrow: "Multiply",
     title: "Plan your",
     italic: "multiplication",
-    lede: "Which groups are slated to multiply, which group types are ready, and who's in the shepherd pipeline — in one place.",
+    lede: "Which groups are slated to multiply, which group types are ready, and who's in the shepherd pipeline, in one place.",
   }),
   render: ({ tabs }) => (
     <PageBody>

@@ -62,7 +62,7 @@ export default async function AdminOverShepherdsPage() {
         eyebrow="Shepherd care"
         title="Over-"
         italic="shepherds"
-        lede="Over-Shepherds Julian tracks. These are admin-only records — they do not log in to the app."
+        lede="Over-Shepherds Julian tracks. These are admin-only records; they do not log in to the app."
       />
       <PageBody>
         <div className="grid gap-5">

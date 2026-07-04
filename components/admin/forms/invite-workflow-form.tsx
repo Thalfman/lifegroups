@@ -62,7 +62,7 @@ const DELIVERY_HINTS: Record<Delivery, string> = {
     "profile in one audited workflow and emails them a setup link. They " +
     "choose their own name when they set their password.",
   link:
-    "Generate a link to share directly — no email or name needed. The " +
+    "Generate a link to share directly, no email or name needed. The " +
     "person you invite opens it and sets up their own login (name, email, " +
     "and password).",
 };
@@ -187,7 +187,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
         // New-users-only: an existing login was reused, so no link exists.
         setNamedLink(null);
         setNamedLinkNote(
-          "Existing login reused — no invite link to copy. Ask them to use Forgot password to set a new password."
+          "Existing login reused: no invite link to copy. Ask them to use Forgot password to set a new password."
         );
       }
     });
@@ -297,7 +297,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
         </h3>
         <p className={HINT_TEXT}>
           Email someone their login setup link, or generate a shareable link
-          they redeem themselves — one audited workflow either way, and they
+          they redeem themselves; one audited workflow either way, and they
           choose their own name. The owner role is set up separately and can’t
           be selected here. Group assignment is for leaders and co-leaders only.
         </p>
@@ -376,7 +376,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
           <p className={FINEPRINT}>
             Both buttons create or link a real login profile. “Send invite”
             emails the setup link (needs email delivery configured); “Copy
-            invite link” gives you a setup link to send yourself — use it if
+            invite link” gives you a setup link to send yourself. Use it if
             email isn’t set up yet.
           </p>
 

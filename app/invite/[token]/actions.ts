@@ -32,7 +32,7 @@ const CODE_MESSAGES: Record<string, string> = {
   // profile, or lost a race — never confirms which, to avoid an enumeration
   // oracle on a shared link.
   email_unavailable:
-    "We couldn't sign you up with that email. If you already have an account, sign in or use Forgot password — otherwise try a different email.",
+    "We couldn't sign you up with that email. If you already have an account, sign in or use Forgot password. Otherwise try a different email.",
   invalid_email: "Enter a valid email address.",
   weak_password: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
   invalid_input: "Some required fields are missing. Check the form and retry.",

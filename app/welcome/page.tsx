@@ -41,7 +41,7 @@ export default async function WelcomePage() {
             What should we call you?
           </h1>
           <p className="mb-6 mt-0 font-sans text-base text-ink2">
-            Choose the name you want to go by — it&apos;s how you&apos;ll appear
+            Choose the name you want to go by. It&apos;s how you&apos;ll appear
             to your ministry team across Life Groups.
           </p>
 

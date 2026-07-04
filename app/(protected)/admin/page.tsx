@@ -50,7 +50,7 @@ export default async function AdminPage({
       <PageHeader
         eyebrow="Ministry Admin"
         title="Home"
-        lede="What needs your attention first — then the week ahead, the ministry snapshot, and recent activity."
+        lede="What needs your attention first, then the week ahead, the ministry snapshot, and recent activity."
       />
       <Suspense fallback={<PageSkeleton bodyOnly />}>
         <AdminHomeData grain={grain} fromSetup={fromSetup} />

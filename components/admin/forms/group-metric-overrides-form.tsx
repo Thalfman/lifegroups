@@ -65,9 +65,9 @@ export function GroupMetricOverridesForm({
   return (
     <div className="grid gap-4">
       <p className={formNoteClassName}>
-        Apply per-group overrides when a group needs its own thresholds — a
-        small Bible study with a fixed capacity, a launch group that should not
-        yet count against capacity metrics, or a group whose health status the
+        Apply per-group overrides when a group needs its own thresholds: a small
+        Bible study with a fixed capacity, a launch group that should not yet
+        count against capacity metrics, or a group whose health status the
         dashboard misjudges and you want to set by hand.
       </p>
 

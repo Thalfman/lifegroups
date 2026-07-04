@@ -32,7 +32,7 @@ export default adminPage({
     eyebrow: "People",
     title: "People",
     italic: "& apprentices",
-    lede: "Everyone involved and how they relate to groups — the directory, shepherds, members, and the apprentice pipeline.",
+    lede: "Everyone involved and how they relate to groups: the directory, shepherds, members, and the apprentice pipeline.",
   }),
   render: (
     { data, pipeline, needsContactProfileIds, isSuperAdmin },
