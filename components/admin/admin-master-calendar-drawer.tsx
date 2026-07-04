@@ -16,7 +16,7 @@ import {
   friendlyEventStatusLabel,
   friendlyEventTypeLabel,
 } from "@/lib/calendar/payload";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
 import { occurrenceStatusTone } from "./admin-master-calendar-status";
 
@@ -38,14 +38,7 @@ export function AdminMasterCalendarDrawer({
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? null : onClose())}>
       <DialogPortal>
-        <DialogOverlay
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(58, 42, 26, 0.45)",
-            zIndex: 60,
-          }}
-        />
+        <DialogOverlay className="fixed inset-0 z-overlay bg-[rgba(58,42,26,0.45)]" />
         <DialogContent
           onOpenAutoFocus={() => {
             openerRef.current = document.activeElement as HTMLElement | null;
@@ -57,24 +50,7 @@ export function AdminMasterCalendarDrawer({
               opener.focus();
             }
           }}
-          className="lg-m-master-calendar-drawer"
-          style={{
-            position: "fixed",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "min(560px, 92vw)",
-            maxHeight: "92dvh",
-            overflowY: "auto",
-            background: P.bg,
-            border: `1px solid ${P.line}`,
-            borderRadius: 14,
-            padding: 0,
-            zIndex: 61,
-            boxShadow: "0 18px 48px rgba(58, 42, 26, 0.22)",
-            display: "flex",
-            flexDirection: "column",
-          }}
+          className="lg-m-master-calendar-drawer fixed left-1/2 top-1/2 z-drawer flex max-h-[92dvh] w-[min(560px,92vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto rounded-lg border border-line bg-bg p-0 shadow-[0_18px_48px_rgba(58,42,26,0.22)]"
         >
           {occurrence ? (
             <DrawerBody
@@ -83,9 +59,7 @@ export function AdminMasterCalendarDrawer({
               onClose={onClose}
             />
           ) : (
-            <DialogTitle style={{ display: "none" }}>
-              Occurrence details
-            </DialogTitle>
+            <DialogTitle className="hidden">Occurrence details</DialogTitle>
           )}
         </DialogContent>
       </DialogPortal>
@@ -111,67 +85,25 @@ function DrawerBody({
 
   return (
     <>
-      <header
-        style={{
-          padding: "18px 20px",
-          borderBottom: `1px solid ${P.line}`,
-          background: P.surface,
-          display: "grid",
-          gap: 6,
-          position: "relative",
-        }}
-      >
-        <DialogTitle
-          style={{
-            fontFamily: fontSans,
-            fontSize: 11,
-            letterSpacing: 1.8,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 700,
-            margin: 0,
-          }}
-        >
+      <header className="relative grid gap-1.5 border-b border-line bg-surface px-5 py-[18px]">
+        <DialogTitle className="m-0 font-sans text-2xs font-bold uppercase tracking-[1.8px] text-ink3">
           {dateLabel(occurrence.date)}
         </DialogTitle>
-        <DialogDescription
-          style={{
-            fontFamily: fontBody,
-            fontSize: 18,
-            fontWeight: 600,
-            color: P.ink,
-            margin: 0,
-            lineHeight: 1.3,
-          }}
-        >
+        <DialogDescription className="m-0 font-sans text-[18px] font-semibold leading-[1.3] text-ink">
           {occurrence.groupName}
         </DialogDescription>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            background: "transparent",
-            border: `1px solid ${P.line}`,
-            borderRadius: 999,
-            width: 32,
-            height: 32,
-            cursor: "pointer",
-            color: P.ink2,
-            fontFamily: fontSans,
-            fontSize: 18,
-            lineHeight: 1,
-          }}
+          className="absolute right-2.5 top-2.5 h-8 w-8 cursor-pointer rounded-pill border border-line bg-transparent font-sans text-[18px] leading-none text-ink2"
         >
           ×
         </button>
       </header>
 
-      <div style={{ padding: "18px 20px", display: "grid", gap: 14 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="grid gap-3.5 px-5 py-[18px]">
+        <div className="flex flex-wrap gap-2">
           {occurrence.status !== "scheduled" ? (
             <PBadge tone={tone}>
               {friendlyEventStatusLabel(occurrence.status)}
@@ -210,17 +142,7 @@ function DrawerBody({
         ) : null}
       </div>
 
-      <footer
-        style={{
-          borderTop: `1px solid ${P.line}`,
-          background: P.surface,
-          padding: "14px 20px",
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          justifyContent: "flex-end",
-        }}
-      >
+      <footer className="flex flex-wrap justify-end gap-2.5 border-t border-line bg-surface px-5 py-3.5">
         <PLinkButton
           href={groupDetailHref}
           tone="ghost"
@@ -254,37 +176,17 @@ function Field({
   // Multiline values (today: Description only) read as quoted notes —
   // 2px line on the left, italic body, slightly muted ink. Keeps prose
   // visually distinct from short factual fields above it.
-  const multilineStyle = multiline
-    ? {
-        borderLeft: `2px solid ${P.line}`,
-        paddingLeft: 10,
-        color: P.ink2,
-        fontStyle: "italic" as const,
-      }
-    : {};
   return (
-    <div style={{ display: "grid", gap: 3 }}>
-      <span
-        style={{
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 700,
-        }}
-      >
+    <div className="grid gap-[3px]">
+      <span className="font-sans text-[10px] font-bold uppercase tracking-[1.2px] text-ink3">
         {label}
       </span>
       <span
-        style={{
-          fontFamily: fontBody,
-          fontSize: 14,
-          color: P.ink,
-          lineHeight: 1.45,
-          whiteSpace: multiline ? "pre-wrap" : "normal",
-          ...multilineStyle,
-        }}
+        className={cn(
+          "font-sans text-base leading-[1.45] text-ink",
+          multiline &&
+            "whitespace-pre-wrap border-l-2 border-line pl-2.5 italic text-ink2"
+        )}
       >
         {value}
       </span>

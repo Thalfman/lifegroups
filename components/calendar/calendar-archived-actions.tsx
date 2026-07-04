@@ -28,15 +28,7 @@ export function ArchivedRestoreButton({
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(action);
   return (
-    <form
-      action={formAction}
-      style={{
-        display: "inline-flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        gap: 4,
-      }}
-    >
+    <form action={formAction} className="inline-flex flex-col items-end gap-1">
       <input type="hidden" name="event_id" value={eventId} />
       <input type="hidden" name="group_id" value={groupId} />
       <PButton type="submit" tone="ghost" size="sm" disabled={pending}>

@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import { PBadge } from "@/components/pastoral/atoms";
 import {
   eventDisplayLabel,
@@ -27,17 +26,7 @@ export function CalendarEventList({
 }) {
   if (events.length === 0) {
     return (
-      <div
-        style={{
-          background: P.surface,
-          border: `1px dashed ${P.line}`,
-          borderRadius: 12,
-          padding: "18px 20px",
-          fontFamily: fontBody,
-          fontSize: 14,
-          color: P.ink2,
-        }}
-      >
+      <div className="rounded-md border border-dashed border-line bg-surface px-5 py-[18px] font-sans text-base text-ink2">
         {emptyMessage ?? "No calendar overrides."}
       </div>
     );
@@ -45,15 +34,7 @@ export function CalendarEventList({
 
   if (!archivedSeparate) {
     return (
-      <ul
-        style={{
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-          display: "grid",
-          gap: 10,
-        }}
-      >
+      <ul className="m-0 grid list-none gap-2.5 p-0">
         {events.map((event) => (
           <CalendarEventRow
             key={event.id}
@@ -70,17 +51,9 @@ export function CalendarEventList({
   const archived = events.filter((e) => e.archived_at != null);
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div className="grid gap-4">
       {active.length > 0 ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 10,
-          }}
-        >
+        <ul className="m-0 grid list-none gap-2.5 p-0">
           {active.map((event) => (
             <CalendarEventRow
               key={event.id}
@@ -90,53 +63,17 @@ export function CalendarEventList({
           ))}
         </ul>
       ) : (
-        <div
-          style={{
-            background: P.surface,
-            border: `1px dashed ${P.line}`,
-            borderRadius: 12,
-            padding: "14px 18px",
-            fontFamily: fontBody,
-            fontSize: 14,
-            color: P.ink2,
-          }}
-        >
+        <div className="rounded-md border border-dashed border-line bg-surface px-[18px] py-3.5 font-sans text-base text-ink2">
           {emptyMessage ?? "No overrides yet."}
         </div>
       )}
 
       {archived.length > 0 ? (
-        <details
-          style={{
-            border: `1px solid ${P.line}`,
-            borderRadius: 12,
-            background: P.surface,
-            padding: "10px 16px",
-            fontFamily: fontBody,
-          }}
-        >
-          <summary
-            style={{
-              fontFamily: fontSans,
-              fontSize: 11,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
+        <details className="rounded-md border border-line bg-surface px-4 py-2.5 font-sans">
+          <summary className="cursor-pointer font-sans text-2xs font-semibold uppercase tracking-[1.5px] text-ink3">
             Archived ({archived.length})
           </summary>
-          <ul
-            style={{
-              listStyle: "none",
-              padding: 0,
-              margin: "10px 0 4px",
-              display: "grid",
-              gap: 10,
-            }}
-          >
+          <ul className="m-0 mb-1 mt-2.5 grid list-none gap-2.5 p-0">
             {archived.map((event) => (
               <CalendarEventRow
                 key={event.id}
@@ -170,77 +107,27 @@ function CalendarEventRow({
 
   return (
     <li
-      className="lg-m-grid-stack"
-      style={{
-        background: archived ? P.bgDeep : P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 12,
-        padding: "14px 16px",
-        display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) auto",
-        alignItems: "start",
-        gap: 12,
-        opacity: archived ? 0.7 : 1,
-      }}
+      className={`lg-m-grid-stack grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-md border border-line px-4 py-3.5 ${
+        archived ? "bg-sidebar opacity-70" : "bg-surface"
+      }`}
     >
-      <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-        <div
-          style={{
-            fontFamily: fontSans,
-            fontSize: 11,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 600,
-          }}
-        >
+      <div className="grid min-w-0 gap-1">
+        <div className="font-sans text-2xs font-semibold uppercase tracking-[1.5px] text-ink3">
           {dateLabel}
         </div>
-        <div
-          style={{
-            fontFamily: fontDisplay,
-            fontSize: 18,
-            color: P.ink,
-            fontWeight: 500,
-            lineHeight: 1.25,
-          }}
-        >
+        <div className="font-display text-[18px] font-medium leading-[1.25] text-ink">
           {displayLabel}
         </div>
         {showTypeAside ? (
-          <div
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink2,
-              fontStyle: "italic",
-            }}
-          >
-            {typeLabel}
-          </div>
+          <div className="font-sans text-xs italic text-ink2">{typeLabel}</div>
         ) : null}
         {event.description ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-              margin: "4px 0 0",
-              lineHeight: 1.5,
-            }}
-          >
+          <p className="m-0 mt-1 font-sans text-sm leading-normal text-ink2">
             {event.description}
           </p>
         ) : null}
       </div>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-          alignItems: "flex-end",
-        }}
-      >
+      <div className="flex flex-col items-end gap-2">
         <PBadge tone={statusTone(event.status)}>{statusLabel}</PBadge>
         {renderActions ? renderActions(event) : null}
       </div>

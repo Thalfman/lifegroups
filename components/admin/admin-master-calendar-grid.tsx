@@ -12,17 +12,22 @@ import {
   friendlyEventStatusLabel,
   friendlyEventTypeLabel,
 } from "@/lib/calendar/payload";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
 import { occurrenceAccessibleName } from "@/lib/admin/master-calendar-label";
-import {
-  occurrenceStatusTone,
-  statusStripeColor,
-} from "./admin-master-calendar-status";
+import { occurrenceStatusTone } from "./admin-master-calendar-status";
 
 export type DayClickPayload = { date: string };
 
 const MAX_PILLS_PER_CELL = 3;
+
+// Tailwind border-color class per status for the pill's full border. Mirrors
+// statusStripeColor() in admin-master-calendar-status.ts (still the source for
+// non-migrated surfaces) — keep the two in sync so the legend stays truthful.
+const STATUS_BORDER_CLASS: Record<MasterOccurrence["status"], string> = {
+  scheduled: "border-sage",
+  cancelled: "border-clay",
+  off: "border-ink4",
+};
 
 export function AdminMasterCalendarGrid({
   monthIso,
@@ -46,43 +51,15 @@ export function AdminMasterCalendarGrid({
   }
 
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: 16,
-        display: "grid",
-        gap: 10,
-      }}
-    >
-      <div
-        className="lg-m-cal-weekdays"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-          gap: 6,
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.5,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 600,
-        }}
-      >
+    <div className="grid gap-2.5 rounded-lg border border-line bg-surface p-4">
+      <div className="lg-m-cal-weekdays grid grid-cols-7 gap-1.5 font-sans text-[10px] font-semibold uppercase tracking-[1.5px] text-ink3">
         {WEEKDAY_HEADERS.map((label) => (
-          <div key={label} style={{ padding: "2px 6px" }}>
+          <div key={label} className="px-1.5 py-0.5">
             {label}
           </div>
         ))}
       </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-          gap: 6,
-        }}
-      >
+      <div className="grid grid-cols-7 gap-1.5">
         {cells.map((cell) => (
           <GridCellView
             key={cell.date}
@@ -111,53 +88,32 @@ function GridCellView({
   // Out-of-month cells are distinguished by background + a muted (but still
   // AA-clearing) day color — never an opacity wash, which floors text
   // contrast below 4.5:1.
-  const baseBg = cell.inMonth ? P.bg : P.surface;
-  const dayColor = cell.inMonth ? P.ink2 : P.ink3;
+  const baseBgClass = cell.inMonth ? "bg-bg" : "bg-surface";
+  const dayColorClass = cell.isToday
+    ? "text-clay"
+    : cell.inMonth
+      ? "text-ink2"
+      : "text-ink3";
   const visible = occurrences.slice(0, MAX_PILLS_PER_CELL);
   const overflow = occurrences.length - visible.length;
 
   return (
     <div
-      className="lg-m-cal-cell"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        minHeight: 96,
-        padding: "8px 8px 10px",
-        background: baseBg,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        boxShadow: cell.isToday ? `inset 0 0 0 1px ${P.terra}` : undefined,
-      }}
+      className={`lg-m-cal-cell flex min-h-[96px] flex-col gap-1.5 rounded-sm border border-line px-2 pb-2.5 pt-2 ${baseBgClass} ${
+        cell.isToday ? "shadow-[inset_0_0_0_1px_var(--c-clay)]" : ""
+      }`}
     >
       <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          fontFamily: fontSans,
-          fontSize: 11,
-          fontWeight: 600,
-          color: cell.isToday ? P.terra : dayColor,
-        }}
+        className={`flex items-center gap-1 font-sans text-2xs font-semibold ${dayColorClass}`}
       >
         {dayNumberLabel(cell.date)}
         {cell.isToday ? (
-          <span
-            style={{
-              fontSize: 11,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              color: P.terra,
-              fontWeight: 700,
-            }}
-          >
+          <span className="text-2xs font-bold uppercase tracking-[1px] text-clay">
             Today
           </span>
         ) : null}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div className="flex flex-col gap-1">
         {visible.map((o) => (
           <OccurrencePill
             key={`${o.groupId}|${o.date}`}
@@ -169,19 +125,7 @@ function GridCellView({
           <button
             type="button"
             onClick={() => onMoreFromDay({ date: cell.date })}
-            style={{
-              fontFamily: fontSans,
-              fontSize: 11,
-              color: P.terraTextStrong,
-              background: "transparent",
-              border: "none",
-              padding: "2px 4px",
-              borderRadius: 6,
-              textAlign: "left",
-              cursor: "pointer",
-              fontWeight: 600,
-              alignSelf: "start",
-            }}
+            className="cursor-pointer self-start rounded-[6px] border-none bg-transparent px-1 py-0.5 text-left font-sans text-2xs font-semibold text-clayDeep"
           >
             +{overflow} more
           </button>
@@ -214,46 +158,13 @@ function OccurrencePill({
       onClick={onClick}
       aria-label={pillAriaLabel}
       title={`${occurrence.groupName} · ${typeLabel}${clock ? ` · ${clock}` : ""}`}
-      className="lg-m-cal-pill"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-        textAlign: "left",
-        background: P.surface,
-        // Status carried by a full border (legend-explained), not a stripe.
-        border: `1px solid ${statusStripeColor(occurrence.status)}`,
-        borderRadius: 6,
-        padding: "4px 6px",
-        cursor: "pointer",
-        fontFamily: fontBody,
-      }}
+      // Status carried by a full border (legend-explained), not a stripe.
+      className={`lg-m-cal-pill flex cursor-pointer flex-col gap-0.5 rounded-[6px] border bg-surface px-1.5 py-1 text-left font-sans ${STATUS_BORDER_CLASS[occurrence.status]}`}
     >
-      <span
-        style={{
-          fontSize: 11.5,
-          color: P.ink,
-          fontWeight: 600,
-          lineHeight: 1.2,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
+      <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] font-semibold leading-[1.2] text-ink">
         {occurrence.groupName}
       </span>
-      <span
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          flexWrap: "wrap",
-          fontFamily: fontSans,
-          fontSize: 10,
-          color: P.ink3,
-          letterSpacing: 0.2,
-        }}
-      >
+      <span className="flex flex-wrap items-center gap-1 font-sans text-[10px] tracking-[0.2px] text-ink3">
         {showStatusBadge ? (
           <PBadge tone={tone}>
             {friendlyEventStatusLabel(occurrence.status)}

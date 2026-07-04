@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { PButton } from "@/components/pastoral/button";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
@@ -25,7 +25,7 @@ import {
   EVENT_TYPE_OPTIONS,
 } from "@/lib/calendar/payload";
 import { dateLabel, formatClock } from "@/lib/calendar/occurrences";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/shared/action-result";
 import type {
   GroupCalendarEventStatus,
@@ -67,7 +67,6 @@ export function CalendarOccurrenceEditor({
   actions,
   triggerLabel,
   triggerAriaLabel,
-  triggerStyle,
   triggerClassName,
   canEdit,
   disabledReason,
@@ -85,7 +84,6 @@ export function CalendarOccurrenceEditor({
   // screen reader. Callers build a summary like "Edit Oct 14 — Study, 6:30p,
   // Scheduled" or "Add event on Oct 14" and pass it here (#322).
   triggerAriaLabel?: string;
-  triggerStyle?: React.CSSProperties;
   triggerClassName?: string;
   canEdit: boolean;
   disabledReason?: string;
@@ -102,11 +100,7 @@ export function CalendarOccurrenceEditor({
     return (
       <div
         title={disabledReason}
-        style={{
-          ...triggerStyle,
-          cursor: "default",
-        }}
-        className={triggerClassName}
+        className={cn(triggerClassName, "cursor-default")}
       >
         {triggerLabel}
       </div>
@@ -119,17 +113,10 @@ export function CalendarOccurrenceEditor({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={triggerAriaLabel}
-        style={{
-          ...triggerStyle,
-          background: triggerStyle?.background ?? "transparent",
-          border: triggerStyle?.border ?? "none",
-          cursor: "pointer",
-          textAlign: "left",
-          padding: triggerStyle?.padding ?? 0,
-          font: "inherit",
-          color: triggerStyle?.color ?? "inherit",
-        }}
-        className={triggerClassName}
+        className={cn(
+          "cursor-pointer border-0 bg-transparent p-0 text-left text-inherit [font:inherit]",
+          triggerClassName
+        )}
       >
         {triggerLabel}
       </button>
@@ -162,49 +149,17 @@ function EditorHeader({
   clockLabel: ReturnType<typeof formatClock>;
 }) {
   return (
-    <header
-      style={{
-        padding: "18px 22px 6px",
-        display: "grid",
-        gap: 4,
-      }}
-    >
-      <DialogTitle
-        style={{
-          fontFamily: fontSans,
-          fontSize: 11,
-          letterSpacing: 1.5,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 600,
-          margin: 0,
-        }}
-      >
+    <header className="grid gap-1 px-[22px] pb-1.5 pt-[18px]">
+      <DialogTitle className="m-0 font-sans text-2xs font-semibold uppercase tracking-[1.5px] text-ink3">
         {occurrence.isMeetingOccurrence
           ? "Edit meeting occurrence"
           : "Edit special occurrence"}
       </DialogTitle>
-      <DialogDescription
-        style={{
-          fontFamily: fontBody,
-          fontSize: 18,
-          color: P.ink,
-          margin: 0,
-          lineHeight: 1.3,
-        }}
-      >
+      <DialogDescription className="m-0 font-sans text-[18px] leading-[1.3] text-ink">
         {dateLabel(occurrence.date)}
         {showClock && clockLabel ? ` · ${clockLabel}` : null}
       </DialogDescription>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12,
-          color: P.ink2,
-          margin: "4px 0 0",
-          lineHeight: 1.45,
-        }}
-      >
+      <p className="m-0 mt-1 font-sans text-xs leading-[1.45] text-ink2">
         Meeting time is inherited from the group schedule. To change it, edit
         the group.
       </p>
@@ -230,16 +185,9 @@ function EditorStatusTypeFields({
   occurrence: CalendarOccurrenceEditorOccurrence;
 }) {
   return (
-    <div
-      className="lg-m-form-2up"
-      style={{
-        display: "grid",
-        gap: 12,
-        gridTemplateColumns: "1fr 1fr",
-      }}
-    >
+    <div className="lg-m-form-2up grid grid-cols-2 gap-3">
       <div>
-        <label htmlFor={statusId} style={fieldLabelStyle}>
+        <label htmlFor={statusId} className={fieldLabelClassName}>
           Status
         </label>
         <select
@@ -249,7 +197,7 @@ function EditorStatusTypeFields({
           onChange={(e) =>
             onStatusChange(e.target.value as GroupCalendarEventStatus)
           }
-          style={fieldSelectStyle}
+          className={fieldSelectClassName}
         >
           {EVENT_STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -260,7 +208,7 @@ function EditorStatusTypeFields({
       </div>
       {showEventTypeSelect ? (
         <div>
-          <label htmlFor={typeId} style={fieldLabelStyle}>
+          <label htmlFor={typeId} className={fieldLabelClassName}>
             Gathering type
           </label>
           <select
@@ -272,7 +220,7 @@ function EditorStatusTypeFields({
                 ? "study"
                 : occurrence.eventType
             }
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             {EVENT_TYPE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -361,14 +309,7 @@ function EditorModal({
       onOpenChange={(next) => (!next ? onClose() : undefined)}
     >
       <DialogPortal>
-        <DialogOverlay
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(58, 42, 26, 0.45)",
-            zIndex: 60,
-          }}
-        />
+        <DialogOverlay className="fixed inset-0 z-overlay bg-[rgba(58,42,26,0.45)]" />
         <DialogContent
           // Capture the opener before Radix moves focus inward, then restore to
           // it on close (Radix's default has no trigger to return to here).
@@ -382,21 +323,7 @@ function EditorModal({
               opener.focus();
             }
           }}
-          style={{
-            position: "fixed",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            background: P.bg,
-            border: `1px solid ${P.line}`,
-            borderRadius: 14,
-            padding: 0,
-            zIndex: 61,
-            width: "min(520px, calc(100vw - 32px))",
-            maxHeight: "calc(100vh - 32px)",
-            overflowY: "auto",
-            boxShadow: "0 18px 48px rgba(58, 42, 26, 0.2)",
-          }}
+          className="fixed left-1/2 top-1/2 z-drawer max-h-[calc(100vh-32px)] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-line bg-bg p-0 shadow-[0_18px_48px_rgba(58,42,26,0.2)]"
         >
           <EditorHeader
             occurrence={occurrence}
@@ -407,7 +334,7 @@ function EditorModal({
           <form
             ref={formRef}
             action={saveFormAction}
-            style={{ display: "grid", gap: 12, padding: "12px 22px 18px" }}
+            className="grid gap-3 px-[22px] pb-[18px] pt-3"
           >
             <input type="hidden" name="group_id" value={groupId} />
             <input type="hidden" name="event_date" value={occurrence.date} />
@@ -432,7 +359,7 @@ function EditorModal({
             />
 
             <div>
-              <label htmlFor={titleId} style={fieldLabelStyle}>
+              <label htmlFor={titleId} className={fieldLabelClassName}>
                 Title (optional)
               </label>
               <input
@@ -446,13 +373,12 @@ function EditorModal({
                     ? "e.g. Week 3 of the rotation"
                     : "Optional reason"
                 }
-                className="lg-m-input"
-                style={fieldInputStyle}
+                className={`lg-m-input ${fieldInputClassName}`}
               />
             </div>
 
             <div>
-              <label htmlFor={descriptionId} style={fieldLabelStyle}>
+              <label htmlFor={descriptionId} className={fieldLabelClassName}>
                 Description (optional)
               </label>
               <textarea
@@ -461,42 +387,18 @@ function EditorModal({
                 maxLength={1000}
                 rows={3}
                 defaultValue={occurrence.description ?? ""}
-                className="lg-m-input"
-                style={{
-                  ...fieldInputStyle,
-                  lineHeight: 1.5,
-                  resize: "vertical",
-                }}
+                className={`lg-m-input ${fieldInputClassName} resize-y leading-normal`}
               />
             </div>
 
             <FormStatus state={saveState} />
             {previewNotice ? (
-              <p
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 12,
-                  color: P.ink2,
-                  background: P.surface,
-                  border: `1px dashed ${P.line}`,
-                  borderRadius: 8,
-                  padding: "8px 12px",
-                  margin: 0,
-                }}
-              >
+              <p className="m-0 rounded-[8px] border border-dashed border-line bg-surface px-3 py-2 font-sans text-xs text-ink2">
                 {previewNotice}
               </p>
             ) : null}
 
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 8,
-                justifyContent: "flex-end",
-                marginTop: 4,
-              }}
-            >
+            <div className="mt-1 flex flex-wrap justify-end gap-2">
               <DialogClose asChild>
                 <PButton type="button" tone="ghost" size="md">
                   Cancel
@@ -542,31 +444,13 @@ function ClearOverrideRow({
   state: ActionResult<{ id: string }> | undefined;
 }) {
   return (
-    <div
-      style={{
-        padding: "12px 22px 18px",
-        borderTop: `1px solid ${P.line}`,
-        display: "grid",
-        gap: 8,
-      }}
-    >
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.45,
-        }}
-      >
+    <div className="grid gap-2 border-t border-line px-[22px] pb-[18px] pt-3">
+      <p className="m-0 font-sans text-xs leading-[1.45] text-ink2">
         Reverting this date drops the override and shows the default occurrence
         from the group schedule again.
       </p>
       <FormStatus state={state} />
-      <form
-        action={action}
-        style={{ display: "flex", justifyContent: "flex-end" }}
-      >
+      <form action={action} className="flex justify-end">
         <input type="hidden" name="event_id" value={eventId} />
         <input type="hidden" name="group_id" value={groupId} />
         <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
