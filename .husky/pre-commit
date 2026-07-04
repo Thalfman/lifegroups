@@ -1,7 +1,6 @@
 #!/bin/sh
 # Diagnose a missing/partial local install up front (#545), before lint-staged
-# can fail with bare shell noise. typecheck/test:run preflight again themselves.
+# can fail with bare shell noise. typecheck + test:run moved to CI only —
+# they are gated by .github/workflows/ci.yml on every PR and push to main.
 npm run verify:toolchain
 npx lint-staged
-npm run typecheck
-npm run test:run
