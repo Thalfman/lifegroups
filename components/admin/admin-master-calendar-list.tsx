@@ -13,10 +13,7 @@ import {
   occurrenceAccessibleName,
   occurrenceCalendarLinkName,
 } from "@/lib/admin/master-calendar-label";
-import {
-  occurrenceStatusTone,
-  statusStripeColor,
-} from "./admin-master-calendar-status";
+import { occurrenceStatusTone } from "./admin-master-calendar-status";
 
 export function AdminMasterCalendarList({
   occurrences,

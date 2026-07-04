@@ -14,20 +14,14 @@ import {
 } from "@/lib/calendar/payload";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
 import { occurrenceAccessibleName } from "@/lib/admin/master-calendar-label";
-import { occurrenceStatusTone } from "./admin-master-calendar-status";
+import {
+  occurrenceStatusTone,
+  STATUS_STRIPE_BORDER_CLASS,
+} from "./admin-master-calendar-status";
 
 export type DayClickPayload = { date: string };
 
 const MAX_PILLS_PER_CELL = 3;
-
-// Tailwind border-color class per status for the pill's full border. Mirrors
-// statusStripeColor() in admin-master-calendar-status.ts (still the source for
-// non-migrated surfaces) — keep the two in sync so the legend stays truthful.
-const STATUS_BORDER_CLASS: Record<MasterOccurrence["status"], string> = {
-  scheduled: "border-sage",
-  cancelled: "border-clay",
-  off: "border-ink4",
-};
 
 export function AdminMasterCalendarGrid({
   monthIso,
@@ -159,7 +153,7 @@ function OccurrencePill({
       aria-label={pillAriaLabel}
       title={`${occurrence.groupName} · ${typeLabel}${clock ? ` · ${clock}` : ""}`}
       // Status carried by a full border (legend-explained), not a stripe.
-      className={`lg-m-cal-pill flex cursor-pointer flex-col gap-0.5 rounded-[6px] border bg-surface px-1.5 py-1 text-left font-sans ${STATUS_BORDER_CLASS[occurrence.status]}`}
+      className={`lg-m-cal-pill flex cursor-pointer flex-col gap-0.5 rounded-[6px] border bg-surface px-1.5 py-1 text-left font-sans ${STATUS_STRIPE_BORDER_CLASS[occurrence.status]}`}
     >
       <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] font-semibold leading-[1.2] text-ink">
         {occurrence.groupName}

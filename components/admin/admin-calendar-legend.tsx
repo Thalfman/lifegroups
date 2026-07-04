@@ -1,13 +1,13 @@
 "use client";
 
-// Swatch classes mirror statusStripeColor() in
-// admin-master-calendar-status.ts (the helper the grid's pill borders and the
-// list stripe map to), so the legend always tells the truth about what each
-// colored bar means — keep the two in sync.
+import { STATUS_STRIPE_BG_CLASS } from "./admin-master-calendar-status";
+
+// The legend reads its swatch hues from the shared status-stripe map, so it
+// always tells the truth about what each colored bar means.
 const SWATCHES: { label: string; swatchClassName: string }[] = [
-  { label: "Scheduled", swatchClassName: "bg-sage" },
-  { label: "Cancelled", swatchClassName: "bg-clay" },
-  { label: "OFF week", swatchClassName: "bg-ink4" },
+  { label: "Scheduled", swatchClassName: STATUS_STRIPE_BG_CLASS.scheduled },
+  { label: "Cancelled", swatchClassName: STATUS_STRIPE_BG_CLASS.cancelled },
+  { label: "OFF week", swatchClassName: STATUS_STRIPE_BG_CLASS.off },
 ];
 
 export function AdminCalendarLegend() {
