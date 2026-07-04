@@ -5,7 +5,6 @@ import { buildLaunchPlanningPanels } from "@/components/admin/launch-planning/la
 import { PlanLaunchWidget } from "@/components/admin/launch-planning/plan-launch-widget";
 import { PlanningShell, type PlanningTabKey } from "./planning-shell";
 import { PlanningCalendarPanel } from "./planning-calendar-panel";
-import { fontBody, P } from "@/lib/pastoral";
 
 // The canonical Planning area view (ADR 0013, #303/#329). Planning is the entry
 // point for Job 2 — "what groups need to launch / what is coming next?" — and
@@ -43,8 +42,8 @@ export async function PlanningView({
   // verbatim under their reduction-plan labels (Capacity / Scenarios /
   // Multiplication).
   const launchesPanel = (
-    <div style={{ display: "grid", gap: 24 }}>
-      <section style={{ display: "grid", gap: 16 }}>
+    <div className="grid gap-6">
+      <section className="grid gap-4">
         {panels.notice}
         {panels.warnings}
         {panels.answer}
@@ -59,7 +58,7 @@ export async function PlanningView({
   // status), which the frozen route keeps under its "Groups and multiplication"
   // tab but the plan places here.
   const capacityPanel = (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       {panels.forecast}
       {panels.capacityBoard}
     </div>
@@ -74,7 +73,7 @@ export async function PlanningView({
         lede="What is coming next — the ministry calendar and everything that goes into launching the next Life Groups, in one place."
       />
       <PageBody>
-        <div style={{ display: "grid", gap: 24 }}>
+        <div className="grid gap-6">
           <PlanningShell
             initialTab={initialTab}
             calendar={
@@ -92,33 +91,16 @@ export async function PlanningView({
 
           <nav
             aria-label="Related admin surfaces"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-              alignItems: "center",
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-            }}
+            className="flex flex-wrap items-center gap-3 font-sans text-sm text-ink2"
           >
-            <span style={{ color: P.ink3 }}>Related:</span>
-            <Link
-              href="/admin/leader-pipeline"
-              style={{ color: P.ink, textDecoration: "underline" }}
-            >
+            <span className="text-ink3">Related:</span>
+            <Link href="/admin/leader-pipeline" className="text-ink underline">
               Apprentices
             </Link>
-            <Link
-              href="/admin/groups"
-              style={{ color: P.ink, textDecoration: "underline" }}
-            >
+            <Link href="/admin/groups" className="text-ink underline">
               Groups
             </Link>
-            <Link
-              href="/admin/care"
-              style={{ color: P.ink, textDecoration: "underline" }}
-            >
+            <Link href="/admin/care" className="text-ink underline">
               Care
             </Link>
           </nav>
