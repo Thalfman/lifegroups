@@ -130,7 +130,7 @@ export function HealthRubricEditor({
 
       {!hasSavedRubric ? (
         <p className={formNoteClassName}>
-          These are starting defaults — tune them to your ministry, then Save.
+          These are starting defaults. Tune them to your ministry, then Save.
           Nothing is recorded until you do.
         </p>
       ) : null}
