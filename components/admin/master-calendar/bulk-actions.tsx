@@ -1,5 +1,4 @@
-import type { CSSProperties } from "react";
-import { P, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 // Compact "Select all / Clear all" pair for a multi-select filter field
 // (Calendar polish, PRD req 11, #262). Each button disables itself once it
@@ -21,31 +20,25 @@ export function BulkActions<V>({
   // currently-listed option stays unchecked, wrongly disabling "Select all".
   const allSelected = all.length > 0 && all.every((v) => value.includes(v));
   const noneSelected = value.length === 0;
-  const btnStyle = (disabled: boolean): CSSProperties => ({
-    fontFamily: fontSans,
-    fontSize: 10,
-    letterSpacing: 0.4,
-    fontWeight: 700,
-    textTransform: "uppercase",
-    color: disabled ? P.ink3 : P.terra,
-    background: "transparent",
-    border: "none",
-    padding: "2px 4px",
-    cursor: disabled ? "default" : "pointer",
-    opacity: disabled ? 0.45 : 1,
-  });
+  const btnClassName = (disabled: boolean): string =>
+    cn(
+      "border-none bg-transparent px-1 py-0.5 font-sans text-[10px] font-bold uppercase tracking-[0.4px]",
+      disabled
+        ? "cursor-default text-ink3 opacity-45"
+        : "cursor-pointer text-clay"
+    );
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+    <div className="flex items-center gap-1.5">
       <button
         type="button"
         onClick={() => onChange([...all])}
         disabled={allSelected}
         aria-label={`Select all ${label}`}
-        style={btnStyle(allSelected)}
+        className={btnClassName(allSelected)}
       >
         Select all
       </button>
-      <span aria-hidden style={{ color: P.line, fontSize: 10 }}>
+      <span aria-hidden className="text-[10px] text-line">
         ·
       </span>
       <button
@@ -53,7 +46,7 @@ export function BulkActions<V>({
         onClick={() => onChange([])}
         disabled={noneSelected}
         aria-label={`Clear all ${label}`}
-        style={btnStyle(noneSelected)}
+        className={btnClassName(noneSelected)}
       >
         Clear all
       </button>

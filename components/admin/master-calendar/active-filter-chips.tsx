@@ -1,5 +1,3 @@
-import { P, fontBody, fontSans } from "@/lib/pastoral";
-
 // A chip carries its filter `category` (the field it came from) so two values
 // that share a label across fields stay distinguishable. The master calendar
 // deliberately exposes "OFF" and "Cancelled" in BOTH the gathering-type and
@@ -22,40 +20,13 @@ export type ActiveChip = {
 export function ActiveFilterChips({ chips }: { chips: ActiveChip[] }) {
   if (chips.length === 0) return null;
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 6,
-        alignItems: "center",
-      }}
-    >
+    <div className="flex flex-wrap items-center gap-1.5">
       {chips.map((chip) => (
         <span
           key={chip.key}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            fontFamily: fontBody,
-            fontSize: 11.5,
-            color: P.terra,
-            background: P.terraSoft,
-            border: `1px solid ${P.terra}`,
-            borderRadius: 999,
-            padding: "2px 4px 2px 10px",
-          }}
+          className="inline-flex items-center gap-1.5 rounded-pill border border-clay bg-claySoft py-0.5 pl-2.5 pr-1 font-sans text-[11.5px] text-clay"
         >
-          <span
-            style={{
-              fontFamily: fontSans,
-              fontSize: 9,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              fontWeight: 700,
-              opacity: 0.75,
-            }}
-          >
+          <span className="font-sans text-[9px] font-bold uppercase tracking-[0.6px] opacity-75">
             {chip.category}
           </span>
           {chip.label}
@@ -63,21 +34,7 @@ export function ActiveFilterChips({ chips }: { chips: ActiveChip[] }) {
             type="button"
             onClick={chip.onRemove}
             aria-label={`Remove ${chip.category} filter: ${chip.label}`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 16,
-              height: 16,
-              borderRadius: 999,
-              border: "none",
-              background: "transparent",
-              color: P.terra,
-              fontSize: 13,
-              lineHeight: 1,
-              cursor: "pointer",
-              padding: 0,
-            }}
+            className="inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded-pill border-none bg-transparent p-0 text-sm leading-none text-clay"
           >
             ×
           </button>

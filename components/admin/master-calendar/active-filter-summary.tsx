@@ -6,7 +6,6 @@ import {
 } from "@/lib/admin/master-calendar-view";
 import type { PlanningViewKey } from "@/lib/admin/planning-views";
 import type { MasterCalendarLeader } from "@/lib/admin/master-calendar";
-import { P, fontBody } from "@/lib/pastoral";
 
 // A compact, plain-language summary of WHY the current list is filtered (#371),
 // sitting between the filters and the meeting list with a one-tap "Clear
@@ -33,25 +32,12 @@ export function ActiveFilterSummary({
   );
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 10,
-        flexWrap: "wrap",
-      }}
-    >
+    <div className="flex flex-wrap items-center justify-between gap-2.5">
       <div
         aria-live="polite"
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink2,
-          minWidth: 0,
-        }}
+        className="min-w-0 font-sans text-[12.5px] text-ink2"
       >
-        <span style={{ color: P.ink3, fontWeight: 600 }}>Showing: </span>
+        <span className="font-semibold text-ink3">Showing: </span>
         {parts.join(" · ")}
       </div>
       <PButton

@@ -1,5 +1,3 @@
-import { P, fontBody } from "@/lib/pastoral";
-
 export function EmptyState({
   hasActiveFilters,
 }: {
@@ -12,23 +10,9 @@ export function EmptyState({
     ? "Try clearing a filter or pick a different month."
     : "Try a neighboring month, or check group schedules for OFF weeks.";
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px dashed ${P.line}`,
-        borderRadius: 14,
-        padding: "32px 18px",
-        textAlign: "center",
-        fontFamily: fontBody,
-        fontSize: 14,
-        color: P.ink2,
-        display: "grid",
-        gap: 6,
-        justifyItems: "center",
-      }}
-    >
-      <div style={{ fontWeight: 600, color: P.ink }}>{primary}</div>
-      <div style={{ fontSize: 13, color: P.ink3 }}>{secondary}</div>
+    <div className="grid justify-items-center gap-1.5 rounded-lg border border-dashed border-line bg-surface px-[18px] py-8 text-center font-sans text-base text-ink2">
+      <div className="font-semibold text-ink">{primary}</div>
+      <div className="text-sm text-ink3">{secondary}</div>
     </div>
   );
 }

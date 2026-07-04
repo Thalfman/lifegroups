@@ -1,5 +1,3 @@
-import { P, fontBody, fontSans } from "@/lib/pastoral";
-
 export function SelectField({
   label,
   value,
@@ -12,42 +10,15 @@ export function SelectField({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div
-      style={{
-        border: `1px solid ${P.line2}`,
-        borderRadius: 10,
-        padding: "6px 10px",
-        background: P.bg,
-        display: "grid",
-        gap: 4,
-        alignSelf: "start",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 700,
-        }}
-      >
+    <div className="grid gap-1 self-start rounded-sm border border-lineSoft bg-bg px-2.5 py-1.5">
+      <div className="font-sans text-[10px] font-bold uppercase tracking-[1.2px] text-ink3">
         {label}
       </div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={label}
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          background: P.surface,
-          color: P.ink,
-          border: `1px solid ${P.line}`,
-          borderRadius: 8,
-          padding: "6px 8px",
-        }}
+        className="rounded-[8px] border border-line bg-surface px-2 py-1.5 font-sans text-sm text-ink"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>

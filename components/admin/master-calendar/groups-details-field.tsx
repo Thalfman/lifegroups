@@ -1,6 +1,6 @@
 import { useId, useMemo } from "react";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
-import { slugify, visuallyHidden } from "./filter-helpers";
+import { cn } from "@/lib/utils";
+import { slugify } from "./filter-helpers";
 import { BulkActions } from "./bulk-actions";
 import { CheckboxPill } from "./checkbox-pill";
 
@@ -18,61 +18,27 @@ export function GroupsDetailsField({
   const selectedSet = useMemo(() => new Set(value), [value]);
   const summaryRight = count === 0 ? "All" : `${count} selected`;
   return (
-    <details
-      style={{
-        border: `1px solid ${P.line2}`,
-        borderRadius: 10,
-        background: P.bg,
-        padding: "6px 10px",
-        alignSelf: "start",
-        margin: 0,
-      }}
-    >
-      <summary
-        style={{
-          display: "list-item",
-          cursor: "pointer",
-          padding: "2px 0",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: fontSans,
-              fontSize: 10,
-              letterSpacing: 1.2,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 700,
-            }}
-          >
+    <details className="m-0 self-start rounded-sm border border-lineSoft bg-bg px-2.5 py-1.5">
+      <summary className="list-item cursor-pointer px-0 py-0.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-sans text-[10px] font-bold uppercase tracking-[1.2px] text-ink3">
             Groups
           </span>
           <span
-            style={{
-              fontFamily: fontBody,
-              fontSize: 11,
-              color: count > 0 ? P.terra : P.ink3,
-              background: count > 0 ? P.terraSoft : "transparent",
-              border: `1px solid ${count > 0 ? P.terra : P.line}`,
-              padding: "1px 8px",
-              borderRadius: 999,
-            }}
+            className={cn(
+              "rounded-pill border px-2 py-px font-sans text-2xs",
+              count > 0
+                ? "border-clay bg-claySoft text-clay"
+                : "border-line bg-transparent text-ink3"
+            )}
           >
             {summaryRight}
           </span>
         </div>
       </summary>
-      <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-        <legend style={visuallyHidden}>Groups</legend>
-        <div style={{ paddingTop: 8 }}>
+      <fieldset className="m-0 min-w-0 border-0 p-0">
+        <legend className="sr-only">Groups</legend>
+        <div className="pt-2">
           <BulkActions
             label="groups"
             all={options.map((o) => o.value)}
@@ -80,17 +46,7 @@ export function GroupsDetailsField({
             onChange={onChange}
           />
         </div>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 6,
-            paddingTop: 8,
-            maxHeight: 220,
-            overflowY: "auto",
-            paddingRight: 2,
-          }}
-        >
+        <div className="flex max-h-[220px] flex-wrap gap-1.5 overflow-y-auto pr-0.5 pt-2">
           {options.map((opt) => {
             const checked = selectedSet.has(opt.value);
             const id = `${uid}group-${slugify(opt.value)}`;
