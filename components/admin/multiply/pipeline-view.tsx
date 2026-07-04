@@ -83,7 +83,7 @@ export function PipelineView({
             Pipelined types
           </h3>
           <p className="m-0 font-sans text-sm text-ink2">
-            Record the intent to launch another group of a type — even before a
+            Record the intent to launch another group of a type, even before a
             specific group is the one multiplying. The active groups of that
             type appear below as potential candidates.
           </p>

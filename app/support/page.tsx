@@ -4,9 +4,9 @@ import { PublicPageShell } from "@/components/lg/PublicPageShell";
 import { getSupportContact, supportMailtoHref } from "@/lib/support/contact";
 
 export const metadata: Metadata = {
-  title: "Support — Fox Valley Church Life Groups",
+  title: "Support: Fox Valley Church Life Groups",
   description:
-    "Get help with your Fox Valley Church Life Groups account — how to reach support, sign-in help, and account options.",
+    "Get help with your Fox Valley Church Life Groups account: how to reach support, sign-in help, and account options.",
 };
 
 // Public, unauthenticated support / contact page (mobile store roadmap Phase 3,
@@ -76,7 +76,7 @@ export default function SupportPage() {
                 >
                   Forgot password
                 </Link>{" "}
-                to reset it. Access is invite-only — if you were never invited,
+                to reset it. Access is invite-only. If you were never invited,
                 ask your ministry team to add you.
               </dd>
             </div>
@@ -85,7 +85,7 @@ export default function SupportPage() {
                 Do group members sign in?
               </dt>
               <dd className="m-0 mt-1 font-sans text-base text-ink2">
-                No. Members don&apos;t have logins — only ministry staff,
+                No. Members don&apos;t have logins. Only ministry staff,
                 Over-Shepherds, and Life Group Leaders use the app.
               </dd>
             </div>

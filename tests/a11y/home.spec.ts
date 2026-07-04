@@ -259,11 +259,11 @@ test.describe("home empty-state voice (issue 480)", () => {
     const home = page.locator(HOME);
     for (const line of [
       "Nothing needs your attention right now.",
-      "The week ahead is clear — no follow-ups are due.",
+      "The week ahead is clear. No follow-ups are due.",
       "Care queue is clear.",
-      "No groups are meeting yet — the health pulse will gather here as groups begin.",
-      "No Prospects in the Interest Funnel yet — new interest will gather here.",
-      "No active group types yet — readiness will gather here once group types are set up in Settings.",
+      "No groups are meeting yet. The health pulse will gather here as groups begin.",
+      "No Prospects in the Interest Funnel yet. New interest will gather here.",
+      "No active group types yet. Readiness will gather here once group types are set up in Settings.",
     ]) {
       await expect(
         home.getByText(line),

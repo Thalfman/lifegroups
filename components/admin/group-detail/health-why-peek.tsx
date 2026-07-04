@@ -62,7 +62,7 @@ export function HealthWhyPeek({
           letter.
         </p>
         <p className="m-0 font-sans text-sm text-ink2">
-          The exact weights and grade cut-offs live in the rubric — open it to
+          The exact weights and grade cut-offs live in the rubric. Open it to
           see or adjust them.
         </p>
         <Link

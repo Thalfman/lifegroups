@@ -38,7 +38,7 @@ describe("group detail tab actions", () => {
   it("teaches the inline assign control on the empty roster states", () => {
     expect(ROSTER).toContain("No shepherd assigned yet");
     expect(ROSTER).toContain("No active members on the roster");
-    expect(ROSTER).toContain("assign one below");
+    expect(ROSTER).toContain("Assign one below");
   });
 
   it("gates the People cross-link on nav visibility", () => {
@@ -50,7 +50,7 @@ describe("group detail tab actions", () => {
 
   it("removal copy promises the person stays in People", () => {
     expect(ROSTER).toContain(
-      "They stay in People — this only ends the group assignment."
+      "They stay in People. This only ends the group assignment."
     );
   });
 

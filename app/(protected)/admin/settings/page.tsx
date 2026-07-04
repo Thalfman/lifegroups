@@ -15,7 +15,7 @@ export default adminPage({
   header: () => ({
     eyebrow: "Settings",
     title: "Settings",
-    lede: "Configure what drives Care and Multiply — the health rubrics, pastoral wording, and the per-type multiplication pillars. Dashboard thresholds and system utilities live here too.",
+    lede: "Configure what drives Care and Multiply: the health rubrics, pastoral wording, and the per-type multiplication pillars. Dashboard thresholds and system utilities live here too.",
   }),
   render: ({ data }, { initialTabId }) => (
     <PageBody>

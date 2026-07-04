@@ -46,7 +46,7 @@ export function LaunchPlanningAssumptionsForm({
         maxPercent={100}
         hint={
           <>
-            Share of attendees you want in a Life Group — e.g. 60 means 60% (
+            Share of attendees you want in a Life Group, e.g. 60 means 60% (
             {`${ratioToPercent(assumptions.target_group_participation_pct)}%`}{" "}
             today).
           </>

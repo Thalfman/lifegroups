@@ -132,7 +132,7 @@ function DueTasks({ dueTasks }: { dueTasks: DueFollowUp[] }) {
       </div>
 
       <p className="m-0 rounded-sm border border-dashed border-line px-2 py-1.5 font-sans text-xs text-ink3">
-        No messaging provider is wired yet — to be configured. These are armed
+        No messaging provider is wired yet (to be configured). These are armed
         follow-ups shown as reminders; nothing is sent automatically.
       </p>
 
@@ -150,7 +150,7 @@ function DueTasks({ dueTasks }: { dueTasks: DueFollowUp[] }) {
               <span>
                 {t.full_name}
                 {t.detail ? (
-                  <span className="text-ink2"> — {t.detail}</span>
+                  <span className="text-ink2">: {t.detail}</span>
                 ) : null}
               </span>
               <span className="whitespace-nowrap text-ink2">

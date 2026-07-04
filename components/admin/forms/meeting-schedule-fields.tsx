@@ -106,7 +106,7 @@ export function MeetingFrequencyParityFields({
         <FormField
           htmlFor={idFor("meeting_week_parity")}
           label="Which weeks does it meet?"
-          hint="For groups that meet every other week. Odd and even weeks alternate through the year — pick the set this group gathers on."
+          hint="For groups that meet every other week. Odd and even weeks alternate through the year. Pick the set this group gathers on."
         >
           <select
             id={idFor("meeting_week_parity")}

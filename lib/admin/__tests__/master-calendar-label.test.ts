@@ -79,7 +79,7 @@ describe("occurrenceCalendarLinkName", () => {
     const b = occurrenceCalendarLinkName(
       occ({ groupId: "grp-b", leaders: [{ profileId: "b", name: "Sam Reed" }] })
     );
-    expect(a.startsWith("Open Sunday Night calendar — ")).toBe(true);
+    expect(a.startsWith("Open Sunday Night calendar: ")).toBe(true);
     expect(a).toContain("led by Dana Cole");
     expect(a).not.toBe(b);
   });
@@ -92,7 +92,7 @@ describe("groupCalendarLinkName", () => {
       groupName: "Anderson",
       leaderName: "Pat Lee",
     });
-    expect(name).toBe("Open Anderson calendar — led by Pat Lee (grp-anderson)");
+    expect(name).toBe("Open Anderson calendar: led by Pat Lee (grp-anderson)");
   });
 
   it("labels the Unassigned bucket without a leader clause", () => {
@@ -101,7 +101,7 @@ describe("groupCalendarLinkName", () => {
       groupName: "Bryant",
       leaderName: null,
     });
-    expect(name).toBe("Open Bryant calendar — unassigned (grp-x)");
+    expect(name).toBe("Open Bryant calendar: unassigned (grp-x)");
   });
 
   it("stays unique for two same-named groups even under the same leader", () => {

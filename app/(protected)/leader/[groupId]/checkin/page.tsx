@@ -241,7 +241,7 @@ export default async function CheckInPage({
       titleItalic={existingSession ? "— update" : "— this week"}
       lede={
         existingSession
-          ? "You already saved a check-in for this week. Make any changes and submit again — we'll keep the record current."
+          ? "You already saved a check-in for this week. Make any changes and submit again. We'll keep the record current."
           : "Mark who came, jot a quick note, and submit. It only takes a minute."
       }
       contentMaxWidth={720}

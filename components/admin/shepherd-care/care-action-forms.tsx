@@ -120,7 +120,7 @@ export function LogTouchForm({
       />
       <input type="hidden" name="interaction_type" value={interactionType} />
       <p className={FORM_NOTE}>
-        Record a {touchLabel} with this shepherd. Admin-only — it never appears
+        Record a {touchLabel} with this shepherd. Admin-only. It never appears
         on shepherd or member surfaces.
       </p>
       <div>
@@ -139,7 +139,7 @@ export function LogTouchForm({
       </div>
       <div>
         <label htmlFor="cta-notes" className={FIELD_LABEL}>
-          What happened (optional, max 2000 chars) — admin-only
+          What happened (optional, max 2000 chars, admin-only)
         </label>
         <textarea
           id="cta-notes"
@@ -258,12 +258,12 @@ export function CareProfileFieldForm({
         <>
           <input type="hidden" name="set_admin_summary" value="true" />
           <p className={FORM_NOTE}>
-            A high-level read on how this shepherd is doing. Admin-only — it
+            A high-level read on how this shepherd is doing. Admin-only. It
             never appears on shepherd or member surfaces.
           </p>
           <div>
             <label htmlFor="cta-admin_summary" className={FIELD_LABEL}>
-              Issue / current concern (max 2000 chars) — admin-only
+              Issue / current concern (max 2000 chars, admin-only)
             </label>
             <textarea
               id="cta-admin_summary"

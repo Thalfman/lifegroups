@@ -38,12 +38,12 @@ const STATUS_OPTIONS: {
 }[] = [
   {
     value: "submitted",
-    label: "Yes — we met",
+    label: "Yes, we met",
     helper: "Mark each person below as you remember them.",
   },
   {
     value: "did_not_meet",
-    label: "No — we didn't meet",
+    label: "No, we didn't meet",
     helper: "We'll record the week without an attendance list.",
   },
   {
@@ -59,7 +59,7 @@ const PULSE_OPTIONS: { value: Pulse; label: string; helper: string }[] = [
   {
     value: "watch",
     label: "Watch",
-    helper: "Something feels off — keep an eye on it.",
+    helper: "Something feels off. Keep an eye on it.",
   },
   {
     value: "needs_follow_up",
@@ -218,8 +218,8 @@ export function CheckInForm({
   const showAttendance = status === "submitted";
   const submitLabel = (() => {
     if (pending) return "Saving…";
-    if (status === "did_not_meet") return "Submit — did not meet";
-    if (status === "planned_pause") return "Submit — planned pause";
+    if (status === "did_not_meet") return "Submit: did not meet";
+    if (status === "planned_pause") return "Submit: planned pause";
     return alreadySubmitted ? "Update check-in" : "Submit check-in";
   })();
 
@@ -270,7 +270,7 @@ export function CheckInForm({
         </div>
         <div className="mt-0.5 font-sans text-sm italic text-ink2">
           {alreadySubmitted
-            ? "Already submitted — submitting again will replace the saved data for this week."
+            ? "Already submitted. Submitting again will replace the saved data for this week."
             : "Once you submit, this card will show as complete on your dashboard."}
         </div>
         {dueLabel ? (

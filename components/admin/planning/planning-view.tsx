@@ -70,7 +70,7 @@ export async function PlanningView({
         eyebrow="Planning"
         title="What's"
         italic="next"
-        lede="What is coming next — the ministry calendar and everything that goes into launching the next Life Groups, in one place."
+        lede="What is coming next: the ministry calendar and everything that goes into launching the next Life Groups, in one place."
       />
       <PageBody>
         <div className="grid gap-6">

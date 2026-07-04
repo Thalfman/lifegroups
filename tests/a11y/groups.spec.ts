@@ -190,7 +190,7 @@ test.describe("groups directory editing surface", () => {
     // bucket's meaning is visible, not just its name.
     await expect(
       surface.getByText(
-        "Archived groups are kept, not deleted — restore one any time."
+        "Archived groups are kept, not deleted. Restore one any time."
       )
     ).toBeVisible();
   });

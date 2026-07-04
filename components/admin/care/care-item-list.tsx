@@ -99,7 +99,7 @@ export function CareItemList({
                 <SuperAdminInlineDelete
                   entityType={item.deleteTarget.entityType}
                   id={item.deleteTarget.id}
-                  label={`${item.personName} — ${item.reason}`}
+                  label={`${item.personName}: ${item.reason}`}
                 />
               ) : null}
             </div>

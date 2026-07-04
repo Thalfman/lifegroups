@@ -496,7 +496,7 @@ describe("buildGroupDetailData", () => {
         // platform_config read null (Super-Admin-only RLS) → the documented
         // placeholder wordings, same fallback the triage uses.
         spiritualGrowthLabel: "Spiritual growth (1–5)",
-        groupQuestionLabel: "Group engagement — shepherd-reported (1–5)",
+        groupQuestionLabel: "Group engagement, shepherd-reported (1–5)",
       });
     });
 

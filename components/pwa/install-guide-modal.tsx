@@ -73,7 +73,7 @@ function guideContent(guide: InstallGuideKind): GuideContent {
             Scroll down and tap <strong>Add to Home Screen</strong>.
           </>,
           <>
-            Tap <strong>Add</strong> — the app appears on your Home Screen.
+            Tap <strong>Add</strong>. The app appears on your Home Screen.
           </>,
         ],
       };
@@ -89,7 +89,7 @@ function guideContent(guide: InstallGuideKind): GuideContent {
             Tap <strong>Add to Home Screen</strong>.
           </>,
           <>
-            Tap <strong>Add</strong> — the app appears on your Home Screen.
+            Tap <strong>Add</strong>. The app appears on your Home Screen.
           </>,
         ],
       };
@@ -102,7 +102,7 @@ function guideContent(guide: InstallGuideKind): GuideContent {
           <>
             Tap <strong>Add to Home Screen</strong>.
           </>,
-          <>Confirm — the app appears on your Home Screen.</>,
+          <>Confirm. The app appears on your Home Screen.</>,
         ],
         tip: "Don't see that option? Open this page in Safari for the simplest setup.",
       };
@@ -118,7 +118,7 @@ function guideContent(guide: InstallGuideKind): GuideContent {
             Tap <strong>Install app</strong> (or{" "}
             <strong>Add to Home screen</strong>).
           </>,
-          <>Confirm — the app appears on your Home screen.</>,
+          <>Confirm. The app appears on your Home screen.</>,
         ],
       };
   }

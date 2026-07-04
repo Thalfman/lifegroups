@@ -136,7 +136,7 @@ function GradesAndNotes({
         ) : (
           <p role="alert" className={GRADE_READ_ERROR}>
             This leader&rsquo;s grade couldn&rsquo;t be loaded. Reload before
-            editing — saving now could overwrite the saved grade.
+            editing. Saving now could overwrite the saved grade.
           </p>
         )}
       </section>
@@ -149,7 +149,7 @@ function GradesAndNotes({
               return (
                 <p key={g.id} role="alert" className={GRADE_READ_ERROR}>
                   {g.name}&rsquo;s grade couldn&rsquo;t be loaded. Reload before
-                  editing — saving now could overwrite the saved grade.
+                  editing. Saving now could overwrite the saved grade.
                 </p>
               );
             }

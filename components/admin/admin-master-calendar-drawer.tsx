@@ -155,7 +155,7 @@ function DrawerBody({
           href={groupCalendarHref}
           variant="primary"
           size="sm"
-          aria-label={`Open ${occurrence.groupName} calendar — ${dateLabel(occurrence.date)}`}
+          aria-label={`Open ${occurrence.groupName} calendar for ${dateLabel(occurrence.date)}`}
         >
           Open group calendar
         </LinkButton>

@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { PublicPageShell } from "@/components/lg/PublicPageShell";
 
 export const metadata: Metadata = {
-  title: "Privacy policy — Fox Valley Church Life Groups",
+  title: "Privacy policy: Fox Valley Church Life Groups",
   description:
-    "How Fox Valley Church Life Groups collects, uses, and protects data — the information we hold, who processes it, and the choices you have.",
+    "How Fox Valley Church Life Groups collects, uses, and protects data: the information we hold, who processes it, and the choices you have.",
 };
 
 // Public, unauthenticated privacy policy (mobile store roadmap Phase 3, #568).
@@ -46,7 +46,7 @@ export default function PrivacyPolicyPage() {
             Who uses the app
           </h2>
           <p className="m-0 font-sans text-base text-ink2">
-            Only invited people <strong>sign in</strong> — ministry staff,
+            Only invited people <strong>sign in</strong>: ministry staff,
             Over-Shepherds, and Life Group Shepherds. Group{" "}
             <strong>members</strong> do not have logins; they are records that
             ministry staff maintain on their behalf so the team can care for
@@ -80,7 +80,7 @@ export default function PrivacyPolicyPage() {
             <li>
               <strong>Group information.</strong> Group name, meeting day, time
               and location, capacity, lifecycle and health status, audience and
-              category, and group notes — plus per-meeting attendance.
+              category, and group notes, plus per-meeting attendance.
             </li>
             <li>
               <strong>Care information.</strong> Pastoral{" "}
@@ -96,9 +96,9 @@ export default function PrivacyPolicyPage() {
             <li>
               <strong>Operational records.</strong> An audit trail of who did
               what (actions and metadata, not free-text bodies), which
-              Over-Shepherd covers which Shepherd, and — only when the ministry
-              turns it on — coarse usage signals (such as a sign-in or which
-              area was viewed).
+              Over-Shepherd covers which Shepherd, and (only when the ministry
+              turns it on) coarse usage signals (such as a sign-in or which area
+              was viewed).
             </li>
           </ul>
           <p className="mt-3 font-sans text-base text-ink2">
@@ -117,9 +117,9 @@ export default function PrivacyPolicyPage() {
             How we use it
           </h2>
           <p className="m-0 font-sans text-base text-ink2">
-            We use this information solely to run the ministry&apos;s care work
-            — signing you in, organizing groups, tracking who needs care and
-            what the next step is, and helping shepherds decide when to launch
+            We use this information solely to run the ministry&apos;s care work:
+            signing you in, organizing groups, tracking who needs care and what
+            the next step is, and helping shepherds decide when to launch
             another group. We do not use it for advertising, and we do not track
             you across other apps or sites.
           </p>
@@ -156,16 +156,16 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul className="m-0 grid list-disc gap-2 pl-5 font-sans text-base text-ink2">
             <li>
-              <strong>Supabase</strong> — our database, authentication, and
+              <strong>Supabase</strong>: our database, authentication, and
               transactional email (invites and password resets).
             </li>
             <li>
-              <strong>Vercel</strong> — application hosting, with aggregate,
+              <strong>Vercel</strong>: application hosting, with aggregate,
               anonymous analytics and performance metrics (no advertising and no
               cross-site tracking).
             </li>
             <li>
-              <strong>Upstash</strong> — abuse and enumeration rate limiting on
+              <strong>Upstash</strong>: abuse and enumeration rate limiting on
               the password-reset endpoint, using a hashed key.
             </li>
           </ul>
@@ -181,7 +181,7 @@ export default function PrivacyPolicyPage() {
           <p className="m-0 font-sans text-base text-ink2">
             The default way anything leaves a surface is a reversible archive (a
             soft delete), not a permanent erase. You can request deletion of
-            your sign-in account at any time — see the{" "}
+            your sign-in account at any time. See the{" "}
             <Link
               href="/account-deletion"
               className="font-medium text-sageDeep no-underline"

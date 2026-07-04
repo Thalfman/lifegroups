@@ -63,7 +63,7 @@ const LAUNCH_SCENARIO: PermanentDeletionEntity = {
         id: r.id,
         label:
           str(r.name) +
-          (r.is_current ? " — current" : "") +
+          (r.is_current ? " (current)" : "") +
           (r.archived_at ? " (archived)" : ""),
       })
     );
@@ -157,7 +157,7 @@ const CALENDAR_EVENT: PermanentDeletionEntity = {
         event_type: string;
       }) => ({
         id: r.id,
-        label: `${str(r.title) || str(r.event_type)} — ${str(r.event_date)}`,
+        label: `${str(r.title) || str(r.event_type)}: ${str(r.event_date)}`,
       })
     );
   },
@@ -207,7 +207,7 @@ const APPRENTICE: PermanentDeletionEntity = {
       data,
       (r: { id: string; display_name: string; readiness_stage: string }) => ({
         id: r.id,
-        label: `${str(r.display_name)}${r.readiness_stage ? ` — ${r.readiness_stage}` : ""}`,
+        label: `${str(r.display_name)}${r.readiness_stage ? `: ${r.readiness_stage}` : ""}`,
       })
     );
   },
@@ -257,7 +257,7 @@ const CLEAN_SLATE_SNAPSHOT: PermanentDeletionEntity = {
         created_at: string;
       }) => ({
         id: r.id,
-        label: `${str(r.kind)} — ${r.total_rows} rows (${str(r.created_at).slice(0, 10)})`,
+        label: `${str(r.kind)}: ${r.total_rows} rows (${str(r.created_at).slice(0, 10)})`,
       })
     );
   },
@@ -354,7 +354,7 @@ const GROUP_LEADER: PermanentDeletionEntity = {
         profiles: { full_name: string } | null;
       }) => ({
         id: r.id,
-        label: `${r.profiles?.full_name ?? "Shepherd"} — ${
+        label: `${r.profiles?.full_name ?? "Shepherd"}: ${
           r.groups?.name ?? "group"
         } (${str(r.role)})${r.active ? "" : " (inactive)"}`,
       })
@@ -386,7 +386,7 @@ const ATTENDANCE_SESSION: PermanentDeletionEntity = {
         groups: { name: string } | null;
       }) => ({
         id: r.id,
-        label: `${r.groups?.name ?? "Group"} — ${
+        label: `${r.groups?.name ?? "Group"}: ${
           str(r.meeting_date) || str(r.meeting_week)
         }`,
       })
@@ -419,7 +419,7 @@ const ATTENDANCE_RECORD: PermanentDeletionEntity = {
         attendance_sessions: { meeting_week: string } | null;
       }) => ({
         id: r.id,
-        label: `${r.members?.full_name ?? "Member"} — ${str(
+        label: `${r.members?.full_name ?? "Member"}: ${str(
           r.attendance_status
         )}${
           r.attendance_sessions?.meeting_week
@@ -515,7 +515,7 @@ const GROUP_HEALTH_UPDATE: PermanentDeletionEntity = {
         groups: { name: string } | null;
       }) => ({
         id: r.id,
-        label: `${r.groups?.name ?? "Group"} — ${str(r.update_week)}${
+        label: `${r.groups?.name ?? "Group"}: ${str(r.update_week)}${
           r.pulse ? ` (${r.pulse})` : ""
         }`,
       })
@@ -551,7 +551,7 @@ const GROUP_HEALTH_ASSESSMENT: PermanentDeletionEntity = {
         const grade = str(r.override_letter) || str(r.computed_letter);
         return {
           id: r.id,
-          label: `${r.groups?.name ?? "Group"} — ${str(r.period_month)}${
+          label: `${r.groups?.name ?? "Group"}: ${str(r.period_month)}${
             grade ? ` (${grade})` : ""
           }`,
         };
@@ -593,7 +593,7 @@ const INVITATION: PermanentDeletionEntity = {
         id: r.id,
         label: `${str(r.role)} invite${
           r.groups?.name ? ` · ${r.groups.name}` : ""
-        } — expires ${str(r.expires_at).slice(0, 10)}${
+        }: expires ${str(r.expires_at).slice(0, 10)}${
           r.revoked_at
             ? " (revoked)"
             : r.used_count > 0
@@ -653,7 +653,7 @@ const CHURCH_ATTENDANCE_SNAPSHOT: PermanentDeletionEntity = {
       data,
       (r: { id: string; snapshot_date: string; attendance_count: number }) => ({
         id: r.id,
-        label: `${str(r.snapshot_date)} — ${r.attendance_count}`,
+        label: `${str(r.snapshot_date)}: ${r.attendance_count}`,
       })
     );
   },
@@ -743,7 +743,7 @@ const SHEPHERD_CARE_INTERACTION: PermanentDeletionEntity = {
         const who = careSubjectName(r);
         return {
           id: r.id,
-          label: `${who ? `${who} · ` : ""}${str(r.interaction_type)} — ${str(
+          label: `${who ? `${who} · ` : ""}${str(r.interaction_type)}: ${str(
             r.interaction_at
           ).slice(0, 10)} [${r.id.slice(0, 8)}]`,
         };

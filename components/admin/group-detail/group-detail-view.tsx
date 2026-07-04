@@ -119,7 +119,7 @@ function OverviewTab({
     <div className="grid gap-3.5">
       {data.statuses === null ? (
         <ErrorNote>
-          This group&apos;s status couldn&apos;t be loaded right now — one or
+          This group&apos;s status couldn&apos;t be loaded right now. One or
           more reads failed. Retry in a moment or check the database connection.
         </ErrorNote>
       ) : (
@@ -146,7 +146,7 @@ function OverviewTab({
             </div>
             {data.stale ? (
               <p className={cn("mb-0 mt-2.5", BODY_TEXT, "text-sm")}>
-                Health grade is last-known — the live attendance read was
+                Health grade is last-known; the live attendance read was
                 unavailable.
               </p>
             ) : null}
@@ -203,7 +203,7 @@ function HealthTab({
     return (
       <div className="grid gap-3.5">
         <ErrorNote>
-          The Group-Health Grade couldn&apos;t be loaded right now — a read
+          The Group-Health Grade couldn&apos;t be loaded right now. A read
           failed. Retry in a moment.
         </ErrorNote>
       </div>
@@ -225,7 +225,7 @@ function HealthTab({
           </StatusZone>
           {data.stale ? (
             <p className={cn("m-0", BODY_TEXT, "text-sm")}>
-              Grade is last-known — the live attendance read was unavailable.
+              Grade is last-known; the live attendance read was unavailable.
             </p>
           ) : null}
           <DetailRow label="Grade" value={data.grade ?? "Not assessed"} />
@@ -311,8 +311,7 @@ function AttendanceTab({
       <Card>
         {data.sessions === null ? (
           <p role="alert" className={READ_ERROR_TEXT}>
-            Attendance history couldn&apos;t be loaded right now — a read
-            failed.
+            Attendance history couldn&apos;t be loaded right now. A read failed.
           </p>
         ) : data.sessions.length === 0 ? (
           <p className={cn("m-0", BODY_TEXT)}>
@@ -353,8 +352,8 @@ function FollowUpsTab({ data }: { data: GroupFollowUpsTabData }) {
       <Card>
         {data.followUps === null ? (
           <p role="alert" className={READ_ERROR_TEXT}>
-            Follow-ups couldn&apos;t be loaded right now — a read failed. This
-            is not a confirmation that the group has none.
+            Follow-ups couldn&apos;t be loaded right now. A read failed. This is
+            not a confirmation that the group has none.
           </p>
         ) : data.followUps.length === 0 ? (
           <p className={cn("m-0", BODY_TEXT)}>
@@ -407,7 +406,7 @@ function EventsTab({
       <div className="grid gap-3.5">
         <Card>
           <p role="alert" className={READ_ERROR_TEXT}>
-            Upcoming meetings are unavailable right now — the calendar read
+            Upcoming meetings are unavailable right now. The calendar read
             failed. Retry in a moment or open the group calendar.
           </p>
         </Card>

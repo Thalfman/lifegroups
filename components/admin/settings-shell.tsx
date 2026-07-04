@@ -199,7 +199,7 @@ export function SettingsShell({
     <div className="grid gap-7">
       {workspace.defaultsSource === "fallback" ? (
         <div className="rounded-sm border border-line bg-bg px-3.5 py-3 font-sans text-xs italic text-ink3">
-          Showing built-in defaults — the live <code>metric_defaults</code> row
+          Showing built-in defaults. The live <code>metric_defaults</code> row
           either wasn&rsquo;t loaded or hasn&rsquo;t been seeded yet. Saving
           will create or repair it.
         </div>
@@ -583,7 +583,7 @@ function CouldNotLoad({ subject }: { subject: string }) {
   return (
     <Empty
       title="Couldn't load"
-      description={`${subject} couldn't be loaded right now. Your saved configuration is unchanged — refresh to try again.`}
+      description={`${subject} couldn't be loaded right now. Your saved configuration is unchanged. Refresh to try again.`}
     />
   );
 }

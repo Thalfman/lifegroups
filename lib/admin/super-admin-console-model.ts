@@ -235,7 +235,7 @@ export function buildSuperAdminConsoleStatus(input: {
       tone: testAccountsSummary.tone,
       detail:
         testAccountsSummary.label === "Active"
-          ? "Known passwords are live — disable before launch"
+          ? "Known passwords are live: disable before launch"
           : testAccountsSummary.label === "Disabled"
             ? "Not enabled"
             : testAccountsSummary.label === "Blocked"
@@ -273,7 +273,7 @@ export function buildSuperAdminConsoleStatus(input: {
       tone: usageTrackingOn ? "active" : "planned",
       detail: usageTrackingOn
         ? "Recording logins + area views"
-        : "Off — nothing is recorded",
+        : "Off: nothing is recorded",
       action: { label: "Open Usage", hash: "usage" },
     },
   ];

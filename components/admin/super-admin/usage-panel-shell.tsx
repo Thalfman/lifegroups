@@ -72,7 +72,7 @@ export function UsagePanelShell({
   if (usage.emptyState === "tracking-on") {
     return (
       <p className="m-0 font-sans text-sm text-ink3">
-        Tracking is on. No activity has been recorded yet — events will appear
+        Tracking is on. No activity has been recorded yet. Events will appear
         here as users sign in and move around the app.
       </p>
     );
@@ -162,7 +162,7 @@ export function UsagePanelShell({
       <div className="grid min-w-0 gap-2">
         <SubsectionHeader
           title="By person"
-          hint="Each person's activity, most active first — sign-ins, area opens, and when they were last seen."
+          hint="Each person's activity, most active first: sign-ins, area opens, and when they were last seen."
         />
         {usage.byPerson.length === 0 ? (
           <p className="m-0 font-sans text-sm text-ink3">

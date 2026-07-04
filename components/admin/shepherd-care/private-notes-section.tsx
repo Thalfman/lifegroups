@@ -119,8 +119,8 @@ export function PrivateNotesSection({
         Private notes (only you)
       </h2>
       <p className={FORM_NOTE}>
-        Encrypted on your device before it&apos;s saved. No one else — not other
-        admins, and not the platform owner — can read it from the database or
+        Encrypted on your device before it&apos;s saved. No one else, not other
+        admins, and not the platform owner, can read it from the database or
         backups. If you lose every unlock method, the note can never be
         recovered.
       </p>
@@ -134,7 +134,7 @@ export function PrivateNotesSection({
         <div className="grid gap-3">
           <p className="m-0 font-sans text-sm leading-normal text-ink">
             Save this <strong>new</strong> recovery code now. It replaces your
-            old one — the old code stops working the moment you confirm. Shown
+            old one. The old code stops working the moment you confirm. Shown
             once.
           </p>
           <div className={CODE}>{state.rotationCode}</div>
@@ -146,7 +146,7 @@ export function PrivateNotesSection({
               className="mt-[3px]"
             />
             <span className="text-sm text-ink2">
-              I&apos;ve saved my new recovery code — I understand losing all
+              I&apos;ve saved my new recovery code. I understand losing all
               unlock methods means these notes can never be recovered.
             </span>
           </label>
@@ -176,7 +176,7 @@ export function PrivateNotesSection({
               className="mt-[3px]"
             />
             <span className="text-sm text-ink2">
-              I&apos;ve saved my recovery code — I understand a lost code means
+              I&apos;ve saved my recovery code. I understand a lost code means
               these notes can never be recovered.
             </span>
           </label>
@@ -326,8 +326,8 @@ export function PrivateNotesSection({
             {state.confirmRemoveId ? (
               <p className="m-0 font-sans text-sm text-rose">
                 Removing a passkey leaves fewer ways in. Make sure you still
-                have your recovery code or another passkey before confirming —
-                there is no server-side reset.
+                have your recovery code or another passkey before confirming.
+                There is no server-side reset.
               </p>
             ) : null}
             <div className="flex flex-wrap gap-2.5">
@@ -351,8 +351,8 @@ export function PrivateNotesSection({
               </Button>
             </div>
             <p className="m-0 font-sans text-xs leading-normal text-ink2">
-              Lose every unlock method and these notes can never be recovered —
-              there is no server-side reset.
+              Lose every unlock method and these notes can never be recovered.
+              There is no server-side reset.
             </p>
           </div>
         </div>

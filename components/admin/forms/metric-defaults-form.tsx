@@ -55,7 +55,7 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
               htmlFor="shepherd_care_stale_days_direct"
               className={fieldLabelClassName}
             >
-              Care cadence — directly overseen (days)
+              Care cadence: directly overseen (days)
             </label>
             <input
               id="shepherd_care_stale_days_direct"
@@ -78,7 +78,7 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
               htmlFor="shepherd_care_stale_days_delegated"
               className={fieldLabelClassName}
             >
-              Care cadence — delegated (days)
+              Care cadence: delegated (days)
             </label>
             <input
               id="shepherd_care_stale_days_delegated"
@@ -167,7 +167,7 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
               className={fieldInputClassName}
             />
             <p className={fieldHintClassName}>
-              0–100. The A–F rubric&apos;s healthy-attendance cut line — grades
+              0–100. The A–F rubric&apos;s healthy-attendance cut line. Grades
               drive the Watch filter and feed the Home health distribution.
             </p>
           </div>

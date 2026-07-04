@@ -88,8 +88,8 @@ export function FollowUpCreateForm({
       className="grid gap-3"
     >
       <p className="mb-3 mt-0 font-sans text-sm text-ink2">
-        Title and type are required. Relate it to whichever entity makes sense —
-        group or member — and assign someone if you want them to own it. Notes
+        Title and type are required. Relate it to whichever entity makes sense
+        (group or member) and assign someone if you want them to own it. Notes
         are optional and capped at 1000 characters each.
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:items-end md:gap-3.5">
@@ -225,7 +225,7 @@ export function FollowUpCreateForm({
         </div>
         <div className="col-span-full">
           <label htmlFor="fu-admin_private_note" className={FIELD_LABEL}>
-            Admin-private note (optional, max 1000 chars) — shepherds never see
+            Admin-private note (optional, max 1000 chars): shepherds never see
             this
           </label>
           <textarea

@@ -85,7 +85,7 @@ function AuthoredGroupNotes({
     <div className="grid gap-4 border-t border-line pt-4">
       <p className="m-0 font-sans text-sm text-ink2">
         Notes this shepherd wrote about their own group(s). Same toggle gates
-        them — they&apos;re sealed to the shepherd until it&apos;s on.
+        them. They&apos;re sealed to the shepherd until it&apos;s on.
       </p>
       <div>
         <span className={LABEL}>About their group ({careNotes.length})</span>

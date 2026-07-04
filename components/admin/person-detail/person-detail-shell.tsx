@@ -258,7 +258,7 @@ function CarePanel({ person }: { person: PersonDetail }) {
       </div>
       <p className={cn("m-0", BODY_TEXT)}>
         Full care history, private notes, and follow-ups live on the guarded
-        care page — they never leave that surface.
+        care page; they never leave that surface.
       </p>
       {person.careHref ? (
         <p className="m-0">

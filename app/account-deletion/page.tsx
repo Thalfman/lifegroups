@@ -4,7 +4,7 @@ import { PublicPageShell } from "@/components/lg/PublicPageShell";
 import { firstParam } from "@/lib/shared/search-params";
 
 export const metadata: Metadata = {
-  title: "Account deletion — Fox Valley Church Life Groups",
+  title: "Account deletion: Fox Valley Church Life Groups",
   description:
     "How to request deletion of your Fox Valley Church Life Groups account, and what is removed versus retained.",
 };
@@ -56,10 +56,10 @@ export default async function AccountDeletionPage({
             Who this applies to
           </h2>
           <p className="m-0 font-sans text-base text-ink2">
-            People who <strong>sign in</strong> — ministry staff,
-            Over-Shepherds, and Life Group Leaders. Group members do not have
-            logins, so there is no member account to delete; ask your ministry
-            team to update or remove a member record.
+            People who <strong>sign in</strong>: ministry staff, Over-Shepherds,
+            and Life Group Leaders. Group members do not have logins, so there
+            is no member account to delete; ask your ministry team to update or
+            remove a member record.
           </p>
         </section>
 
@@ -79,8 +79,8 @@ export default async function AccountDeletionPage({
             </li>
             <li>
               <strong>Kept:</strong> Care Notes and Prayer Requests you wrote
-              stay as part of the ministry&apos;s ongoing care history —
-              deletion targets your account, not the group&apos;s care record.
+              stay as part of the ministry&apos;s ongoing care history. Deletion
+              targets your account, not the group&apos;s care record.
             </li>
           </ul>
         </section>

@@ -99,8 +99,8 @@ export function LeaderHealthGradeEditor({
   if (ministryYear === null) {
     return (
       <p className={NOTE}>
-        Grading is closed during the June–July off-season — it resumes in the
-        new ministry year (August).
+        Grading is closed during the June–July off-season. It resumes in the new
+        ministry year (August).
       </p>
     );
   }
@@ -217,7 +217,7 @@ export function LeaderHealthGradeEditor({
         </span>
         {hasOverride && computedLetter ? (
           <span className="font-sans text-xs text-blue">
-            (overridden — rubric says {computedLetter})
+            (overridden: rubric says {computedLetter})
           </span>
         ) : null}
       </div>

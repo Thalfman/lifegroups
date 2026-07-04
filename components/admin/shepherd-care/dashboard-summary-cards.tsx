@@ -48,7 +48,7 @@ export function ShepherdCareDashboardSummaryCards({
           </div>
           <p className="m-0 mt-1 font-sans text-sm text-ink2">
             There are no active shepherds to care for yet, so there is nothing
-            to track. Add and assign shepherds to turn on care coverage — then
+            to track. Add and assign shepherds to turn on care coverage, then
             this summary shows who needs a touch.
           </p>
           <Link

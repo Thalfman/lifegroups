@@ -30,7 +30,7 @@ export default adminPage({
     eyebrow: "Guests",
     title: "Guests",
     italic: "& invitations",
-    lede: "Add a guest, walk them through the pipeline, and assign a follow-up owner. Nothing here sends an SMS or email — this is your manual record.",
+    lede: "Add a guest, walk them through the pipeline, and assign a follow-up owner. Nothing here sends an SMS or email; this is your manual record.",
   }),
   render: ({ data, isSuperAdmin }) => (
     <PageBody>

@@ -41,8 +41,7 @@ export function DangerWorkspace({ data }: { data: SuperAdminConsoleData }) {
         {
           id: "reset-all",
           label: "Reset everything",
-          riskNote:
-            "One clean launch state — history, warnings, and attention.",
+          riskNote: "One clean launch state: history, warnings, and attention.",
           node: (
             <ResetAllCard
               impact={data.cleanSlateImpact}

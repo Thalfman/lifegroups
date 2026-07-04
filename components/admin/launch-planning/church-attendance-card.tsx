@@ -56,8 +56,8 @@ export function ChurchAttendanceCard({
         </span>
       </div>
       <p className="m-0 mb-[18px] font-sans text-xs text-ink3">
-        Update the current church attendance to keep this percentage — and the
-        launch forecast — accurate.
+        Update the current church attendance to keep this percentage and the
+        launch forecast accurate.
       </p>
 
       <form

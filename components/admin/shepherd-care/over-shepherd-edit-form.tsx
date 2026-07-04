@@ -26,9 +26,9 @@ export function OverShepherdEditForm({
     <form action={formAction} className="grid gap-3">
       <input type="hidden" name="over_shepherd_id" value={overShepherd.id} />
       <p className="m-0 mb-3 font-sans text-sm leading-normal text-ink2">
-        Update the over-shepherd record. Deactivating archives them softly —
-        they remain in the audit trail and historic coverage assignments.
-        Reactivate any time.
+        Update the over-shepherd record. Deactivating archives them softly. They
+        remain in the audit trail and historic coverage assignments. Reactivate
+        any time.
       </p>
       <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
         <div>
@@ -71,7 +71,7 @@ export function OverShepherdEditForm({
         </div>
         <div className="col-span-full">
           <label htmlFor="os-edit-notes" className={FIELD_LABEL}>
-            Notes (optional, max 2000 chars) — admin-only
+            Notes (optional, max 2000 chars, admin-only)
           </label>
           <textarea
             id="os-edit-notes"

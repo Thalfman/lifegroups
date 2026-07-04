@@ -66,7 +66,7 @@ export function CoverageAssignmentForm({
           />
           <p className={FORM_NOTE}>
             {currentOverShepherdId
-              ? "Choose a different over-shepherd to reassign — the prior assignment will end automatically."
+              ? "Choose a different over-shepherd to reassign. The prior assignment will end automatically."
               : "Assign an over-shepherd to cover this shepherd. When the over-shepherd signs in, this shepherd appears among the ones they cover."}
           </p>
           <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
@@ -154,7 +154,7 @@ export function CoverageAssignmentForm({
             value={shepherdProfileId}
           />
           <p className="m-0 font-sans text-sm leading-normal text-ink2">
-            Or clear coverage entirely — the assignment is soft-ended and stays
+            Or clear coverage entirely. The assignment is soft-ended and stays
             in the audit trail.
           </p>
           <div>

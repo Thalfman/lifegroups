@@ -77,7 +77,7 @@ export function LaunchPrepCard({
 
   return (
     <DangerCard
-      title="Prepare for launch — clean slate"
+      title="Prepare for launch: clean slate"
       intro="One step to make the app read as a fresh start on launch day. It clears all accumulated history (attendance, follow-ups, guests, group-health, status history, church-attendance snapshots, and shepherd-care activity) and hides the time-based “Needs attention” warnings that show on Home for brand-new groups. People, groups, shepherds, memberships, settings, care profiles & notes, and the audit log are kept. A recoverable snapshot is captured before anything is deleted, and the warnings can be un-hidden anytime from Feature flags."
     >
       <DangerSection
@@ -88,7 +88,7 @@ export function LaunchPrepCard({
         {/* Impact preview — history that will be cleared. */}
         {impactUnavailable ? (
           <p className="m-0 font-sans text-sm text-ink2">
-            Impact preview unavailable — the history counts couldn&rsquo;t be
+            Impact preview unavailable. The history counts couldn&rsquo;t be
             loaded. Launch prep is disabled until they read successfully.
           </p>
         ) : (
@@ -168,7 +168,7 @@ export function LaunchPrepCard({
         {/* When everything is already done, reassure rather than read as broken. */}
         {alreadyReady ? (
           <p className="m-0 font-sans text-sm text-ink2">
-            Already launch-ready — there&rsquo;s no history to clear and the
+            Already launch-ready. There&rsquo;s no history to clear and the
             launch warnings are already hidden. Running it again is safe.
           </p>
         ) : null}

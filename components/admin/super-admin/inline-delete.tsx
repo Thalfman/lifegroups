@@ -163,7 +163,7 @@ export function SuperAdminInlineDelete({
 
         {deleted ? (
           <span className={successTextClassName}>
-            Deleted — recoverable from a backup.
+            Deleted. Recoverable from a backup.
           </span>
         ) : null}
         <FormStatus state={del.state} />
@@ -190,7 +190,7 @@ function DeletePreview({
     return (
       <div className="grid gap-1.5">
         <p className="m-0 font-sans text-xs text-rose">
-          Couldn&rsquo;t check what this affects — the record may have changed.
+          Couldn&rsquo;t check what this affects. The record may have changed.
         </p>
         <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
           Retry check
@@ -215,7 +215,7 @@ function DeletePreview({
     const total = report.blockers.reduce((n, b) => n + b.count, 0);
     return (
       <p className={NOTE_CLASS}>
-        Blocked by {total} dependent{total === 1 ? "" : "s"} — clear{" "}
+        Blocked by {total} dependent{total === 1 ? "" : "s"}. Clear{" "}
         {report.blockers.map((b) => b.table).join(", ")} first.
       </p>
     );

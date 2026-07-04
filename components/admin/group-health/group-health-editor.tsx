@@ -69,7 +69,7 @@ export function GroupHealthEditorDrawer({
       title={row?.group_name ?? ""}
       description={
         row
-          ? `Ratings for ${period}. Saving recomputes this group's grade and writes the month's snapshot — no other group is affected.`
+          ? `Ratings for ${period}. Saving recomputes this group's grade and writes the month's snapshot. No other group is affected.`
           : undefined
       }
       closeLabel={row ? `Close ${row.group_name} health editor` : "Close"}
@@ -271,7 +271,7 @@ function GroupHealthEditorBody({
             {recompute.pending ? "Saving…" : "Save current grade to record"}
           </Button>
           <p className="m-0 font-sans text-xs text-ink2">
-            Writes this month’s grade snapshot from the current rubric — useful
+            Writes this month’s grade snapshot from the current rubric. Useful
             after changing the rubric in Settings.
             {dirty ? " Save your rating edits first." : ""}
           </p>
@@ -289,7 +289,7 @@ function GroupHealthEditorBody({
           <p className="m-0 font-sans text-xs text-ink2">
             Clear this group from the “overdue or missing health checks” card
             with a fresh-start baseline and clear any open “needs follow-up”
-            flag — it re-surfaces naturally once a new due week passes without a
+            flag. It re-surfaces naturally once a new due week passes without a
             submission. Recoverable from Super Admin → Danger Zone.
           </p>
           <AttentionResetEntityButton

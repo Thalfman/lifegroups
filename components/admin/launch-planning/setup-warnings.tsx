@@ -47,7 +47,7 @@ export function LaunchPlanningSetupWarnings({
       key: "no_groups",
       title: "No active groups yet",
       detail:
-        "Launch planning forecasts from your active groups and their rosters. The figures above use built-in starting assumptions until then — add people, then create your first groups to see a real capacity picture.",
+        "Launch planning forecasts from your active groups and their rosters. The figures above use built-in starting assumptions until then. Add people, then create your first groups to see a real capacity picture.",
       links: [
         { href: "/admin/people", label: "Add people" },
         { href: "/admin/groups", label: "Create groups" },

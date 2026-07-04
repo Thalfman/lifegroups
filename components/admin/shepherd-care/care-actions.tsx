@@ -84,7 +84,7 @@ export function CareActions({
       const { type, touchLabel } = TOUCH_TYPE[kind];
       return {
         title: `Log a ${touchLabel}`,
-        description: `Record a ${touchLabel} with ${leaderName}. Admin-only — never shown on shepherd or member surfaces.`,
+        description: `Record a ${touchLabel} with ${leaderName}. Admin-only. It never appears on shepherd or member surfaces.`,
         form: (
           <LogTouchForm
             {...shared}
@@ -120,7 +120,7 @@ export function CareActions({
       title: current?.admin_summary
         ? "Edit issue / concern"
         : "Add issue / concern",
-      description: `A high-level read on ${leaderName}. Admin-only — never shown on shepherd or member surfaces.`,
+      description: `A high-level read on ${leaderName}. Admin-only. It never appears on shepherd or member surfaces.`,
       form: (
         <CareProfileFieldForm {...shared} field="summary" current={current} />
       ),
@@ -140,7 +140,7 @@ export function CareActions({
     <div className="grid gap-3">
       <p className="m-0 font-sans text-sm text-ink2">
         Pick an action. Each opens a focused panel and does one thing.
-        Everything here is admin-only — it never appears on leader or member
+        Everything here is admin-only. It never appears on leader or member
         surfaces.
       </p>
       <div className="flex flex-wrap items-center gap-2.5">

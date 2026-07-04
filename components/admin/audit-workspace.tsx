@@ -178,7 +178,7 @@ function FilteredResults({
             No audit events match these filters.
           </p>
           <p className="m-0">
-            Try a shorter search term or a different category — searches match
+            Try a shorter search term or a different category. Searches match
             the description, action, record type, and acting person.
           </p>
           <button

@@ -67,7 +67,7 @@ export default async function InvitePage({ params }: { params: Params }) {
             {ok
               ? `Create your account${
                   roleLabel ? ` as ${roleLabel}` : ""
-                }. Enter your name and email and choose a password — at least 8 characters.`
+                }. Enter your name and email and choose a password of at least 8 characters.`
               : "Let's get you set up."}
           </p>
 

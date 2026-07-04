@@ -285,7 +285,7 @@ export function buildCareWorkspace({
           />
           <div className="grid gap-3">
             <p className="m-0 font-sans text-sm text-ink2">
-              Every shepherd in one flat list {"\u2014"} the same shepherds the
+              Every shepherd in one flat list: the same shepherds the
               Over-Shepherds tab groups by their over-shepherd.
             </p>
             <ShepherdCareFilterChips
@@ -350,9 +350,9 @@ export function buildCareWorkspace({
             <section className="grid gap-5">
               <SectionHeader
                 eyebrow="Shepherd care"
-                title={"Care follow-ups \u2014 about your shepherds"}
+                title="Care follow-ups: about your shepherds"
                 description={
-                  "Care follow-ups due soon, overdue, or recently completed. This is a separate list from the general follow-up queue further down \u2014 the two are tracked independently, so their counts won't match."
+                  "Care follow-ups due soon, overdue, or recently completed. This is a separate list from the general follow-up queue further down. The two are tracked independently, so their counts won't match."
                 }
               />
               <div className="grid gap-6">
@@ -375,7 +375,7 @@ export function buildCareWorkspace({
                     items={area.completed}
                     emptyTitle="No completed care follow-ups yet"
                     emptyDescription={
-                      "Care follow-ups you mark complete land here \u2014 not items from the general follow-up queue below."
+                      "Care follow-ups you mark complete land here, not items from the general follow-up queue below."
                     }
                     isSuperAdmin={isSuperAdmin}
                   />

@@ -46,7 +46,7 @@ describe("buildFeatureFlagRow — frozen surfaces (verify-before-flip)", () => {
     expect(row.kindBadge).toEqual({ label: "Held", tone: "warning" });
     expect(row.stateBadge).toEqual({ label: "Locked off", tone: "guarded" });
     expect(row.riskNote).toEqual({
-      text: "Held — stays off until it passes a safety review, even when switched on.",
+      text: "Held. Stays off until it passes a safety review, even when switched on.",
       heldOff: false,
     });
     expect(row.frozen).toBe(true);
@@ -57,7 +57,7 @@ describe("buildFeatureFlagRow — frozen surfaces (verify-before-flip)", () => {
       [FROZEN.key]: { enabled: true },
     });
     expect(row.stateBadge).toEqual({
-      label: "Enabled — pending go-ahead",
+      label: "Enabled: pending go-ahead",
       tone: "warning",
     });
     expect(row.riskNote).toEqual({
@@ -76,7 +76,7 @@ describe("buildFeatureFlagRow — frozen surfaces (verify-before-flip)", () => {
     // The standing held caution stays on the row; only the amber emphasis
     // is reserved for the held-off state.
     expect(row.riskNote).toEqual({
-      text: "Held — stays off until it passes a safety review, even when switched on.",
+      text: "Held. Stays off until it passes a safety review, even when switched on.",
       heldOff: false,
     });
   });
@@ -96,7 +96,7 @@ describe("buildFeatureFlagRow — nav-visibility flags", () => {
     expect(row.kindBadge).toEqual({ label: "Nav", tone: "planned" });
     expect(row.stateBadge).toEqual({ label: "Hidden", tone: "disabled" });
     expect(row.riskNote).toEqual({
-      text: "Hiding the tab does not block access — anyone with the page's address can still open it.",
+      text: "Hiding the tab does not block access. Anyone with the page's address can still open it.",
       heldOff: false,
     });
   });

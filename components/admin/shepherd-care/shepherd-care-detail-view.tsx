@@ -205,7 +205,7 @@ export async function ShepherdCareDetailBody({
             </div>
             <p className="m-0 mb-2 font-sans text-sm leading-normal text-ink2">
               Clear this shepherd from the care queue with a fresh-start
-              baseline — clears their touchpoint and returns status to “doing
+              baseline: clears their touchpoint and returns status to “doing
               well” without deleting contact history. Recoverable from Super
               Admin → Danger Zone.
             </p>
@@ -289,7 +289,7 @@ export async function ShepherdCareDetailBody({
                   detail.gradeReadFailedGroupIds.has(g.id) ? (
                     <p role="alert" className={GRADE_READ_ERROR}>
                       This group&rsquo;s grade couldn&rsquo;t be loaded. Reload
-                      before editing — saving now could overwrite the saved
+                      before editing. Saving now could overwrite the saved
                       grade.
                     </p>
                   ) : (
@@ -331,13 +331,13 @@ export async function ShepherdCareDetailBody({
       <p className="m-0 mb-3.5 font-sans text-sm leading-normal text-ink2">
         A rubric-driven A–F grade for this shepherd, scored against the
         Shepherd-Health Rubric and kept for the ministry year. This is separate
-        from their Care Status above — it&rsquo;s a report card, not a pastoral
+        from their Care Status above. It&rsquo;s a report card, not a pastoral
         signal.
       </p>
       {detail.leaderGradeReadFailed ? (
         <p role="alert" className={GRADE_READ_ERROR}>
           This shepherd&rsquo;s grade couldn&rsquo;t be loaded. Reload before
-          editing — saving now could overwrite the saved grade.
+          editing. Saving now could overwrite the saved grade.
         </p>
       ) : (
         <LeaderHealthGradeEditor

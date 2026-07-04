@@ -203,13 +203,13 @@ describe("The two follow-up queues read as a legible split (#479, copy only)", (
 
   it("the care section carries a subject-first heading", () => {
     expect(CARE_WORKSPACE).toContain(
-      'title={"Care follow-ups \\u2014 about your shepherds"}'
+      'title="Care follow-ups: about your shepherds"'
     );
   });
 
   it("the general queue carries a subject-first heading", () => {
     expect(FOLLOW_UPS_SHELL).toContain(
-      'title="General follow-ups — groups and tasks"'
+      'title="General follow-ups: groups and tasks"'
     );
   });
 

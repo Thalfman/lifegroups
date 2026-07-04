@@ -45,7 +45,7 @@ export function AttentionResetEntityButton({
   if (done) {
     return (
       <span className="font-sans text-xs text-ink2">
-        Reset — cleared from the queue. Undo from Super Admin → Danger Zone.
+        Reset. Cleared from the queue. Undo from Super Admin → Danger Zone.
       </span>
     );
   }

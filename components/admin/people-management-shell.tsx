@@ -273,7 +273,7 @@ export function PeopleManagementShell({
         onRequestClose={drawer.requestClose}
         eyebrow="People"
         title="Add a person"
-        description="A Shepherd signs in and cares for a group. A Member takes part in a group — no login."
+        description="A Shepherd signs in and cares for a group. A Member takes part in a group, with no login."
         closeLabel="Close add person form"
       >
         <AddPersonKindToggle value={addKind} onChange={setAddKind} />

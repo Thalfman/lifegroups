@@ -64,7 +64,7 @@ export default async function LeaderPage() {
         eyebrow="Care"
         title="Your care"
         italic="space"
-        lede="A place to care for the groups you lead — note how each is doing, how to pray for it, and keep its calendar."
+        lede="A place to care for the groups you lead: note how each is doing, how to pray for it, and keep its calendar."
         maxWidth={MAX_WIDTH}
         actions={<AddToHomeScreenButton />}
       />

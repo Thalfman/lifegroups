@@ -60,7 +60,7 @@ export function buildLaunchPlanningPanels(
     <div className="m-0 rounded-[8px] bg-sidebar px-3.5 py-2.5 font-sans text-sm text-ink2">
       {data.assumptionsAvailable
         ? "This forecast uses your saved assumptions."
-        : "This forecast is live now on Fox Valley's built-in starting assumptions — tune it to your numbers any time."}
+        : "This forecast is live now on Fox Valley's built-in starting assumptions. Tune it to your numbers any time."}
     </div>
   );
 

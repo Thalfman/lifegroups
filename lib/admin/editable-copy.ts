@@ -47,37 +47,37 @@ export const CARE_STATUS_COPY_KEYS = {
 export const EDITABLE_COPY_DEFINITIONS: readonly EditableCopyDefinition[] = [
   {
     key: GROUP_HEALTH_COPY_KEYS.spiritualGrowth,
-    label: "Group-Health question 1 — spiritual growth (1–5)",
+    label: "Group-Health question 1: spiritual growth (1–5)",
     placeholder: "Spiritual growth (1–5)",
   },
   {
     key: GROUP_HEALTH_COPY_KEYS.groupQuestion,
-    label: "Group-Health question 2 — relayed group question (1–5)",
-    placeholder: "Group engagement — shepherd-reported (1–5)",
+    label: "Group-Health question 2: relayed group question (1–5)",
+    placeholder: "Group engagement, shepherd-reported (1–5)",
   },
   {
     key: CARE_STATUS_COPY_KEYS.doing_well,
-    label: "Shepherd care status — doing well",
+    label: "Shepherd care status: doing well",
     placeholder: "Doing well",
   },
   {
     key: CARE_STATUS_COPY_KEYS.needs_encouragement,
-    label: "Shepherd care status — needs encouragement",
+    label: "Shepherd care status: needs encouragement",
     placeholder: "Needs encouragement",
   },
   {
     key: CARE_STATUS_COPY_KEYS.needs_follow_up,
-    label: "Shepherd care status — needs follow-up",
+    label: "Shepherd care status: needs follow-up",
     placeholder: "Needs follow-up",
   },
   {
     key: CARE_STATUS_COPY_KEYS.concern,
-    label: "Shepherd care status — concern",
+    label: "Shepherd care status: concern",
     placeholder: "Concern",
   },
   {
     key: CARE_STATUS_COPY_KEYS.inactive,
-    label: "Shepherd care status — inactive",
+    label: "Shepherd care status: inactive",
     placeholder: "Inactive",
   },
 ];

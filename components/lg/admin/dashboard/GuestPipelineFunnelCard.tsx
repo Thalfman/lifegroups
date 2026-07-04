@@ -56,7 +56,7 @@ export function GuestPipelineFunnelCard({
           mechanical "in the pipeline yet" phrasing. */}
       {barTotal === 0 ? (
         <CardNote>
-          No guests are waiting right now — new arrivals will gather here.
+          No guests are waiting right now. New arrivals will gather here.
         </CardNote>
       ) : (
         <div>
