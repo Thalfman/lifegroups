@@ -45,8 +45,9 @@ but stay hidden behind Super-Admin nav flags (turned off, not deleted).
 - **Run a single test:** `npx vitest run path/to/file.test.ts` (add `-t "name"`
   to filter by test name).
 - **Pre-commit hook** (`.husky/pre-commit`) runs `lint-staged` (Prettier on
-  staged files) → `npm run typecheck` → `npm run test:run`. A commit therefore
-  runs the full unit suite and a typecheck; keep both green before committing.
+  staged files) only. Typecheck and the unit suite are **not** run at commit
+  time — CI gates them on every PR and push to `main` — but keep both green
+  locally (`npm run typecheck` / `npm run test:run`) before pushing.
 - Env vars are **optional** for build (`cp .env.example .env.local` only to wire
   up live Supabase data and sign-in). Without them, public preview routes render
   typed demo data and protected routes redirect to `/login`.
