@@ -1,8 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { CSSProperties } from "react";
-import { P } from "@/lib/pastoral";
 
 // The launch-planning surface opens with NO tab selected (the shell's `active`
 // starts null), so none of these panels are part of first paint — the user
@@ -15,14 +13,10 @@ import { P } from "@/lib/pastoral";
 // tab is opened before its chunk has arrived. Layout shifts caused by the
 // skeleton→content swap follow a click, so they are excluded from CLS.
 
-const skeletonStyle: CSSProperties = {
-  minHeight: 320,
-  borderRadius: 14,
-  border: `1px solid ${P.line}`,
-  background: `linear-gradient(90deg, ${P.surface} 0%, ${P.bgDeep} 50%, ${P.surface} 100%)`,
-  backgroundSize: "200% 100%",
-  animation: "lg-panel-shimmer 1.2s ease-in-out infinite",
-};
+// The shimmer gradient composes the raw --c-* palette vars (surface → sidebar
+// → surface) because Tailwind has no token for a multi-stop gradient.
+const skeletonClassName =
+  "min-h-80 animate-[lg-panel-shimmer_1.2s_ease-in-out_infinite] rounded-lg border border-line bg-[linear-gradient(90deg,var(--c-surface)_0%,var(--c-sidebar)_50%,var(--c-surface)_100%)] bg-[length:200%_100%]";
 
 function PanelSkeleton({ label }: { label: string }) {
   return (
@@ -31,7 +25,7 @@ function PanelSkeleton({ label }: { label: string }) {
       <div
         role="status"
         aria-label={`Loading ${label}`}
-        style={skeletonStyle}
+        className={skeletonClassName}
       />
     </>
   );

@@ -2,7 +2,6 @@
 
 import { PButton } from "@/components/pastoral/button";
 import { superAdminSetProfileStatus } from "@/app/(protected)/admin/super-admin/account-actions";
-import { P } from "@/lib/pastoral";
 import { useActionForm, FormStatus } from "./action-form";
 
 // Phase SAC.3 (#163): disable / re-enable a profile. The hidden status field is
@@ -39,14 +38,10 @@ export function ProfileStatusForm({
             ? `Disable account for ${profileName}`
             : `Re-enable account for ${profileName}`
         }
-        // Disabling is the disruptive direction — outlined terra (the shared
+        // Disabling is the disruptive direction — outlined clay (the shared
         // destructive accent) so it can't read like the neighbouring safe
         // actions. Re-enable stays an ordinary ghost button.
-        style={
-          isActive
-            ? { borderColor: P.terra, color: P.terraTextStrong }
-            : undefined
-        }
+        className={isActive ? "border-clay text-clayDeep" : undefined}
       >
         {pending ? "Saving…" : isActive ? "Disable" : "Re-enable"}
       </PButton>

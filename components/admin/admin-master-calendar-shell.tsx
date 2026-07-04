@@ -43,7 +43,6 @@ import {
   type CalendarFilters,
   type CalendarViewMode,
 } from "@/lib/admin/master-calendar-view";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
   MasterCalendarGroupSummary,
   MasterCalendarLeader,
@@ -63,40 +62,6 @@ import { PlanningViewSwitcher } from "./master-calendar/planning-view-switcher";
 // presentational filter UI lives in ./master-calendar; this shell owns state
 // and layout only.
 type ViewMode = CalendarViewMode;
-
-// Static layout styles hoisted to module scope (they reference only palette
-// constants) so the shell doesn't rebuild identical objects on every render.
-const ROOT_STYLE: React.CSSProperties = { display: "grid", gap: 16 };
-const ADVANCED_DETAILS_STYLE: React.CSSProperties = {
-  border: `1px solid ${P.line}`,
-  borderRadius: 14,
-  background: P.surface,
-  padding: "10px 14px",
-};
-const ADVANCED_SUMMARY_STYLE: React.CSSProperties = {
-  cursor: "pointer",
-  fontFamily: fontSans,
-  fontSize: 11,
-  letterSpacing: 1.5,
-  textTransform: "uppercase",
-  color: P.ink3,
-  fontWeight: 600,
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-};
-const ADVANCED_ACTIVE_BADGE_STYLE: React.CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 11,
-  letterSpacing: 0,
-  textTransform: "none",
-  color: P.terra,
-  background: P.terraSoft,
-  border: `1px solid ${P.terra}`,
-  borderRadius: 999,
-  padding: "1px 8px",
-};
-const ADVANCED_BODY_STYLE: React.CSSProperties = { paddingTop: 12 };
 
 export function AdminMasterCalendarShell({
   monthIso,
@@ -367,7 +332,7 @@ export function AdminMasterCalendarShell({
   const isByLeader = planningViews && deferredPlanningView === "by-leader";
 
   return (
-    <div style={ROOT_STYLE}>
+    <div className="grid gap-4">
       {planningViews ? (
         <PlanningViewSwitcher
           value={planningView}
@@ -385,14 +350,21 @@ export function AdminMasterCalendarShell({
           disclosure so they're available but no longer the first thing the
           director meets (#331). The frozen route renders the bar inline. */}
       {planningViews ? (
-        <details style={ADVANCED_DETAILS_STYLE} open={hasActiveFilters}>
-          <summary style={ADVANCED_SUMMARY_STYLE}>
+        <details
+          className="rounded-lg border border-line bg-surface px-3.5 py-2.5"
+          open={hasActiveFilters}
+        >
+          {/* flex on the summary drops the native disclosure marker (same as
+              the previous inline display:flex). */}
+          <summary className="flex cursor-pointer items-center gap-2 font-sans text-2xs font-semibold uppercase tracking-[1.5px] text-ink3">
             Advanced filters
             {hasActiveFilters ? (
-              <span style={ADVANCED_ACTIVE_BADGE_STYLE}>Active</span>
+              <span className="rounded-pill border border-clay bg-claySoft px-2 py-px font-sans text-2xs normal-case tracking-normal text-clay">
+                Active
+              </span>
             ) : null}
           </summary>
-          <div style={ADVANCED_BODY_STYLE}>{filterBar}</div>
+          <div className="pt-3">{filterBar}</div>
         </details>
       ) : (
         filterBar

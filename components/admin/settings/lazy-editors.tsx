@@ -1,8 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { CSSProperties } from "react";
-import { P } from "@/lib/pastoral";
 
 // Settings shows one tab at a time (the shared Tabs primitive mounts only the
 // active panel), and its forms/editors are the surface's heaviest client
@@ -10,14 +8,10 @@ import { P } from "@/lib/pastoral";
 // First Load JS — each editor's chunk is fetched when its tab is first opened,
 // not up front. Mirrors launch-planning/lazy-panels.tsx.
 
-const skeletonStyle: CSSProperties = {
-  minHeight: 220,
-  borderRadius: 14,
-  border: `1px solid ${P.line}`,
-  background: `linear-gradient(90deg, ${P.surface} 0%, ${P.bgDeep} 50%, ${P.surface} 100%)`,
-  backgroundSize: "200% 100%",
-  animation: "lg-panel-shimmer 1.2s ease-in-out infinite",
-};
+// The shimmer gradient composes the raw --c-* palette vars (surface → sidebar
+// → surface) because Tailwind has no token for a multi-stop gradient.
+const skeletonClassName =
+  "min-h-[220px] animate-[lg-panel-shimmer_1.2s_ease-in-out_infinite] rounded-lg border border-line bg-[linear-gradient(90deg,var(--c-surface)_0%,var(--c-sidebar)_50%,var(--c-surface)_100%)] bg-[length:200%_100%]";
 
 function EditorSkeleton({ label }: { label: string }) {
   return (
@@ -26,7 +20,7 @@ function EditorSkeleton({ label }: { label: string }) {
       <div
         role="status"
         aria-label={`Loading ${label}`}
-        style={skeletonStyle}
+        className={skeletonClassName}
       />
     </>
   );

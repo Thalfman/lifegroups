@@ -1,8 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { CSSProperties } from "react";
-import { P } from "@/lib/pastoral";
 
 // The Multiply area's three tab panels are its heaviest client components
 // (multiplication planner ~953 lines, leader pipeline ~467, readiness grid
@@ -14,14 +12,10 @@ import { P } from "@/lib/pastoral";
 // before a chunk arrives; the swap follows a click, so it doesn't count toward
 // CLS.
 
-const skeletonStyle: CSSProperties = {
-  minHeight: 320,
-  borderRadius: 14,
-  border: `1px solid ${P.line}`,
-  background: `linear-gradient(90deg, ${P.surface} 0%, ${P.bgDeep} 50%, ${P.surface} 100%)`,
-  backgroundSize: "200% 100%",
-  animation: "lg-panel-shimmer 1.2s ease-in-out infinite",
-};
+// The shimmer gradient composes the raw --c-* palette vars (surface → sidebar
+// → surface) because Tailwind has no token for a multi-stop gradient.
+const skeletonClassName =
+  "min-h-80 animate-[lg-panel-shimmer_1.2s_ease-in-out_infinite] rounded-lg border border-line bg-[linear-gradient(90deg,var(--c-surface)_0%,var(--c-sidebar)_50%,var(--c-surface)_100%)] bg-[length:200%_100%]";
 
 function PanelSkeleton({ label }: { label: string }) {
   return (
@@ -30,7 +24,7 @@ function PanelSkeleton({ label }: { label: string }) {
       <div
         role="status"
         aria-label={`Loading ${label}`}
-        style={skeletonStyle}
+        className={skeletonClassName}
       />
     </>
   );

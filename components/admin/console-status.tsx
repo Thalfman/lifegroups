@@ -1,6 +1,5 @@
 import { Icon, type IconName } from "@/components/lg/Icon";
 import { Badge, STATUS_TONES, type BadgeTone } from "@/components/ui/badge";
-import { P } from "@/lib/pastoral";
 
 // The console's shared risk/status vocabulary (#451). Every state pairs a
 // consistent color + icon so badges read at a glance: good (sage/check),
@@ -22,69 +21,34 @@ export type StatusTone =
   | "destructive"
   | "readonly";
 
-// Legacy CSSProperties-style export kept for the surfaces that still consume
-// the raw color values (care directory, capacity board, calendar grid). New
-// code should use StatusBadge / STATUS_BADGE_TONE instead.
-export const STATUS_STYLE: Record<
-  StatusTone,
-  { background: string; border: string; color: string; icon: IconName }
-> = {
-  good: {
-    background: P.sageSoft,
-    border: P.sage,
-    color: P.sageTextStrong,
-    icon: "check",
-  },
-  guarded: {
-    background: P.surface,
-    border: P.sage,
-    color: P.sageTextStrong,
-    icon: "shield",
-  },
-  warning: {
-    background: P.mustardSoft,
-    border: P.mustard,
-    color: P.mustardTextStrong,
-    icon: "flag",
-  },
-  blocked: {
-    background: P.terraSoft,
-    border: P.terra,
-    color: P.terraTextStrong,
-    icon: "x",
-  },
-  disabled: {
-    background: P.surface,
-    border: P.line,
-    color: P.ink3,
-    icon: "dots",
-  },
-  active: {
-    background: P.sageSoft,
-    border: P.sage,
-    color: P.sageTextStrong,
-    icon: "spark",
-  },
-  planned: {
-    background: P.surface,
-    border: P.line,
-    color: P.ink2,
-    icon: "cal",
-  },
-  // Solid rose fill — deliberately louder than every soft badge so a
-  // destructive action can't pass for an ordinary control.
-  destructive: {
-    background: P.terraTextStrong,
-    border: P.terraTextStrong,
-    color: P.surface,
-    icon: "alert",
-  },
-  readonly: {
-    background: P.surface,
-    border: P.line,
-    color: P.ink2,
-    icon: "book",
-  },
+// Icon per tone — the icon half of the shared vocabulary above.
+const STATUS_ICON: Record<StatusTone, IconName> = {
+  good: "check",
+  guarded: "shield",
+  warning: "flag",
+  blocked: "x",
+  disabled: "dots",
+  active: "spark",
+  planned: "cal",
+  destructive: "alert",
+  readonly: "book",
+};
+
+// Legacy tone → Tailwind classes (border/background/text) export, kept for the
+// super-admin-console-shell re-export and any surface that styles its own
+// element. New code should use StatusBadge / STATUS_BADGE_TONE instead.
+export const STATUS_STYLE: Record<StatusTone, string> = {
+  good: "border-sage bg-sageSoft text-sageDeep",
+  guarded: "border-sage bg-surface text-sageDeep",
+  warning: "border-amber bg-amberSoft text-amberText",
+  blocked: "border-clay bg-claySoft text-clayDeep",
+  disabled: "border-line bg-surface text-ink3",
+  active: "border-sage bg-sageSoft text-sageDeep",
+  planned: "border-line bg-surface text-ink2",
+  // Solid fill — deliberately louder than every soft badge so a destructive
+  // action can't pass for an ordinary control.
+  destructive: "border-clayDeep bg-clayDeep text-surface",
+  readonly: "border-line bg-surface text-ink2",
 };
 
 // Map every console tone onto the design-system Badge (soft bg + deep fg);
@@ -118,7 +82,7 @@ export function StatusBadge({
   const t = STATUS_BADGE_TONE[tone];
   return (
     <Badge tone={t.tone} className={t.className}>
-      <Icon name={STATUS_STYLE[tone].icon} size={11} strokeWidth={2.4} />
+      <Icon name={STATUS_ICON[tone]} size={11} strokeWidth={2.4} />
       {label}
     </Badge>
   );
