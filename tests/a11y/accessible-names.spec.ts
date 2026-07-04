@@ -179,12 +179,12 @@ test.describe("admin accessible names carry record context", () => {
   test("calendar/event triggers name their occurrence and stay unique", async ({
     page,
   }) => {
-    // Per-group month grid: each editable cell's edit button reads "Edit <date>
-    // — …", and empty editable dates read "Add event on <date>". Both shapes
+    // Per-group month grid: each editable cell's edit button reads "Edit <date>:
+    // …", and empty editable dates read "Add event on <date>". Both shapes
     // must be unique across the grid (date disambiguates the recurring group).
     const grid = surface(page, "calendar-month-grid");
     await expect(
-      grid.getByRole("button", { name: /^Edit .+ — .+/ }).first()
+      grid.getByRole("button", { name: /^Edit .+: .+/ }).first()
     ).toBeVisible();
     await expect(
       grid.getByRole("button", { name: /^Add event on .+/ }).first()
@@ -201,10 +201,10 @@ test.describe("admin accessible names carry record context", () => {
     );
 
     // Master calendar month grid: the per-day occurrence pills read "View
-    // <group> on <date> — …". Two groups share a date, so these must be unique.
+    // <group> on <date>: …". Two groups share a date, so these must be unique.
     const masterGrid = surface(page, "master-calendar-grid");
     await expect(
-      masterGrid.getByRole("button", { name: /^View .+ on .+ — .+/ }).first()
+      masterGrid.getByRole("button", { name: /^View .+ on .+: .+/ }).first()
     ).toBeVisible();
     expectAllUnique(
       await accessibleNames(

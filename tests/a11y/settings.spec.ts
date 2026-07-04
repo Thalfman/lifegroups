@@ -296,10 +296,10 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     // CONTEXT.md vocabulary: the stale-contact pair reads as Care cadence.
     await expect(
       surface.locator('label[for="shepherd_care_stale_days_direct"]')
-    ).toHaveText("Care cadence — directly overseen (days)");
+    ).toHaveText("Care cadence: directly overseen (days)");
     await expect(
       surface.locator('label[for="shepherd_care_stale_days_delegated"]')
-    ).toHaveText("Care cadence — delegated (days)");
+    ).toHaveText("Care cadence: delegated (days)");
 
     // The two group-health thresholds say they feed the Home health
     // distribution (their live consumer).
@@ -498,7 +498,7 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
 // one Settings instance to the read-error payload.
 test.describe("settings read-error vs not-set-up split (issue 469)", () => {
   const COULD_NOT_LOAD =
-    "couldn't be loaded right now. Your saved configuration is unchanged — refresh to try again.";
+    "couldn't be loaded right now. Your saved configuration is unchanged. Refresh to try again.";
   const NOT_CONFIGURED = "isn't configured in this environment yet";
 
   test.beforeEach(async ({ page }) => {

@@ -178,6 +178,6 @@ describe("listTabDescription", () => {
     expect(listTabDescription("needs_attention")).toContain("follow-up");
     expect(listTabDescription("needs_attention")).toContain("capacity");
     // Archive is the soft, reversible exit (CONTEXT.md) — the copy says so.
-    expect(listTabDescription("archived")).toContain("restore");
+    expect(listTabDescription("archived")).toContain("Restore");
   });
 });

@@ -161,7 +161,7 @@ const LIST_TAB_DESCRIPTIONS: Record<GroupListTab, string> = {
     "Groups with no Group-Health Grade yet, or missing a required rating.",
   needs_attention:
     "Groups with a low Group-Health Grade, full or near-full capacity, an open follow-up, or a shepherd-care concern.",
-  archived: "Archived groups are kept, not deleted — restore one any time.",
+  archived: "Archived groups are kept, not deleted. Restore one any time.",
 };
 
 export function listTabDescription(tab: GroupListTab): string {

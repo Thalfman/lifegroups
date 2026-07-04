@@ -72,7 +72,7 @@ test.describe("care notes feed (All Notes)", () => {
     const surface = page.locator('[data-a11y-surface="care-notes-feed"]');
     await surface.getByLabel("Type", { exact: true }).selectOption("care_note");
     await expect(
-      surface.getByText("Checked in after the move — settling in well.")
+      surface.getByText("Checked in after the move. Settling in well.")
     ).toBeVisible();
     await expect(
       surface.getByText("Pray for the group's new families.")

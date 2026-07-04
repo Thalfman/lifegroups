@@ -41,7 +41,7 @@ export function occurrenceAccessibleName(
   if (leaders) detailParts.push(leaders);
   return `${verb} ${occurrence.groupName} on ${dateLabel(
     occurrence.date
-  )} — ${detailParts.join(", ")}`;
+  )}: ${detailParts.join(", ")}`;
 }
 
 // Accessible name for the list's "Open group calendar" deep-link. Same
@@ -53,7 +53,7 @@ export function occurrenceCalendarLinkName(
   const parts = [dateLabel(occurrence.date)];
   const leaders = leaderDiscriminator(occurrence);
   if (leaders) parts.push(leaders);
-  return `Open ${occurrence.groupName} calendar — ${parts.join(", ")}`;
+  return `Open ${occurrence.groupName} calendar: ${parts.join(", ")}`;
 }
 
 // Accessible name for the "By leader" view's ONE-per-group calendar link (#331).
@@ -75,5 +75,5 @@ export function groupCalendarLinkName(args: {
   // leaders can both collide), so include it in full — a truncated prefix could
   // still collide for ids sharing a stem (e.g. grp-sun-a / grp-sun-b). Keep it
   // last so the human-readable leader context leads the name.
-  return `Open ${args.groupName} calendar — ${context} (${args.groupId})`;
+  return `Open ${args.groupName} calendar: ${context} (${args.groupId})`;
 }
