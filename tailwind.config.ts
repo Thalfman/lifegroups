@@ -68,9 +68,14 @@ export default {
         blueSoft: varColor("--c-blueSoft"),
       },
       fontFamily: {
+        // "Source Serif 4" must stay quoted in the emitted CSS: an unquoted
+        // family with a bare number is an invalid <family-name>, and because
+        // the declaration also contains var(--font-newsreader) the failure
+        // surfaces at computed-value time — the WHOLE font-family silently
+        // resolves to inherit, so `font-display` rendered the body sans font.
         display: [
           "var(--font-newsreader)",
-          "Source Serif 4",
+          '"Source Serif 4"',
           "Georgia",
           "serif",
         ],
