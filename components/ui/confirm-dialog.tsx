@@ -13,7 +13,6 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { PButton, type PButtonTone } from "@/components/pastoral/button";
-import { P, fontSans, fontBody } from "@/lib/pastoral";
 
 // A reusable, non-blocking confirmation dialog. It replaces the synchronous
 // `window.confirm` gate: opening it paints immediately (the initiating click
@@ -78,14 +77,7 @@ export function ConfirmDialog({
         <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
       ) : null}
       <AlertDialogPortal>
-        <AlertDialogOverlay
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(58, 42, 26, 0.45)",
-            zIndex: 60,
-          }}
-        />
+        <AlertDialogOverlay className="fixed inset-0 z-overlay bg-[rgba(58,42,26,0.45)]" />
         <AlertDialogContent
           // Controlled mode only: capture the opener before Radix moves focus
           // inward, then restore to it on close (Cancel / Escape / Discard) —
@@ -106,55 +98,15 @@ export function ConfirmDialog({
                 },
               }
             : {})}
-          style={{
-            position: "fixed",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "min(460px, 92vw)",
-            maxHeight: "92dvh",
-            overflowY: "auto",
-            background: P.bg,
-            border: `1px solid ${P.line}`,
-            borderRadius: 14,
-            padding: 24,
-            zIndex: 61,
-            boxShadow: "0 18px 48px rgba(58, 42, 26, 0.22)",
-            display: "grid",
-            gap: 16,
-          }}
+          className="fixed left-1/2 top-1/2 z-drawer grid max-h-[92dvh] w-[min(460px,92vw)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-lg border border-line bg-bg p-6 shadow-[0_18px_48px_rgba(58,42,26,0.22)]"
         >
-          <AlertDialogTitle
-            style={{
-              margin: 0,
-              fontFamily: fontSans,
-              fontSize: 16,
-              fontWeight: 600,
-              color: P.ink,
-            }}
-          >
+          <AlertDialogTitle className="m-0 font-sans text-[16px] font-semibold text-ink">
             {title ?? confirmLabel}
           </AlertDialogTitle>
-          <AlertDialogDescription
-            style={{
-              margin: 0,
-              fontFamily: fontBody,
-              fontSize: 14,
-              lineHeight: 1.5,
-              color: P.ink2,
-              whiteSpace: "pre-line",
-            }}
-          >
+          <AlertDialogDescription className="m-0 whitespace-pre-line font-sans text-base leading-normal text-ink2">
             {message}
           </AlertDialogDescription>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 4,
-            }}
-          >
+          <div className="mt-1 flex justify-end gap-2">
             <AlertDialogCancel asChild>
               <PButton type="button" tone="ghost" size="sm">
                 {cancelLabel}
