@@ -3,6 +3,7 @@
 import { isUuid } from "@/lib/shared/uuid";
 import {
   isRecord,
+  makeBooleanFlagReader,
   normalizeUuid,
   type ValidationResult,
 } from "@/lib/shared/validation-primitives";
@@ -107,18 +108,10 @@ export function isIsoDate(value: string): boolean {
   return ISO_DATE_RE.test(value);
 }
 
-// HTML forms post boolean fields as "true" / "false" / "on" / "1" / "0".
-// `Boolean(value)` on a non-empty string is always true, so we need an
-// explicit parser to keep "false" from accidentally meaning "true".
-export function readBooleanFlag(value: unknown): boolean {
-  if (value === true) return true;
-  if (value === false || value === undefined || value === null) return false;
-  if (typeof value === "string") {
-    const t = value.trim().toLowerCase();
-    return t === "true" || t === "on" || t === "1";
-  }
-  return false;
-}
+// The admin boolean-flag vocabulary. Shared mechanics live in
+// makeBooleanFlagReader; the leader surface's reader additionally accepts
+// "yes" (a tested per-surface contract — don't merge the vocabularies).
+export const readBooleanFlag = makeBooleanFlagReader(["true", "on", "1"]);
 
 // Pure UTC "today" so a near-midnight server time doesn't flip a
 // future-date guard for a date the admin entered moments ago. Shared by the

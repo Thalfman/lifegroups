@@ -10,6 +10,7 @@ import {
   GUEST_PIPELINE_STAGES,
   type GuestDirectoryEntry,
 } from "@/lib/supabase/guest-reads";
+import { EmptyState } from "@/components/ui/empty-state";
 import { GuestCreateForm } from "./guest-create-form";
 import { GuestCard } from "./guest-card";
 import {
@@ -255,33 +256,18 @@ export function GuestsManagementShell({
         </div>
 
         {filtered.length === 0 ? (
-          <div style={emptyStyle}>
-            <div
-              style={{
-                fontFamily: fontDisplay,
-                fontSize: 18,
-                color: P.ink,
-                fontWeight: 500,
-              }}
-            >
-              {guests.length === 0
+          <EmptyState
+            title={
+              guests.length === 0
                 ? "No guests yet"
-                : "No guests match these filters"}
-            </div>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13.5,
-                color: P.ink2,
-                margin: "8px 0 0",
-                lineHeight: 1.5,
-              }}
-            >
-              {guests.length === 0
+                : "No guests match these filters"
+            }
+            description={
+              guests.length === 0
                 ? "Add your first guest using the form above. A name is enough to start — the rest can come later."
-                : "Adjust the search or filters above — or add a new guest at the top."}
-            </p>
-          </div>
+                : "Adjust the search or filters above — or add a new guest at the top."
+            }
+          />
         ) : (
           <div style={{ display: "grid", gap: 28 }}>
             {GUEST_PIPELINE_STAGES.map((stage) => {
@@ -469,12 +455,4 @@ const alertStyle = {
   fontFamily: fontBody,
   fontSize: 13,
   color: "#7d3621",
-} as const;
-
-const emptyStyle = {
-  background: P.bg,
-  border: `1px dashed ${P.line}`,
-  borderRadius: 14,
-  padding: "28px 24px",
-  textAlign: "center",
 } as const;

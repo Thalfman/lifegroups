@@ -1,4 +1,5 @@
 import type { ShepherdCareFollowUpStatus } from "@/types/enums";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { isUuid } from "@/lib/shared/uuid";
 import type { ValidationResult } from "./shared";
 import {
@@ -15,7 +16,7 @@ import {
 // Phase SC.1B — Shepherd care follow-up (task list) payloads.
 // ---------------------------------------------------------------------------
 // Admin-only care follow-ups. Title bounded at 200 chars (a scannable
-// next-step), notes at 2000 (consistent with care interaction notes). The
+// next-step), notes at NOTE_MAX_CHARS (consistent with care interaction notes). The
 // status transition rule itself lives in the pure helper + the RPC; the
 // validator only checks the submitted status is a legal value.
 
@@ -62,8 +63,8 @@ export function validateCreateShepherdCareFollowUpPayload(
   }
 
   const notes = readOptionalString(input.notes);
-  if (notes !== undefined && notes.length > 2000) {
-    errors.push("Notes are too long (max 2000 characters).");
+  if (notes !== undefined && notes.length > NOTE_MAX_CHARS) {
+    errors.push(`Notes are too long (max ${NOTE_MAX_CHARS} characters).`);
   }
 
   if (errors.length > 0) return { ok: false, errors };
@@ -152,8 +153,8 @@ export function validateUpdateShepherdCareFollowUpPayload(
   }
 
   const notesRaw = readOptionalString(input.notes);
-  if (setNotes && notesRaw !== undefined && notesRaw.length > 2000) {
-    errors.push("Notes are too long (max 2000 characters).");
+  if (setNotes && notesRaw !== undefined && notesRaw.length > NOTE_MAX_CHARS) {
+    errors.push(`Notes are too long (max ${NOTE_MAX_CHARS} characters).`);
   }
 
   if (errors.length > 0) return { ok: false, errors };

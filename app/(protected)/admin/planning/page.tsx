@@ -14,6 +14,9 @@ import { churchMonthIso } from "@/lib/shared/church-time";
 // canonical route defaults to its first view, Calendar.
 //
 // Kept off-nav by design — keep/retire/re-export decision: Keep (ADR 0033).
+// Deliberately NOT on the adminPage() runner (ADR 0028): the shared
+// PlanningView owns the page chrome — there is no PageHeader for the runner's
+// header slot to render.
 export const dynamic = "force-dynamic";
 
 type SearchParams = { month?: string | string[] };

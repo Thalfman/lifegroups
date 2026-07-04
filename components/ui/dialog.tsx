@@ -13,6 +13,11 @@ import {
   type DialogContentProps,
 } from "@radix-ui/react-dialog";
 
+// Convention: a dialog that genuinely has no description (e.g. a nav drawer
+// with only a title) passes `aria-describedby={undefined}` — the
+// Radix-documented opt-out that silences its missing-Description warning.
+// A dialog that DOES render a <DialogDescription> must NOT pass it, or the
+// explicit undefined severs the description it already has.
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof RadixDialogContent>,
   DialogContentProps

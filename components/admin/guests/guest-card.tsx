@@ -20,6 +20,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
+import { formatIsoDate } from "@/lib/shared/date";
 import type { GroupsRow, ProfilesRow } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
 
@@ -154,7 +155,12 @@ export function GuestCard({
         />
         <DetailRow label="Assigned group" value={assignedGroup?.name ?? "—"} />
         <DetailRow label="Follow-up owner" value={owner?.full_name ?? "—"} />
-        <DetailRow label="Added" value={formatDate(guest.created_at)} />
+        {/* created_at is a timestamptz — slice to its UTC calendar day for the
+            shared drift-proof date formatter. */}
+        <DetailRow
+          label="Added"
+          value={formatIsoDate(guest.created_at.slice(0, 10))}
+        />
       </dl>
 
       {notesPreview ? (
@@ -347,14 +353,4 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       </dd>
     </div>
   );
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }

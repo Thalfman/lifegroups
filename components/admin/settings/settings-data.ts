@@ -25,10 +25,8 @@ import {
 } from "@/lib/admin/cell-readiness";
 import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
 
-// The Settings surface's data, as a function of the reads seam (ADR 0015). The
-// build function takes `isSuperAdmin` only to record it on the shell data (the
-// System tab gates bulk people import on it); it crosses no Super-Admin-only
-// read here.
+// The Settings surface's data, as a function of the reads seam (ADR 0015).
+// Settings is a ministry-admin surface; it crosses no Super-Admin-only read.
 
 const SETTINGS_FETCHERS = {
   fetchMetricDefaults: fetchMetricDefaultsCached,
@@ -62,7 +60,7 @@ export function supabaseSettingsReads(
   };
 }
 
-export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
+export function emptySettingsData(): SettingsShellData {
   return {
     defaults: BUILT_IN_METRIC_DEFAULTS,
     defaultsSource: "fallback",
@@ -77,7 +75,6 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
       rule: BUILT_IN_READINESS_RULE,
       ruleFellBack: false,
     },
-    isSuperAdmin,
     errors: {
       defaults: "The database is not configured in this environment.",
       groups: "The database is not configured in this environment.",
@@ -91,11 +88,8 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
 }
 
 export async function buildSettingsData(
-  reads: SettingsReads,
-  options: { isSuperAdmin: boolean }
+  reads: SettingsReads
 ): Promise<SettingsShellData> {
-  const { isSuperAdmin } = options;
-
   // Gather every read through the batch combinator (ADR 0015); the per-tab
   // error precedence is composed from `batch.errors` in the `errors` block
   // below, as data rather than re-implemented control flow.
@@ -158,7 +152,6 @@ export async function buildSettingsData(
       rule: decodedRule.rule,
       ruleFellBack: decodedRule.fellBack,
     },
-    isSuperAdmin,
     // Per-tab error precedence, declared as data over the batch's per-key
     // errors.
     errors: {
@@ -173,10 +166,8 @@ export async function buildSettingsData(
   };
 }
 
-export async function loadSettingsData(
-  isSuperAdmin: boolean
-): Promise<SettingsShellData> {
+export async function loadSettingsData(): Promise<SettingsShellData> {
   const client = await createSupabaseServerClient();
-  if (!client) return emptySettingsData(isSuperAdmin);
-  return buildSettingsData(supabaseSettingsReads(client), { isSuperAdmin });
+  if (!client) return emptySettingsData();
+  return buildSettingsData(supabaseSettingsReads(client));
 }

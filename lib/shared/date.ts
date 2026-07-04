@@ -40,6 +40,22 @@ export function formatIsoDateOr(
 }
 
 /**
+ * Today's date as `YYYY-MM-DD` in the caller's LOCAL calendar — deliberately
+ * not UTC (contrast `formatIsoDate` above and `todayIsoUtc` in
+ * lib/admin/validation/shared.ts). Used to pre-fill date pickers with the
+ * user's natural "today" without the one-day drift `toISOString().slice(0,10)`
+ * causes west of UTC. Server validators accept up to UTC today + 1, so a
+ * local-today cap never rejects anything they allow.
+ */
+export function todayLocalIso(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Format a full ISO timestamp as a medium date + short time, resolved in
  * UTC so the rendered moment is stable regardless of where the page is
  * rendered. Returns the input unchanged when it doesn't parse.

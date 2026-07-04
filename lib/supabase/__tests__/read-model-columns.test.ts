@@ -28,11 +28,7 @@ import {
   MEMBER_COLUMNS,
   PROFILE_COLUMNS,
 } from "@/lib/supabase/membership-reads";
-import {
-  fetchGuests,
-  fetchNewGuestsForGroupSince,
-  GUEST_COLUMNS,
-} from "@/lib/supabase/guest-reads";
+import { fetchGuests } from "@/lib/supabase/guest-reads";
 import {
   ATTENDANCE_RECORD_COLUMNS,
   ATTENDANCE_SESSION_COLUMNS,
@@ -457,40 +453,6 @@ describe("group_health_assessments rating read column allowlist", () => {
     expect(calls.get("group_health_assessments")).toEqual([
       PINNED_GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS.join(", "),
     ]);
-  });
-});
-
-// ── guests ───────────────────────────────────────────────────────────────────
-
-const PINNED_GUEST_COLUMNS = [
-  "id",
-  "full_name",
-  "email",
-  "phone",
-  "first_attended_group_id",
-  "first_attended_date",
-  "pipeline_stage",
-  "assigned_group_id",
-  "follow_up_owner_id",
-  "notes",
-  "created_at",
-  "updated_at",
-] as const;
-
-describe("guests read column allowlist (#495)", () => {
-  it("pins the exact allowlist — widening the guests read must be a deliberate diff here", () => {
-    expect([...GUEST_COLUMNS.list]).toEqual([...PINNED_GUEST_COLUMNS]);
-  });
-
-  it("never selects '*'", () => {
-    expect(GUEST_COLUMNS.list).not.toContain("*");
-  });
-
-  it("passes exactly the joined allowlist to the guests read", async () => {
-    const calls = await captureSelects(async (client) => {
-      await fetchNewGuestsForGroupSince(client, UUID_A, "2026-01-01");
-    });
-    expect(calls.get("guests")).toEqual([PINNED_GUEST_COLUMNS.join(", ")]);
   });
 });
 

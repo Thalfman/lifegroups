@@ -1,4 +1,5 @@
 import { isUuid } from "@/lib/shared/uuid";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { addDaysIso } from "@/lib/shared/church-time";
 import type { ValidationResult } from "./shared";
 import {
@@ -20,7 +21,7 @@ import {
 // (SC.1A) validators.
 
 const OVER_SHEPHERD_FULL_NAME_MAX = 200;
-const OVER_SHEPHERD_NOTES_MAX = 2000;
+const OVER_SHEPHERD_NOTES_MAX = NOTE_MAX_CHARS;
 
 function validateOverShepherdCommonFields(
   input: Record<string, unknown>,
@@ -106,8 +107,10 @@ export function validateOverShepherdBroadNotePayload(
   const note = trimString(input.note);
   if (note === null || note.length === 0) {
     errors.push("A broad note is required.");
-  } else if (note.length > 2000) {
-    errors.push("Note is too long (max 2000 characters).");
+  } else if (note.length > OVER_SHEPHERD_NOTES_MAX) {
+    errors.push(
+      `Note is too long (max ${OVER_SHEPHERD_NOTES_MAX} characters).`
+    );
   }
 
   if (errors.length > 0) return { ok: false, errors };

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { replaceTabParam } from "@/lib/nav/tab-url";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useValueChange } from "@/lib/hooks/use-value-change";
@@ -104,9 +105,7 @@ export function PeopleManagementShell({
       return;
     }
     const timer = window.setTimeout(() => {
-      const params = new URLSearchParams(window.location.search);
-      params.set("tab", active);
-      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+      replaceTabParam(pathname, window.location.search, active);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [active, pathname]);

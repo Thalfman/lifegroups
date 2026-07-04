@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { replaceTabParam } from "@/lib/nav/tab-url";
 import type { ReactNode } from "react";
 import { Card } from "@/components/lg/Card";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
@@ -79,9 +80,7 @@ export function PersonDetailShell({
 
   function selectTab(key: PersonTabKey) {
     if (key === active) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", key);
-    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    replaceTabParam(pathname, searchParams.toString(), key);
   }
 
   const panels: Record<PersonTabKey, ReactNode> = {

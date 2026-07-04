@@ -4,18 +4,13 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { adminUpdateGroup } from "@/app/(protected)/admin/groups/actions";
 import { cn } from "@/lib/utils";
+import { fieldInputClassName, formGridClassName } from "./field-styles";
+import { FormField } from "./form-field";
 import {
-  fieldHintClassName,
-  fieldInputClassName,
-  fieldLabelClassName,
-  fieldSelectClassName,
-  formGridClassName,
-} from "./field-styles";
-import {
-  MEETING_DAYS_ORDERED,
-  MEETING_FREQUENCY_OPTIONS,
-  MEETING_PARITY_OPTIONS,
-} from "./meeting-schedule-options";
+  CapacityField,
+  MeetingDayTimeFields,
+  MeetingFrequencyParityFields,
+} from "./meeting-schedule-fields";
 import type { GroupsRow } from "@/types/database";
 import type { MeetingFrequency } from "@/types/enums";
 import { GroupTypePicker } from "./group-type-picker";
@@ -85,7 +80,7 @@ export function GroupEditForm({
     onPendingChange?.(pending);
   }, [pending, onPendingChange]);
 
-  const showParity = frequency === "biweekly";
+  const idFor = (field: string) => `edit-${field}-${group.id}`;
 
   // The group's stored type may no longer be in the admin-managed list (it was
   // removed, or this group was typed via free text). Keep it as a selectable
@@ -98,135 +93,48 @@ export function GroupEditForm({
     <form action={formAction} onChange={onDirty} className="grid gap-3">
       <input type="hidden" name="group_id" value={group.id} />
       <div className={formGridClassName}>
-        <div>
-          <label
-            htmlFor={`edit-name-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Group name
-          </label>
+        <FormField htmlFor={idFor("name")} label="Group name">
           <input
-            id={`edit-name-${group.id}`}
+            id={idFor("name")}
             name="name"
             type="text"
             required
             defaultValue={draft?.name ?? group.name}
             className={fieldInputClassName}
           />
-        </div>
-        <div>
-          <label
-            htmlFor={`edit-meeting_day-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Meeting day
-          </label>
-          <select
-            id={`edit-meeting_day-${group.id}`}
-            name="meeting_day"
-            defaultValue={draft?.meeting_day ?? group.meeting_day ?? ""}
-            className={fieldSelectClassName}
-          >
-            <option value="">Not set</option>
-            {MEETING_DAYS_ORDERED.map((day) => (
-              <option key={day} value={day}>
-                {day}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label
-            htmlFor={`edit-meeting_time-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Meeting time
-          </label>
+        </FormField>
+        <MeetingDayTimeFields
+          idFor={idFor}
+          dayDefault={draft?.meeting_day ?? group.meeting_day ?? ""}
+          timeDefault={
+            draft?.meeting_time ?? isoTimeForInput(group.meeting_time)
+          }
+        />
+        <MeetingFrequencyParityFields
+          idFor={idFor}
+          frequency={frequency}
+          onFrequencyChange={setFrequency}
+          parityDefault={
+            draft?.meeting_week_parity ?? group.meeting_week_parity ?? ""
+          }
+        />
+        <FormField htmlFor={idFor("location_area")} label="Location area">
           <input
-            id={`edit-meeting_time-${group.id}`}
-            name="meeting_time"
-            type="time"
-            defaultValue={
-              draft?.meeting_time ?? isoTimeForInput(group.meeting_time)
-            }
-            className={fieldInputClassName}
-          />
-        </div>
-        <div>
-          <label
-            htmlFor={`edit-meeting_frequency-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Meeting frequency
-          </label>
-          <select
-            id={`edit-meeting_frequency-${group.id}`}
-            name="meeting_frequency"
-            value={frequency}
-            onChange={(e) => setFrequency(e.target.value as MeetingFrequency)}
-            className={fieldSelectClassName}
-          >
-            {MEETING_FREQUENCY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        {showParity ? (
-          <div>
-            <label
-              htmlFor={`edit-meeting_week_parity-${group.id}`}
-              className={fieldLabelClassName}
-            >
-              Which weeks does it meet?
-            </label>
-            <select
-              id={`edit-meeting_week_parity-${group.id}`}
-              name="meeting_week_parity"
-              defaultValue={
-                draft?.meeting_week_parity ?? group.meeting_week_parity ?? ""
-              }
-              className={fieldSelectClassName}
-            >
-              <option value="">Choose weeks</option>
-              {MEETING_PARITY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p className={fieldHintClassName}>
-              For groups that meet every other week. Odd and even weeks
-              alternate through the year — pick the set this group gathers on.
-            </p>
-          </div>
-        ) : null}
-        <div>
-          <label
-            htmlFor={`edit-location_area-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Location area
-          </label>
-          <input
-            id={`edit-location_area-${group.id}`}
+            id={idFor("location_area")}
             name="location_area"
             type="text"
             defaultValue={draft?.location_area ?? group.location_area ?? ""}
             className={fieldInputClassName}
             placeholder="Westside"
           />
-        </div>
-        <div className="md:col-span-full">
-          <label
-            htmlFor={`edit-address_optional-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Address
-          </label>
+        </FormField>
+        <FormField
+          htmlFor={idFor("address_optional")}
+          label="Address"
+          className="md:col-span-full"
+        >
           <input
-            id={`edit-address_optional-${group.id}`}
+            id={idFor("address_optional")}
             name="address_optional"
             type="text"
             defaultValue={
@@ -234,26 +142,14 @@ export function GroupEditForm({
             }
             className={fieldInputClassName}
           />
-        </div>
-        <div>
-          <label
-            htmlFor={`edit-capacity-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Capacity
-          </label>
-          <input
-            id={`edit-capacity-${group.id}`}
-            name="capacity"
-            type="number"
-            min={0}
-            max={1000}
-            inputMode="numeric"
-            defaultValue={draft?.capacity ?? group.capacity ?? ""}
-            className={fieldInputClassName}
-            placeholder="12"
-          />
-        </div>
+        </FormField>
+        <CapacityField
+          id={idFor("capacity")}
+          label="Capacity"
+          asNumber
+          defaultValue={draft?.capacity ?? group.capacity ?? ""}
+          placeholder="12"
+        />
         <div>
           {/* #776 OPP-3 — the creatable group-type picker. `initialValue`
               preselects the group's current type and keeps it selectable even
@@ -271,36 +167,28 @@ export function GroupEditForm({
             fromSetup={fromSetup}
           />
         </div>
-        <div>
-          <label
-            htmlFor={`edit-launched_on-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Launched on
-          </label>
+        <FormField htmlFor={idFor("launched_on")} label="Launched on">
           <input
-            id={`edit-launched_on-${group.id}`}
+            id={idFor("launched_on")}
             name="launched_on"
             type="date"
             defaultValue={draft?.launched_on ?? group.launched_on ?? ""}
             className={fieldInputClassName}
           />
-        </div>
-        <div className="md:col-span-full">
-          <label
-            htmlFor={`edit-description-${group.id}`}
-            className={fieldLabelClassName}
-          >
-            Description
-          </label>
+        </FormField>
+        <FormField
+          htmlFor={idFor("description")}
+          label="Description"
+          className="md:col-span-full"
+        >
           <textarea
-            id={`edit-description-${group.id}`}
+            id={idFor("description")}
             name="description"
             rows={3}
             defaultValue={draft?.description ?? group.description ?? ""}
             className={cn(fieldInputClassName, "min-h-20 resize-y")}
           />
-        </div>
+        </FormField>
       </div>
 
       <div className="mt-0.5 flex flex-wrap items-center gap-2.5 border-t border-line pt-2.5">

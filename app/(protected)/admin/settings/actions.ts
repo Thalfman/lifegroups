@@ -269,7 +269,7 @@ const SET_HEALTH_RUBRIC_SPEC: AdminWriteActionSpec<
   rpc: (client, value) =>
     adminRpc(client, "admin_set_health_rubric", {
       p_kind: value.kind,
-      p_criteria: value.criteria as unknown as Array<Record<string, unknown>>,
+      p_criteria: value.criteria,
     }),
   revalidate: () => SETTINGS_REVALIDATE_PATHS,
   noDataError: "The rubric was not saved. Please try again.",
@@ -383,7 +383,7 @@ const SET_READINESS_RULE_SPEC: AdminWriteActionSpec<
   rpc: (client, value) =>
     adminRpc(client, "admin_set_readiness_rule", {
       p_ministry_year: value.ministryYear,
-      p_rule: value.rule as unknown as Record<string, unknown>,
+      p_rule: value.rule,
     }),
   revalidate: () => READINESS_REVALIDATE_PATHS,
   noDataError: "The readiness rule was not saved. Please try again.",

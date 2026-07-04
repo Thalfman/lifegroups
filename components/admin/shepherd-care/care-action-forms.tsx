@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminLogShepherdCareInteraction,
@@ -16,6 +17,7 @@ import {
   fieldLabelClassName as FIELD_LABEL,
   formNoteClassName,
 } from "@/components/admin/forms/field-styles";
+import { todayLocalIso } from "@/lib/shared/date";
 import type { ShepherdCareProfilesRow } from "@/types/database";
 import type {
   ShepherdCareInteractionType,
@@ -42,18 +44,6 @@ const STATUSES: ShepherdCareStatus[] = [
 // Form anatomy comes from the canonical field styles (design direction §4);
 // only the lede spacing below it is local to these stacked forms.
 const FORM_NOTE = `${formNoteClassName} mb-3`;
-
-// Local calendar day, so the date picker pre-fills the caller's natural
-// "today" without the one-day UTC drift `toISOString().slice(0,10)` causes west
-// of UTC. The server validator accepts up to UTC today + 1, so a local-today
-// cap never rejects anything it allows.
-function todayLocalIso(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 // The drawer wiring every care-action form shares (mirrors the care follow-up
 // create form, #268): `onSaved` closes + refreshes, `onDirty` lets the drawer
@@ -155,7 +145,7 @@ export function LogTouchForm({
           id="cta-notes"
           name="notes"
           rows={3}
-          maxLength={2000}
+          maxLength={NOTE_MAX_CHARS}
           className={`${FIELD_INPUT} min-h-20 resize-y`}
           placeholder="What did you talk about? What's the read?"
         />
@@ -279,7 +269,7 @@ export function CareProfileFieldForm({
               id="cta-admin_summary"
               name="admin_summary"
               rows={4}
-              maxLength={2000}
+              maxLength={NOTE_MAX_CHARS}
               defaultValue={current?.admin_summary ?? ""}
               className={`${FIELD_INPUT} min-h-24 resize-y`}
               placeholder="High-level read on how this shepherd is doing."

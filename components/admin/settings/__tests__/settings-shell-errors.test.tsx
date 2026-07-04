@@ -81,7 +81,6 @@ function shellData(
       rule: BUILT_IN_READINESS_RULE,
       ruleFellBack: false,
     },
-    isSuperAdmin: false,
     errors: NO_ERRORS,
     ...overrides,
   };
@@ -156,7 +155,6 @@ describe("buildSettingsWorkspace", () => {
       data.groupMetricSettings[0]
     );
     expect(workspace.thresholds.overrideRows).toHaveLength(1);
-    expect(workspace.system.isSuperAdmin).toBe(false);
   });
 });
 

@@ -84,7 +84,7 @@ export function GroupManagementShell({
   // ADR 0027: arrived via a setup deep-link; carry the marker into detail links.
   fromSetup?: boolean;
 }) {
-  const anyError = Object.values(data.errors).some(Boolean);
+  const anyError = Object.values(data.errors).some((e) => e != null);
 
   return (
     <div className="grid gap-9">

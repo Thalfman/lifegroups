@@ -58,7 +58,7 @@ export const formNoteStyle: CSSProperties = {
 export const errorTextStyle: CSSProperties = {
   fontFamily: fontBody,
   fontSize: 13,
-  color: "#923220",
+  color: P.terraTextStrong,
   background: P.terraSoft,
   padding: "8px 12px",
   borderRadius: 6,
@@ -68,7 +68,7 @@ export const errorTextStyle: CSSProperties = {
 export const successTextStyle: CSSProperties = {
   fontFamily: fontBody,
   fontSize: 13,
-  color: "#3e4f29",
+  color: P.sageTextStrong,
   background: P.sageSoft,
   padding: "8px 12px",
   borderRadius: 6,
@@ -82,7 +82,7 @@ export const successTextStyle: CSSProperties = {
 export const fieldErrorStyle: CSSProperties = {
   fontFamily: fontBody,
   fontSize: 12,
-  color: "#923220",
+  color: P.terraTextStrong,
   marginTop: 6,
   marginBottom: 0,
 };

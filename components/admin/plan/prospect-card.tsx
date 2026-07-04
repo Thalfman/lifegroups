@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import type { ProspectState } from "@/types/enums";
 import { cn } from "@/lib/utils";
 import { PButton } from "@/components/pastoral/button";
@@ -336,7 +337,7 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
               name="next_step_detail"
               defaultValue={prospect.next_step?.detail ?? ""}
               rows={2}
-              maxLength={2000}
+              maxLength={NOTE_MAX_CHARS}
               className={cn(INPUT, "resize-y")}
             />
           </>
@@ -350,7 +351,7 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
           name="additional_note"
           defaultValue={prospect.additional_note ?? ""}
           rows={2}
-          maxLength={2000}
+          maxLength={NOTE_MAX_CHARS}
           className={cn(INPUT, "resize-y")}
         />
 

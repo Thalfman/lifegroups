@@ -11,10 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default adminPage({
   params: (raw) => ({ initialTabId: firstParam(raw.searchParams.tab) }),
-  load: async (_params, session) => {
-    const isSuperAdmin = session.profile.role === "super_admin";
-    return { data: await loadSettingsData(isSuperAdmin) };
-  },
+  load: async () => ({ data: await loadSettingsData() }),
   header: () => ({
     eyebrow: "Settings",
     title: "Settings",

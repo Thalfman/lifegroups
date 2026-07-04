@@ -47,7 +47,6 @@ export function AdminMasterCalendarDrawer({
           }}
         />
         <DialogContent
-          aria-describedby={undefined}
           onOpenAutoFocus={() => {
             openerRef.current = document.activeElement as HTMLElement | null;
           }}

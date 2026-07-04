@@ -62,12 +62,6 @@ export type SettingsShellData = {
     // stored trigger. A MISSING stored rule is not a fallback (no warning).
     ruleFellBack: boolean;
   };
-  // Issue #304: whether the viewer is the super_admin. Settings is a
-  // ministry-admin surface. Bulk people import is now an ordinary admin
-  // capability rendered in the System tab for every admin (the importer posts to
-  // the admin-gated admin_bulk_import_people RPC), so this flag no longer gates
-  // the importer; it is retained for any future super-admin-only settings.
-  isSuperAdmin: boolean;
   errors: {
     defaults: string | null;
     groups: string | null;
@@ -119,7 +113,6 @@ export type SettingsWorkspaceModel = {
   groups: SettingsGroupsModel;
   multiply: SettingsMultiplyModel;
   thresholds: SettingsThresholdsModel;
-  system: { isSuperAdmin: boolean };
 };
 
 export function buildSettingsWorkspace(
@@ -155,7 +148,6 @@ export function buildSettingsWorkspace(
       settingsByGroupId,
       overrideRows,
     },
-    system: { isSuperAdmin: data.isSuperAdmin },
   };
 }
 

@@ -31,10 +31,13 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import {
-  fieldInputClassName,
   fieldLabelClassName,
   successTextClassName,
 } from "@/components/admin/forms/field-styles";
+import {
+  ConfirmPhraseInput,
+  confirmPhraseMatches,
+} from "@/components/admin/forms/confirm-phrase-input";
 import {
   DangerCard,
   DangerSection,
@@ -67,7 +70,10 @@ export function CleanSlateCard({
   );
   const [confirm, setConfirm] = useState("");
 
-  const phraseMatches = confirm.trim() === CLEAN_SLATE_CONFIRM_PHRASE;
+  const phraseMatches = confirmPhraseMatches(
+    confirm,
+    CLEAN_SLATE_CONFIRM_PHRASE
+  );
   const nothingToWipe = impact !== null && impact.total === 0;
   const entries = impact
     ? Object.entries(impact.counts).filter(([, n]) => n > 0)
@@ -118,24 +124,13 @@ export function CleanSlateCard({
         )}
 
         <form action={formAction} className="grid gap-2.5">
-          <div>
-            <label
-              htmlFor="clean-slate-confirm"
-              className={fieldLabelClassName}
-            >
-              Type {CLEAN_SLATE_CONFIRM_PHRASE} to confirm
-            </label>
-            <input
-              id="clean-slate-confirm"
-              name="confirm"
-              type="text"
-              autoComplete="off"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder={CLEAN_SLATE_CONFIRM_PHRASE}
-              className={fieldInputClassName}
-            />
-          </div>
+          <ConfirmPhraseInput
+            id="clean-slate-confirm"
+            phrase={CLEAN_SLATE_CONFIRM_PHRASE}
+            label={<>Type {CLEAN_SLATE_CONFIRM_PHRASE} to confirm</>}
+            value={confirm}
+            onChange={setConfirm}
+          />
           <div className="flex items-center gap-2.5">
             <Button
               type="submit"
@@ -209,10 +204,14 @@ function CleanSlateRecovery({
     if (ok) setImportConfirm("");
   });
 
-  const revertMatches =
-    revertConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;
-  const importMatches =
-    importConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;
+  const revertMatches = confirmPhraseMatches(
+    revertConfirm,
+    CLEAN_SLATE_RESTORE_CONFIRM_PHRASE
+  );
+  const importMatches = confirmPhraseMatches(
+    importConfirm,
+    CLEAN_SLATE_RESTORE_CONFIRM_PHRASE
+  );
   const hasSnapshot = snapshot !== null;
 
   return (
@@ -260,24 +259,13 @@ function CleanSlateRecovery({
         {hasSnapshot ? (
           <input type="hidden" name="snapshotId" value={snapshot.id} />
         ) : null}
-        <div>
-          <label
-            htmlFor="clean-slate-revert-confirm"
-            className={fieldLabelClassName}
-          >
-            Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to confirm
-          </label>
-          <input
-            id="clean-slate-revert-confirm"
-            name="confirm"
-            type="text"
-            autoComplete="off"
-            value={revertConfirm}
-            onChange={(e) => setRevertConfirm(e.target.value)}
-            placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
-            className={fieldInputClassName}
-          />
-        </div>
+        <ConfirmPhraseInput
+          id="clean-slate-revert-confirm"
+          phrase={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
+          label={<>Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to confirm</>}
+          value={revertConfirm}
+          onChange={setRevertConfirm}
+        />
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
             type="submit"
@@ -327,24 +315,13 @@ function CleanSlateRecovery({
             className="font-sans text-xs text-ink2"
           />
         </div>
-        <div>
-          <label
-            htmlFor="clean-slate-import-confirm"
-            className={fieldLabelClassName}
-          >
-            Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to confirm
-          </label>
-          <input
-            id="clean-slate-import-confirm"
-            name="confirm"
-            type="text"
-            autoComplete="off"
-            value={importConfirm}
-            onChange={(e) => setImportConfirm(e.target.value)}
-            placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
-            className={fieldInputClassName}
-          />
-        </div>
+        <ConfirmPhraseInput
+          id="clean-slate-import-confirm"
+          phrase={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
+          label={<>Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to confirm</>}
+          value={importConfirm}
+          onChange={setImportConfirm}
+        />
         <div className="flex items-center gap-2.5">
           <Button
             type="submit"

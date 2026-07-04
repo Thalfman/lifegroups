@@ -10,6 +10,7 @@ import {
 import { adminRpc } from "@/lib/admin/rpc";
 import { getFeatureFlagDefinition } from "@/lib/admin/feature-flags";
 import { isRecord } from "@/lib/admin/validation";
+import { makeBooleanFlagReader } from "@/lib/shared/validation-primitives";
 
 // Phase SAC.2 (#161): toggle a feature flag from the Super Admin Console. Routed
 // through the shared admin write runner with the super-admin gate; the RPC
@@ -24,14 +25,7 @@ type SetFeatureFlagPayload = {
   enabled: boolean;
 };
 
-function readBool(value: unknown): boolean {
-  if (value === true) return true;
-  if (typeof value === "string") {
-    const t = value.trim().toLowerCase();
-    return t === "true" || t === "on" || t === "1";
-  }
-  return false;
-}
+const readBool = makeBooleanFlagReader(["true", "on", "1"]);
 
 function validateSetFeatureFlag(
   raw: Record<string, unknown>

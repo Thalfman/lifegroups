@@ -29,6 +29,21 @@ const LETTERS: ReadinessLetter[] = ["A", "B", "C", "D", "F"];
 
 const THRESHOLD_NOTE = "font-sans text-sm text-ink3";
 
+/**
+ * Whether every required count pillar carries a parseable whole number. The
+ * rule posts as hidden JSON, so native `required` can't block submission —
+ * without this gate an emptied field would silently coerce to 0 and save.
+ * Exported for tests.
+ */
+export function readinessCountsValid(
+  pairs: ReadonlyArray<readonly [required: boolean, rawMin: string]>
+): boolean {
+  return pairs.every(
+    ([required, rawMin]) =>
+      !required || Number.isInteger(Number.parseInt(rawMin, 10))
+  );
+}
+
 export function MultiplyTriggerEditor({
   ministryYear,
   globalRule,
@@ -86,6 +101,16 @@ export function MultiplyTriggerEditor({
   );
 
   const idBase = useId();
+
+  // Gate Save on the required count pillars holding real numbers, so clearing
+  // a field can't quietly save a 0 threshold. Non-required (disabled) inputs
+  // may legitimately sit empty — the `|| 0` fallback below covers those.
+  const countsValid = readinessCountsValid([
+    [interestRequired, interestMin],
+    [memberCountRequired, memberCountMin],
+    [groupTenureRequired, groupTenureMin],
+    [coShepherdTenureRequired, coShepherdTenureMin],
+  ]);
 
   // Build the rule object posted as a JSON string. The validator re-decodes it
   // through the pure trust-boundary decoder, so a partial/odd value is normalized
@@ -240,11 +265,21 @@ export function MultiplyTriggerEditor({
       </PillarRow>
 
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <PButton
+          type="submit"
+          tone="terra"
+          size="md"
+          disabled={pending || !countsValid}
+        >
           {pending ? "Saving…" : "Save readiness rule"}
         </PButton>
         <FormStatus state={state} successText="Readiness rule saved." />
       </div>
+      {!countsValid ? (
+        <p className={THRESHOLD_NOTE}>
+          Enter a number for each required pillar to enable Save.
+        </p>
+      ) : null}
     </form>
   );
 }

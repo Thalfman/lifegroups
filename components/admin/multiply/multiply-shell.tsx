@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { replaceTabParam } from "@/lib/nav/tab-url";
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -104,9 +105,7 @@ export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
 
   function selectTab(key: MultiplyTabKey) {
     if (key === active) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", key);
-    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    replaceTabParam(pathname, searchParams.toString(), key);
   }
 
   // Arrow / Home / End move between tabs (automatic activation: focus and

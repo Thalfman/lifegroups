@@ -9,7 +9,7 @@ import {
   runLeaderWriteAction,
   type LeaderWriteActionSpec,
 } from "@/lib/leader/run-action";
-import { leaderRpc, type LeaderUpdateFollowUpStatus } from "@/lib/leader/rpc";
+import { leaderRpc } from "@/lib/leader/rpc";
 
 const REVALIDATE_PATHS = ["/leader", "/admin/follow-ups", "/admin"] as const;
 
@@ -42,7 +42,7 @@ const UPDATE_FOLLOW_UP_STATUS_SPEC: LeaderWriteActionSpec<
   rpc: (client, value) =>
     leaderRpc(client, "leader_update_follow_up_status", {
       p_follow_up_id: value.follow_up_id,
-      p_status: value.status as LeaderUpdateFollowUpStatus,
+      p_status: value.status,
     }),
   revalidate: () => REVALIDATE_PATHS,
   noDataError: "The follow-up wasn't updated. Please try again.",

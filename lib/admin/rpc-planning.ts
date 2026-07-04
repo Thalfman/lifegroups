@@ -10,6 +10,10 @@ import type {
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
 } from "@/types/enums";
+// Type-only imports (erased at build time): the rubric/readiness RPC args are
+// typed to the validated shapes so the actions need no casts.
+import type { RubricCriterion } from "@/lib/admin/health-rubric";
+import type { ReadinessRule } from "@/lib/admin/cell-readiness";
 
 export type AdminCreateLaunchPlanningScenarioArgs = {
   p_name: string;
@@ -162,18 +166,19 @@ export type PlanningUuidRpcArgs = {
   // score's presence.
   admin_set_group_health_ratings: AdminSetGroupHealthRatingsArgs;
   // #374 / ADR 0018 Health Rubric: upsert the current rubric for a kind
-  // (group/leader). p_criteria is the validated {key,label,weight} array; the
-  // weight-to-100 check is done in TS first, the RPC re-guards the JSON shape.
+  // (group/leader). p_criteria is the validated {key,label,weight} array
+  // (serialized to jsonb); the weight-to-100 check is done in TS first, the
+  // RPC re-guards the JSON shape.
   admin_set_health_rubric: {
     p_kind: "group" | "leader";
-    p_criteria: Array<Record<string, unknown>>;
+    p_criteria: RubricCriterion[];
   };
   // The single GLOBAL readiness rule for a ministry year (interest/capacity/
-  // group+leader health in natural units). The rule jsonb is validated in TS
-  // first; the RPC re-guards its object shape.
+  // group+leader health in natural units). The rule (serialized to jsonb) is
+  // validated in TS first; the RPC re-guards its object shape.
   admin_set_readiness_rule: {
     p_ministry_year: number;
-    p_rule: Record<string, unknown>;
+    p_rule: ReadinessRule;
   };
   // #378 / ADR 0018 (pivot slice 5) Leader-Health Grade: upsert a leader's
   // grade for a ministry year. The roll-up + override resolution are done in

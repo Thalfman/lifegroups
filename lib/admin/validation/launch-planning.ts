@@ -1,3 +1,4 @@
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import type {
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
@@ -185,8 +186,8 @@ export function validateLaunchPlanningAssumptionsPayload(
       const trimmed = raw.trim();
       if (trimmed.length === 0) {
         value.notes = null;
-      } else if (trimmed.length > 2000) {
-        errors.push("Notes must be 2000 characters or fewer.");
+      } else if (trimmed.length > NOTE_MAX_CHARS) {
+        errors.push(`Notes must be ${NOTE_MAX_CHARS} characters or fewer.`);
       } else {
         value.notes = trimmed;
       }
@@ -499,8 +500,8 @@ function validateMultiplicationCandidateFields(
   }
 
   const notes = readOptionalString(input.notes);
-  if (notes !== undefined && notes.length > 2000) {
-    errors.push("Notes are too long (max 2000 characters).");
+  if (notes !== undefined && notes.length > NOTE_MAX_CHARS) {
+    errors.push(`Notes are too long (max ${NOTE_MAX_CHARS} characters).`);
   }
 
   const successor = readOptionalString(input.successor_designate);

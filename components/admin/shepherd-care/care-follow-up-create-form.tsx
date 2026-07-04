@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateShepherdCareFollowUp } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
@@ -110,7 +111,7 @@ export function CareFollowUpCreateForm({
             id="cfu-notes"
             name="notes"
             rows={3}
-            maxLength={2000}
+            maxLength={NOTE_MAX_CHARS}
             className={`${FIELD_INPUT} min-h-20 resize-y`}
             placeholder="What exactly needs to happen?"
           />
