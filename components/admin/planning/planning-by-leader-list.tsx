@@ -8,7 +8,7 @@ import {
   friendlyEventStatusLabel,
   friendlyEventTypeLabel,
 } from "@/lib/calendar/payload";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
 import {
   occurrenceAccessibleName,
@@ -54,7 +54,7 @@ export function PlanningByLeaderList({
   if (leaderGroups.length === 0) return null;
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
+    <div className="grid gap-3.5">
       {leaderGroups.map((leaderGroup) => (
         <LeaderSection
           key={leaderGroup.profileId ?? "unassigned"}
@@ -120,31 +120,12 @@ function LeaderSection({
   );
 
   return (
-    <section
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: "14px 16px",
-        display: "grid",
-        gap: 12,
-      }}
-    >
+    <section className="grid gap-3 rounded-lg border border-line bg-surface px-4 py-3.5">
       <h3
-        style={{
-          fontFamily: fontSans,
-          fontSize: 12,
-          letterSpacing: 1.5,
-          textTransform: "uppercase",
-          color: isUnassigned ? P.terra : P.ink3,
-          fontWeight: 700,
-          margin: 0,
-          paddingBottom: 6,
-          borderBottom: `1px solid ${P.line2}`,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
+        className={cn(
+          "m-0 flex items-center gap-2 border-b border-lineSoft pb-1.5 font-sans text-xs font-bold uppercase tracking-[1.5px]",
+          isUnassigned ? "text-clay" : "text-ink3"
+        )}
       >
         {leaderGroup.name}
         {coverageCount > 0 ? (
@@ -154,26 +135,11 @@ function LeaderSection({
         ) : null}
       </h3>
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="grid gap-3">
         {groups.map((group) => (
-          <div key={group.groupId} style={{ display: "grid", gap: 8 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                flexWrap: "wrap",
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: P.ink,
-                }}
-              >
+          <div key={group.groupId} className="grid gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="font-sans text-md font-semibold text-ink">
                 {group.groupName}
               </div>
               {/* ONE entry point per group (#331): the group's calendar, opened
@@ -189,28 +155,12 @@ function LeaderSection({
                   groupName: group.groupName,
                   leaderName: isUnassigned ? null : leaderGroup.name,
                 })}
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: P.terra,
-                  textDecoration: "none",
-                  letterSpacing: 1.2,
-                  textTransform: "uppercase",
-                }}
+                className="font-sans text-2xs font-semibold uppercase tracking-[1.2px] text-clay no-underline"
               >
                 Open group calendar →
               </Link>
             </div>
-            <ul
-              style={{
-                listStyle: "none",
-                padding: 0,
-                margin: 0,
-                display: "grid",
-                gap: 6,
-              }}
-            >
+            <ul className="m-0 grid list-none gap-1.5 p-0">
               {group.occurrences.map((occ) => (
                 <OccurrenceRow
                   key={`${occ.groupId}|${occ.date}`}
@@ -238,35 +188,14 @@ function OccurrenceRow({
   const tone = occurrenceStatusTone(occurrence.status);
   const needsCoverage = occurrenceNeedsCoverage(occurrence);
   return (
-    <li
-      style={{
-        background: P.bg,
-        border: `1px solid ${P.line2}`,
-        borderRadius: 10,
-      }}
-    >
+    <li className="rounded-sm border border-lineSoft bg-bg">
       <button
         type="button"
         onClick={() => onSelect(occurrence)}
         aria-label={occurrenceAccessibleName(occurrence)}
-        style={{
-          width: "100%",
-          background: "transparent",
-          border: "none",
-          padding: "10px 12px 10px 14px",
-          textAlign: "left",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-          fontFamily: fontSans,
-          fontSize: 12,
-          color: P.ink2,
-          minHeight: 44,
-        }}
+        className="flex min-h-11 w-full cursor-pointer flex-wrap items-center gap-2.5 border-none bg-transparent py-2.5 pl-3.5 pr-3 text-left font-sans text-xs text-ink2"
       >
-        <span style={{ fontFamily: fontBody, fontWeight: 600, color: P.ink }}>
+        <span className="font-sans font-semibold text-ink">
           {dateLabel(occurrence.date)}
         </span>
         {occurrence.status !== "scheduled" ? (

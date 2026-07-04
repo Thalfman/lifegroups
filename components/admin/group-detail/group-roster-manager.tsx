@@ -119,7 +119,7 @@ export function GroupRosterManager({
                           ]}
                           idleLabel="Remove"
                           pendingLabel="Removing…"
-                          tone="ghost"
+                          variant="ghost"
                           ariaLabel={`Remove ${l.name ?? "this shepherd"} from ${groupName}`}
                         />
                       ) : null}
@@ -180,7 +180,7 @@ export function GroupRosterManager({
                           ]}
                           idleLabel="Remove"
                           pendingLabel="Removing…"
-                          tone="ghost"
+                          variant="ghost"
                           ariaLabel={`Remove ${m.fullName} from ${groupName}`}
                         />
                       ) : null}

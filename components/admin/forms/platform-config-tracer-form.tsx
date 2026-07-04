@@ -1,6 +1,5 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { superAdminSetPlatformConfig } from "@/app/(protected)/admin/super-admin/platform-config-actions";
 import {
   fieldHintClassName,
@@ -9,6 +8,7 @@ import {
 } from "./field-styles";
 import { APP_CONFIG_TRACER_MAX_LENGTH } from "@/lib/admin/app-config-decode";
 import { useActionForm, FormStatus } from "./action-form";
+import { Button } from "@/components/ui/button";
 
 // Phase SAC.1 (#159): the foundation's round-trip tracer. Saving persists the
 // note through the audited super-admin RPC; the page revalidates and the new
@@ -42,9 +42,9 @@ export function PlatformConfigTracerForm({ value }: { value: string }) {
         </p>
       </div>
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save note"}
-        </PButton>
+        </Button>
         <FormStatus state={state} successText="Saved." />
       </div>
     </form>

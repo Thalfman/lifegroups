@@ -26,8 +26,8 @@ import {
 } from "@/lib/admin/validation/group-health";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
 import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
-import { PButton } from "@/components/pastoral/button";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   fieldLabelClassName as FIELD_LABEL,
   fieldInputBaseClassName,
@@ -243,16 +243,16 @@ function GroupHealthEditorBody({
           demoted to a quiet secondary affordance below so the two no longer
           read as competing saves. */}
       <div className="mt-1 flex flex-wrap justify-end gap-2.5 border-t border-line pt-3.5">
-        <PButton
+        <Button
           type="submit"
-          tone="terra"
+          variant="primary"
           size="sm"
           form={formId}
           disabled={ratings.pending}
           aria-label={`Save ${row.group_name} health ratings`}
         >
           {ratings.pending ? "Saving…" : "Save ratings"}
-        </PButton>
+        </Button>
       </div>
 
       {/* Recompute grades from the last *saved* ratings, so it's disabled while
@@ -260,16 +260,16 @@ function GroupHealthEditorBody({
       <div className="mt-3.5 grid gap-1.5 border-t border-line pt-3.5">
         <form action={recompute.formAction} className="grid gap-1.5">
           <input type="hidden" name="group_id" value={row.group_id} />
-          <PButton
+          <Button
             type="submit"
-            tone="ghost"
+            variant="ghost"
             size="sm"
             disabled={dirty || recompute.pending}
             aria-label={`Save ${row.group_name} current grade to record`}
             title={dirty ? "Save your rating edits first" : undefined}
           >
             {recompute.pending ? "Saving…" : "Save current grade to record"}
-          </PButton>
+          </Button>
           <p className="m-0 font-sans text-xs text-ink2">
             Writes this month’s grade snapshot from the current rubric — useful
             after changing the rubric in Settings.

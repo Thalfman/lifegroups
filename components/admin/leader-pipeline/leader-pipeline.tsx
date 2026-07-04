@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { useValueChange } from "@/lib/hooks/use-value-change";
-import { PButton, PLinkButton } from "@/components/pastoral/button";
 import {
   adminAdvanceApprenticeStage,
   adminArchiveApprentice,
@@ -151,17 +150,22 @@ function ApprenticeEditForm({
           />
         </div>
         <div className="flex items-center gap-2.5">
-          <PButton type="submit" tone="terra" size="sm" disabled={pending}>
+          <Button type="submit" variant="primary" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save"}
-          </PButton>
+          </Button>
           <FormStatus state={state} />
         </div>
       </form>
       <form action={archiveAction}>
         <input type="hidden" name="apprentice_id" value={a.id} />
-        <PButton type="submit" tone="ghost" size="sm" disabled={archivePending}>
+        <Button
+          type="submit"
+          variant="ghost"
+          size="sm"
+          disabled={archivePending}
+        >
           {archivePending ? "Removing…" : "Remove apprentice"}
-        </PButton>
+        </Button>
         <FormStatus state={archiveState} />
       </form>
     </div>
@@ -178,15 +182,15 @@ function AdvanceStageButton({ a }: { a: ApprenticeView }) {
     <form action={formAction} className="inline">
       <input type="hidden" name="apprentice_id" value={a.id} />
       <input type="hidden" name="readiness_stage" value={next} />
-      <PButton
+      <Button
         type="submit"
-        tone="solid"
+        variant="solid"
         size="sm"
         aria-label={`Advance to ${STAGE_LABEL[next]} for ${a.displayName}`}
         disabled={pending}
       >
         {pending ? "…" : `Advance to ${STAGE_LABEL[next]}`}
-      </PButton>
+      </Button>
       <FormStatus state={state} />
     </form>
   );
@@ -283,9 +287,9 @@ function AddApprenticeForm({
         <p className="m-0 font-sans text-sm text-ink3">
           No active groups to add an apprentice to.
         </p>
-        <PLinkButton href="/admin/groups" tone="ghost" size="sm">
+        <LinkButton href="/admin/groups" variant="ghost" size="sm">
           Go to Groups →
-        </PLinkButton>
+        </LinkButton>
       </div>
     );
   }
@@ -423,14 +427,14 @@ function AddApprenticeForm({
         </div>
       </div>
       <div className="flex items-center gap-2.5">
-        <PButton
+        <Button
           type="submit"
-          tone="terra"
+          variant="primary"
           size="md"
           disabled={pending || !canSubmit}
         >
           {pending ? "Adding…" : "Add apprentice"}
-        </PButton>
+        </Button>
         {groupId !== "" && !canSubmit ? (
           <p className="m-0 font-sans text-xs text-ink3">
             Pick a group member, or choose “not listed” and enter a name.

@@ -1,6 +1,5 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { overShepherdLogBroadNote } from "@/app/(protected)/over-shepherd/[profileId]/actions";
 import {
@@ -13,6 +12,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 // The over-shepherd write surface is deliberately one field: a broad note.
 // No care-status, touchpoint, interaction-type, admin-summary, or private-note
@@ -53,9 +53,9 @@ export function LogBroadNoteForm({
         </p>
       </div>
       <div>
-        <PButton type="submit" tone="solid" size="md" disabled={pending}>
+        <Button type="submit" variant="solid" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save note"}
-        </PButton>
+        </Button>
       </div>
       <FormStatus state={state} successText="Note saved." />
     </form>

@@ -1,6 +1,3 @@
-import type { CSSProperties } from "react";
-import { P, fontSans } from "@/lib/pastoral";
-
 // Compact in-page section nav for long Super Admin workspaces (Access, Config).
 // Plain anchor links: the browser's native hash jump does the scrolling, and the
 // anchored sections carry SUPER_ADMIN_STICKY_ANCHOR_OFFSET as scrollMarginTop so
@@ -21,37 +18,21 @@ export function WorkspaceSectionNav({
   ariaLabel: string;
 }) {
   return (
-    <nav aria-label={ariaLabel} style={navStyle}>
-      <span style={promptStyle}>On this page:</span>
+    <nav
+      aria-label={ariaLabel}
+      // text-[12.5px] keeps the original off-scale size (between xs and sm).
+      className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1.5 font-sans text-[12.5px] leading-[1.2]"
+    >
+      <span className="font-medium text-ink3">On this page:</span>
       {sections.map((section) => (
-        <a key={section.id} href={`#${section.id}`} style={linkStyle}>
+        <a
+          key={section.id}
+          href={`#${section.id}`}
+          className="font-semibold text-ink2 underline decoration-line underline-offset-[3px]"
+        >
           {section.label}
         </a>
       ))}
     </nav>
   );
 }
-
-const navStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  alignItems: "baseline",
-  columnGap: 14,
-  rowGap: 6,
-  fontFamily: fontSans,
-  fontSize: 12.5,
-  lineHeight: 1.2,
-};
-
-const promptStyle: CSSProperties = {
-  color: P.ink3,
-  fontWeight: 500,
-};
-
-const linkStyle: CSSProperties = {
-  color: P.ink2,
-  fontWeight: 600,
-  textDecoration: "underline",
-  textDecorationColor: P.line,
-  textUnderlineOffset: 3,
-};

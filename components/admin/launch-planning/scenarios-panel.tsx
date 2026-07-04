@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
-import { PButton } from "@/components/pastoral/button";
+import { cn } from "@/lib/utils";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
 import type {
   LaunchPlanningAssumptions,
@@ -13,10 +12,11 @@ import type {
   LaunchPlanningScenarioComparisonEntry,
 } from "@/lib/admin/launch-planning";
 import { fmtNumber, riskTone } from "@/lib/admin/launch-planning";
+import { Button } from "@/components/ui/button";
 import {
-  eyebrowStyle,
-  panelTitleStyle as titleStyle,
-  sectionStyle,
+  eyebrowClassName,
+  panelTitleClassName as titleClassName,
+  sectionClassName,
 } from "./section-styles";
 
 // Both scenario forms are only mounted behind a click (create / select-to-edit)
@@ -66,28 +66,19 @@ export function ScenariosPanel({
   const hasScenarios = scenarios.length > 0;
 
   return (
-    <section style={{ display: "grid", gap: 18 }}>
+    <section className="grid gap-[18px]">
       {/* ---------------------------------------------------------------- */}
       {/* List / selector + create CTA                                     */}
       {/* ---------------------------------------------------------------- */}
-      <div style={sectionStyle}>
-        <header
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 16,
-            flexWrap: "wrap",
-          }}
-        >
+      <div className={sectionClassName}>
+        <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <span style={eyebrowStyle}>Scenarios</span>
-            <h2 style={titleStyle}>Saved forecast scenarios</h2>
+            <span className={eyebrowClassName}>Scenarios</span>
+            <h2 className={titleClassName}>Saved forecast scenarios</h2>
           </div>
-          <PButton
+          <Button
             type="button"
-            tone={createOpen ? "ghost" : "terra"}
+            variant={createOpen ? "ghost" : "primary"}
             size="sm"
             onClick={() => setCreateOpen((open) => !open)}
           >
@@ -96,19 +87,11 @@ export function ScenariosPanel({
               : hasScenarios
                 ? "Create scenario"
                 : "Create scenario from current assumptions"}
-          </PButton>
+          </Button>
         </header>
 
         {!hasScenarios && !createOpen ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-              margin: 0,
-              lineHeight: 1.55,
-            }}
-          >
+          <p className="m-0 font-sans text-sm leading-[1.55] text-ink2">
             No saved scenarios yet. The baseline assumptions above are still the
             source of truth — create Conservative / Expected / Stretch here to
             compare alternatives.
@@ -126,10 +109,10 @@ export function ScenariosPanel({
       </div>
 
       {createOpen ? (
-        <div style={sectionStyle}>
-          <header style={{ marginBottom: 14 }}>
-            <span style={eyebrowStyle}>Create scenario</span>
-            <h2 style={titleStyle}>New saved scenario</h2>
+        <div className={sectionClassName}>
+          <header className="mb-3.5">
+            <span className={eyebrowClassName}>Create scenario</span>
+            <h2 className={titleClassName}>New saved scenario</h2>
           </header>
           <CreateScenarioForm
             defaults={baseline}
@@ -142,7 +125,7 @@ export function ScenariosPanel({
       {/* Edit panel                                                       */}
       {/* ---------------------------------------------------------------- */}
       {selected ? (
-        <div style={sectionStyle}>
+        <div className={sectionClassName}>
           {/* `key` forces a remount when the operator picks a different
               scenario so the form's defaultValues + local state pick up
               the new row instead of holding the prior selection. */}
@@ -185,19 +168,7 @@ function ScenarioList({
   onSelect: (id: string) => void;
 }) {
   return (
-    <ul
-      style={{
-        listStyle: "none",
-        margin: 0,
-        padding: 0,
-        display: "grid",
-        gap: 1,
-        background: P.line2,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        overflow: "hidden",
-      }}
-    >
+    <ul className="m-0 grid list-none gap-px overflow-hidden rounded-sm border border-line bg-lineSoft p-0">
       {scenarios.map((scenario) => {
         const entry = comparisonByScenarioId.get(scenario.id);
         const risk = entry ? riskTone(entry.outputs.risk_level) : null;
@@ -205,141 +176,64 @@ function ScenarioList({
         return (
           <li
             key={scenario.id}
-            className="lg-m-grid-stack"
-            style={{
-              background: isSelected ? P.bgDeep : P.surface,
-              padding: "12px 16px",
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) auto",
-              gap: 12,
-              alignItems: "center",
-            }}
+            className={cn(
+              "lg-m-grid-stack grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3",
+              isSelected ? "bg-sidebar" : "bg-surface"
+            )}
           >
             <button
               type="button"
               onClick={() => onSelect(scenario.id)}
-              style={{
-                background: "transparent",
-                border: 0,
-                padding: 0,
-                margin: 0,
-                cursor: "pointer",
-                textAlign: "left",
-                fontFamily: fontBody,
-                color: P.ink,
-                display: "grid",
-                gap: 4,
-              }}
+              className="m-0 grid cursor-pointer gap-1 border-0 bg-transparent p-0 text-left font-sans text-ink"
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                <strong
-                  style={{
-                    fontFamily: fontDisplay,
-                    fontSize: 16,
-                    fontWeight: 500,
-                    color: P.ink,
-                  }}
-                >
+              <div className="flex flex-wrap items-center gap-2.5">
+                <strong className="font-display text-[16px] font-medium text-ink">
                   {scenario.name}
                 </strong>
                 {scenario.is_current ? (
-                  <span
-                    style={{
-                      fontFamily: fontSans,
-                      fontSize: 10,
-                      letterSpacing: 1.2,
-                      textTransform: "uppercase",
-                      color: P.sageTextStrong,
-                      background: P.sageSoft,
-                      border: `1px solid ${P.sage}`,
-                      padding: "2px 8px",
-                      borderRadius: 999,
-                      fontWeight: 600,
-                    }}
-                  >
+                  <span className="rounded-pill border border-sage bg-sageSoft px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-[1.2px] text-sageDeep">
                     Current
                   </span>
                 ) : null}
                 {risk ? (
                   <span
-                    style={{
-                      fontFamily: fontSans,
-                      fontSize: 10,
-                      letterSpacing: 1.2,
-                      textTransform: "uppercase",
-                      color: risk.accent,
-                      border: `1px solid ${risk.accent}`,
-                      background: P.bg,
-                      padding: "2px 8px",
-                      borderRadius: 999,
-                      fontWeight: 600,
-                    }}
+                    className={`rounded-pill border bg-bg px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-[1.2px] ${risk.text} ${risk.border}`}
                   >
                     {risk.label}
                   </span>
                 ) : null}
               </div>
               {scenario.description ? (
-                <div
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 12,
-                    color: P.ink2,
-                    lineHeight: 1.4,
-                  }}
-                >
+                <div className="font-sans text-xs text-ink2">
                   {scenario.description}
                 </div>
               ) : null}
               {entry ? (
-                <div
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 11,
-                    color: P.ink3,
-                    letterSpacing: 0.3,
-                  }}
-                >
+                <div className="font-sans text-2xs tracking-[0.3px] text-ink3">
                   Recommended new groups{" "}
-                  <strong style={{ color: P.ink }}>
+                  <strong className="text-ink">
                     {fmtNumber(entry.outputs.recommended_new_groups)}
                   </strong>{" "}
                   · Projected demand{" "}
-                  <strong style={{ color: P.ink }}>
+                  <strong className="text-ink">
                     {fmtNumber(entry.outputs.projected_group_demand)}
                   </strong>
                 </div>
               ) : null}
             </button>
             {isSelected ? (
-              <span
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 10,
-                  letterSpacing: 1.2,
-                  textTransform: "uppercase",
-                  color: P.ink3,
-                  fontWeight: 600,
-                }}
-              >
+              <span className="font-sans text-[10px] font-semibold uppercase tracking-[1.2px] text-ink3">
                 Editing
               </span>
             ) : (
-              <PButton
+              <Button
                 type="button"
-                tone="ghost"
+                variant="ghost"
                 size="sm"
                 onClick={() => onSelect(scenario.id)}
               >
                 Open
-              </PButton>
+              </Button>
             )}
           </li>
         );
@@ -418,37 +312,19 @@ function ScenarioComparisonTable({
   ];
 
   return (
-    <div style={sectionStyle}>
-      <header style={{ marginBottom: 16 }}>
-        <span style={eyebrowStyle}>Compare</span>
-        <h2 style={titleStyle}>Scenario comparison</h2>
+    <div className={sectionClassName}>
+      <header className="mb-4">
+        <span className={eyebrowClassName}>Compare</span>
+        <h2 className={titleClassName}>Scenario comparison</h2>
       </header>
 
       <ScrollableTable>
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink,
-          }}
-        >
+        <table className="w-full border-collapse font-sans text-sm text-ink">
           <thead>
             <tr>
               <th
                 scope="col"
-                style={{
-                  textAlign: "left",
-                  padding: "8px 10px",
-                  borderBottom: `1px solid ${P.line}`,
-                  fontFamily: fontSans,
-                  fontSize: 11,
-                  letterSpacing: 0.8,
-                  color: P.ink3,
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                }}
+                className="border-b border-line px-2.5 py-2 text-left font-sans text-2xs font-semibold uppercase tracking-[0.8px] text-ink3"
               >
                 Metric
               </th>
@@ -456,33 +332,11 @@ function ScenarioComparisonTable({
                 <th
                   scope="col"
                   key={col.key}
-                  style={{
-                    textAlign: "left",
-                    padding: "8px 10px",
-                    borderBottom: `1px solid ${P.line}`,
-                    fontFamily: fontSans,
-                    fontSize: 11,
-                    letterSpacing: 0.8,
-                    color: P.ink3,
-                    textTransform: "uppercase",
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                  }}
+                  className="whitespace-nowrap border-b border-line px-2.5 py-2 text-left font-sans text-2xs font-semibold uppercase tracking-[0.8px] text-ink3"
                 >
                   {col.title}
                   {col.is_current ? (
-                    <span
-                      style={{
-                        marginLeft: 6,
-                        fontSize: 10,
-                        color: P.sageTextStrong,
-                        background: P.sageSoft,
-                        border: `1px solid ${P.sage}`,
-                        padding: "1px 6px",
-                        borderRadius: 999,
-                        textTransform: "uppercase",
-                      }}
-                    >
+                    <span className="ml-1.5 rounded-pill border border-sage bg-sageSoft px-1.5 py-px text-[10px] uppercase text-sageDeep">
                       Current
                     </span>
                   ) : null}
@@ -495,29 +349,14 @@ function ScenarioComparisonTable({
               <tr key={ri}>
                 <th
                   scope="row"
-                  style={{
-                    textAlign: "left",
-                    padding: "8px 10px",
-                    borderBottom: `1px solid ${P.line2}`,
-                    fontFamily: fontBody,
-                    fontSize: 13,
-                    color: P.ink2,
-                    fontWeight: 500,
-                  }}
+                  className="border-b border-lineSoft px-2.5 py-2 text-left font-sans text-sm font-medium text-ink2"
                 >
                   {row.label}
                 </th>
                 {columns.map((col) => (
                   <td
                     key={col.key}
-                    style={{
-                      padding: "8px 10px",
-                      borderBottom: `1px solid ${P.line2}`,
-                      fontFamily: fontDisplay,
-                      fontSize: 15,
-                      color: P.ink,
-                      fontVariantNumeric: "tabular-nums",
-                    }}
+                    className="border-b border-lineSoft px-2.5 py-2 font-display text-md tabular-nums text-ink"
                   >
                     {row.pick(col.assumptions, col.outputs)}
                   </td>
@@ -527,14 +366,7 @@ function ScenarioComparisonTable({
             <tr>
               <th
                 scope="row"
-                style={{
-                  textAlign: "left",
-                  padding: "8px 10px",
-                  fontFamily: fontBody,
-                  fontSize: 13,
-                  color: P.ink2,
-                  fontWeight: 500,
-                }}
+                className="px-2.5 py-2 text-left font-sans text-sm font-medium text-ink2"
               >
                 Risk level
               </th>
@@ -543,15 +375,7 @@ function ScenarioComparisonTable({
                 return (
                   <td
                     key={col.key}
-                    style={{
-                      padding: "8px 10px",
-                      fontFamily: fontSans,
-                      fontSize: 11,
-                      letterSpacing: 1.2,
-                      textTransform: "uppercase",
-                      color: risk.accent,
-                      fontWeight: 600,
-                    }}
+                    className={`px-2.5 py-2 font-sans text-2xs font-semibold uppercase tracking-[1.2px] ${risk.text}`}
                   >
                     {risk.label}
                   </td>

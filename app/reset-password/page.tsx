@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { PublicPageShell } from "@/components/lg/PublicPageShell";
-import { PButton } from "@/components/pastoral/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { readOwnNameState } from "@/lib/account/own-name";
 import { ResetPasswordForm } from "./reset-password-form";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -131,9 +131,9 @@ export default async function ResetPasswordPage({
               {Object.entries(view.fields).map(([name, value]) => (
                 <input key={name} type="hidden" name={name} value={value} />
               ))}
-              <PButton type="submit" tone="terra" className="w-full">
+              <Button type="submit" variant="primary" className="w-full">
                 Set my new password
-              </PButton>
+              </Button>
             </form>
           ) : (
             /* Error status note: soft rose bg + rose fg, no stripe. */

@@ -39,7 +39,7 @@ export function ClearGroupMetricOverridesButton({
       ]}
       idleLabel="Clear overrides"
       pendingLabel="Clearing…"
-      tone="ghost"
+      variant="ghost"
       gap={4}
     />
   );

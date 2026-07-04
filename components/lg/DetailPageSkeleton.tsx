@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { cn } from "@/lib/utils";
 
 // Loading fallback for the data-heavy detail routes' `loading.tsx` boundaries
 // (repo-sweep #589). The generic PageSkeleton is shaped like a list/dashboard
@@ -12,15 +12,23 @@ import type { CSSProperties } from "react";
 // matching PageSkeleton's approach. Wrapped in role="status" with an sr-only
 // "Loading…" so assistive tech announces the transition.
 
-function Bar({ style }: { style?: CSSProperties }) {
+function Bar({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className="animate-pulse rounded-md bg-lineSoft"
-      style={style}
+      className={cn("animate-pulse rounded-md bg-lineSoft", className)}
     />
   );
 }
+
+// Tab-row bars keyed by width so the skeleton row reads like the real tab bar.
+const TAB_BAR_WIDTHS = [
+  "w-[88px]",
+  "w-[110px]",
+  "w-[84px]",
+  "w-[96px]",
+  "w-[120px]",
+];
 
 export function DetailPageSkeleton() {
   return (
@@ -28,33 +36,21 @@ export function DetailPageSkeleton() {
       <span className="sr-only">Loading…</span>
 
       {/* Header region — matches PageHeader's padding/maxWidth/margin. */}
-      <div
-        className="mx-auto w-full px-4 pb-4 pt-[22px] md:px-10 md:pb-6 md:pt-9"
-        style={{ maxWidth: 1240 }}
-      >
-        <Bar
-          style={{ height: 11, width: 120, borderRadius: 6, marginBottom: 14 }}
-        />
-        <Bar
-          style={{ height: 40, width: 280, maxWidth: "60%", borderRadius: 10 }}
-        />
-        <Bar
-          style={{ height: 14, width: 460, maxWidth: "90%", marginTop: 16 }}
-        />
+      <div className="mx-auto w-full max-w-[1240px] px-4 pb-4 pt-[22px] md:px-10 md:pb-6 md:pt-9">
+        <Bar className="mb-3.5 h-[11px] w-[120px] rounded-[6px]" />
+        <Bar className="h-10 w-[280px] max-w-[60%] rounded-sm" />
+        <Bar className="mt-4 h-3.5 w-[460px] max-w-[90%]" />
       </div>
 
       {/* Body region — matches PageBody's padding/maxWidth/margin. */}
-      <div
-        className="mx-auto w-full px-4 pb-8 md:px-10 md:pb-16"
-        style={{ maxWidth: 1240 }}
-      >
+      <div className="mx-auto w-full max-w-[1240px] px-4 pb-8 md:px-10 md:pb-16">
         {/* Back link */}
-        <Bar style={{ height: 14, width: 110, marginBottom: 20 }} />
+        <Bar className="mb-5 h-3.5 w-[110px]" />
 
         {/* Tab row */}
         <div className="mb-5 flex flex-wrap gap-2.5">
-          {[88, 110, 84, 96, 120].map((w) => (
-            <Bar key={w} style={{ height: 30, width: w, borderRadius: 9999 }} />
+          {TAB_BAR_WIDTHS.map((w) => (
+            <Bar key={w} className={cn("h-[30px] rounded-pill", w)} />
           ))}
         </div>
 
@@ -73,8 +69,8 @@ export function DetailTabPanelSkeleton() {
   return (
     <div role="status" aria-live="polite" className="flex flex-col gap-4">
       <span className="sr-only">Loading…</span>
-      <Bar style={{ height: 220, borderRadius: 14 }} />
-      <Bar style={{ height: 160, borderRadius: 14 }} />
+      <Bar className="h-[220px] rounded-lg" />
+      <Bar className="h-40 rounded-lg" />
     </div>
   );
 }

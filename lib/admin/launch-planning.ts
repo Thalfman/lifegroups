@@ -34,7 +34,6 @@ import {
   countActiveMembersByGroup,
   indexOverridesByGroup,
 } from "@/lib/admin/group-capacity-inputs";
-import { P } from "@/lib/pastoral";
 
 // ---------------------------------------------------------------------------
 // Presentation helpers (shared across the launch-planning panels)
@@ -53,20 +52,28 @@ export function fmtNumber(n: number, fractionDigits = 0): string {
 }
 
 /**
- * The label + accent color for a launch-planning risk level. Shared by the
- * results / scenarios / summary panels so they read identically.
+ * The label + accent classes for a launch-planning risk level. Shared by the
+ * results / scenarios / summary panels so they read identically — the accent
+ * is expressed as text / border Tailwind utilities.
  */
 export function riskTone(level: LaunchPlanningRiskLevel): {
   label: string;
-  accent: string;
+  text: string;
+  border: string;
 } {
   switch (level) {
     case "ok":
-      return { label: "OK", accent: P.sage };
+      return { label: "OK", text: "text-sage", border: "border-sage" };
     case "watch":
-      return { label: "Watch", accent: P.terra };
+      return { label: "Watch", text: "text-clay", border: "border-clay" };
     case "launch_needed":
-      return { label: "Launch needed", accent: "#923220" };
+      // The legacy off-token #923220 accent converged onto the clayDeep
+      // token (the same convergence #846 applied in field-styles).
+      return {
+        label: "Launch needed",
+        text: "text-clayDeep",
+        border: "border-clayDeep",
+      };
   }
 }
 

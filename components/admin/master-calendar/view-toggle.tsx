@@ -1,6 +1,5 @@
-import { P } from "@/lib/pastoral";
 import type { CalendarViewMode } from "@/lib/admin/master-calendar-view";
-import { pillButtonStyle } from "./filter-styles";
+import { pillButtonClassName } from "./filter-styles";
 
 type ViewMode = CalendarViewMode;
 
@@ -15,21 +14,14 @@ export function ViewToggle({
     <div
       role="tablist"
       aria-label="Calendar view"
-      style={{
-        display: "inline-flex",
-        alignSelf: "start",
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 999,
-        padding: 3,
-      }}
+      className="inline-flex self-start rounded-pill border border-line bg-surface p-[3px]"
     >
       <button
         type="button"
         role="tab"
         aria-selected={viewMode === "month"}
         onClick={() => onChange("month")}
-        style={pillButtonStyle(viewMode === "month")}
+        className={pillButtonClassName(viewMode === "month")}
       >
         Month
       </button>
@@ -38,7 +30,7 @@ export function ViewToggle({
         role="tab"
         aria-selected={viewMode === "list"}
         onClick={() => onChange("list")}
-        style={pillButtonStyle(viewMode === "list")}
+        className={pillButtonClassName(viewMode === "list")}
       >
         List
       </button>

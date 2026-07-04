@@ -1,6 +1,5 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { superAdminUpdateProfileRole } from "@/app/(protected)/admin/super-admin/actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import {
@@ -10,6 +9,7 @@ import {
 } from "./field-styles";
 import type { UserRole } from "@/types/enums";
 import { useActionForm, FormStatus } from "./action-form";
+import { Button } from "@/components/ui/button";
 
 // Any active profile whose current role is NOT super_admin can be the
 // target of a role change.
@@ -99,14 +99,14 @@ export function RoleChangeForm({
           </select>
         </div>
         <div>
-          <PButton
+          <Button
             type="submit"
-            tone="terra"
+            variant="primary"
             size="md"
             disabled={pending || noOptions}
           >
             {pending ? "Saving…" : "Change role"}
-          </PButton>
+          </Button>
         </div>
       </div>
       {noOptions ? (

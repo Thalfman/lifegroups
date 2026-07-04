@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { cn } from "@/lib/utils";
 
 // Loading fallback for the admin `loading.tsx` boundary. It mirrors the
 // geometry of PageHeader + PageBody (same outer padding / maxWidth / margin) so
@@ -17,12 +17,11 @@ import type { CSSProperties } from "react";
 // announces the transition (the visual bars are aria-hidden), matching the
 // role="status" convention already used elsewhere in the app.
 
-function Bar({ style }: { style?: CSSProperties }) {
+function Bar({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className="animate-pulse rounded-md bg-lineSoft"
-      style={style}
+      className={cn("animate-pulse rounded-md bg-lineSoft", className)}
     />
   );
 }
@@ -37,46 +36,24 @@ export function PageSkeleton({
       {/* Header region — matches PageHeader's padding/maxWidth/margin. Skipped
           when the real PageHeader has already rendered above the boundary. */}
       {bodyOnly ? null : (
-        <div
-          className="mx-auto w-full px-4 pb-4 pt-[22px] md:px-10 md:pb-6 md:pt-9"
-          style={{ maxWidth: 1240 }}
-        >
-          <Bar
-            style={{
-              height: 11,
-              width: 120,
-              borderRadius: 6,
-              marginBottom: 14,
-            }}
-          />
-          <Bar
-            style={{
-              height: 40,
-              width: 320,
-              maxWidth: "70%",
-              borderRadius: 10,
-            }}
-          />
-          <Bar
-            style={{ height: 14, width: 440, maxWidth: "90%", marginTop: 16 }}
-          />
+        <div className="mx-auto w-full max-w-[1240px] px-4 pb-4 pt-[22px] md:px-10 md:pb-6 md:pt-9">
+          <Bar className="mb-3.5 h-[11px] w-[120px] rounded-[6px]" />
+          <Bar className="h-10 w-80 max-w-[70%] rounded-sm" />
+          <Bar className="mt-4 h-3.5 w-[440px] max-w-[90%]" />
         </div>
       )}
 
       {/* Body region — matches PageBody's padding/maxWidth/margin. */}
-      <div
-        className="mx-auto w-full px-4 pb-8 md:px-10 md:pb-16"
-        style={{ maxWidth: 1240 }}
-      >
+      <div className="mx-auto w-full max-w-[1240px] px-4 pb-8 md:px-10 md:pb-16">
         <div className="mb-6 grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
           {[0, 1, 2, 3].map((i) => (
-            <Bar key={i} style={{ height: 96, borderRadius: 14 }} />
+            <Bar key={i} className="h-24 rounded-lg" />
           ))}
         </div>
 
         <div className="flex flex-col gap-4">
-          <Bar style={{ height: 180, borderRadius: 14 }} />
-          <Bar style={{ height: 240, borderRadius: 14 }} />
+          <Bar className="h-[180px] rounded-lg" />
+          <Bar className="h-60 rounded-lg" />
         </div>
       </div>
     </div>

@@ -8,15 +8,15 @@ export function MetricCard({
   title,
   value,
   meta,
-  accent = "var(--c-clay)",
-  valueColor,
+  accentClassName = "text-clay",
+  valueClassName,
   empty = false,
 }: {
   title: string;
   value: string;
   meta: string;
-  accent?: string;
-  valueColor?: string;
+  accentClassName?: string;
+  valueClassName?: string;
   // When true, the value is a labelled empty state ("No data yet") rather than
   // a metric — render it small, muted, and italic so it reads as "nothing to
   // show" instead of a giant cryptic em dash.
@@ -31,8 +31,10 @@ export function MetricCard({
         </div>
       ) : (
         <div
-          className="font-display text-3xl tabular-nums leading-none"
-          style={{ color: valueColor ?? accent }}
+          className={
+            "font-display text-3xl tabular-nums leading-none " +
+            (valueClassName ?? accentClassName)
+          }
         >
           {value}
         </div>

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
-import { P, fontSans } from "@/lib/pastoral";
+import { useState, type ReactNode } from "react";
 
 // The Planning area's five tabs (ADR 0013, #303). Planning answers "what is
 // coming next?" and hosts the former Launch Planning + Calendar surfaces. The
@@ -24,39 +23,12 @@ const TABS: { key: PlanningTabKey; label: string }[] = [
   { key: "multiplication", label: "Multiplication" },
 ];
 
-// Static layout styles + the two tab-button variants, hoisted so the shell does
-// not rebuild identical objects (one per tab) on every render.
-const ROOT_STYLE: CSSProperties = { display: "grid", gap: 24 };
-const TABLIST_STYLE: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 4,
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  borderRadius: 999,
-  padding: 3,
-  alignSelf: "start",
-};
-const TAB_BASE_STYLE: CSSProperties = {
-  fontFamily: fontSans,
-  fontSize: 13,
-  border: "none",
-  padding: "8px 14px",
-  cursor: "pointer",
-  borderRadius: 999,
-};
-const TAB_STYLE_ACTIVE: CSSProperties = {
-  ...TAB_BASE_STYLE,
-  fontWeight: 700,
-  color: P.surface,
-  background: P.terra,
-};
-const TAB_STYLE_INACTIVE: CSSProperties = {
-  ...TAB_BASE_STYLE,
-  fontWeight: 500,
-  color: P.ink3,
-  background: "transparent",
-};
+// The two tab-button variants (mirrors master-calendar/filter-styles'
+// pillButtonClassName, at this tab rail's 13px size).
+const TAB_BASE_CLASSNAME =
+  "cursor-pointer rounded-pill border-none px-3.5 py-2 font-sans text-sm";
+const TAB_CLASSNAME_ACTIVE = `${TAB_BASE_CLASSNAME} bg-clay font-bold text-surface`;
+const TAB_CLASSNAME_INACTIVE = `${TAB_BASE_CLASSNAME} bg-transparent font-medium text-ink3`;
 
 export function PlanningShell({
   calendar,
@@ -96,8 +68,12 @@ export function PlanningShell({
   };
 
   return (
-    <div style={ROOT_STYLE}>
-      <div role="tablist" aria-label="Planning sections" style={TABLIST_STYLE}>
+    <div className="grid gap-6">
+      <div
+        role="tablist"
+        aria-label="Planning sections"
+        className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
+      >
         {TABS.map((tab) => (
           <button
             key={tab.key}
@@ -107,7 +83,9 @@ export function PlanningShell({
             aria-selected={active === tab.key}
             aria-controls={`planning-panel-${tab.key}`}
             onClick={() => setActive(tab.key)}
-            style={active === tab.key ? TAB_STYLE_ACTIVE : TAB_STYLE_INACTIVE}
+            className={
+              active === tab.key ? TAB_CLASSNAME_ACTIVE : TAB_CLASSNAME_INACTIVE
+            }
           >
             {tab.label}
           </button>

@@ -1,11 +1,11 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
 import { CareFollowUpCreateForm } from "@/components/admin/shepherd-care/care-follow-up-create-form";
 import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
 import type { ShepherdCareFollowUpsRow } from "@/types/database";
+import { Button } from "@/components/ui/button";
 
 // Leader care follow-ups, with creation moved into the shared Editing Pattern
 // drawer (#268, Admin Interaction Model req 1 — P0 list-style editing only).
@@ -40,14 +40,14 @@ export function CareFollowUpsSection({
   return (
     <div className="grid gap-4">
       <div>
-        <PButton
+        <Button
           type="button"
-          tone="terra"
+          variant="primary"
           size="md"
           onClick={() => drawer.open(true)}
         >
           Add follow-up
-        </PButton>
+        </Button>
       </div>
 
       {followUps.length === 0 ? (

@@ -97,7 +97,6 @@ import { SuperAdminSectionAnchors } from "@/components/admin/super-admin-section
 import { Sidebar } from "@/components/lg/shell/Sidebar";
 import { adminNavGroups } from "@/lib/auth/roles";
 import { NAV_ALIAS_TO_CANONICAL } from "@/lib/nav/active-nav";
-import { P } from "@/lib/pastoral";
 import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
 import {
   DEMO_GROUPS,
@@ -1209,10 +1208,7 @@ function Surface({
   children: ReactNode;
 }) {
   return (
-    <section
-      data-a11y-surface={id}
-      style={{ display: "grid", gap: 12, marginBottom: 40 }}
-    >
+    <section data-a11y-surface={id} className="mb-10 grid gap-3">
       <h2>{heading}</h2>
       {children}
     </section>
@@ -1231,7 +1227,7 @@ export function A11yHarnessClient() {
     ? ["/admin/planning"]
     : HOME_DEFAULT_HIDDEN_NAV;
   return (
-    <main style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
+    <main className="mx-auto my-0 max-w-[960px] p-6">
       <h1>Admin accessible-name harness</h1>
 
       <Surface
@@ -1369,7 +1365,7 @@ export function A11yHarnessClient() {
         id="calendar-occurrence-editor"
         heading="Calendar occurrence editor"
       >
-        <div style={{ position: "relative", display: "inline-block" }}>
+        <div className="relative inline-block">
           <CalendarOccurrenceEditor
             groupId="grp-anderson"
             groupMeetingTime="19:00"
@@ -1412,7 +1408,7 @@ export function A11yHarnessClient() {
       </Surface>
 
       <Surface id="follow-up-status" heading="Follow-up status controls">
-        <div style={{ display: "grid", gap: 16 }}>
+        <div className="grid gap-4">
           {FOLLOW_UPS.map((fu) => (
             <div key={fu.id}>
               <p>{fu.title}</p>
@@ -1566,7 +1562,7 @@ export function A11yHarnessClient() {
         heading="Contextual actions (entity menu + drawer)"
       >
         <ContextualActionProvider bodies={CARE_CONTEXTUAL_BODIES}>
-          <div style={{ display: "flex", gap: 12 }}>
+          <div className="flex gap-3">
             <CareLeaderActionsMenu
               leaderProfileId="00000000-0000-4000-8000-000000000021"
               leaderName="Anderson Lee"
@@ -1734,20 +1730,10 @@ export function A11yHarnessClient() {
           id="harness-danger-zone"
           label="Danger Zone"
           accent={{
-            border: P.terra,
-            color: P.terraTextStrong,
+            borderClassName: "border-clay",
+            textClassName: "text-clayDeep",
             badge: (
-              <span
-                style={{
-                  border: `1px solid ${P.terra}`,
-                  borderRadius: 999,
-                  color: P.terraTextStrong,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: "4px 8px",
-                  textTransform: "uppercase",
-                }}
-              >
+              <span className="rounded-pill border border-clay px-2 py-1 text-2xs font-bold uppercase text-clayDeep">
                 Guarded
               </span>
             ),
@@ -1764,10 +1750,10 @@ export function A11yHarnessClient() {
           The spec asserts exactly one aria-current="page" per instance and that
           it falls on the area that OWNS the path (alias → canonical). */}
       <Surface id="sidebar-active-state" heading="Sidebar active state">
-        <div style={{ display: "grid", gap: 24 }}>
+        <div className="grid gap-6">
           {SIDEBAR_ACTIVE_PATHS.map((activePath) => (
             <div key={activePath} data-sidebar-active-path={activePath}>
-              <h3 style={{ margin: "0 0 8px" }}>{activePath}</h3>
+              <h3 className="mb-2 mt-0">{activePath}</h3>
               <Sidebar
                 navGroups={adminNavGroups("ministry_admin")}
                 activePath={activePath}

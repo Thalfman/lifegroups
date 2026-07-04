@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
-import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveMultiplicationCandidate,
   adminCreateMultiplicationCandidate,
@@ -416,17 +415,22 @@ function CandidateEditForm({
           }}
         />
         <div className="flex items-center gap-2.5">
-          <PButton type="submit" tone="terra" size="sm" disabled={pending}>
+          <Button type="submit" variant="primary" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save"}
-          </PButton>
+          </Button>
           <FormStatus state={state} />
         </div>
       </form>
       <form action={archiveAction}>
         <input type="hidden" name="candidate_id" value={c.candidateId} />
-        <PButton type="submit" tone="ghost" size="sm" disabled={archivePending}>
+        <Button
+          type="submit"
+          variant="ghost"
+          size="sm"
+          disabled={archivePending}
+        >
           {archivePending ? "Removing…" : "Remove from pipeline"}
-        </PButton>
+        </Button>
         <FormStatus state={archiveState} />
       </form>
     </div>
@@ -518,14 +522,14 @@ function AddCandidateForm({
       <NotesField idPrefix="mc-add" />
       <ReadinessChecklist idPrefix="mc-add" />
       <div className="flex items-center gap-2.5">
-        <PButton
+        <Button
           type="submit"
-          tone="terra"
+          variant="primary"
           size="md"
           disabled={pending || !canSubmit}
         >
           {pending ? "Adding…" : "Add to pipeline"}
-        </PButton>
+        </Button>
         {!canSubmit ? (
           <p className={HINT}>Select a group to enable Add to pipeline.</p>
         ) : null}

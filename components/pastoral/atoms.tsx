@@ -111,11 +111,11 @@ export function POrnament({
 
 export type PAvatarTone = "terra" | "sage" | "mustard" | "neutral";
 
-const PAVATAR_TONES: Record<PAvatarTone, { bg: string; fg: string }> = {
-  terra: { bg: P.terraSoft, fg: P.terra },
-  sage: { bg: P.sageSoft, fg: P.sage },
-  mustard: { bg: P.mustardSoft, fg: P.mustard },
-  neutral: { bg: P.line2, fg: P.ink2 },
+const PAVATAR_TONES: Record<PAvatarTone, string> = {
+  terra: "bg-claySoft text-clay",
+  sage: "bg-sageSoft text-sage",
+  mustard: "bg-amberSoft text-amber",
+  neutral: "bg-lineSoft text-ink2",
 };
 
 export function PAvatar({
@@ -129,7 +129,6 @@ export function PAvatar({
   tone?: PAvatarTone;
   style?: CSSProperties;
 }) {
-  const { bg, fg } = PAVATAR_TONES[tone];
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -139,18 +138,17 @@ export function PAvatar({
   return (
     <div
       aria-hidden="true"
+      // Plain string join, not cn(): tailwind-merge doesn't know the custom
+      // `font-display` family and drops it against `font-semibold`.
+      className={
+        "grid shrink-0 place-items-center rounded-pill font-display font-semibold " +
+        PAVATAR_TONES[tone]
+      }
+      // Size is caller-supplied at runtime, so the box + scaled type stay inline.
       style={{
         width: size,
         height: size,
-        borderRadius: 999,
-        background: bg,
-        display: "grid",
-        placeItems: "center",
         fontSize: Math.max(10, Math.round(size * 0.32)),
-        fontFamily: fontDisplay,
-        fontWeight: 600,
-        color: fg,
-        flexShrink: 0,
         ...style,
       }}
     >

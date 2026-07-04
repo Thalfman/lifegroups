@@ -1,13 +1,11 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import { adminUpdateLaunchPlanningAssumptions } from "@/app/(protected)/admin/launch-planning/actions";
-import { P, fontBody } from "@/lib/pastoral";
 import { PercentField } from "@/components/admin/launch-planning/percent-field";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
@@ -15,6 +13,7 @@ import {
 } from "@/components/admin/forms/action-form";
 import { ratioToPercent } from "@/lib/admin/launch-planning";
 import type { LaunchPlanningAssumptions } from "@/lib/admin/launch-planning";
+import { Button } from "@/components/ui/button";
 
 // L5 (#224): the default forecast asks only for the two inputs that need a
 // ministry-specific answer — current church attendance (set in the Church
@@ -31,16 +30,8 @@ export function LaunchPlanningAssumptionsForm({
   );
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 16 }}>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.55,
-        }}
-      >
+    <form action={formAction} className="grid gap-4">
+      <p className="m-0 font-sans text-sm leading-[1.55] text-ink2">
         Set the share of attendees you want in a Life Group. Current church
         attendance is set in the Church attendance card above; growth, group
         size, buffer, and leaders per group use sensible defaults you can
@@ -63,7 +54,7 @@ export function LaunchPlanningAssumptionsForm({
       />
 
       <div>
-        <label htmlFor="notes" style={fieldLabelStyle}>
+        <label htmlFor="notes" className={fieldLabelClassName}>
           Planning notes
         </label>
         <textarea
@@ -72,34 +63,23 @@ export function LaunchPlanningAssumptionsForm({
           rows={3}
           maxLength={NOTE_MAX_CHARS}
           defaultValue={assumptions.notes ?? ""}
-          style={{
-            ...fieldInputStyle,
-            minHeight: 80,
-            resize: "vertical",
-            fontFamily: fontBody,
-          }}
+          className={`${fieldInputClassName} min-h-20 resize-y`}
           placeholder="Optional context for Julian's eyes only."
         />
-        <p style={hintStyle}>
+        <p className={hintClassName}>
           Admin-only. Not shown anywhere outside this page and never logged in
           audit metadata.
         </p>
       </div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+      <div className="flex items-center gap-2.5">
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save forecast"}
-        </PButton>
+        </Button>
         <FormStatus state={state} successText="Forecast saved." />
       </div>
     </form>
   );
 }
 
-const hintStyle = {
-  fontFamily: fontBody,
-  fontSize: 11,
-  color: P.ink3,
-  margin: "4px 0 0",
-  lineHeight: 1.4,
-} as const;
+const hintClassName = "m-0 mt-1 font-sans text-2xs leading-[1.4] text-ink3";

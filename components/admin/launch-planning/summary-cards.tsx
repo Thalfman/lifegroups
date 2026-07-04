@@ -1,6 +1,4 @@
-import type { CSSProperties } from "react";
 import { MetricCard } from "@/components/dashboard/cards";
-import { P, fontSans } from "@/lib/pastoral";
 import type {
   LaunchPlanningInputs,
   LaunchPlanningOutputs,
@@ -9,15 +7,8 @@ import { riskTone } from "@/lib/admin/launch-planning";
 
 // Small uppercase tier label, matching the eyebrow treatment used on the cards
 // themselves, so the two tiers read as "answer" then "the inputs behind it".
-const TIER_LABEL: CSSProperties = {
-  fontFamily: fontSans,
-  fontSize: 10,
-  letterSpacing: 1.5,
-  textTransform: "uppercase",
-  color: P.ink3,
-  fontWeight: 600,
-  marginBottom: 10,
-};
+const TIER_LABEL =
+  "mb-2.5 font-sans text-[10px] font-semibold uppercase tracking-[1.5px] text-ink3";
 
 const EMPTY_METRIC_LABEL = "No data yet";
 
@@ -49,17 +40,10 @@ export function LaunchPlanningAnswerCards({
 
   return (
     <section aria-labelledby="lp-answer">
-      <div id="lp-answer" style={TIER_LABEL}>
+      <div id="lp-answer" className={TIER_LABEL}>
         At a glance
       </div>
-      <div
-        className="lg-m-cards-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: 16,
-        }}
-      >
+      <div className="lg-m-cards-grid grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
         <MetricCard
           title="Risk level"
           value={risk.label}
@@ -70,14 +54,14 @@ export function LaunchPlanningAnswerCards({
                 ? "Gap is within configured buffer headroom."
                 : "Gap exceeds configured buffer — plan a launch."
           }
-          accent={risk.accent}
-          valueColor={risk.accent}
+          accentClassName={risk.text}
+          valueClassName={risk.text}
         />
         <MetricCard
           title="Recommended new groups"
           {...metricValue(outputs.recommended_new_groups)}
           meta="To meet projected demand with buffer."
-          accent={P.sage}
+          accentClassName="text-sage"
         />
         <MetricCard
           title="Available seats"
@@ -100,17 +84,10 @@ export function LaunchPlanningBreakdownCards({
 }) {
   return (
     <section aria-labelledby="lp-supporting">
-      <div id="lp-supporting" style={TIER_LABEL}>
+      <div id="lp-supporting" className={TIER_LABEL}>
         Capacity breakdown
       </div>
-      <div
-        className="lg-m-cards-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: 14,
-        }}
-      >
+      <div className="lg-m-cards-grid grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3.5">
         <MetricCard
           title="Active groups"
           {...metricValue(inputs.active_group_count)}
@@ -134,13 +111,13 @@ export function LaunchPlanningBreakdownCards({
           title="Projected demand"
           {...metricValue(outputs.projected_group_demand)}
           meta="Attendance × target participation %."
-          accent={P.sage}
+          accentClassName="text-sage"
         />
         <MetricCard
           title="Estimated new shepherds"
           {...metricValue(outputs.estimated_new_leaders_needed)}
           meta="New groups × shepherds per new group."
-          accent={P.sage}
+          accentClassName="text-sage"
         />
       </div>
     </section>

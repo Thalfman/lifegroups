@@ -9,7 +9,6 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { PButton } from "@/components/pastoral/button";
 import { useValueChange } from "@/lib/hooks/use-value-change";
 import {
   superAdminPermanentDelete,
@@ -167,14 +166,14 @@ export function PermanentDeleteCard({
           <input type="hidden" name="entityType" value={entityType} />
           <input type="hidden" name="id" value={selectedId} />
           <div>
-            <PButton
+            <Button
               type="submit"
-              tone="ghost"
+              variant="ghost"
               size="md"
               disabled={preflight.pending || !selectedId}
             >
               {preflight.pending ? "Checking…" : "Check dependents"}
-            </PButton>
+            </Button>
           </div>
           <FormStatus state={preflight.state} />
         </form>
@@ -351,14 +350,14 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
             value={confirm}
             onChange={setConfirm}
           />
-          <PButton
+          <Button
             type="submit"
-            tone="ghost"
+            variant="ghost"
             size="md"
             disabled={restore.pending || !matches}
           >
             {restore.pending ? "Restoring…" : "Restore"}
-          </PButton>
+          </Button>
           {restore.state?.ok ? (
             <span className={successTextClassName}>
               Restored ({restore.state.value.relinked} re-linked,{" "}

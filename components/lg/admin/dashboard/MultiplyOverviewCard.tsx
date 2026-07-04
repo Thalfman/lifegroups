@@ -1,5 +1,4 @@
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { P } from "@/lib/pastoral";
 import type {
   MultiplicationDashboardSummary,
   MultiplyReadinessDashboardSummary,
@@ -60,7 +59,7 @@ export function MultiplyOverviewCard({
           <StatTile
             label="Groups ready"
             value={summary.readyCells}
-            valueColor={summary.readyCells > 0 ? P.sage : P.ink}
+            valueClassName={summary.readyCells > 0 ? "text-sage" : "text-ink"}
             hint={`of ${summary.activeCells}`}
           />
         </StatTileGrid>

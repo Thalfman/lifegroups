@@ -315,7 +315,7 @@ describe("#664 — non-blocking confirmation dialog flow", () => {
         hiddenFields={[{ name: "group_id", value: "g1" }]}
         idleLabel="Archive group"
         pendingLabel="Archiving…"
-        tone="terra"
+        variant="primary"
         ariaLabel="Archive Bayside Men"
         successText="Group archived."
       />

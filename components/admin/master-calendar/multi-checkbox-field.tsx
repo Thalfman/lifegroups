@@ -1,5 +1,4 @@
 import { useId } from "react";
-import { P, fontSans } from "@/lib/pastoral";
 import { slugify } from "./filter-helpers";
 import { BulkActions } from "./bulk-actions";
 import { CheckboxPill } from "./checkbox-pill";
@@ -24,27 +23,8 @@ export function MultiCheckboxField<V extends string | number>({
 }) {
   const uid = useId();
   return (
-    <fieldset
-      style={{
-        border: `1px solid ${P.line2}`,
-        borderRadius: 10,
-        padding: "6px 10px",
-        margin: 0,
-        background: P.bg,
-        alignSelf: "start",
-      }}
-    >
-      <legend
-        style={{
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 700,
-          padding: "0 4px",
-        }}
-      >
+    <fieldset className="m-0 self-start rounded-sm border border-lineSoft bg-bg px-2.5 py-1.5">
+      <legend className="px-1 font-sans text-[10px] font-bold uppercase tracking-[1.2px] text-ink3">
         {label}
       </legend>
       <BulkActions
@@ -53,17 +33,7 @@ export function MultiCheckboxField<V extends string | number>({
         value={value}
         onChange={onChange}
       />
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 6,
-          paddingTop: 4,
-          maxHeight: 96,
-          overflowY: "auto",
-          paddingRight: 2,
-        }}
-      >
+      <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto pr-0.5 pt-1">
         {options.map((opt) => {
           const checked = value.includes(opt.value);
           const id = `${uid}${fieldKey}-${slugify(String(opt.value))}`;

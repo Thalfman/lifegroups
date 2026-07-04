@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
 import {
@@ -10,6 +9,7 @@ import {
 } from "@/components/admin/shepherd-care/care-action-forms";
 import type { ShepherdCareProfilesRow } from "@/types/database";
 import type { ShepherdCareInteractionType } from "@/types/enums";
+import { Button } from "@/components/ui/button";
 
 // Leader care actions, redesigned as plain, separate choices (#272, Admin
 // Interaction Model req 10). Each choice does exactly one thing and opens a
@@ -146,27 +146,27 @@ export function CareActions({
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="flex flex-wrap items-center gap-1.5 rounded-pill bg-surfaceAlt p-1">
           {logActions.map((a) => (
-            <PButton
+            <Button
               key={a.kind}
               type="button"
-              tone="ghost"
+              variant="ghost"
               size="md"
               onClick={() => drawer.open(a.kind)}
             >
               {a.label}
-            </PButton>
+            </Button>
           ))}
         </div>
         {editActions.map((a) => (
-          <PButton
+          <Button
             key={a.kind}
             type="button"
-            tone="ghost"
+            variant="ghost"
             size="md"
             onClick={() => drawer.open(a.kind)}
           >
             {a.label}
-          </PButton>
+          </Button>
         ))}
       </div>
 

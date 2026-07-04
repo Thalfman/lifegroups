@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { PBadge } from "@/components/pastoral/atoms";
 import { adminUpdateGuestPipeline } from "@/app/(protected)/admin/guests/actions";
 import {
@@ -9,12 +8,12 @@ import {
   type GuestDirectoryEntry,
 } from "@/lib/supabase/guest-reads";
 import { pipelineStageLabel } from "@/lib/dashboard/labels";
-import { P, fontBody, fontDisplay, fontMono, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
+  fieldInputClassName,
+  fieldSelectClassName,
 } from "@/components/admin/forms/field-styles";
+import { FormField } from "@/components/admin/forms/form-field";
 import {
   useActionForm,
   FormStatus,
@@ -23,6 +22,7 @@ import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-de
 import { formatIsoDate } from "@/lib/shared/date";
 import type { GroupsRow, ProfilesRow } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
+import { Button } from "@/components/ui/button";
 
 const NOTES_PREVIEW_CHARS = 140;
 
@@ -73,53 +73,18 @@ export function GuestCard({
   );
 
   return (
-    <article
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: "18px 22px",
-        display: "grid",
-        gap: 14,
-      }}
-    >
-      <header
-        style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: 19,
-              fontWeight: 500,
-              color: P.ink,
-              letterSpacing: -0.3,
-            }}
-          >
+    <article className="grid gap-3.5 rounded-lg border border-line bg-surface px-[22px] py-[18px]">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-display text-[19px] font-medium tracking-[-0.3px] text-ink">
             {guest.full_name}
           </div>
-          <div
-            style={{
-              fontFamily: fontMono,
-              fontSize: 12,
-              color: P.ink2,
-              marginTop: 4,
-              display: "flex",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="mt-1 flex flex-wrap gap-3 font-mono text-xs text-ink2">
             <span>{guest.email ?? "—"}</span>
             <span>{guest.phone ?? "—"}</span>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="flex flex-wrap gap-2">
           <PBadge tone={badgeToneForStage(guest.pipeline_stage)}>
             {pipelineStageLabel(guest.pipeline_stage)}
           </PBadge>
@@ -132,15 +97,7 @@ export function GuestCard({
         </div>
       </header>
 
-      <dl
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: "8px 16px",
-          margin: 0,
-        }}
-      >
+      <dl className="lg-m-grid-stack m-0 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-x-4 gap-y-2">
         <DetailRow
           label="First attended"
           value={
@@ -164,32 +121,20 @@ export function GuestCard({
       </dl>
 
       {notesPreview ? (
-        <blockquote
-          style={{
-            background: "var(--c-surfaceAlt)",
-            borderRadius: 10,
-            padding: "10px 14px",
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            fontStyle: "italic",
-            color: P.ink,
-            lineHeight: 1.5,
-          }}
-        >
+        <blockquote className="m-0 rounded-sm bg-surfaceAlt px-3.5 py-2.5 font-sans text-sm italic leading-normal text-ink">
           “{notesPreview}”
         </blockquote>
       ) : null}
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <PButton
+      <div className="flex items-center gap-2">
+        <Button
           type="button"
-          tone="ghost"
+          variant="ghost"
           size="sm"
           onClick={() => setEditing((v) => !v)}
         >
           {editing ? "Cancel" : "Update"}
-        </PButton>
+        </Button>
         {isSuperAdmin ? (
           <SuperAdminInlineDelete
             entityType="guest"
@@ -202,31 +147,16 @@ export function GuestCard({
       {editing ? (
         <form
           action={formAction}
-          style={{
-            display: "grid",
-            gap: 12,
-            borderTop: `1px solid ${P.line2}`,
-            paddingTop: 14,
-          }}
+          className="grid gap-3 border-t border-lineSoft pt-3.5"
         >
           <input type="hidden" name="guest_id" value={guest.id} />
-          <div
-            className="lg-m-grid-stack"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: 12,
-            }}
-          >
-            <div>
-              <label htmlFor={`stage-${guest.id}`} style={fieldLabelStyle}>
-                Pipeline stage
-              </label>
+          <div className="lg-m-grid-stack grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+            <FormField htmlFor={`stage-${guest.id}`} label="Pipeline stage">
               <select
                 id={`stage-${guest.id}`}
                 name="pipeline_stage"
                 defaultValue={guest.pipeline_stage}
-                style={fieldSelectStyle}
+                className={fieldSelectClassName}
               >
                 {GUEST_PIPELINE_STAGES.map((s) => (
                   <option key={s} value={s}>
@@ -234,17 +164,14 @@ export function GuestCard({
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label htmlFor={`group-${guest.id}`} style={fieldLabelStyle}>
-                Assigned group
-              </label>
+            </FormField>
+            <FormField htmlFor={`group-${guest.id}`} label="Assigned group">
               <input type="hidden" name="set_assigned_group_id" value="true" />
               <select
                 id={`group-${guest.id}`}
                 name="assigned_group_id"
                 defaultValue={guest.assigned_group_id ?? ""}
-                style={fieldSelectStyle}
+                className={fieldSelectClassName}
               >
                 <option value="">— (none)</option>
                 {sortedActive.map((g) => (
@@ -253,17 +180,14 @@ export function GuestCard({
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label htmlFor={`owner-${guest.id}`} style={fieldLabelStyle}>
-                Follow-up owner
-              </label>
+            </FormField>
+            <FormField htmlFor={`owner-${guest.id}`} label="Follow-up owner">
               <input type="hidden" name="set_follow_up_owner_id" value="true" />
               <select
                 id={`owner-${guest.id}`}
                 name="follow_up_owner_id"
                 defaultValue={guest.follow_up_owner_id ?? ""}
-                style={fieldSelectStyle}
+                className={fieldSelectClassName}
               >
                 <option value="">— (none)</option>
                 {sortedOwners.map((p) => (
@@ -272,12 +196,12 @@ export function GuestCard({
                   </option>
                 ))}
               </select>
-            </div>
+            </FormField>
           </div>
-          <div>
-            <label htmlFor={`notes-${guest.id}`} style={fieldLabelStyle}>
-              Notes (max 1000 chars)
-            </label>
+          <FormField
+            htmlFor={`notes-${guest.id}`}
+            label="Notes (max 1000 chars)"
+          >
             <input type="hidden" name="set_notes" value="true" />
             <textarea
               id={`notes-${guest.id}`}
@@ -285,22 +209,22 @@ export function GuestCard({
               rows={3}
               maxLength={1000}
               defaultValue={guest.notes ?? ""}
-              style={{ ...fieldInputStyle, resize: "vertical", minHeight: 70 }}
+              className={cn(fieldInputClassName, "min-h-[70px] resize-y")}
             />
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <PButton type="submit" tone="solid" size="sm" disabled={pending}>
+          </FormField>
+          <div className="flex flex-wrap gap-2.5">
+            <Button type="submit" variant="solid" size="sm" disabled={pending}>
               {pending ? "Saving…" : "Save changes"}
-            </PButton>
-            <PButton
+            </Button>
+            <Button
               type="button"
-              tone="ghost"
+              variant="ghost"
               size="sm"
               disabled={pending}
               onClick={() => setEditing(false)}
             >
               Done
-            </PButton>
+            </Button>
           </div>
           <FormStatus state={state} successText="Saved." />
         </form>
@@ -328,29 +252,10 @@ function badgeToneForStage(stage: GuestPipelineStage) {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt
-        style={{
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 600,
-          marginBottom: 2,
-        }}
-      >
+      <dt className="mb-0.5 font-sans text-[10px] font-semibold uppercase tracking-[1.2px] text-ink3">
         {label}
       </dt>
-      <dd
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink,
-          margin: 0,
-        }}
-      >
-        {value}
-      </dd>
+      <dd className="m-0 font-sans text-sm text-ink">{value}</dd>
     </div>
   );
 }

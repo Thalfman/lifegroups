@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { PButton, PLinkButton } from "@/components/pastoral/button";
 import {
   useActionForm,
   FormStatus,
@@ -17,6 +16,7 @@ import {
   segmentShepherdsAnchorId,
 } from "@/lib/admin/multiplication";
 import type { MultiplyTypeRow } from "@/components/admin/multiply/multiply-grid-data";
+import { Button, LinkButton } from "@/components/ui/button";
 
 // Presentational Multiply BY-TYPE list. The old per-cell (Audience × Category)
 // grid is gone: rows are now the free-text group TYPES. Each row shows its
@@ -86,15 +86,15 @@ function TypeConfigForm({ row }: { row: MultiplyTypeRow }) {
         </div>
       </div>
       <div className="flex items-center gap-2.5">
-        <PButton
+        <Button
           type="submit"
-          tone="terra"
+          variant="primary"
           size="sm"
           disabled={pending}
           aria-label={`Save ${row.label} configuration`}
         >
           {pending ? "Saving…" : "Save"}
-        </PButton>
+        </Button>
         <FormStatus state={state} successText="Saved." />
       </div>
     </form>
@@ -115,9 +115,13 @@ export function MultiplyGridView({
           No group types yet. Add them in Settings &rsaquo; Groups, then each
           type appears here with its coverage and per-type config.
         </p>
-        <PLinkButton href="/admin/settings?tab=groups" tone="terra" size="md">
+        <LinkButton
+          href="/admin/settings?tab=groups"
+          variant="primary"
+          size="md"
+        >
           Set up group types in Settings →
-        </PLinkButton>
+        </LinkButton>
       </div>
     );
   }
@@ -132,12 +136,16 @@ export function MultiplyGridView({
         override a type inherits the single global readiness rule.
       </p>
       <div className="flex flex-wrap items-center gap-2.5">
-        <PLinkButton href="/admin/settings?tab=groups" tone="ghost" size="sm">
+        <LinkButton href="/admin/settings?tab=groups" variant="ghost" size="sm">
           Edit group types →
-        </PLinkButton>
-        <PLinkButton href="/admin/settings?tab=multiply" tone="ghost" size="sm">
+        </LinkButton>
+        <LinkButton
+          href="/admin/settings?tab=multiply"
+          variant="ghost"
+          size="sm"
+        >
           Edit the global readiness rule →
-        </PLinkButton>
+        </LinkButton>
       </div>
 
       <ul className="m-0 grid list-none gap-3 p-0">
@@ -159,24 +167,24 @@ export function MultiplyGridView({
                 matched shepherds); the shell switches tabs from `?tab=` and the
                 `#seg-…` hash scrolls to the section. */}
             <div className="flex flex-wrap items-center gap-2">
-              <PLinkButton
+              <LinkButton
                 href={`/admin/multiply?tab=pipeline#${segmentAnchorId(
                   row.groupType
                 )}`}
-                tone="ghost"
+                variant="ghost"
                 size="sm"
               >
                 View candidates →
-              </PLinkButton>
-              <PLinkButton
+              </LinkButton>
+              <LinkButton
                 href={`/admin/multiply?tab=pipeline#${segmentShepherdsAnchorId(
                   row.groupType
                 )}`}
-                tone="ghost"
+                variant="ghost"
                 size="sm"
               >
                 View shepherds →
-              </PLinkButton>
+              </LinkButton>
             </div>
             <TypeConfigForm row={row} />
           </li>

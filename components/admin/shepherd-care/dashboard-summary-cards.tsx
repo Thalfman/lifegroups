@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { MetricCard } from "@/components/dashboard/cards";
-import { P } from "@/lib/pastoral";
 import {
   resolveCareCoverageState,
   type CareDashboardSummary,
@@ -133,8 +132,8 @@ export function ShepherdCareDashboardSummaryCards({
           title="Active shepherds"
           value={String(summary.totalActiveShepherds)}
           meta={totalMeta}
-          accent={P.sage}
-          valueColor={P.ink}
+          accentClassName="text-sage"
+          valueClassName="text-ink"
         />
         <Link
           href={needsAttentionHref}
@@ -145,38 +144,46 @@ export function ShepherdCareDashboardSummaryCards({
             title="Needs attention"
             value={String(summary.needsAttention)}
             meta={needsAttentionMeta}
-            accent={P.terra}
-            valueColor={summary.needsAttention > 0 ? P.terra : P.ink}
+            accentClassName="text-clay"
+            valueClassName={
+              summary.needsAttention > 0 ? "text-clay" : "text-ink"
+            }
           />
         </Link>
         <MetricCard
           title="Overdue touchpoints"
           value={String(summary.overdueTouchpoints)}
           meta={overdueMeta}
-          accent={P.terra}
-          valueColor={summary.overdueTouchpoints > 0 ? P.terra : P.ink}
+          accentClassName="text-clay"
+          valueClassName={
+            summary.overdueTouchpoints > 0 ? "text-clay" : "text-ink"
+          }
         />
         <MetricCard
           title="Not contacted recently"
           value={String(summary.notContactedRecently)}
           meta={staleMeta}
-          accent={P.mustard}
-          valueColor={summary.notContactedRecently > 0 ? P.mustard : P.ink}
+          accentClassName="text-amber"
+          valueClassName={
+            summary.notContactedRecently > 0 ? "text-amber" : "text-ink"
+          }
         />
         <MetricCard
           title="No care profile"
           value={String(summary.noCareProfile)}
           meta={noProfileMeta}
-          accent={P.ink3}
-          valueColor={P.ink}
+          accentClassName="text-ink3"
+          valueClassName="text-ink"
         />
         <MetricCard
           title="Overdue follow-ups"
           value={overdueFollowUpValue}
           meta={followUpMeta}
-          accent={followUpsAvailable ? P.terra : P.ink3}
-          valueColor={
-            followUpsAvailable && summary.overdueFollowUps > 0 ? P.terra : P.ink
+          accentClassName={followUpsAvailable ? "text-clay" : "text-ink3"}
+          valueClassName={
+            followUpsAvailable && summary.overdueFollowUps > 0
+              ? "text-clay"
+              : "text-ink"
           }
         />
         {coverageAvailable ? (
@@ -189,8 +196,10 @@ export function ShepherdCareDashboardSummaryCards({
               title="Unassigned coverage"
               value={unassignedValue}
               meta={unassignedMeta}
-              accent={P.mustard}
-              valueColor={summary.unassignedCoverage > 0 ? P.mustard : P.ink}
+              accentClassName="text-amber"
+              valueClassName={
+                summary.unassignedCoverage > 0 ? "text-amber" : "text-ink"
+              }
             />
           </Link>
         ) : (
@@ -198,8 +207,8 @@ export function ShepherdCareDashboardSummaryCards({
             title="Unassigned coverage"
             value={unassignedValue}
             meta={unassignedMeta}
-            accent={P.ink3}
-            valueColor={P.ink3}
+            accentClassName="text-ink3"
+            valueClassName="text-ink3"
           />
         )}
       </div>

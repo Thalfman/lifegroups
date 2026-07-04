@@ -1,6 +1,5 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import {
   adminAssignShepherdCoverage,
   adminEndShepherdCoverage,
@@ -15,6 +14,7 @@ import {
   formNoteClassName,
 } from "@/components/admin/forms/field-styles";
 import type { OverShepherdListRow } from "@/lib/supabase/shepherd-coverage-reads";
+import { Button } from "@/components/ui/button";
 
 // Form anatomy comes from the canonical field styles (design direction §4);
 // only the lede spacing below it is local.
@@ -105,9 +105,9 @@ export function CoverageAssignmentForm({
               />
             </div>
             <div>
-              <PButton
+              <Button
                 type="submit"
-                tone="solid"
+                variant="solid"
                 size="md"
                 disabled={assignPending}
               >
@@ -116,7 +116,7 @@ export function CoverageAssignmentForm({
                   : currentOverShepherdId
                     ? "Reassign coverage"
                     : "Assign coverage"}
-              </PButton>
+              </Button>
             </div>
           </div>
           <FormStatus state={assignState} successText="Coverage assigned." />
@@ -158,9 +158,14 @@ export function CoverageAssignmentForm({
             in the audit trail.
           </p>
           <div>
-            <PButton type="submit" tone="terra" size="md" disabled={endPending}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={endPending}
+            >
               {endPending ? "Clearing…" : "Clear coverage"}
-            </PButton>
+            </Button>
           </div>
           <FormStatus state={endState} successText="Coverage cleared." />
         </form>

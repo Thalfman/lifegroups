@@ -28,7 +28,7 @@ export function DeactivateMemberButton({
       hiddenFields={[{ name: "member_id", value: memberId }]}
       idleLabel={label}
       pendingLabel="Archiving…"
-      tone="terra"
+      variant="primary"
       ariaLabel={fullName ? `${label} ${fullName}` : undefined}
     />
   );

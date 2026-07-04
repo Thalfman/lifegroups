@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { adminCreateMultiplicationCandidate } from "@/app/(protected)/admin/launch-planning/actions";
 import {
   CANDIDATE_STATUS_LABEL,
@@ -9,6 +8,7 @@ import {
 } from "@/lib/admin/multiplication";
 import type { MultiplicationCandidateStatus } from "@/types/enums";
 import { ReadinessChecklist } from "@/components/admin/multiply/readiness-checklist";
+import { Button } from "@/components/ui/button";
 import {
   fieldLabelClassName as LABEL,
   fieldInputBaseClassName as INPUT,
@@ -65,9 +65,9 @@ export function PipelinePotentialCandidates({
                   <span className="font-sans text-sm text-ink">
                     {g.groupName}
                   </span>
-                  <PButton
+                  <Button
                     type="button"
-                    tone={open ? "ghost" : "terra"}
+                    variant={open ? "ghost" : "primary"}
                     size="sm"
                     aria-expanded={open}
                     aria-label={
@@ -82,7 +82,7 @@ export function PipelinePotentialCandidates({
                     }
                   >
                     {open ? "Cancel" : "Lock in"}
-                  </PButton>
+                  </Button>
                 </div>
                 {open ? (
                   <LockInForm
@@ -209,9 +209,9 @@ function LockInForm({
       <ReadinessChecklist idPrefix={idPrefix} />
 
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="sm" disabled={pending}>
+        <Button type="submit" variant="primary" size="sm" disabled={pending}>
           {pending ? "Locking in…" : "Save"}
-        </PButton>
+        </Button>
         <span className="font-sans text-xs text-ink3">
           A group can be locked in with any number of boxes ticked.
         </span>

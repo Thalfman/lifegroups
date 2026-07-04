@@ -1,14 +1,14 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { adminCreateGuest } from "@/app/(protected)/admin/guests/actions";
+import { cn } from "@/lib/utils";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  formGridStyle,
-  formNoteStyle,
+  fieldInputClassName,
+  fieldSelectClassName,
+  formGridClassName,
+  formNoteClassName,
 } from "@/components/admin/forms/field-styles";
+import { FormField } from "@/components/admin/forms/form-field";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/guest-reads";
 import { pipelineStageLabel } from "@/lib/dashboard/labels";
 import {
@@ -16,6 +16,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import type { GroupsRow, ProfilesRow } from "@/types/database";
+import { Button } from "@/components/ui/button";
 
 export function GuestCreateForm({
   activeGroups,
@@ -42,65 +43,49 @@ export function GuestCreateForm({
   );
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      style={{ display: "grid", gap: 12 }}
-    >
-      <p style={formNoteStyle}>
+    <form ref={formRef} action={formAction} className="grid gap-3">
+      <p className={formNoteClassName}>
         Only the full name is required. Everything else is optional and can be
         filled in as the conversation unfolds.
       </p>
-      <div className="lg-m-grid-stack" style={formGridStyle}>
-        <div>
-          <label htmlFor="guest-full_name" style={fieldLabelStyle}>
-            Full name
-          </label>
+      <div className={formGridClassName}>
+        <FormField htmlFor="guest-full_name" label="Full name">
           <input
             id="guest-full_name"
             name="full_name"
             type="text"
             required
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="Avery Bennett"
           />
-        </div>
-        <div>
-          <label htmlFor="guest-email" style={fieldLabelStyle}>
-            Email (optional)
-          </label>
+        </FormField>
+        <FormField htmlFor="guest-email" label="Email (optional)">
           <input
             id="guest-email"
             name="email"
             type="email"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="avery@example.com"
           />
-        </div>
-        <div>
-          <label htmlFor="guest-phone" style={fieldLabelStyle}>
-            Phone (optional)
-          </label>
+        </FormField>
+        <FormField htmlFor="guest-phone" label="Phone (optional)">
           <input
             id="guest-phone"
             name="phone"
             type="tel"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="(555) 555-0100"
           />
-        </div>
-        <div>
-          <label htmlFor="guest-pipeline_stage" style={fieldLabelStyle}>
-            Pipeline stage
-          </label>
+        </FormField>
+        <FormField htmlFor="guest-pipeline_stage" label="Pipeline stage">
           <select
             id="guest-pipeline_stage"
             name="pipeline_stage"
             defaultValue="new"
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             {GUEST_PIPELINE_STAGES.map((s) => (
               <option key={s} value={s}>
@@ -108,19 +93,16 @@ export function GuestCreateForm({
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label
-            htmlFor="guest-first_attended_group_id"
-            style={fieldLabelStyle}
-          >
-            First attended group (optional)
-          </label>
+        </FormField>
+        <FormField
+          htmlFor="guest-first_attended_group_id"
+          label="First attended group (optional)"
+        >
           <select
             id="guest-first_attended_group_id"
             name="first_attended_group_id"
             defaultValue=""
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             <option value="">—</option>
             {sortedHistorical.map((g) => (
@@ -130,27 +112,27 @@ export function GuestCreateForm({
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label htmlFor="guest-first_attended_date" style={fieldLabelStyle}>
-            First attended date (optional)
-          </label>
+        </FormField>
+        <FormField
+          htmlFor="guest-first_attended_date"
+          label="First attended date (optional)"
+        >
           <input
             id="guest-first_attended_date"
             name="first_attended_date"
             type="date"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
-        </div>
-        <div>
-          <label htmlFor="guest-assigned_group_id" style={fieldLabelStyle}>
-            Assigned group (optional)
-          </label>
+        </FormField>
+        <FormField
+          htmlFor="guest-assigned_group_id"
+          label="Assigned group (optional)"
+        >
           <select
             id="guest-assigned_group_id"
             name="assigned_group_id"
             defaultValue=""
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             <option value="">—</option>
             {sortedActive.map((g) => (
@@ -159,16 +141,16 @@ export function GuestCreateForm({
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label htmlFor="guest-follow_up_owner_id" style={fieldLabelStyle}>
-            Follow-up owner (optional)
-          </label>
+        </FormField>
+        <FormField
+          htmlFor="guest-follow_up_owner_id"
+          label="Follow-up owner (optional)"
+        >
           <select
             id="guest-follow_up_owner_id"
             name="follow_up_owner_id"
             defaultValue=""
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             <option value="">—</option>
             {sortedOwners.map((p) => (
@@ -177,24 +159,25 @@ export function GuestCreateForm({
               </option>
             ))}
           </select>
-        </div>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor="guest-notes" style={fieldLabelStyle}>
-            Notes (optional, max 1000 chars)
-          </label>
+        </FormField>
+        <FormField
+          htmlFor="guest-notes"
+          label="Notes (optional, max 1000 chars)"
+          className="md:col-span-full"
+        >
           <textarea
             id="guest-notes"
             name="notes"
             rows={3}
             maxLength={1000}
-            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
+            className={cn(fieldInputClassName, "min-h-20 resize-y")}
             placeholder="How they heard about us, who they came with, anything worth remembering."
           />
-        </div>
+        </FormField>
         <div>
-          <PButton type="submit" tone="terra" size="md" disabled={pending}>
+          <Button type="submit" variant="primary" size="md" disabled={pending}>
             {pending ? "Saving…" : "Add guest"}
-          </PButton>
+          </Button>
         </div>
       </div>
       <FormStatus state={state} successText="Guest added." />

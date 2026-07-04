@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { memo, useCallback, useMemo, useState } from "react";
 import { PAvatar } from "@/components/pastoral/atoms";
-import { PButton } from "@/components/pastoral/button";
 import { leaderSubmitCheckinAndReturn } from "@/app/(protected)/leader/actions";
 import {
   FormStatus,
@@ -15,6 +14,7 @@ import { cn } from "@/lib/utils";
 // meeting_date prefill is the leader's wall-clock day even if their
 // browser or the rendering server is in a different timezone.
 import { CHURCH_TIMEZONE } from "@/lib/shared/church-time";
+import { Button } from "@/components/ui/button";
 
 type AttendanceStatus = "present" | "absent" | "excused";
 type SessionStatus = "submitted" | "did_not_meet" | "planned_pause";
@@ -433,9 +433,9 @@ export function CheckInForm({
         >
           Cancel and go back
         </Link>
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {submitLabel}
-        </PButton>
+        </Button>
       </div>
 
       <FormStatus state={state} />

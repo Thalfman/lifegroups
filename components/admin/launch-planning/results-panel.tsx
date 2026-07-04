@@ -1,10 +1,10 @@
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
   LaunchPlanningAssumptions,
   LaunchPlanningInputs,
   LaunchPlanningOutputs,
 } from "@/lib/admin/launch-planning";
 import { fmtNumber, riskTone } from "@/lib/admin/launch-planning";
+import { eyebrowClassName } from "./section-styles";
 
 function fmtPct(ratio: number): string {
   const pct = ratio * 100;
@@ -47,72 +47,20 @@ export function LaunchPlanningResultsPanel({
 }) {
   const risk = riskTone(outputs.risk_level);
   return (
-    <section
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: "22px 24px",
-        display: "grid",
-        gap: 18,
-      }}
-    >
-      <header style={{ display: "grid", gap: 6 }}>
-        <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 10,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 600,
-          }}
-        >
-          Recommendation
-        </span>
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: fontDisplay,
-            fontSize: 24,
-            lineHeight: 1.15,
-            color: P.ink,
-            fontWeight: 500,
-          }}
-        >
+    <section className="grid gap-[18px] rounded-lg border border-line bg-surface px-6 py-[22px]">
+      <header className="grid gap-1.5">
+        <span className={eyebrowClassName}>Recommendation</span>
+        <h2 className="m-0 font-display text-2xl font-medium leading-[1.15] text-ink">
           What the math says
         </h2>
       </header>
 
-      <p
-        style={{
-          margin: 0,
-          fontFamily: fontBody,
-          fontSize: 15,
-          color: P.ink,
-          lineHeight: 1.55,
-        }}
-      >
+      <p className="m-0 font-sans text-md leading-[1.55] text-ink">
         {recommendation(outputs, assumptions)}
       </p>
 
       <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 10,
-          alignSelf: "start",
-          background: P.bg,
-          border: `1px solid ${risk.accent}`,
-          color: risk.accent,
-          fontFamily: fontSans,
-          fontSize: 12,
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
-          fontWeight: 600,
-          padding: "6px 12px",
-          borderRadius: 999,
-        }}
+        className={`inline-flex items-center gap-2.5 self-start rounded-pill border bg-bg px-3 py-1.5 font-sans text-xs font-semibold uppercase tracking-[1.2px] ${risk.text} ${risk.border}`}
       >
         Risk: {risk.label}
       </div>
@@ -121,29 +69,11 @@ export function LaunchPlanningResultsPanel({
           are the derivation behind the recommendation, framed as supporting
           detail (small caption + subdued numbers) rather than a second copy of
           the headline answer. */}
-      <div
-        style={{
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.5,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 600,
-          borderTop: `1px solid ${P.line}`,
-          paddingTop: 16,
-        }}
-      >
+      <div className={`${eyebrowClassName} border-t border-line pt-4`}>
         Behind the recommendation
       </div>
 
-      <dl
-        style={{
-          margin: 0,
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: 14,
-        }}
-      >
+      <dl className="m-0 grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3.5">
         <Detail
           label="Projected total attendance"
           value={fmtNumber(outputs.projected_total_attendance)}
@@ -185,22 +115,14 @@ export function LaunchPlanningResultsPanel({
       </dl>
 
       {outputs.suggested_launch_by_date ? (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            lineHeight: 1.55,
-          }}
-        >
+        <p className="m-0 font-sans text-sm leading-[1.55] text-ink2">
           Suggested launch by{" "}
-          <strong style={{ color: P.ink }}>
+          <strong className="text-ink">
             {outputs.suggested_launch_by_date}
           </strong>
           {" — "}
           about 30 days before your{" "}
-          <strong style={{ color: P.ink }}>
+          <strong className="text-ink">
             {assumptions.expected_growth_date}
           </strong>{" "}
           growth date.
@@ -220,42 +142,12 @@ function Detail({
   hint: string;
 }) {
   return (
-    <div style={{ display: "grid", gap: 4 }}>
-      <dt
-        style={{
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.5,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 600,
-          margin: 0,
-        }}
-      >
-        {label}
-      </dt>
-      <dd
-        style={{
-          margin: 0,
-          fontFamily: fontDisplay,
-          fontSize: 19,
-          color: P.ink2,
-          lineHeight: 1.1,
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
+    <div className="grid gap-1">
+      <dt className={`m-0 ${eyebrowClassName}`}>{label}</dt>
+      <dd className="m-0 font-display text-[19px] leading-[1.1] tabular-nums text-ink2">
         {value}
       </dd>
-      <span
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12,
-          color: P.ink3,
-          fontStyle: "italic",
-        }}
-      >
-        {hint}
-      </span>
+      <span className="font-sans text-xs italic text-ink3">{hint}</span>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { superAdminEndCoverage } from "@/app/(protected)/admin/super-admin/coverage-actions";
 import { useActionForm, FormStatus } from "./action-form";
+import { Button } from "@/components/ui/button";
 
 // Phase SAC.4 (#164): end an active coverage assignment.
 export function CoverageEndForm({ assignmentId }: { assignmentId: string }) {
@@ -13,9 +13,9 @@ export function CoverageEndForm({ assignmentId }: { assignmentId: string }) {
   return (
     <form action={formAction} className="grid gap-1.5">
       <input type="hidden" name="assignment_id" value={assignmentId} />
-      <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+      <Button type="submit" variant="ghost" size="sm" disabled={pending}>
         {pending ? "Ending…" : "End"}
-      </PButton>
+      </Button>
       <FormStatus state={state} />
     </form>
   );

@@ -1,13 +1,13 @@
 "use client";
 
 import { useActionState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import {
   errorTextClassName,
   fieldInputClassName,
   fieldLabelClassName,
 } from "@/components/admin/forms/field-styles";
 import { chooseNameAction, type ChooseNameState } from "./actions";
+import { Button } from "@/components/ui/button";
 
 const INITIAL_STATE: ChooseNameState = {};
 
@@ -42,9 +42,14 @@ export function WelcomeForm({ namePrefill }: { namePrefill: string }) {
         </p>
       ) : null}
 
-      <PButton type="submit" tone="terra" disabled={pending} className="w-full">
+      <Button
+        type="submit"
+        variant="primary"
+        disabled={pending}
+        className="w-full"
+      >
         {pending ? "Saving…" : "Continue"}
-      </PButton>
+      </Button>
     </form>
   );
 }

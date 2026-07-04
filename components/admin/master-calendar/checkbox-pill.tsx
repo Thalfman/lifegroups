@@ -1,4 +1,4 @@
-import { P, fontBody } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 // A single selectable filter option rendered as a checkbox styled like a pill.
 // Shared by the Groups disclosure and the generic multi-checkbox field so both
@@ -22,20 +22,12 @@ export function CheckboxPill({
 }) {
   return (
     <label
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "4px 10px",
-        borderRadius: 999,
-        fontFamily: fontBody,
-        fontSize: 12,
-        color: checked ? P.terra : P.ink2,
-        background: checked ? P.terraSoft : P.surface,
-        border: `1px solid ${checked ? P.terra : P.line}`,
-        cursor: "pointer",
-        userSelect: "none",
-      }}
+      className={cn(
+        "inline-flex cursor-pointer select-none items-center gap-1.5 rounded-pill border px-2.5 py-1 font-sans text-xs",
+        checked
+          ? "border-clay bg-claySoft text-clay"
+          : "border-line bg-surface text-ink2"
+      )}
     >
       <input
         id={id}
@@ -44,7 +36,7 @@ export function CheckboxPill({
         type="checkbox"
         checked={checked}
         onChange={(e) => onToggle(e.target.checked)}
-        style={{ accentColor: P.terra, margin: 0 }}
+        className="m-0 accent-clay"
       />
       {label}
     </label>

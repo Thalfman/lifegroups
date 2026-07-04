@@ -1,13 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import {
   errorTextClassName,
   fieldInputClassName,
   fieldLabelClassName,
 } from "@/components/admin/forms/field-styles";
 import { resetPasswordAction, type ResetPasswordState } from "./actions";
+import { Button } from "@/components/ui/button";
 
 const INITIAL_STATE: ResetPasswordState = {};
 
@@ -100,9 +100,14 @@ export function ResetPasswordForm({
         </p>
       ) : null}
 
-      <PButton type="submit" tone="terra" disabled={pending} className="w-full">
+      <Button
+        type="submit"
+        variant="primary"
+        disabled={pending}
+        className="w-full"
+      >
         {pending ? "Saving…" : namePending ? "Finish setup" : "Update password"}
-      </PButton>
+      </Button>
     </form>
   );
 }

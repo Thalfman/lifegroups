@@ -1,10 +1,12 @@
+import { cn } from "@/lib/utils";
+
 export type AvatarTone = "sage" | "clay" | "amber" | "blue";
 
-const TONES: Record<AvatarTone, { bg: string; fg: string }> = {
-  sage: { bg: "var(--c-sageSoft)", fg: "var(--c-sageDeep)" },
-  clay: { bg: "var(--c-claySoft)", fg: "var(--c-clay)" },
-  amber: { bg: "var(--c-amberSoft)", fg: "var(--c-amberText)" },
-  blue: { bg: "var(--c-blueSoft)", fg: "var(--c-blue)" },
+const TONES: Record<AvatarTone, string> = {
+  sage: "bg-sageSoft text-sageDeep",
+  clay: "bg-claySoft text-clay",
+  amber: "bg-amberSoft text-amberText",
+  blue: "bg-blueSoft text-blue",
 };
 
 export function Avatar({
@@ -23,24 +25,14 @@ export function Avatar({
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  const t = TONES[tone];
   return (
     <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: t.bg,
-        color: t.fg,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "var(--font-body)",
-        fontSize: size * 0.36,
-        fontWeight: 600,
-        letterSpacing: 0.4,
-        flexShrink: 0,
-      }}
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-pill font-sans font-semibold tracking-[0.4px]",
+        TONES[tone]
+      )}
+      // Size is caller-supplied at runtime, so the box + scaled type stay inline.
+      style={{ width: size, height: size, fontSize: size * 0.36 }}
     >
       {initials}
     </div>

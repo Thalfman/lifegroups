@@ -1,6 +1,5 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import {
   leaderWriteGroupCareNote,
   leaderWriteGroupPrayerRequest,
@@ -15,6 +14,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 // Pivot slice 11 (#382 / ADR 0020). Writes one author-private Care Note OR
 // Prayer Request about the leader's GROUP. The author is the signed-in leader;
@@ -67,9 +67,9 @@ export function GroupNoteWriteForm({
         />
       </div>
       <div className="flex flex-wrap gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {pending ? "Saving…" : `Add ${label.toLowerCase()}`}
-        </PButton>
+        </Button>
       </div>
       <FormStatus state={state} successText={`${label} saved.`} />
     </form>

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { P, fontDisplay, fontBody } from "@/lib/pastoral";
 import { Icon, type IconName } from "@/components/lg/Icon";
 import type { HubTile } from "@/lib/auth/hub-tiles";
 import type { HubStat } from "@/lib/home/hub-stats";
@@ -18,56 +17,22 @@ export function HomeHub({
   stats?: HubStat[];
 }) {
   return (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       {stats.length > 0 ? <HubStatsBand stats={stats} /> : null}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-          gap: 16,
-        }}
-      >
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
         {tiles.map((tile) => (
           <Link
             key={tile.href}
             href={tile.href}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 14,
-              padding: "20px 22px",
-              background: P.surface,
-              border: `1px solid ${P.line}`,
-              borderRadius: 16,
-              textDecoration: "none",
-              color: P.ink,
-            }}
+            className="flex items-center gap-3.5 rounded-2xl border border-line bg-surface px-[22px] py-5 text-ink no-underline"
           >
             <span
               aria-hidden
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                background: P.bg,
-                border: `1px solid ${P.line}`,
-                color: P.terra,
-                flexShrink: 0,
-              }}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-line bg-bg text-clay"
             >
               <Icon name={tile.icon as IconName} size={20} />
             </span>
-            <span
-              style={{
-                fontFamily: fontDisplay,
-                fontSize: 16,
-                fontWeight: 600,
-                letterSpacing: -0.2,
-              }}
-            >
+            <span className="font-display text-[16px] font-semibold tracking-[-0.2px]">
               {tile.label}
             </span>
           </Link>
@@ -83,46 +48,16 @@ export function HomeHub({
 // succeeded, so the band silently scales to whatever loaded.
 function HubStatsBand({ stats }: { stats: HubStat[] }) {
   return (
-    <dl
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-        gap: 16,
-        margin: 0,
-      }}
-    >
+    <dl className="m-0 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-4">
       {stats.map((stat) => (
         <div
           key={stat.label}
-          style={{
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 16,
-            padding: "16px 20px",
-          }}
+          className="rounded-2xl border border-line bg-surface px-5 py-4"
         >
-          <dt
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              letterSpacing: 0.3,
-              textTransform: "uppercase",
-              color: P.ink3,
-              margin: 0,
-            }}
-          >
+          <dt className="m-0 font-sans text-xs uppercase tracking-[0.3px] text-ink3">
             {stat.label}
           </dt>
-          <dd
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: 30,
-              fontWeight: 600,
-              color: P.ink,
-              margin: "6px 0 0",
-              lineHeight: 1,
-            }}
-          >
+          <dd className="mb-0 ml-0 mt-1.5 font-display text-3xl font-semibold leading-none text-ink">
             {stat.value.toLocaleString()}
           </dd>
         </div>

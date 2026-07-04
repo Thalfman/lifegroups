@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
-import { PButton } from "@/components/pastoral/button";
 import {
   adminLogShepherdCareInteraction,
   adminUpsertShepherdCareProfile,
@@ -19,6 +18,7 @@ import {
 } from "@/components/admin/forms/field-styles";
 import { todayLocalIso } from "@/lib/shared/date";
 import type { ShepherdCareProfilesRow } from "@/types/database";
+import { Button } from "@/components/ui/button";
 import type {
   ShepherdCareInteractionType,
   ShepherdCareStatus,
@@ -65,15 +65,15 @@ function CancelButton({
 }) {
   if (!onCancel) return null;
   return (
-    <PButton
+    <Button
       type="button"
-      tone="ghost"
+      variant="ghost"
       size="md"
       disabled={pending}
       onClick={onCancel}
     >
       Cancel
-    </PButton>
+    </Button>
   );
 }
 
@@ -151,9 +151,9 @@ export function LogTouchForm({
         />
       </div>
       <div className="flex flex-wrap gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {pending ? "Saving…" : `Log ${touchLabel}`}
-        </PButton>
+        </Button>
         <CancelButton onCancel={onCancel} pending={pending} />
       </div>
       <FormStatus state={state} successText="Interaction logged." />
@@ -279,9 +279,9 @@ export function CareProfileFieldForm({
       ) : null}
 
       <div className="flex flex-wrap gap-2.5">
-        <PButton type="submit" tone="solid" size="md" disabled={pending}>
+        <Button type="submit" variant="solid" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save"}
-        </PButton>
+        </Button>
         <CancelButton onCancel={onCancel} pending={pending} />
       </div>
       <FormStatus state={state} successText="Care profile updated." />

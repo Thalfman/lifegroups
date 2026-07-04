@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { PButton } from "@/components/pastoral/button";
 import {
   ALL_TYPE_OPTIONS,
   calendarActiveFilterChips,
@@ -8,7 +7,6 @@ import {
 } from "@/lib/admin/master-calendar-view";
 import { WEEKDAY_HEADERS } from "@/lib/calendar/occurrences";
 import { EVENT_STATUS_OPTIONS } from "@/lib/calendar/payload";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
   MasterCalendarGroupSummary,
   MasterCalendarLeader,
@@ -22,6 +20,7 @@ import { GroupsDetailsField } from "./groups-details-field";
 import { MultiCheckboxField } from "./multi-checkbox-field";
 import { SelectField } from "./select-field";
 import { ViewToggle } from "./view-toggle";
+import { Button } from "@/components/ui/button";
 
 type ViewMode = CalendarViewMode;
 
@@ -122,70 +121,23 @@ export function FilterBar({
   // carries the message; doubling up reads as noise.
   const showHint = hasActiveFilters && filteredCount > 0;
   return (
-    <section
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: "12px 14px",
-        display: "grid",
-        gap: 10,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: fontSans,
-              fontSize: 11,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 600,
-            }}
-          >
+    <section className="grid gap-2.5 rounded-lg border border-line bg-surface px-3.5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-baseline gap-2.5">
+          <div className="font-sans text-2xs font-semibold uppercase tracking-[1.5px] text-ink3">
             Filters
           </div>
           {showHint ? (
-            <div
-              aria-live="polite"
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: P.ink3,
-              }}
-            >
+            <div aria-live="polite" className="font-sans text-xs text-ink3">
               {filteredCount} of {totalCount} shown
             </div>
           ) : null}
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="flex flex-wrap items-center gap-2.5">
           {hasActiveFilters ? (
-            <PButton type="button" onClick={onReset} tone="ghost" size="sm">
+            <Button type="button" onClick={onReset} variant="ghost" size="sm">
               Reset filters
-            </PButton>
+            </Button>
           ) : null}
           {hideViewToggle ? null : (
             <ViewToggle viewMode={viewMode} onChange={onChangeView} />
@@ -193,15 +145,7 @@ export function FilterBar({
         </div>
       </div>
       <ActiveFilterChips chips={activeChips} />
-      <div
-        className="lg-m-master-calendar-filters"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 10,
-          alignItems: "start",
-        }}
-      >
+      <div className="lg-m-master-calendar-filters grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] items-start gap-2.5">
         <GroupsDetailsField
           options={groupOptions}
           value={groupFilter}

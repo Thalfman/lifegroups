@@ -1,20 +1,14 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { P, fontBody } from "@/lib/pastoral";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
 } from "@/components/admin/forms/field-styles";
 import { percentToRatio, ratioToPercent } from "@/lib/admin/launch-planning";
 
-const hintStyle = {
-  fontFamily: fontBody,
-  fontSize: 11,
-  color: P.ink3,
-  margin: "4px 0 0",
-  lineHeight: 1.4,
-} as const;
+// Matches scenario-form's field hints (11px, tighter than fieldHintClassName).
+const hintClassName = "m-0 mt-1 font-sans text-2xs leading-[1.4] text-ink3";
 
 // L5 (#224): a 0–1 ratio rendered and edited as a whole-number percentage. The
 // visible box carries the percentage; a hidden input named `name` carries the
@@ -50,7 +44,7 @@ export function PercentField({
 
   return (
     <div>
-      <label htmlFor={id} style={fieldLabelStyle}>
+      <label htmlFor={id} className={fieldLabelClassName}>
         {label}
       </label>
       <input
@@ -71,12 +65,12 @@ export function PercentField({
           setPercent(e.target.value);
           setEdited(true);
         }}
-        style={fieldInputStyle}
+        className={fieldInputClassName}
       />
       {/* The ratio the server reads: the untouched stored value, or the
           percent box converted back once the operator edits it. */}
       <input type="hidden" name={name} value={ratio} />
-      <p style={hintStyle}>{hint}</p>
+      <p className={hintClassName}>{hint}</p>
     </div>
   );
 }

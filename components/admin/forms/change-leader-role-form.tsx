@@ -192,7 +192,7 @@ export function ChangeLeaderRoleForm({
             title="Change role"
             message={downgradeMessage}
             confirmLabel="Change role"
-            confirmTone="terra"
+            confirmVariant="primary"
             onConfirm={() => formRef.current?.requestSubmit()}
           />
         ) : (

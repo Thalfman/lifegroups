@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { LaunchPlanningInputs } from "@/lib/admin/launch-planning";
+import { eyebrowClassName } from "./section-styles";
 
 export type LaunchPlanningSetupWarningsProps = {
   inputs: LaunchPlanningInputs;
@@ -103,53 +103,20 @@ export function LaunchPlanningSetupWarnings({
   if (items.length === 0 && errorMessages.length === 0) return null;
 
   return (
-    <section
-      style={{
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 12,
-        padding: "16px 20px",
-        display: "grid",
-        gap: 12,
-      }}
-    >
+    <section className="grid gap-3 rounded-md border border-clay bg-claySoft px-5 py-4">
       <header>
-        <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 10,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 600,
-          }}
-        >
-          Forecast confidence
-        </span>
-        <h2
-          style={{
-            margin: "4px 0 0",
-            fontFamily: fontBody,
-            fontSize: 16,
-            color: P.ink,
-            fontWeight: 600,
-          }}
-        >
+        <span className={eyebrowClassName}>Forecast confidence</span>
+        <h2 className="m-0 mt-1 font-sans text-[16px] font-semibold text-ink">
           Setup signals to review
         </h2>
       </header>
 
       {errorMessages.length > 0 ? (
-        <ul style={{ listStyle: "disc", margin: 0, padding: "0 0 0 18px" }}>
+        <ul className="m-0 list-disc p-0 pl-[18px]">
           {errorMessages.map((msg, i) => (
             <li
               key={`err-${i}`}
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                lineHeight: 1.5,
-              }}
+              className="font-sans text-sm leading-normal text-ink2"
             >
               {msg}
             </li>
@@ -158,42 +125,13 @@ export function LaunchPlanningSetupWarnings({
       ) : null}
 
       {items.length > 0 ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 10,
-          }}
-        >
+        <ul className="m-0 grid list-none gap-2.5 p-0">
           {items.map((w) => (
-            <li
-              key={w.key}
-              style={{
-                display: "grid",
-                gap: 4,
-              }}
-            >
-              <strong
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 14,
-                  color: P.ink,
-                  fontWeight: 600,
-                }}
-              >
+            <li key={w.key} className="grid gap-1">
+              <strong className="font-sans text-base font-semibold text-ink">
                 {w.title}
               </strong>
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: fontBody,
-                  fontSize: 13,
-                  color: P.ink2,
-                  lineHeight: 1.5,
-                }}
-              >
+              <p className="m-0 font-sans text-sm leading-normal text-ink2">
                 {w.detail}
                 {(() => {
                   const links = w.links ?? (w.link ? [w.link] : []);
@@ -206,11 +144,7 @@ export function LaunchPlanningSetupWarnings({
                           {i > 0 ? " · " : null}
                           <Link
                             href={l.href}
-                            style={{
-                              color: P.ink,
-                              textDecoration: "underline",
-                              fontWeight: 600,
-                            }}
+                            className="font-semibold text-ink underline"
                           >
                             {l.label}
                           </Link>

@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
-import { PButton } from "@/components/pastoral/button";
 import {
   adminBulkImportPeople,
   type BulkImportPeopleSuccess,
 } from "@/app/(protected)/admin/settings/people-import-actions";
-import { buttonClassName } from "@/components/ui/button";
+import { buttonClassName, Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   errorTextClassName,
@@ -108,9 +107,9 @@ export function PeopleImportForm() {
         </p>
       </div>
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {pending ? "Importing…" : "Import people"}
-        </PButton>
+        </Button>
         {state?.ok ? (
           <span className={successTextClassName}>
             Imported {state.value.createdCount} ({state.value.leaderCount}{" "}

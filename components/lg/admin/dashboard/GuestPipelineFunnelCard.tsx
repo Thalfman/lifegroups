@@ -1,5 +1,4 @@
 import { StatusCard } from "@/components/dashboard/cards";
-import { P, fontBody } from "@/lib/pastoral";
 import type { GuestPipelineStage } from "@/types/enums";
 import type { PipelineStageCount } from "@/lib/dashboard/types";
 import {
@@ -10,12 +9,12 @@ import {
 } from "./overview-primitives";
 
 // Tone the funnel so the destination stages read as "good" and the parked
-// stage reads muted; everything in-flight is terra.
-function stageTone(stage: GuestPipelineStage): string {
-  if (stage === "placed") return P.sageTextStrong;
-  if (stage === "attended") return P.sage;
-  if (stage === "not_now") return P.ink3;
-  return P.terra;
+// stage reads muted; everything in-flight is clay.
+function stageToneClassName(stage: GuestPipelineStage): string {
+  if (stage === "placed") return "bg-sageDeep";
+  if (stage === "attended") return "bg-sage";
+  if (stage === "not_now") return "bg-ink3";
+  return "bg-clay";
 }
 
 // Guest pipeline funnel. The breakdown was already fetched for the landing but
@@ -67,17 +66,10 @@ export function GuestPipelineFunnelCard({
               label={s.label}
               count={s.count}
               total={barTotal}
-              tone={stageTone(s.stage)}
+              toneClassName={stageToneClassName(s.stage)}
             />
           ))}
-          <p
-            style={{
-              margin: "10px 0 0",
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink3,
-            }}
-          >
+          <p className="m-0 mt-2.5 font-sans text-xs text-ink3">
             {total} in active pipeline
           </p>
         </div>

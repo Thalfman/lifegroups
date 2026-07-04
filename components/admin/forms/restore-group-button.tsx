@@ -33,7 +33,7 @@ export function RestoreGroupButton({
       hiddenFields={[{ name: "group_id", value: groupId }]}
       idleLabel="Restore group"
       pendingLabel="Restoring…"
-      tone="terra"
+      variant="primary"
       ariaLabel={ariaLabel}
     />
   );

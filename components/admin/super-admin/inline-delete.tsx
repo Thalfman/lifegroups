@@ -15,7 +15,6 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { PButton } from "@/components/pastoral/button";
 import {
   Popover,
   PopoverTrigger,
@@ -95,16 +94,16 @@ export function SuperAdminInlineDelete({
         {/* Radix supplies aria-haspopup="dialog" + aria-expanded + the open
             toggle on the trigger, replacing the hand-rolled props + onClick. */}
         <PopoverTrigger asChild>
-          <PButton
+          <Button
             type="button"
-            tone="ghost"
+            variant="ghost"
             size="sm"
             data-testid="inline-delete"
             aria-label={`Delete ${label}`}
             className="border-rose/40 text-rose hover:bg-roseSoft"
           >
             Delete
-          </PButton>
+          </Button>
         </PopoverTrigger>
 
         {/* Hidden preflight form — auto-submitted on open via requestSubmit.
@@ -152,14 +151,14 @@ export function SuperAdminInlineDelete({
           >
             {del.pending ? "Deleting…" : "Delete"}
           </Button>
-          <PButton
+          <Button
             type="button"
-            tone="ghost"
+            variant="ghost"
             size="sm"
             onClick={() => setOpen(false)}
           >
             {deleted ? "Close" : "Cancel"}
-          </PButton>
+          </Button>
         </form>
 
         {deleted ? (
@@ -193,9 +192,9 @@ function DeletePreview({
         <p className="m-0 font-sans text-xs text-rose">
           Couldn&rsquo;t check what this affects — the record may have changed.
         </p>
-        <PButton type="button" tone="ghost" size="sm" onClick={onRetry}>
+        <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
           Retry check
-        </PButton>
+        </Button>
       </div>
     );
   }

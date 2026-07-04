@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { useValueChange } from "@/lib/hooks/use-value-change";
 import { adminCreateProspect } from "@/app/(protected)/admin/plan/actions";
 import {
@@ -10,6 +9,7 @@ import {
 } from "@/components/admin/forms/action-form";
 import { FULL_NAME_REQUIRED_MESSAGE } from "@/lib/admin/validation/prospect-form-client";
 import { GroupTypePicker } from "@/components/admin/forms/group-type-picker";
+import { Button } from "@/components/ui/button";
 import {
   fieldLabelClassName as LABEL,
   fieldInputBaseClassName as INPUT,
@@ -148,14 +148,14 @@ export function ProspectCreateForm({
             and clears itself on the form's success reset. */}
         <GroupTypePicker groupTypes={groupTypes} />
         <div>
-          <PButton
+          <Button
             type="submit"
-            tone="terra"
+            variant="primary"
             size="md"
             disabled={pending || !canSubmit}
           >
             {pending ? "Saving…" : "Add prospect"}
-          </PButton>
+          </Button>
           {!canSubmit ? (
             <p className="m-0 mt-1.5 font-sans text-sm text-ink3">
               Enter a full name to enable Add prospect.

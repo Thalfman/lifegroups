@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import {
   fieldLabelClassName as LABEL,
   fieldInputBaseClassName as INPUT,
@@ -200,15 +200,15 @@ export function CreatablePicker({
               className={INPUT}
               placeholder={placeholder}
             />
-            <PButton
+            <Button
               type="button"
-              tone="terra"
+              variant="primary"
               size="md"
               onClick={addItem}
               disabled={pending || newItem.trim().length === 0}
             >
               {pending ? "Adding…" : "Add"}
-            </PButton>
+            </Button>
           </div>
           <p
             id={`${id}-new-error`}

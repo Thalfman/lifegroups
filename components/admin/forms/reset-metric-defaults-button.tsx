@@ -24,7 +24,7 @@ export function ResetMetricDefaultsButton() {
       confirmMessage={resetMetricDefaultsConfirmMessage}
       idleLabel="Reset defaults"
       pendingLabel="Resetting…"
-      tone="ghost"
+      variant="ghost"
       gap={8}
       alignEnd={false}
       successText="Defaults restored."

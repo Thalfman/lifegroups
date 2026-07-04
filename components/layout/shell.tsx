@@ -1,4 +1,3 @@
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import { POrnament } from "@/components/pastoral/atoms";
 
 export function SectionHeader({
@@ -14,43 +13,21 @@ export function SectionHeader({
     <div>
       <POrnament w={56} />
       {eyebrow ? (
-        <div
-          style={{
-            fontFamily: fontSans,
-            fontSize: 10,
-            letterSpacing: 1.8,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 600,
-            margin: "10px 0 4px",
-          }}
-        >
+        <div className="mb-1 mt-2.5 font-sans text-[10px] font-semibold uppercase tracking-[1.8px] text-ink3">
           {eyebrow}
         </div>
       ) : null}
+      {/* Plain string join, not cn(): tailwind-merge doesn't know the custom
+          `font-display` family and drops it against `font-medium`. */}
       <h2
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 26,
-          fontWeight: 500,
-          letterSpacing: -0.6,
-          margin: eyebrow ? "0" : "10px 0 0",
-          color: P.ink,
-          lineHeight: 1.1,
-        }}
+        className={
+          "m-0 font-display text-[26px] font-medium leading-[1.1] tracking-[-0.6px] text-ink" +
+          (eyebrow ? "" : " mt-2.5")
+        }
       >
         {title}
       </h2>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 14,
-          color: P.ink2,
-          margin: "8px 0 0",
-          lineHeight: 1.55,
-          maxWidth: 720,
-        }}
-      >
+      <p className="mb-0 mt-2 max-w-[720px] font-sans text-base text-ink2">
         {description}
       </p>
     </div>

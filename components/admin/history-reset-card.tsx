@@ -11,7 +11,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useValueChange } from "@/lib/hooks/use-value-change";
-import { PButton } from "@/components/pastoral/button";
 import {
   superAdminResetHistoryCategory,
   superAdminResetHistoryCategoryRevert,
@@ -210,14 +209,14 @@ function CategoryResetRow({
                 className={fieldInputClassName}
               />
             </div>
-            <PButton
+            <Button
               type="submit"
-              tone="ghost"
+              variant="ghost"
               size="sm"
               disabled={revert.pending || !restoreMatches}
             >
               {revert.pending ? "Restoring…" : "Revert"}
-            </PButton>
+            </Button>
           </div>
           {revert.state?.ok ? (
             <span className={successTextClassName}>

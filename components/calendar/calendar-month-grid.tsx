@@ -20,7 +20,6 @@ import {
   friendlyEventTypeLabel,
   statusTone,
 } from "@/lib/calendar/payload";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 // Build an explicit, meaningful accessible name for a calendar cell's edit
 // trigger (#322). Without it the button's name is the concatenated child text
@@ -84,43 +83,15 @@ export function CalendarMonthGrid({
   for (const o of occurrences) occurrencesByDate.set(o.date, o);
 
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: 16,
-        display: "grid",
-        gap: 10,
-      }}
-    >
-      <div
-        className="lg-m-cal-weekdays"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-          gap: 6,
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.5,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 600,
-        }}
-      >
+    <div className="grid gap-2.5 rounded-lg border border-line bg-surface p-4">
+      <div className="lg-m-cal-weekdays grid grid-cols-7 gap-1.5 font-sans text-[10px] font-semibold uppercase tracking-[1.5px] text-ink3">
         {WEEKDAY_HEADERS.map((label) => (
-          <div key={label} style={{ padding: "2px 6px" }}>
+          <div key={label} className="px-1.5 py-0.5">
             {label}
           </div>
         ))}
       </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-          gap: 6,
-        }}
-      >
+      <div className="grid grid-cols-7 gap-1.5">
         {cells.map((cell) => (
           <GridCellView
             key={cell.date}
@@ -160,42 +131,21 @@ function GridCellView({
 }) {
   // Out-of-month cells differ by background + a muted (AA-clearing) day
   // color — never an opacity wash, which floors text contrast below 4.5:1.
-  const baseBg = cell.inMonth ? P.bg : P.surface;
-  const dayColor = cell.inMonth ? P.ink2 : P.ink3;
+  const baseBgClass = cell.inMonth ? "bg-bg" : "bg-surface";
+  const dayColorClass = cell.isToday
+    ? "text-clay"
+    : cell.inMonth
+      ? "text-ink2"
+      : "text-ink3";
 
   const cellInner = (
-    <div
-      className="lg-m-cal-cell"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        minHeight: 84,
-        padding: "8px 8px 10px",
-      }}
-    >
+    <div className="lg-m-cal-cell flex min-h-[84px] flex-col gap-1 px-2 pb-2.5 pt-2">
       <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          fontFamily: fontSans,
-          fontSize: 11,
-          fontWeight: 600,
-          color: cell.isToday ? P.terra : dayColor,
-        }}
+        className={`flex items-center gap-1 font-sans text-2xs font-semibold ${dayColorClass}`}
       >
         {dayNumberLabel(cell.date)}
         {cell.isToday ? (
-          <span
-            style={{
-              fontSize: 11,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              color: P.terra,
-              fontWeight: 700,
-            }}
-          >
+          <span className="text-2xs font-bold uppercase tracking-[1px] text-clay">
             Today
           </span>
         ) : null}
@@ -224,14 +174,7 @@ function GridCellView({
     isMeetingOccurrence: false,
   };
 
-  const wrapperStyle: React.CSSProperties = {
-    border: `1px solid ${P.line}`,
-    borderRadius: 10,
-    background: baseBg,
-    minHeight: 84,
-    display: "block",
-    width: "100%",
-  };
+  const wrapperClassName = `block min-h-[84px] w-full rounded-sm border border-line ${baseBgClass}`;
 
   const triggerAriaLabel = buildTriggerAriaLabel(
     occurrence,
@@ -247,7 +190,7 @@ function GridCellView({
       actions={actions}
       triggerLabel={cellInner}
       triggerAriaLabel={triggerAriaLabel}
-      triggerStyle={wrapperStyle}
+      triggerClassName={wrapperClassName}
       canEdit={canEdit}
       disabledReason={disabledReason}
       previewNotice={previewNotice}
@@ -273,40 +216,14 @@ function OccurrencePill({
   const tone = statusTone(occurrence.status);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        marginTop: 2,
-      }}
-    >
-      <div
-        className="lg-m-cal-pill"
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12,
-          color: P.ink,
-          fontWeight: 500,
-          lineHeight: 1.3,
-          // Truncate long titles inside the narrow cell; full label is in
-          // the editor modal.
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
+    <div className="mt-0.5 flex flex-col gap-1">
+      {/* Truncate long titles inside the narrow cell; full label is in
+          the editor modal. */}
+      <div className="lg-m-cal-pill overflow-hidden text-ellipsis whitespace-nowrap font-sans text-xs font-medium leading-[1.3] text-ink">
         {typeLabel}
       </div>
       {clock && occurrence.status === "scheduled" ? (
-        <div
-          style={{
-            fontFamily: fontSans,
-            fontSize: 10,
-            color: P.ink3,
-            letterSpacing: 0.2,
-          }}
-        >
+        <div className="font-sans text-[10px] tracking-[0.2px] text-ink3">
           {clock}
         </div>
       ) : null}
@@ -318,15 +235,7 @@ function OccurrencePill({
         </div>
       ) : null}
       {!occurrence.isMeetingOccurrence ? (
-        <div
-          style={{
-            fontFamily: fontSans,
-            fontSize: 9,
-            color: P.ink3,
-            letterSpacing: 0.5,
-            textTransform: "uppercase",
-          }}
-        >
+        <div className="font-sans text-[9px] uppercase tracking-[0.5px] text-ink3">
           Special
         </div>
       ) : null}
@@ -360,8 +269,8 @@ export function describeSchedule(opts: {
     cadenceFragments.length > 0 ? ` (${cadenceFragments.join(" ")})` : "";
   return (
     <>
-      Meets <strong style={{ color: P.ink }}>{opts.meetingDay}s</strong> at{" "}
-      <strong style={{ color: P.ink }}>{clock}</strong>
+      Meets <strong className="text-ink">{opts.meetingDay}s</strong> at{" "}
+      <strong className="text-ink">{clock}</strong>
       {cadence}
     </>
   );

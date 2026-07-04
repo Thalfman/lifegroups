@@ -11,24 +11,10 @@ import {
   isoWeekStart,
 } from "@/lib/shared/church-time";
 
-const navLinkStyle: React.CSSProperties = {
-  fontFamily: "var(--font-body)",
-  fontSize: 12,
-  color: "var(--c-ink)",
-  textDecoration: "none",
-  padding: "6px 10px",
-  borderRadius: 999,
-  border: "1px solid var(--c-line)",
-  background: "var(--c-surface)",
-};
-
-const navLinkActiveStyle: React.CSSProperties = {
-  ...navLinkStyle,
-  color: "var(--c-sageDeep)",
-  background: "var(--c-sageSoft)",
-  border: "1px solid transparent",
-  fontWeight: 600,
-};
+const navLinkBaseClassName =
+  "rounded-pill px-2.5 py-1.5 font-sans text-xs no-underline";
+const navLinkClassName = `${navLinkBaseClassName} border border-line bg-surface text-ink`;
+const navLinkActiveClassName = `${navLinkBaseClassName} border border-transparent bg-sageSoft font-semibold text-sageDeep`;
 
 // Add `days` to a YYYY-MM-DD date, returning YYYY-MM-DD. Pure calendar math on
 // UTC midnight (the date is already a fixed calendar day), matching isoWeekStart.
@@ -118,39 +104,17 @@ export async function PlanningCalendarPanel({
   const isCurrentMonth = monthIso === churchMonthIso();
 
   return (
-    <div style={{ display: "grid", gap: 18 }}>
-      <Card style={{ padding: "14px 18px" }}>
-        <div
-          style={{
-            display: "flex",
-            gap: 14,
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 18,
-              color: "var(--c-ink)",
-              fontWeight: 500,
-            }}
-          >
+    <div className="grid gap-[18px]">
+      <Card padded={false} className="px-[18px] py-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-3.5">
+          <div className="font-display text-[18px] font-medium text-ink">
             {monthLabel(monthIso)}
           </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="flex flex-wrap items-center gap-2">
             {prevMonth ? (
               <Link
                 href={`/admin/planning?month=${prevMonth}`}
-                style={navLinkStyle}
+                className={navLinkClassName}
               >
                 ← {monthLabel(prevMonth)}
               </Link>
@@ -158,14 +122,16 @@ export async function PlanningCalendarPanel({
             <Link
               href="/admin/planning"
               aria-current={isCurrentMonth ? "page" : undefined}
-              style={isCurrentMonth ? navLinkActiveStyle : navLinkStyle}
+              className={
+                isCurrentMonth ? navLinkActiveClassName : navLinkClassName
+              }
             >
               This month
             </Link>
             {nextMonth ? (
               <Link
                 href={`/admin/planning?month=${nextMonth}`}
-                style={navLinkStyle}
+                className={navLinkClassName}
               >
                 {monthLabel(nextMonth)} →
               </Link>
