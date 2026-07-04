@@ -70,7 +70,7 @@ describe("buildGroupHealthData — config resolution", () => {
     // The code-level placeholders — the UI must never render blank labels.
     expect(view.spiritualGrowthLabel).toBe("Spiritual growth (1–5)");
     expect(view.groupQuestionLabel).toBe(
-      "Group engagement — shepherd-reported (1–5)"
+      "Group engagement, shepherd-reported (1–5)"
     );
     expect(view.watchGrade).toBe("C");
   });
@@ -118,7 +118,7 @@ describe("buildGroupHealthData — config resolution", () => {
       "How is the group growing spiritually?"
     );
     expect(view.groupQuestionLabel).toBe(
-      "Group engagement — shepherd-reported (1–5)"
+      "Group engagement, shepherd-reported (1–5)"
     );
   });
 

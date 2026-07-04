@@ -97,14 +97,14 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
     key: "nav_show_groups",
     label: "Show Groups tab",
     description:
-      "Show the Groups tab in the admin navigation. On by default — turn it off to hide the tab.",
+      "Show the Groups tab in the admin navigation. On by default. Turn it off to hide the tab.",
     kind: "nav_visibility",
   },
   {
     key: "nav_show_people",
     label: "Show People tab",
     description:
-      "Show the People tab in the admin navigation. On by default — turn it off to hide the tab.",
+      "Show the People tab in the admin navigation. On by default. Turn it off to hide the tab.",
     kind: "nav_visibility",
   },
   {
@@ -151,7 +151,7 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
     key: "care_member_list",
     label: "Member care list",
     description:
-      "Show the member care list in the admin Care area, alongside the Shepherd care list. Off by default — Care stays Shepherds-only until this is on. Member care records are kept either way; this only controls whether the list is shown.",
+      "Show the member care list in the admin Care area, alongside the Shepherd care list. Off by default. Care stays Shepherds-only until this is on. Member care records are kept either way; this only controls whether the list is shown.",
     kind: "new_surface",
   },
   // Usage & login tracking (Phase USAGE.1). A plain on/off switch that gates
@@ -164,7 +164,7 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
     key: "usage_tracking",
     label: "Usage & login tracking",
     description:
-      "Record sign-ins and which top-level area each user opens (Care / Plan / Multiply / Settings), so you can see how early users are using the app. Off by default; while off, nothing is recorded. Only the area opened is recorded — never the content viewed.",
+      "Record sign-ins and which top-level area each user opens (Care / Plan / Multiply / Settings), so you can see how early users are using the app. Off by default; while off, nothing is recorded. Only the area opened is recorded, never the content viewed.",
     kind: "new_surface",
   },
 ];

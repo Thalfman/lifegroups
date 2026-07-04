@@ -17,5 +17,5 @@ export const COMMON_RPC_ERROR_MESSAGES: RpcErrorMessages = {
   event_already_archived:
     "That calendar event is already archived. Restore it before editing.",
   event_not_archived:
-    "That calendar event isn't archived — there's nothing to restore.",
+    "That calendar event isn't archived. There's nothing to restore.",
 };

@@ -48,9 +48,9 @@ export function buildFeatureFlagRow(
   const riskNoteText = frozenHeldOff
     ? "Turned on, but held off until it passes its safety review."
     : frozen
-      ? "Held — stays off until it passes a safety review, even when switched on."
+      ? "Held. Stays off until it passes a safety review, even when switched on."
       : navVis
-        ? "Hiding the tab does not block access — anyone with the page's address can still open it."
+        ? "Hiding the tab does not block access. Anyone with the page's address can still open it."
         : null;
 
   return {
@@ -65,13 +65,13 @@ export function buildFeatureFlagRow(
     },
     stateBadge: {
       // #648: a frozen surface reads as a sequence — enabled, then live — not a
-      // contradictory "On"/"Held off". "Enabled — pending go-ahead" is the
+      // contradictory "On"/"Held off". "Enabled: pending go-ahead" is the
       // switch-on-but-not-yet-verified state; "Live" is verified and serving.
       label: frozen
         ? resolved
           ? "Live"
           : enabled
-            ? "Enabled — pending go-ahead"
+            ? "Enabled: pending go-ahead"
             : "Locked off"
         : resolved
           ? navVis

@@ -432,7 +432,7 @@ export function createPrivateNotesSession(
         patch({
           error:
             "Unlocked, but your saved note couldn't be decrypted with that key. " +
-            "Refresh the page or use another unlock method — saving now would overwrite it.",
+            "Refresh the page or use another unlock method. Saving now would overwrite it.",
         });
         return false; // stay locked
       }

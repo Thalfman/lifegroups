@@ -38,7 +38,7 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
   invalid_input: "Some required fields are missing or malformed.",
   group_already_closed:
     "That group is already closed. Reopen it if you need to make changes.",
-  group_not_closed: "That group is already active — there's nothing to reopen.",
+  group_not_closed: "That group is already active. There's nothing to reopen.",
   no_role_change: "That profile already has that role. Nothing to change.",
   missing_settings:
     "The settings record is missing. Refresh the page and try again.",
@@ -120,7 +120,7 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "You can't remove your last unlock method. Add another passkey first, or rotate your recovery code.",
   // PRD-SAC6 (#288) Clean Slate token: the wipe found no history to clear.
   nothing_to_wipe:
-    "There's no accumulated history to clear right now — everything is already a clean slate.",
+    "There's no accumulated history to clear right now. Everything is already a clean slate.",
   // PRD-SAC6 (#293/#294) Clean Slate revert + import tokens.
   missing_snapshot:
     "There's no recoverable snapshot to restore. Import a previously exported snapshot file instead.",
@@ -136,7 +136,7 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "That snapshot file is missing or has the wrong shape. Use a file exported by this app's Clean Slate Export.",
   // ADR 0014 (#312–#316) permanent-deletion tokens.
   missing_entity:
-    "We couldn't find that record. It may already have been deleted — refresh the page and try again.",
+    "We couldn't find that record. It may already have been deleted. Refresh the page and try again.",
   has_blocking_dependents:
     "That record still has dependent data that would be erased. Archive or clear the blockers listed above first, then delete it.",
   has_confidential_records:

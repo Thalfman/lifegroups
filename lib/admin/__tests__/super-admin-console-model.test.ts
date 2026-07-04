@@ -110,9 +110,7 @@ describe("buildSuperAdminConsoleStatus", () => {
     });
     const chip = status.chips[2];
     expect(chip.value).toBe("Active");
-    expect(chip.detail).toBe(
-      "Known passwords are live — disable before launch"
-    );
+    expect(chip.detail).toBe("Known passwords are live: disable before launch");
     expect(chip.action).toEqual({
       label: "Review test accounts",
       hash: "test-tools",
@@ -173,7 +171,7 @@ describe("buildSuperAdminConsoleStatus", () => {
     const off = buildSuperAdminConsoleStatus(baseInput());
     expect(off.usageTrackingOn).toBe(false);
     expect(off.chips[5].value).toBe("Off");
-    expect(off.chips[5].detail).toBe("Off — nothing is recorded");
+    expect(off.chips[5].detail).toBe("Off: nothing is recorded");
 
     const on = buildSuperAdminConsoleStatus({
       ...baseInput(),
