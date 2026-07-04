@@ -114,7 +114,7 @@ function count(html: string, marker: string): number {
 // Stable copy + editor markers. The notice copy is the load-bearing contract
 // (#469): reassures that saved configuration is unchanged.
 const COULD_NOT_LOAD =
-  "couldn't be loaded right now. Your saved configuration is unchanged — refresh to try again.";
+  "couldn't be loaded right now. Your saved configuration is unchanged. Refresh to try again.";
 const NOT_CONFIGURED = "isn't configured in this environment yet";
 // Each editor is lazy, so the "editor branch was taken" marker is the editor's
 // loading-skeleton aria-label (settings/lazy-editors.tsx), not editor-internal

@@ -467,11 +467,11 @@ const DEFAULT_HIDDEN = ["/admin/groups", "/admin/people", "/admin/planning"];
 // can't quietly drift back into mechanical "No X in the pipeline yet" phrasing.
 const CALM_EMPTY_LINES = [
   "Nothing needs your attention right now.", // NeedsAttentionArea
-  "The week ahead is clear — no follow-ups are due.", // ThisWeekCard
+  "The week ahead is clear. No follow-ups are due.", // ThisWeekCard
   "Care queue is clear.", // LeaderCareOverviewCard footer
-  "No groups are meeting yet — the health pulse will gather here as groups begin.", // HealthDistributionCard
-  "No Prospects in the Interest Funnel yet — new interest will gather here.", // InterestFunnelOverviewCard
-  "No active group types yet — readiness will gather here once group types are set up in Settings.", // MultiplyOverviewCard
+  "No groups are meeting yet. The health pulse will gather here as groups begin.", // HealthDistributionCard
+  "No Prospects in the Interest Funnel yet. New interest will gather here.", // InterestFunnelOverviewCard
+  "No active group types yet. Readiness will gather here once group types are set up in Settings.", // MultiplyOverviewCard
 ];
 
 describe("Home empty-state tone pass (#480)", () => {

@@ -75,7 +75,7 @@ const FN_ERROR_MESSAGES: Record<string, string> = {
   invalid_payload:
     "The form has invalid values. Check the fields and try again.",
   invite_failed:
-    "Supabase Auth rejected the invite. The auth user was not created — retry is safe.",
+    "Supabase Auth rejected the invite. The auth user was not created. Retry is safe.",
   cannot_modify_super_admin_profile:
     "A super_admin profile already uses that email and can't be modified from this form.",
   missing_group:
@@ -89,7 +89,7 @@ const FN_ERROR_MESSAGES: Record<string, string> = {
   profile_lookup_query_failed:
     "The Edge Function could not query profiles with the configured elevated key. See PostgREST diagnostics in the function logs.",
   db_error:
-    "The atomic write failed. The invite email may have been sent — see warnings below.",
+    "The atomic write failed. The invite email may have been sent. See warnings below.",
   function_not_deployed_or_wrong_name:
     "The Edge Function isn't deployed or the name is wrong. Run: supabase functions deploy invite-user.",
   invalid_json_body: "Internal error: the request body wasn't valid JSON.",

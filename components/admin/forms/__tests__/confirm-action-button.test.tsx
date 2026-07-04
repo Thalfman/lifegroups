@@ -126,7 +126,7 @@ describe("confirmation copy — byte-identical to the pre-#489 modules", () => {
       "Restore the built-in metric defaults?\n\n" +
         "This resets the global thresholds (capacity, healthy attendance, " +
         "check-in due offset, missed check-in window) to their baseline " +
-        "values. Per-group overrides are NOT touched — clear those " +
+        "values. Per-group overrides are NOT touched. Clear those " +
         "separately from the overrides list below if you also want them " +
         "cleared. This action is audited."
     );
