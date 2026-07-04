@@ -70,6 +70,33 @@ export function riskTone(level: LaunchPlanningRiskLevel): {
   }
 }
 
+/**
+ * Tailwind-class variant of `riskTone` for surfaces migrated off inline
+ * styles (#847): the same label, with the accent expressed as text / border
+ * utility classes. `riskTone` above stays for callers that feed the raw
+ * color into component props (e.g. MetricCard `accent`).
+ */
+export function riskToneClasses(level: LaunchPlanningRiskLevel): {
+  label: string;
+  text: string;
+  border: string;
+} {
+  switch (level) {
+    case "ok":
+      return { label: "OK", text: "text-sage", border: "border-sage" };
+    case "watch":
+      return { label: "Watch", text: "text-clay", border: "border-clay" };
+    case "launch_needed":
+      // Deliberate off-token accent (see riskTone) — arbitrary values keep
+      // exact visual parity.
+      return {
+        label: "Launch needed",
+        text: "text-[#923220]",
+        border: "border-[#923220]",
+      };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Assumptions: typed shape + defaults + decoder
 // ---------------------------------------------------------------------------

@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { P, fontBody } from "@/lib/pastoral";
 import { PButton } from "@/components/pastoral/button";
-import { eyebrowStyle, panelTitleStyle } from "./section-styles";
+import {
+  eyebrowClassName,
+  panelTitleClassName,
+  sectionClassName,
+} from "./section-styles";
 import type { LaunchPlanningAssumptions } from "@/lib/admin/launch-planning";
 
 // The scenario form is only mounted after "Plan a launch" is clicked, so its
@@ -31,15 +34,8 @@ export function PlanLaunchWidget({
   const [planning, setPlanning] = useState(false);
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center gap-2.5">
         <PButton
           type="button"
           tone="terra"
@@ -49,7 +45,7 @@ export function PlanLaunchWidget({
           {planning ? "Cancel" : "Plan a launch"}
         </PButton>
         {!planning ? (
-          <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3 }}>
+          <span className="font-sans text-xs text-ink3">
             Save a named scenario from your current forecast, or tune the
             forecast inputs in the Capacity tab.
           </span>
@@ -57,17 +53,10 @@ export function PlanLaunchWidget({
       </div>
 
       {planning ? (
-        <div
-          style={{
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 14,
-            padding: "22px 24px",
-          }}
-        >
-          <header style={{ marginBottom: 14 }}>
-            <span style={eyebrowStyle}>Plan a launch</span>
-            <h2 style={panelTitleStyle}>
+        <div className={sectionClassName}>
+          <header className="mb-3.5">
+            <span className={eyebrowClassName}>Plan a launch</span>
+            <h2 className={panelTitleClassName}>
               New launch scenario from your current forecast
             </h2>
           </header>

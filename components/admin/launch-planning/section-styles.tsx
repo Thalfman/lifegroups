@@ -1,5 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import type { ReactNode } from "react";
 
 // Shared section chrome for the launch-planning panels. Before this, the
 // eyebrow / section-card / panel-title styles were copied byte-for-byte across
@@ -8,34 +7,19 @@ import { P, fontBody, fontSans } from "@/lib/pastoral";
 // coherent and the copies from drifting.
 
 // The small uppercase eyebrow label sitting above a section title.
-export const eyebrowStyle: CSSProperties = {
-  fontFamily: fontSans,
-  fontSize: 10,
-  letterSpacing: 1.5,
-  textTransform: "uppercase",
-  color: P.ink3,
-  fontWeight: 600,
-};
+export const eyebrowClassName =
+  "font-sans text-[10px] font-semibold uppercase tracking-[1.5px] text-ink3";
 
 // The bordered surface card a launch-planning section sits in.
-export const sectionStyle: CSSProperties = {
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  borderRadius: 14,
-  padding: "22px 24px",
-};
+export const sectionClassName =
+  "rounded-lg border border-line bg-surface px-6 py-[22px]";
 
 // The display-type heading under a section eyebrow.
-export const panelTitleStyle: CSSProperties = {
-  margin: "4px 0 0",
-  fontFamily: fontBody,
-  fontSize: 18,
-  color: P.ink,
-  fontWeight: 600,
-};
+export const panelTitleClassName =
+  "m-0 mt-1 font-sans text-[18px] font-semibold text-ink";
 
 // The eyebrow as a component, for callers that render it inline rather than
-// applying `eyebrowStyle` to their own element.
+// applying `eyebrowClassName` to their own element.
 export function SectionEyebrow({ children }: { children: ReactNode }) {
-  return <span style={eyebrowStyle}>{children}</span>;
+  return <span className={eyebrowClassName}>{children}</span>;
 }

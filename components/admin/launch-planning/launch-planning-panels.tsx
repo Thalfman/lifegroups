@@ -16,8 +16,11 @@ import {
   MultiplicationPlanner,
   ScenariosPanel,
 } from "@/components/admin/launch-planning/lazy-panels";
-import { P, fontBody } from "@/lib/pastoral";
-import { SectionEyebrow } from "./section-styles";
+import {
+  panelTitleClassName,
+  sectionClassName,
+  SectionEyebrow,
+} from "./section-styles";
 import type { LaunchPlanningPageData } from "./launch-planning-data";
 
 // The tab panels for launch planning, built once from the shared loader and
@@ -54,17 +57,7 @@ export function buildLaunchPlanningPanels(
       {data.assumptionsError}
     </ErrorBanner>
   ) : (
-    <div
-      style={{
-        margin: 0,
-        fontFamily: fontBody,
-        fontSize: 13,
-        color: P.ink2,
-        background: P.bgDeep,
-        borderRadius: 8,
-        padding: "10px 14px",
-      }}
-    >
+    <div className="m-0 rounded-[8px] bg-sidebar px-3.5 py-2.5 font-sans text-sm text-ink2">
       {data.assumptionsAvailable
         ? "This forecast uses your saved assumptions."
         : "This forecast is live now on Fox Valley's built-in starting assumptions — tune it to your numbers any time."}
@@ -72,7 +65,7 @@ export function buildLaunchPlanningPanels(
   );
 
   const overview = (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       <LaunchPlanningBreakdownCards
         inputs={data.inputs}
         outputs={data.outputs}
@@ -105,7 +98,7 @@ export function buildLaunchPlanningPanels(
   );
 
   const forecast = (
-    <div style={{ display: "grid", gap: 20 }}>
+    <div className="grid gap-5">
       {/* The two ministry-specific forecast inputs live together here: current
           church attendance (this card) and target participation (the form). */}
       <ChurchAttendanceCard
@@ -114,36 +107,11 @@ export function buildLaunchPlanningPanels(
         participationPct={data.participationPct}
       />
 
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-          gap: 20,
-          alignItems: "start",
-        }}
-      >
-        <section
-          style={{
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 14,
-            padding: "22px 24px",
-          }}
-        >
-          <header style={{ marginBottom: 16 }}>
+      <div className="lg-m-grid-stack grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-5">
+        <section className={sectionClassName}>
+          <header className="mb-4">
             <SectionEyebrow>Forecast</SectionEyebrow>
-            <h2
-              style={{
-                margin: "4px 0 0",
-                fontFamily: fontBody,
-                fontSize: 18,
-                color: P.ink,
-                fontWeight: 600,
-              }}
-            >
-              Forecast inputs
-            </h2>
+            <h2 className={panelTitleClassName}>Forecast inputs</h2>
           </header>
           <LaunchPlanningAssumptionsForm assumptions={data.assumptions} />
         </section>
@@ -158,7 +126,7 @@ export function buildLaunchPlanningPanels(
   );
 
   const scenarios = (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       {data.scenariosError ? (
         <ErrorBanner>
           Scenarios could not be loaded: {data.scenariosError}
@@ -208,7 +176,7 @@ export function buildLaunchPlanningPanels(
   );
 
   const groups = (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       {capacityBoard}
       {multiplicationPlanner}
     </div>

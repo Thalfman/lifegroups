@@ -10,12 +10,11 @@ import {
   adminSetCurrentLaunchPlanningScenario,
   adminUpdateLaunchPlanningScenario,
 } from "@/app/(protected)/admin/launch-planning/scenario-actions";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { PercentField } from "@/components/admin/launch-planning/percent-field";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  formGridStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  formGridClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
@@ -25,14 +24,9 @@ import type {
   LaunchPlanningAssumptions,
   LaunchPlanningScenario,
 } from "@/lib/admin/launch-planning";
+import { eyebrowClassName } from "./section-styles";
 
-const hintStyle = {
-  fontFamily: fontBody,
-  fontSize: 11,
-  color: P.ink3,
-  margin: "4px 0 0",
-  lineHeight: 1.4,
-} as const;
+const hintClassName = "m-0 mt-1 font-sans text-2xs leading-[1.4] text-ink3";
 
 // Shared assumption-field grid. Used by both create and edit forms so the
 // LP.1 baseline form and the LP.2 scenario form expose the same set of
@@ -58,11 +52,11 @@ function AssumptionFields({
   const fieldId = (name: string) => `${idPrefix}__${name}`;
   return (
     <>
-      <div className="lg-m-grid-stack" style={formGridStyle}>
+      <div className={formGridClassName}>
         <div>
           <label
             htmlFor={fieldId("current_church_attendance")}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Current church attendance
           </label>
@@ -75,13 +69,16 @@ function AssumptionFields({
             max={100000}
             inputMode="numeric"
             defaultValue={defaults.current_church_attendance}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
-          <p style={hintStyle}>Whole number of attendees today.</p>
+          <p className={hintClassName}>Whole number of attendees today.</p>
         </div>
 
         <div>
-          <label htmlFor={fieldId("expected_growth")} style={fieldLabelStyle}>
+          <label
+            htmlFor={fieldId("expected_growth")}
+            className={fieldLabelClassName}
+          >
             Expected growth (people)
           </label>
           <input
@@ -93,9 +90,9 @@ function AssumptionFields({
             max={100000}
             inputMode="numeric"
             defaultValue={defaults.expected_growth}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
-          <p style={hintStyle}>
+          <p className={hintClassName}>
             People expected to arrive by the date below. Use a negative number
             if you expect shrinkage.
           </p>
@@ -104,7 +101,7 @@ function AssumptionFields({
         <div>
           <label
             htmlFor={fieldId("expected_growth_date")}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Expected growth date
           </label>
@@ -113,9 +110,11 @@ function AssumptionFields({
             name="expected_growth_date"
             type="date"
             defaultValue={defaults.expected_growth_date ?? ""}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
-          <p style={hintStyle}>Optional. Used to suggest launch timing.</p>
+          <p className={hintClassName}>
+            Optional. Used to suggest launch timing.
+          </p>
         </div>
 
         <PercentField
@@ -131,7 +130,7 @@ function AssumptionFields({
         <div>
           <label
             htmlFor={fieldId("average_group_size")}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Average group size
           </label>
@@ -144,9 +143,9 @@ function AssumptionFields({
             max={500}
             inputMode="numeric"
             defaultValue={defaults.average_group_size}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
-          <p style={hintStyle}>
+          <p className={hintClassName}>
             Used to convert the capacity gap into a new-group count.
           </p>
         </div>
@@ -164,7 +163,7 @@ function AssumptionFields({
         <div>
           <label
             htmlFor={fieldId("leaders_per_new_group")}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Shepherds per new group
           </label>
@@ -177,15 +176,17 @@ function AssumptionFields({
             max={10}
             inputMode="numeric"
             defaultValue={defaults.leaders_per_new_group}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
-          <p style={hintStyle}>e.g. 2 = one shepherd + one co-shepherd.</p>
+          <p className={hintClassName}>
+            e.g. 2 = one shepherd + one co-shepherd.
+          </p>
         </div>
 
         <div>
           <label
             htmlFor={fieldId("planned_launch_count")}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Planned launches
           </label>
@@ -197,9 +198,9 @@ function AssumptionFields({
             max={100}
             inputMode="numeric"
             defaultValue={defaults.planned_launch_count}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
-          <p style={hintStyle}>
+          <p className={hintClassName}>
             New groups to launch in this scenario (drives the shepherd gap).
           </p>
         </div>
@@ -207,7 +208,7 @@ function AssumptionFields({
         <div>
           <label
             htmlFor={fieldId("target_launch_month")}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Target season
           </label>
@@ -215,19 +216,19 @@ function AssumptionFields({
             id={fieldId("target_launch_month")}
             name="target_launch_month"
             defaultValue={defaults.target_launch_month ?? ""}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           >
             <option value="">No target</option>
             <option value="1">January</option>
             <option value="8">August</option>
           </select>
-          <p style={hintStyle}>Julian&rsquo;s planting seasons.</p>
+          <p className={hintClassName}>Julian&rsquo;s planting seasons.</p>
         </div>
 
         <div>
           <label
             htmlFor={fieldId("target_launch_year")}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Target year
           </label>
@@ -240,16 +241,16 @@ function AssumptionFields({
             inputMode="numeric"
             defaultValue={defaults.target_launch_year ?? ""}
             placeholder="2026"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
-          <p style={hintStyle}>
+          <p className={hintClassName}>
             Apprentices Ready by this date count as staffing supply.
           </p>
         </div>
       </div>
 
       <div>
-        <label htmlFor={fieldId("notes")} style={fieldLabelStyle}>
+        <label htmlFor={fieldId("notes")} className={fieldLabelClassName}>
           Scenario notes
         </label>
         <textarea
@@ -258,15 +259,10 @@ function AssumptionFields({
           rows={3}
           maxLength={NOTE_MAX_CHARS}
           defaultValue={defaults.notes ?? ""}
-          style={{
-            ...fieldInputStyle,
-            minHeight: 80,
-            resize: "vertical",
-            fontFamily: fontBody,
-          }}
+          className={`${fieldInputClassName} min-h-20 resize-y`}
           placeholder="Optional context for Julian's eyes only."
         />
-        <p style={hintStyle}>
+        <p className={hintClassName}>
           Admin-only. Not shown anywhere outside this page and never logged in
           audit metadata.
         </p>
@@ -292,23 +288,15 @@ export function CreateScenarioForm({
   );
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 16 }}>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.55,
-        }}
-      >
+    <form action={formAction} className="grid gap-4">
+      <p className="m-0 font-sans text-sm leading-[1.55] text-ink2">
         Create a named alternative to compare against the baseline. The fields
         below seed from the baseline; tweak any of them to shape this scenario.
       </p>
 
-      <div className="lg-m-grid-stack" style={formGridStyle}>
+      <div className={formGridClassName}>
         <div>
-          <label htmlFor={`${idPrefix}__name`} style={fieldLabelStyle}>
+          <label htmlFor={`${idPrefix}__name`} className={fieldLabelClassName}>
             Scenario name
           </label>
           <input
@@ -318,13 +306,16 @@ export function CreateScenarioForm({
             required
             maxLength={120}
             placeholder="Conservative, Expected, Stretch…"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
-          <p style={hintStyle}>Required. Max 120 characters.</p>
+          <p className={hintClassName}>Required. Max 120 characters.</p>
         </div>
 
         <div>
-          <label htmlFor={`${idPrefix}__description`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`${idPrefix}__description`}
+            className={fieldLabelClassName}
+          >
             Description (optional)
           </label>
           <input
@@ -333,36 +324,20 @@ export function CreateScenarioForm({
             type="text"
             maxLength={1000}
             placeholder="One-line context for this scenario."
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
-          <p style={hintStyle}>Optional. Max 1000 characters.</p>
+          <p className={hintClassName}>Optional. Max 1000 characters.</p>
         </div>
       </div>
 
       <AssumptionFields defaults={defaults} idPrefix={idPrefix} />
 
-      <label
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink,
-        }}
-      >
+      <label className="inline-flex items-center gap-2 font-sans text-sm text-ink">
         <input type="checkbox" name="make_current" value="true" />
         Mark as the current scenario (replaces any prior current).
       </label>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="flex flex-wrap items-center gap-2.5">
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save scenario"}
         </PButton>
@@ -419,63 +394,28 @@ export function EditScenarioForm({
   });
 
   return (
-    <div style={{ display: "grid", gap: 18 }}>
-      <header
-        style={{
-          display: "grid",
-          gap: 4,
-        }}
-      >
-        <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 10,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 600,
-          }}
-        >
-          Editing scenario
-        </span>
-        <h3
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 18,
-            color: P.ink,
-            fontWeight: 600,
-          }}
-        >
+    <div className="grid gap-[18px]">
+      <header className="grid gap-1">
+        <span className={eyebrowClassName}>Editing scenario</span>
+        <h3 className="m-0 font-sans text-[18px] font-semibold text-ink">
           {scenario.name}
           {scenario.is_current ? (
-            <span
-              style={{
-                marginLeft: 10,
-                fontSize: 10,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                color: P.sageTextStrong,
-                background: P.sageSoft,
-                border: `1px solid ${P.sage}`,
-                padding: "2px 8px",
-                borderRadius: 999,
-                fontFamily: fontSans,
-                fontWeight: 600,
-              }}
-            >
+            <span className="ml-2.5 rounded-pill border border-sage bg-sageSoft px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-[1.2px] text-sageDeep">
               Current
             </span>
           ) : null}
         </h3>
       </header>
 
-      <form action={editAction} style={{ display: "grid", gap: 16 }}>
+      <form action={editAction} className="grid gap-4">
         <input type="hidden" name="scenario_id" value={scenario.id} />
 
-        <div className="lg-m-grid-stack" style={formGridStyle}>
+        <div className={formGridClassName}>
           <div>
-            <label htmlFor={`edit_name_${scenario.id}`} style={fieldLabelStyle}>
+            <label
+              htmlFor={`edit_name_${scenario.id}`}
+              className={fieldLabelClassName}
+            >
               Scenario name
             </label>
             <input
@@ -485,14 +425,14 @@ export function EditScenarioForm({
               required
               maxLength={120}
               defaultValue={scenario.name}
-              style={fieldInputStyle}
+              className={fieldInputClassName}
             />
           </div>
 
           <div>
             <label
               htmlFor={`edit_description_${scenario.id}`}
-              style={fieldLabelStyle}
+              className={fieldLabelClassName}
             >
               Description (optional)
             </label>
@@ -502,7 +442,7 @@ export function EditScenarioForm({
               type="text"
               maxLength={1000}
               defaultValue={scenario.description ?? ""}
-              style={fieldInputStyle}
+              className={fieldInputClassName}
             />
           </div>
         </div>
@@ -512,16 +452,7 @@ export function EditScenarioForm({
           idPrefix={`edit_scenario_${scenario.id}`}
         />
 
-        <label
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink,
-          }}
-        >
+        <label className="inline-flex items-center gap-2 font-sans text-sm text-ink">
           <input
             type="checkbox"
             name="make_current"
@@ -532,14 +463,7 @@ export function EditScenarioForm({
           Mark as the current scenario.
         </label>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="flex flex-wrap items-center gap-2.5">
           <PButton type="submit" tone="terra" size="md" disabled={editPending}>
             {editPending ? "Saving…" : "Save scenario"}
           </PButton>
@@ -547,16 +471,7 @@ export function EditScenarioForm({
         </div>
       </form>
 
-      <div
-        style={{
-          borderTop: `1px solid ${P.line}`,
-          paddingTop: 14,
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="flex flex-wrap items-center gap-2.5 border-t border-line pt-3.5">
         {!scenario.is_current ? (
           <form action={setCurrentAction}>
             <input type="hidden" name="scenario_id" value={scenario.id} />
