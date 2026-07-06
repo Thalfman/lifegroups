@@ -19,6 +19,9 @@
 // resolution is same-file only. An extraction that yields NO literals for a
 // spec is reported as an error, never silently pinned as [] — so an imported
 // path helper or a new declaration shape fails loudly instead of drifting.
+// The one deliberate exception: the exact literal `() => []` declares
+// "revalidates nothing" and pins [] — an explicit declaration, not a silent
+// empty harvest.
 
 import type { SourceFile } from "./source-globber";
 
@@ -55,6 +58,14 @@ const TYPED_TARGET_RES = [
 const STRING_LITERAL_RE = /(["'])((?:\\.|(?!\1)[^\\])*)\1/g;
 const TEMPLATE_LITERAL_RE = /`((?:\\.|[^\\`])*)`/g;
 const IDENT_RE = /\b[A-Za-z_$][\w$]*\b/g;
+
+/**
+ * A declared-empty revalidate set: exactly `() => []`. A write may
+ * legitimately invalidate nothing (an invite link lands on a public route; an
+ * account-deletion request ends the session). Only this literal shape pins an
+ * empty fingerprint — a helper that *resolves* to nothing still errors.
+ */
+const DECLARED_EMPTY_RE = /^\(\s*\)\s*=>\s*\[\s*\]$/;
 
 export interface RevalidateExtraction {
   /**
@@ -254,6 +265,14 @@ export function extractRevalidateFingerprints(
       const revalidateMark = marks[i + 1];
       const valueStart = revalidateMark.pos + "revalidate:".length;
       const block = revalidateValueExtent(file.text, valueStart);
+      if (DECLARED_EMPTY_RE.test(block.trim())) {
+        if (specName in entries) {
+          errors.push(`duplicate spec name across files: ${specName}`);
+          continue;
+        }
+        entries[specName] = [];
+        continue;
+      }
       const harvest: Harvest = { paths: new Set(), errors: [] };
       harvestBlock(
         block,

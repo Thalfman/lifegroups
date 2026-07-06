@@ -2,10 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { startActionLog } from "@/lib/observability/instrument";
-import { validateDeletionReason } from "@/lib/account/validation";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
+import { validateDeletionRequest } from "@/lib/account/validation";
 import { rpcRequestOwnAccountDeletion } from "@/lib/account/rpc";
+import { makeSelfServiceAuthenticate } from "@/lib/account/run-action-auth";
+import type { SelfServiceActor } from "@/lib/account/run-action-auth";
+import { runWriteAction } from "@/lib/shared/run-action";
+import { makeRpcErrorMapper } from "@/lib/shared/action-result";
 import {
   PW_SETUP_COOKIE,
   passwordSetupCookieClearOptions,
@@ -29,67 +32,68 @@ export async function requestAccountDeletionAction(
   _prev: DeletionRequestState,
   formData: FormData
 ): Promise<DeletionRequestState> {
-  const ctx = startActionLog("account.request_deletion");
+  // Both set inside `authenticate`; used after the runner returns so the
+  // redirect throw and the sign-out teardown stay outside the pipeline.
+  let noSession = false;
+  const captured: { client: AppSupabaseClient | null } = { client: null };
 
-  // Require an explicit confirmation so a stray submit can't archive an account.
-  if (formData.get("confirm") !== "on") {
-    ctx.finish("fail", { error_code: "not_confirmed" });
-    return {
-      error: "Please confirm you understand before requesting deletion.",
-    };
-  }
+  const result = await runWriteAction<
+    SelfServiceActor,
+    { reason: string | null },
+    null
+  >(
+    {
+      name: "account.request_deletion",
+      authenticate: makeSelfServiceAuthenticate({
+        notConfiguredError:
+          "Account deletion isn't configured on this deployment.",
+        onNoSession: () => {
+          noSession = true;
+        },
+        captureClient: (c) => {
+          captured.client = c;
+        },
+      }),
+      read: (input) =>
+        input instanceof FormData
+          ? { confirm: input.get("confirm"), reason: input.get("reason") }
+          : {},
+      validate: validateDeletionRequest,
+      rpc: (c, value) =>
+        rpcRequestOwnAccountDeletion(c, { p_reason: value.reason }),
+      // An existing pending request means the job is already done — treat it
+      // like success: end the session and show the confirmation.
+      treatAsOk: [
+        {
+          token: "deletion_already_requested",
+          result: null,
+          fields: { error_code: "already_requested" },
+        },
+      ],
+      // The RPC archives the requester's own profile and the wrapper ends the
+      // session; nothing they can still see needs revalidating.
+      revalidate: () => [],
+      result: () => null,
+      noDataError: GENERIC_FAILED,
+      mapRpcError: makeRpcErrorMapper(
+        {
+          forbidden_target:
+            "Super Admins manage account removal in the Super-Admin danger zone.",
+        },
+        GENERIC_FAILED
+      ),
+    },
+    formData
+  );
 
-  const reason = validateDeletionReason(formData.get("reason"));
-  if (!reason.ok) {
-    ctx.finish("fail", { error_code: "validation_failed" });
-    return { error: reason.error };
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured" });
-    return {
-      error: "Account deletion isn't configured on this deployment.",
-    };
-  }
-
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) {
-    ctx.finish("denied", { error_code: "no_session" });
-    redirect("/login");
-  }
-
-  const rpc = await rpcRequestOwnAccountDeletion(client, {
-    p_reason: reason.value,
-  });
-
-  if (rpc.error) {
-    const token = rpc.error.message;
-    if (token.includes("forbidden_target")) {
-      ctx.finish("denied", { error_code: "forbidden_target" });
-      return {
-        error:
-          "Super Admins manage account removal in the Super-Admin danger zone.",
-      };
-    }
-    // An existing pending request means the job is already done — treat it like
-    // success: end the session and show the confirmation.
-    if (!token.includes("deletion_already_requested")) {
-      ctx.finish("fail", { error_code: "request_deletion_failed" });
-      return { error: GENERIC_FAILED };
-    }
-    ctx.finish("ok", { error_code: "already_requested" });
-  } else {
-    ctx.finish("ok");
-  }
+  if (noSession) redirect("/login");
+  if (!result.ok) return { error: result.errors[0] ?? GENERIC_FAILED };
 
   // Revoke the live session immediately too: the profile is now archived, but
   // signing out ends the cookie session so the app is inaccessible at once.
   // `local` scope mirrors logoutAction — other devices' sessions stay until the
   // archived profile fails their next role guard.
-  await client.auth.signOut({ scope: "local" });
+  await captured.client?.auth.signOut({ scope: "local" });
   const cookieStore = await cookies();
   cookieStore.set(PW_SETUP_COOKIE, "", passwordSetupCookieClearOptions());
   cookieStore.set(LANDING_HINT_COOKIE, "", landingHintCookieClearOptions());
