@@ -8,10 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import { requireLeader } from "@/lib/auth/session";
 import { toShellUser } from "@/lib/auth/shell-user";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { type LeaderSafeGroupRow } from "@/lib/supabase/group-reads";
-import { bindLeaderReads } from "@/lib/leader/leader-reads";
-import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
+import { loadLeaderCareData } from "@/lib/leader/leader-care-data";
 import { FirstRunCard } from "@/components/orientation/first-run-card";
 
 export const dynamic = "force-dynamic";
@@ -31,32 +29,12 @@ export default async function LeaderPage() {
   const session = await requireLeader();
   const user = toShellUser(session.profile);
 
-  const client = await createSupabaseServerClient();
-  const groupIds = session.assignedGroupIds;
-
-  // The first-run "seen" flag (#560) and the groups read are independent, so
-  // fetch them in parallel rather than paying two serial round-trips on first
-  // paint. A failed/absent orientation read degrades to "seen" so the card
-  // never nags on a flaky load.
-  let orientationSeen = true;
-  let groups: LeaderSafeGroupRow[] = [];
-  if (client) {
-    const reads = bindLeaderReads(client);
-    const [seen, groupsResult] = await Promise.all([
-      readFirstRunOrientationSeen(client),
-      groupIds.length > 0
-        ? reads.fetchLeaderGroupsByIds(groupIds)
-        : Promise.resolve(null),
-    ]);
-    orientationSeen = seen;
-    if (groupsResult) {
-      if (groupsResult.error) throw groupsResult.error;
-      // Stable, friendly ordering by name.
-      groups = (groupsResult.data ?? [])
-        .slice()
-        .sort((a, b) => a.name.localeCompare(b.name));
-    }
-  }
+  // The read-orchestration lives in buildLeaderCareData (ADR 0015); this page
+  // guards, loads, and renders — and keeps its established failure behavior:
+  // a failed groups read throws to the error boundary rather than degrading.
+  const data = await loadLeaderCareData(session.assignedGroupIds);
+  if (data.kind === "load_error") throw data.error;
+  const { orientationSeen, groups } = data;
 
   return (
     <LgAppShell user={user}>

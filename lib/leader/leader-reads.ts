@@ -25,6 +25,7 @@ import {
 import { fetchLatestHealthUpdates } from "@/lib/supabase/health-reads";
 import { fetchGroupCalendarEvents } from "@/lib/supabase/calendar-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
 
 // Deliberately NO full-projection group reader here: leader routes read groups
 // only through fetchLeaderGroupsByIds (LEADER_SAFE_GROUP_COLUMNS), so the
@@ -42,6 +43,10 @@ const LEADER_FETCHERS = {
   fetchLatestHealthUpdates,
   fetchGroupCalendarEvents,
   fetchMetricDefaultsCached,
+  // Landing-page read (ADR 0015 completion — 2026-07-06 review candidate 3):
+  // the first-run orientation flag joins the seam so buildLeaderCareData
+  // (leader-care-data.ts) is a pure function of this interface.
+  readFirstRunOrientationSeen,
 };
 
 export type LeaderReads = BoundReads<typeof LEADER_FETCHERS>;
