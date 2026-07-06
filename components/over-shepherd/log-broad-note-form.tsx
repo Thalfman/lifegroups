@@ -18,6 +18,12 @@ import { Button } from "@/components/ui/button";
 // No care-status, touchpoint, interaction-type, admin-summary, or private-note
 // control is exposed here (docs/adr/0002, #126). The server action's RPC scopes
 // the write to the over-shepherd's coverage and writes the paired audit row.
+//
+// Deliberately NOT a config of the shared NoteWriteForm (ADR 0036): a broad
+// note is a different entity with a different field contract — field name
+// `note`, its own NOTE_MAX_CHARS cap, no care/prayer kind, no reset-on-success
+// — so folding it in would cost the kit more config axes than this one form
+// saves.
 export function LogBroadNoteForm({
   shepherdProfileId,
 }: {
