@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { noteBodyClassName } from "@/components/notes/note-card";
 import { shepherdCareInteractionTypeLabel } from "@/lib/dashboard/labels";
 import { formatIsoDate } from "@/lib/shared/date";
 import type { ShepherdCareInteractionsRow } from "@/types/database";
@@ -36,9 +37,7 @@ export function InteractionTimeline({
               </Badge>
             </div>
             {row.notes ? (
-              <p className="m-0 whitespace-pre-wrap font-sans text-base text-ink">
-                {row.notes}
-              </p>
+              <p className={noteBodyClassName}>{row.notes}</p>
             ) : (
               <p className="m-0 whitespace-pre-wrap font-sans text-base italic text-ink3">
                 No notes recorded.
