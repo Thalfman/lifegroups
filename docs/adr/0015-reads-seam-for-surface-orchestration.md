@@ -1,6 +1,10 @@
 # ADR 0015: Every surface's read-orchestration is a function of a reads seam
 
-**Status:** Accepted
+**Status:** Accepted — completed 2026-07-06: the Over-Shepherd and Leader
+landings (the two login tiers the admin-focused migration never reached)
+gained `buildOverShepherdData` / `buildLeaderCareData` with in-memory test
+adapters, closing candidate 3 of the
+[2026-07-06 architecture deepening review](../reviews/2026-07-06-architecture-deepening-review.html).
 **Date:** 2026-06-04
 
 ## Context
