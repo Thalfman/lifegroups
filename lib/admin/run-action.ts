@@ -25,6 +25,7 @@ import type { LogOutcome } from "@/lib/observability/logger";
 import { type ActionResult, mapRpcError } from "./action-result";
 import {
   runWriteAction,
+  type ContextOutcome,
   type RevalidateTarget,
   type RpcResult,
   type ValidationResult as CoreValidationResult,
@@ -51,7 +52,9 @@ export type ActionInput<T> = T | FormData;
 // It defaults to `string` — a bare uuid — so the uuid-returning specs need no
 // third type argument. Super-Admin danger-zone writes whose RPC returns
 // structured JSON or a text count widen `D` and map it through `result`.
-export type AdminWriteActionSpec<V, T, D = string> = {
+// `C` is the optional pre-RPC context shape (see `context` below); it stays
+// `undefined` for the specs that don't mint one.
+export type AdminWriteActionSpec<V, T, D = string, C = undefined> = {
   // Stable log/action name, e.g. "admin.people.create_leader".
   name: string;
   // Form field names lifted from FormData when input is a form submission.
@@ -89,8 +92,22 @@ export type AdminWriteActionSpec<V, T, D = string> = {
   // row id, or an echoed input that is only interesting on success). The
   // second argument is the RPC's returned value (`D`).
   okFields?: (value: V, data: D, raw: Record<string, unknown>) => FinishFields;
-  // Maps the validated payload to the typed RPC wrapper call.
-  rpc: (client: AppSupabaseClient, value: V) => Promise<RpcResult<D>>;
+  // Optional pre-RPC context minting (e.g. an invite token + its hash, a
+  // resolved site origin). Runs after the Supabase client exists, immediately
+  // before `rpc`; the minted value reaches `rpc` and `result`. A failure bails
+  // the pipeline with its own error code (outcome defaults to "fail").
+  context?: (
+    actor: AdminActor,
+    value: V,
+    raw: Record<string, unknown>
+  ) => ContextOutcome<C> | Promise<ContextOutcome<C>>;
+  // Maps the validated payload to the typed RPC wrapper call. `context` is
+  // the value minted above (`undefined` when no `context` is declared).
+  rpc: (
+    client: AppSupabaseClient,
+    value: V,
+    context: C
+  ) => Promise<RpcResult<D>>;
   // Paths to revalidate on success. `raw` is available for paths derived
   // from input outside the validated payload; return [] to revalidate
   // nothing. A target may be a bare path string or a typed `RevalidateTarget`
@@ -102,8 +119,9 @@ export type AdminWriteActionSpec<V, T, D = string> = {
   // Builds the success value from the RPC's returned data and the validated
   // payload. Defaults to { id: data } (valid when `D` is the default
   // `string`); a widened `D` maps its JSON/text shape here, with `value` in
-  // scope for success fields that live on the payload rather than the return.
-  result?: (data: D, value: V) => T;
+  // scope for success fields that live on the payload rather than the return,
+  // and `context` carrying the pre-RPC minted value.
+  result?: (data: D, value: V, context: C) => T;
   // User-facing message when the RPC succeeds at the protocol level but
   // returns no id.
   noDataError: string;
@@ -127,8 +145,8 @@ function readFromForm(
   return {};
 }
 
-export async function runAdminWriteAction<V, T, D = string>(
-  spec: AdminWriteActionSpec<V, T, D>,
+export async function runAdminWriteAction<V, T, D = string, C = undefined>(
+  spec: AdminWriteActionSpec<V, T, D, C>,
   // `_prev` is the previous useActionState value, ignored by the runner.
   _prev: ActionResult<T> | undefined,
   // `unknown`, not `ActionInput<V>`: the core re-parses input through
@@ -137,7 +155,7 @@ export async function runAdminWriteAction<V, T, D = string>(
   // from the spec.
   input: unknown
 ): Promise<ActionResult<T>> {
-  return runWriteAction<AdminActor, V, T, D>(
+  return runWriteAction<AdminActor, V, T, D, C>(
     {
       name: spec.name,
       authenticate: async () => {
@@ -152,6 +170,7 @@ export async function runAdminWriteAction<V, T, D = string>(
       guard: spec.guard,
       fields: spec.fields,
       okFields: spec.okFields,
+      context: spec.context,
       rpc: spec.rpc,
       revalidate: spec.revalidate,
       result: spec.result,

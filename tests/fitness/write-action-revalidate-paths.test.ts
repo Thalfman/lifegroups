@@ -23,7 +23,8 @@ import { EXPECTED_REVALIDATE_PATHS } from "./support/revalidate-path-map";
 // - Runtime filtering inside helpers is invisible; resolution follows
 //   same-file top-level declarations only (no imported path helpers exist
 //   today — one appearing yields an empty fingerprint, which is a loud
-//   extraction error, never a silent []).
+//   extraction error, never a silent []). The exact literal `() => []`
+//   declares "revalidates nothing" and pins [] deliberately.
 // - Path revalidation only; cache tags (`updateTag`) are out of scope.
 
 // Server actions live under app/ AND lib/ (e.g. lib/usage/actions.ts, the
@@ -52,16 +53,11 @@ const EXEMPT: Readonly<Record<string, string>> = {
   "app/forgot-password/actions.ts": "Supabase Auth password-recovery flow",
   "app/reset-password/actions.ts": "Supabase Auth updateUser flow",
   "app/(protected)/actions.ts": "logout (Supabase Auth signOut only)",
-  // Self-service narrow RPCs that redirect or re-render via navigation.
-  "app/(protected)/account/actions.ts":
-    "own-account RPC + signOut; ends in redirect, no cached surface to bust",
+  // Self-service narrow RPC that redirects or re-renders via navigation.
   "app/(protected)/orientation-actions.ts":
     "orientation-seen flag read fresh per request",
   // Edge-Function invoker that ends in a redirect to a fresh session.
   "app/invite/[token]/actions.ts": "redeem-invite Edge Function + redirect",
-  // Narrow adminRpc write whose surface re-reads on navigation.
-  "app/(protected)/admin/super-admin/invite-link-actions.ts":
-    "invite-link write; the super-admin page re-reads per request",
   // Fire-and-forget usage telemetry — nothing rendered reads it live.
   "lib/usage/actions.ts":
     "usage-beacon log write (best-effort telemetry, no cached surface)",

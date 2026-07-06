@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { validateOwnFullName } from "@/lib/account/validation";
+import {
+  validateDeletionRequest,
+  validateOwnFullName,
+} from "@/lib/account/validation";
 
 describe("validateOwnFullName", () => {
   it("accepts a plain name and trims surrounding whitespace", () => {
@@ -40,5 +43,42 @@ describe("validateOwnFullName", () => {
   it("measures the cap after trimming", () => {
     const result = validateOwnFullName(`  ${"a".repeat(200)}  `);
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("validateDeletionRequest", () => {
+  it("rejects a submit without the explicit confirmation", () => {
+    for (const confirm of [undefined, null, "", "off", true]) {
+      expect(validateDeletionRequest({ confirm, reason: "moving" })).toEqual({
+        ok: false,
+        errors: ["Please confirm you understand before requesting deletion."],
+      });
+    }
+  });
+
+  it("accepts a confirmed request with no reason as null", () => {
+    for (const reason of [undefined, null, "", "   "]) {
+      expect(validateDeletionRequest({ confirm: "on", reason })).toEqual({
+        ok: true,
+        value: { reason: null },
+      });
+    }
+  });
+
+  it("accepts a confirmed request with a trimmed reason", () => {
+    expect(
+      validateDeletionRequest({ confirm: "on", reason: "  moving away  " })
+    ).toEqual({ ok: true, value: { reason: "moving away" } });
+  });
+
+  it("rejects a reason over the 1000-character cap", () => {
+    const result = validateDeletionRequest({
+      confirm: "on",
+      reason: "a".repeat(1001),
+    });
+    expect(result).toEqual({
+      ok: false,
+      errors: ["Reason is too long (1000 characters max)."],
+    });
   });
 });

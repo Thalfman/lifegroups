@@ -39,24 +39,19 @@ const EXEMPT: Readonly<Record<string, string>> = {
   "app/login/actions.ts":
     "Supabase Auth sign-in + usage RPC, not a table write",
   "app/forgot-password/actions.ts": "Supabase Auth password-recovery flow",
-  "app/reset-password/actions.ts": "Supabase Auth updateUser flow",
+  "app/reset-password/actions.ts":
+    "Supabase Auth updateUser flow (two sequential commits — see ADR 0035)",
   "app/(protected)/actions.ts": "logout (Supabase Auth signOut only)",
-  // Self-service narrow SECURITY DEFINER RPC calls (own account, own name).
-  "app/(protected)/account/actions.ts":
-    "self-service own-account RPC + Auth signOut",
+  // Self-service narrow SECURITY DEFINER RPC call (own orientation flag).
   "app/(protected)/orientation-actions.ts":
     "self-service orientation-seen narrow RPC",
-  "app/welcome/actions.ts": "self-service own-name narrow RPC",
   // Edge-Function invokers — the approved service-role seam lives in the Edge
-  // Function, not the runner.
+  // Function, not the runner (deliberate boundary — see ADR 0035).
   "app/invite/[token]/actions.ts": "redeem-invite Edge Function invoke",
   "app/(protected)/admin/super-admin/invite-user-actions.ts":
     "invite-user Edge Function invoke",
   "app/(protected)/admin/super-admin/test-accounts-actions.ts":
     "manage-test-auth-users Edge Function invoke",
-  // Direct typed-RPC wrapper (adminRpc) for a single narrow invite-link write.
-  "app/(protected)/admin/super-admin/invite-link-actions.ts":
-    "narrow adminRpc invite-link write (audited SECURITY DEFINER RPC)",
 };
 
 describe("fitness: server actions route through the run-action adapter", () => {

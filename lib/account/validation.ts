@@ -37,6 +37,26 @@ export type DeletionReasonResult =
 
 const MAX_DELETION_REASON_LENGTH = 1000;
 
+// Full account-deletion request payload: the explicit confirmation checkbox
+// (so a stray submit can't archive an account) plus the optional reason.
+export type DeletionRequestResult =
+  | { ok: true; value: { reason: string | null } }
+  | { ok: false; errors: string[] };
+
+export function validateDeletionRequest(
+  raw: Record<string, unknown>
+): DeletionRequestResult {
+  if (raw.confirm !== "on") {
+    return {
+      ok: false,
+      errors: ["Please confirm you understand before requesting deletion."],
+    };
+  }
+  const reason = validateDeletionReason(raw.reason);
+  if (!reason.ok) return { ok: false, errors: [reason.error] };
+  return { ok: true, value: { reason: reason.value } };
+}
+
 export function validateDeletionReason(input: unknown): DeletionReasonResult {
   if (input === null || input === undefined) {
     return { ok: true, value: null };

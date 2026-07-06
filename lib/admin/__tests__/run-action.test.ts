@@ -251,7 +251,12 @@ describe("runAdminWriteAction", () => {
     );
 
     expect(result).toEqual({ ok: true, value: { id: NEW_ID } });
-    expect(rpc).toHaveBeenCalledWith(expect.anything(), { name: "from-form" });
+    // Third arg is the pre-RPC context — undefined when the spec declares none.
+    expect(rpc).toHaveBeenCalledWith(
+      expect.anything(),
+      { name: "from-form" },
+      undefined
+    );
   });
 
   it("logs the error_count on validation failure", async () => {
@@ -421,6 +426,81 @@ describe("runAdminWriteAction", () => {
       outcome: "ok",
       target_group_id: "g-9",
     });
+  });
+
+  // The context seam: the adapter threads spec.context through to the shared
+  // core so a spec can mint a pre-RPC value (invite token + hash) that feeds
+  // both the RPC args and the success value. Branch mechanics (fields merge,
+  // outcome override, ordering vs the client check) are pinned in the shared
+  // suite (lib/shared/__tests__/run-action.test.ts).
+  it("threads a minted context into rpc and result", async () => {
+    const rpc = vi.fn(async () => ({ data: NEW_ID, error: null }));
+    const spec: AdminWriteActionSpec<
+      Payload,
+      { id: string; token: string },
+      string,
+      { token: string }
+    > = {
+      name: "admin.test.context",
+      keys: ["name"],
+      validate: (raw) =>
+        typeof raw.name === "string" && raw.name.length > 0
+          ? { ok: true, value: { name: raw.name } }
+          : { ok: false, errors: ["name required"] },
+      context: async () => ({ ok: true, context: { token: "t-1" } }),
+      rpc,
+      result: (data, _value, ctx) => ({ id: data, token: ctx.token }),
+      revalidate: () => "/admin/test",
+      noDataError: "nothing saved",
+    };
+
+    const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+    expect(result).toEqual({
+      ok: true,
+      value: { id: NEW_ID, token: "t-1" },
+    });
+    expect(rpc).toHaveBeenCalledWith(
+      expect.anything(),
+      { name: "x" },
+      {
+        token: "t-1",
+      }
+    );
+  });
+
+  it("bails with the context failure code before the rpc", async () => {
+    const rpc = vi.fn(async () => ({ data: NEW_ID, error: null }));
+    const spec: AdminWriteActionSpec<
+      Payload,
+      { id: string },
+      string,
+      { token: string }
+    > = {
+      name: "admin.test.context",
+      keys: ["name"],
+      validate: (raw) =>
+        typeof raw.name === "string" && raw.name.length > 0
+          ? { ok: true, value: { name: raw.name } }
+          : { ok: false, errors: ["name required"] },
+      context: async () => ({
+        ok: false,
+        error: "no origin",
+        code: "origin_unresolved",
+      }),
+      rpc,
+      revalidate: () => "/admin/test",
+      noDataError: "nothing saved",
+    };
+
+    const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+    expect(result).toEqual({ ok: false, errors: ["no origin"] });
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "fail",
+      error_code: "origin_unresolved",
+    });
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   // The widened result seam (RpcResult<D>): a JSON- or text-returning RPC

@@ -1,11 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { startActionLog } from "@/lib/observability/instrument";
 import { validateOwnFullName } from "@/lib/account/validation";
 import { rpcSetOwnFullName } from "@/lib/account/rpc";
+import { makeSelfServiceAuthenticate } from "@/lib/account/run-action-auth";
+import { runWriteAction } from "@/lib/shared/run-action";
+import type { SelfServiceActor } from "@/lib/account/run-action-auth";
 
 export type ChooseNameState = { error?: string };
 
@@ -17,38 +17,53 @@ export async function chooseNameAction(
   _prev: ChooseNameState,
   formData: FormData
 ): Promise<ChooseNameState> {
-  const ctx = startActionLog("account.choose_name");
+  // Set inside `authenticate`; checked after the runner returns so the
+  // redirect throw happens outside the pipeline.
+  let noSession = false;
 
-  const v = validateOwnFullName(String(formData.get("full_name") ?? ""));
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed" });
-    return { error: v.error };
-  }
+  const result = await runWriteAction<
+    SelfServiceActor,
+    { fullName: string },
+    null
+  >(
+    {
+      name: "account.choose_name",
+      authenticate: makeSelfServiceAuthenticate({
+        notConfiguredError:
+          "Account setup is not configured on this deployment.",
+        onNoSession: () => {
+          noSession = true;
+        },
+      }),
+      read: (input) =>
+        input instanceof FormData ? { full_name: input.get("full_name") } : {},
+      validate: (raw) => {
+        const v = validateOwnFullName(String(raw.full_name ?? ""));
+        return v.ok
+          ? { ok: true, value: { fullName: v.value } }
+          : { ok: false, errors: [v.error] };
+      },
+      rpc: (client, value) =>
+        rpcSetOwnFullName(client, { p_full_name: value.fullName }),
+      // name_not_pending = a double submit (or a parallel tab) already saved a
+      // name; the gate's job is done either way.
+      treatAsOk: [
+        {
+          token: "name_not_pending",
+          result: null,
+          fields: { error_code: "name_not_pending" },
+        },
+      ],
+      // The chosen name renders in every shell header; refresh the whole tree.
+      revalidate: () => ({ path: "/", type: "layout" }),
+      result: () => null,
+      noDataError: GENERIC_NAME_FAILED,
+      mapRpcError: () => GENERIC_NAME_FAILED,
+    },
+    formData
+  );
 
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured" });
-    return { error: "Account setup is not configured on this deployment." };
-  }
-
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) {
-    ctx.finish("denied", { error_code: "no_session" });
-    redirect("/login");
-  }
-
-  const rpc = await rpcSetOwnFullName(client, { p_full_name: v.value });
-  // name_not_pending = a double submit (or a parallel tab) already saved a
-  // name; the gate's job is done either way.
-  if (rpc.error && !rpc.error.message.includes("name_not_pending")) {
-    ctx.finish("fail", { error_code: "set_own_full_name_failed" });
-    return { error: GENERIC_NAME_FAILED };
-  }
-
-  ctx.finish("ok");
-  // The chosen name renders in every shell header; refresh the whole tree.
-  revalidatePath("/", "layout");
+  if (noSession) redirect("/login");
+  if (!result.ok) return { error: result.errors[0] ?? GENERIC_NAME_FAILED };
   redirect("/");
 }

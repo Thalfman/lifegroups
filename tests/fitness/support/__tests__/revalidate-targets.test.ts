@@ -223,6 +223,39 @@ describe("extractRevalidateFingerprints", () => {
     expect(errors.some((e) => e.includes("admin.z.create"))).toBe(true);
   });
 
+  it("pins [] for the declared-empty literal `() => []`", () => {
+    const { entries, errors } = extractRevalidateFingerprints([
+      file(
+        "app/z/actions.ts",
+        [
+          `const SPEC = {`,
+          `  name: "admin.z.create",`,
+          `  revalidate: () => [],`,
+          `};`,
+        ].join("\n")
+      ),
+    ]);
+    expect(errors).toEqual([]);
+    expect(entries["admin.z.create"]).toEqual([]);
+  });
+
+  it("still errors when a non-literal revalidate merely resolves to nothing", () => {
+    const { entries, errors } = extractRevalidateFingerprints([
+      file(
+        "app/z/actions.ts",
+        [
+          `const NO_PATHS: string[] = [];`,
+          `const SPEC = {`,
+          `  name: "admin.z.create",`,
+          `  revalidate: () => NO_PATHS,`,
+          `};`,
+        ].join("\n")
+      ),
+    ]);
+    expect(entries["admin.z.create"]).toBeUndefined();
+    expect(errors.some((e) => e.includes("admin.z.create"))).toBe(true);
+  });
+
   it("errors when name/revalidate properties stop alternating", () => {
     const { errors } = extractRevalidateFingerprints([
       file(

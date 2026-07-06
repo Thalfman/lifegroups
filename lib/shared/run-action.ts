@@ -6,7 +6,7 @@
 // actor, whether there is a pre-validation guard on the raw form, the extra
 // fields stamped on a validation failure, and the surface's RPC-error message
 // table. Those differences are captured as data in `WriteActionCore` so the
-// skeleton and its five error branches live in exactly one place.
+// skeleton and its error branches live in exactly one place.
 //
 // The per-surface runners (`lib/admin/run-action.ts`, `lib/leader/run-action.ts`)
 // stay as thin adapters that build a `WriteActionCore` from their own spec and
@@ -53,17 +53,41 @@ export type RevalidateTarget =
   | string
   | { path: string; type: "page" | "layout" };
 
+// Outcome of the optional pre-RPC `context` step. The ok arm carries the
+// minted context value (`C`) plus optional fields merged into every later log
+// line; the failure arm bails the pipeline with its own error code (outcome
+// defaults to "fail" — context failures are usually environmental, e.g. an
+// unresolvable site origin, not authorization denials).
+export type ContextOutcome<C> =
+  | { ok: true; context: C; fields?: FinishFields }
+  | { ok: false; error: string; code: string; outcome?: LogOutcome };
+
+// An RPC error token that means the write's job is already done (a double
+// submit, a parallel tab). A match is substring-tested against the RPC error
+// message — mirroring the raise-token idiom — and finishes as success:
+// revalidate runs, the ok line carries `fields` (e.g. a distinguishing
+// error_code), and `result` supplies the success value since the errored RPC
+// returned no data.
+export type TreatAsOkToken<T> = {
+  token: string;
+  result: T;
+  fields?: FinishFields;
+};
+
 // Everything that varies between surfaces, captured as data. `Actor` is the
 // authenticated identity the guards and field-builders see; `V` the validated
-// payload; `T` the success value.
-export type WriteActionCore<Actor, V, T, D = string> = {
+// payload; `T` the success value; `C` the optional pre-RPC context (stays
+// `undefined` when no `context` step is declared).
+export type WriteActionCore<Actor, V, T, D = string, C = undefined> = {
   // Stable log/action name, e.g. "admin.people.create_leader".
   name: string;
   // Authenticate the actor and the base log fields that identify it on every
   // line after auth (admin: { actor_role }; leader: { actor_profile_id }).
+  // A failure may carry a `code` to keep an action's established denial code
+  // (e.g. "no_session"); it defaults to "auth_denied".
   authenticate: () => Promise<
     | { ok: true; actor: Actor; baseFields: FinishFields }
-    | { ok: false; error: string }
+    | { ok: false; error: string; code?: string }
   >;
   // Extract the raw record handed to the raw guard and validator.
   read: (input: unknown) => Record<string, unknown>;
@@ -105,8 +129,26 @@ export type WriteActionCore<Actor, V, T, D = string> = {
   // is the RPC's returned value (`D`) — a bare uuid for the default `string`
   // case, or the parsed JSON/text shape for a widened `D`.
   okFields?: (value: V, data: D, raw: Record<string, unknown>) => FinishFields;
-  // Maps the validated payload to the typed RPC wrapper call.
-  rpc: (client: AppSupabaseClient, value: V) => Promise<RpcResult<D>>;
+  // Optional pre-RPC context minting (an invite token + its hash, a resolved
+  // site origin). Runs after the Supabase client exists and immediately before
+  // `rpc`, so a missing client still bails `supabase_not_configured` first.
+  // The minted value reaches `rpc` and `result`; a failure bails with its own
+  // error code.
+  context?: (
+    actor: Actor,
+    value: V,
+    raw: Record<string, unknown>
+  ) => ContextOutcome<C> | Promise<ContextOutcome<C>>;
+  // RPC error tokens that mean the write's job is already done; a match
+  // finishes as success instead of `rpc_error` (see `TreatAsOkToken`).
+  treatAsOk?: readonly TreatAsOkToken<T>[];
+  // Maps the validated payload to the typed RPC wrapper call. `context` is the
+  // value minted by the optional step above (`undefined` when not declared).
+  rpc: (
+    client: AppSupabaseClient,
+    value: V,
+    context: C
+  ) => Promise<RpcResult<D>>;
   // Paths to revalidate on success; `raw` is available for paths derived from
   // input outside the validated payload. A target may be a bare path string or
   // a typed `RevalidateTarget` (to invalidate a whole dynamic route).
@@ -118,8 +160,10 @@ export type WriteActionCore<Actor, V, T, D = string> = {
   // payload. Defaults to { id: data } (valid when `D` is the default
   // `string`). A widened `D` (parsed JSON / a text count) maps its shape here;
   // `value` is in scope for success fields that live on the payload rather than
-  // the RPC return (e.g. the deleted entity's type alongside its tombstone id).
-  result?: (data: D, value: V) => T;
+  // the RPC return (e.g. the deleted entity's type alongside its tombstone id);
+  // `context` carries the pre-RPC minted value (e.g. the raw invite token that
+  // only its hash was written for).
+  result?: (data: D, value: V, context: C) => T;
   // User-facing message when the RPC succeeds but returns no id.
   noDataError: string;
   // Surface-specific RPC-error token -> message table.
@@ -146,8 +190,26 @@ function unhandledExceptionFields(error: unknown): FinishFields {
   return { error_message: String(error) };
 }
 
-export async function runWriteAction<Actor, V, T, D = string>(
-  core: WriteActionCore<Actor, V, T, D>,
+// Next.js navigation (`redirect()`, `notFound()`) works by throwing an error
+// whose `digest` encodes the navigation; Next must receive that throw for the
+// navigation to happen. Detect it by digest shape (a local predicate — the
+// `next/dist` helpers are private API) so the exception net rethrows instead
+// of swallowing the navigation as an `unhandled_exception`. Migrated actions
+// deliberately keep `redirect()` in their wrappers, after the runner returns,
+// so this branch is defense-in-depth.
+function isNextNavigationError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const digest = (error as { digest?: unknown }).digest;
+  return (
+    typeof digest === "string" &&
+    (digest.startsWith("NEXT_REDIRECT") ||
+      digest === "NEXT_NOT_FOUND" ||
+      digest.startsWith("NEXT_HTTP_ERROR_FALLBACK"))
+  );
+}
+
+export async function runWriteAction<Actor, V, T, D = string, C = undefined>(
+  core: WriteActionCore<Actor, V, T, D, C>,
   input: unknown
 ): Promise<ActionResult<T>> {
   const ctx = startActionLog(core.name);
@@ -163,6 +225,13 @@ export async function runWriteAction<Actor, V, T, D = string>(
   try {
     return await runWriteActionPipeline(core, input, ctx);
   } catch (error) {
+    // Navigation throws must reach Next.js or the redirect never happens.
+    // Finish the log first (first call wins, so the finally's
+    // `unhandled_exception` stamp becomes a no-op), then rethrow.
+    if (isNextNavigationError(error)) {
+      ctx.finish("ok", { error_code: "next_navigation" });
+      throw error;
+    }
     // The catch converts the throw into a generic typed ActionResult (no detail
     // reaches the client); the finally records the terminal log line, stamped
     // with the error's name/message/stack so the swallowed throw stays
@@ -179,14 +248,14 @@ export async function runWriteAction<Actor, V, T, D = string>(
   }
 }
 
-async function runWriteActionPipeline<Actor, V, T, D>(
-  core: WriteActionCore<Actor, V, T, D>,
+async function runWriteActionPipeline<Actor, V, T, D, C>(
+  core: WriteActionCore<Actor, V, T, D, C>,
   input: unknown,
   ctx: ReturnType<typeof startActionLog>
 ): Promise<ActionResult<T>> {
   const auth = await core.authenticate();
   if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
+    ctx.finish("denied", { error_code: auth.code ?? "auth_denied" });
     return { ok: false, errors: [auth.error] };
   }
   const { actor, baseFields } = auth;
@@ -233,7 +302,7 @@ async function runWriteActionPipeline<Actor, V, T, D>(
 
   // Derived once, after the guards, so async values (e.g. a hashed email) are
   // computed a single time and threaded into every later log line.
-  const fields: FinishFields = core.fields
+  let fields: FinishFields = core.fields
     ? await core.fields(actor, v.value, raw)
     : {};
 
@@ -248,8 +317,51 @@ async function runWriteActionPipeline<Actor, V, T, D>(
     return { ok: false, errors: ["Database is not configured."] };
   }
 
-  const { data, error } = await core.rpc(client, v.value);
+  // Pre-RPC context minting. Deliberately after the client check so a missing
+  // client still bails `supabase_not_configured` before a context failure
+  // (e.g. `origin_unresolved`). Its fields thread into every later log line.
+  let contextValue = undefined as C;
+  if (core.context) {
+    const minted = await core.context(actor, v.value, raw);
+    if (!minted.ok) {
+      ctx.finish(minted.outcome ?? "fail", {
+        error_code: minted.code,
+        ...baseFields,
+        ...rawFields,
+        ...fields,
+      });
+      return { ok: false, errors: [minted.error] };
+    }
+    contextValue = minted.context;
+    fields = { ...fields, ...(minted.fields ?? {}) };
+  }
+
+  // Success tail shared by the normal ok path and a treat-as-ok token match.
+  const runRevalidate = () => {
+    const targets = core.revalidate(v.value, raw);
+    for (const target of Array.isArray(targets) ? targets : [targets]) {
+      if (typeof target === "string") revalidatePath(target);
+      else revalidatePath(target.path, target.type);
+    }
+  };
+
+  const { data, error } = await core.rpc(client, v.value, contextValue);
   if (error) {
+    // An idempotent-success token: the write's job is already done (a double
+    // submit, a parallel tab) — finish exactly like success.
+    const alreadyDone = core.treatAsOk?.find((t) =>
+      error.message.includes(t.token)
+    );
+    if (alreadyDone) {
+      runRevalidate();
+      ctx.finish("ok", {
+        ...baseFields,
+        ...rawFields,
+        ...fields,
+        ...(alreadyDone.fields ?? {}),
+      });
+      return { ok: true, value: alreadyDone.result };
+    }
     ctx.finish("fail", {
       error_code: "rpc_error",
       rpc_token: error.message,
@@ -275,17 +387,15 @@ async function runWriteActionPipeline<Actor, V, T, D>(
     return { ok: false, errors: [core.noDataError] };
   }
 
-  const targets = core.revalidate(v.value, raw);
-  for (const target of Array.isArray(targets) ? targets : [targets]) {
-    if (typeof target === "string") revalidatePath(target);
-    else revalidatePath(target.path, target.type);
-  }
+  runRevalidate();
 
   const okFields = core.okFields ? core.okFields(v.value, data, raw) : {};
   ctx.finish("ok", { ...baseFields, ...rawFields, ...fields, ...okFields });
 
   // Default `{ id: data }` is only sound for the `string` case; a widened `D`
   // must supply `result`. The cast preserves the prior default behavior.
-  const value = core.result ? core.result(data, v.value) : ({ id: data } as T);
+  const value = core.result
+    ? core.result(data, v.value, contextValue)
+    : ({ id: data } as T);
   return { ok: true, value };
 }

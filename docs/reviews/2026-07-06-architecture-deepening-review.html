@@ -79,9 +79,35 @@
                 >Strong</span
               >
               <span
-                class="rounded-full bg-slate-100 text-slate-600 text-xs px-3 py-1"
-                >in-process</span
+                class="rounded-full bg-emerald-600 text-white text-xs font-semibold px-3 py-1"
+                >✅ Implemented (safe slice) 2026-07-06</span
               >
+            </div>
+          </div>
+
+          <div
+            class="rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm px-4 py-3 space-y-1"
+          >
+            <div>
+              <strong>Status:</strong> the <code>context()</code> /
+              <code>treatAsOk()</code> seams, the authenticate failure
+              <code>code</code>, and the Next-navigation rethrow landed in
+              <code>lib/shared/run-action.ts</code> (with a new standalone core
+              suite); invite-link, welcome, and account migrated to declarative
+              specs. EXEMPT map: 11 → 8 (the "~7" below resolved to 8 —
+              reset-password stays out). See
+              <a
+                href="../adr/0035-write-runner-optional-seams-not-edge-function-calls.md"
+                class="underline"
+                >ADR 0035</a
+              >.
+            </div>
+            <div>
+              <strong>Deferred with reasons:</strong> the Edge-Function call
+              adapter (invite-user / test-accounts — the service-role seam lives
+              in the Edge Function; a call adapter would blur the static
+              audit-pairing guarantee) and reset-password (two sequential
+              commits the single-RPC pipeline can't express honestly).
             </div>
           </div>
 
@@ -932,6 +958,12 @@ flowchart TB
           0001 already established, with its existing test suite covering every
           migrated action for free. Candidates 2 and 3 are equally safe and make
           good follow-ups.
+        </p>
+        <p class="text-emerald-300 text-sm max-w-3xl">
+          ✅ Implemented 2026-07-06 as a deliberate safe slice (seams +
+          invite-link / welcome / account; Edge-Function invokers and
+          reset-password stay outside by design) — see the status note on the
+          candidate and ADR 0035.
         </p>
       </section>
     </main>

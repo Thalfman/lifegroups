@@ -356,6 +356,11 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
     "/admin/shepherd-care/over-shepherds/${*}",
   ],
   "admin.super_admin.update_profile_role": ["/admin/super-admin"],
+  // Self-service: the RPC archives the requester's own profile and the wrapper
+  // ends the session; nothing they can still see needs revalidating.
+  "account.request_deletion": [],
+  // The chosen name renders in every shell header; refresh the whole tree.
+  "account.choose_name": ["layout:/"],
   "file:app/(protected)/admin/super-admin/account-actions.ts#direct": [
     "/admin/super-admin",
   ],
@@ -370,7 +375,6 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
   "file:app/(protected)/admin/super-admin/test-accounts-actions.ts#direct": [
     "/admin/super-admin",
   ],
-  "file:app/welcome/actions.ts#direct": ["layout:/"],
   "leader.calendar.archive_event": [
     "/leader",
     "/leader/${*}/calendar",
@@ -401,6 +405,9 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
   "super_admin.clean_slate_revert": ["/admin", "/admin/super-admin"],
   "super_admin.clean_slate_wipe": ["/admin", "/admin/super-admin"],
   "super_admin.clear_activity_reset": ["/admin", "/admin/super-admin"],
+  // The link lands on the public /invite/<token> route; no admin surface
+  // shows invitation rows, so the write deliberately revalidates nothing.
+  "super_admin.create_invite_link": [],
   "super_admin.end_coverage": ["/admin/super-admin"],
   // inline_delete's primary target is a client-derived `path` (usePathname,
   // /admin-prefix-validated) that no static fingerprint can represent; only
