@@ -9,10 +9,8 @@ import {
   actionFail,
   actionOk,
 } from "@/lib/admin/action-result";
-import {
-  type InviteUserPayload,
-  validateInviteUserPayload,
-} from "@/lib/admin/validation";
+import { validateInviteUserPayload } from "@/lib/admin/validation";
+import type { InviteUserSuccess } from "@/lib/admin/invite-workflow-view";
 import {
   buildErrorLines,
   extractErrorBody,
@@ -24,17 +22,9 @@ import { readFormPayloadStringified } from "@/lib/shared/form-data";
 
 const REVALIDATE_PATHS = ["/admin/super-admin", "/admin/people"] as const;
 
-export type InviteUserSuccess = {
-  profileId: string;
-  email: string;
-  role: InviteUserPayload["role"];
-  authUserState: "invited" | "existing_reused";
-  groupAssignmentState: "none" | "created" | "reactivated" | "already_active";
-  // Present only on the "link" delivery path for a newly-invited user; the
-  // copyable invite action_link. Absent when an existing login is reused.
-  inviteLink?: string;
-  warnings: string[];
-};
+// Declared in the view model (lib never imports app; ADR 0039); re-exported
+// here so this action module's public contract is unchanged.
+export type { InviteUserSuccess } from "@/lib/admin/invite-workflow-view";
 
 type EdgeFnResponse = {
   ok: boolean;
