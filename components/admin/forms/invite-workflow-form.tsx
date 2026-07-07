@@ -7,13 +7,28 @@ import { Icon } from "@/components/lg/Icon";
 import {
   superAdminInviteUser,
   superAdminGenerateInviteLink,
-  type InviteUserSuccess,
 } from "@/app/(protected)/admin/super-admin/invite-user-actions";
+import { superAdminCreateInviteLink } from "@/app/(protected)/admin/super-admin/invite-link-actions";
 import {
-  superAdminCreateInviteLink,
+  ASSIGNABLE_ROLES,
+  DELIVERY_HINTS,
+  DELIVERY_OPTIONS,
+  EXPIRY_OPTIONS,
+  inviteEmailSuccessReset,
+  inviteGroupVisible,
+  inviteResultLine,
+  inviteSubmitRoute,
+  inviteWorkflowButtonsView,
+  namedLinkOutcome,
+  shareLinkDescription,
+  shareLinkOutcome,
+  shareLinkPayload,
   type CreateInviteLinkSuccess,
-} from "@/app/(protected)/admin/super-admin/invite-link-actions";
-import { ROLE_LABELS } from "@/lib/auth/roles";
+  type InviteDelivery,
+  type InviteGroupOption,
+  type InviteRole,
+  type InviteUserSuccess,
+} from "@/lib/admin/invite-workflow-view";
 import { copyToClipboard } from "@/lib/shared/copy-to-clipboard";
 import { cn } from "@/lib/utils";
 import {
@@ -37,57 +52,10 @@ import { Button } from "@/components/ui/button";
 //     write as the email path, but returns a copyable setup link instead)
 //   - "Generate link"  → superAdminCreateInviteLink (anonymous shareable link;
 //     the invited person supplies their own name/email/password)
-
-type InviteRole = "ministry_admin" | "over_shepherd" | "leader" | "co_leader";
-
-type Delivery = "email" | "link";
-
-type GroupOption = { id: string; name: string };
-
-const ASSIGNABLE_ROLES: { value: InviteRole; label: string }[] = [
-  { value: "ministry_admin", label: ROLE_LABELS.ministry_admin },
-  { value: "over_shepherd", label: ROLE_LABELS.over_shepherd },
-  { value: "leader", label: ROLE_LABELS.leader },
-  { value: "co_leader", label: ROLE_LABELS.co_leader },
-];
-
-const DELIVERY_OPTIONS: { value: Delivery; label: string }[] = [
-  { value: "email", label: "Send email invite" },
-  { value: "link", label: "Generate shareable link" },
-];
-
-const DELIVERY_HINTS: Record<Delivery, string> = {
-  email:
-    "Invite someone by email: this creates their login invite and linked " +
-    "profile in one audited workflow and emails them a setup link. They " +
-    "choose their own name when they set their password.",
-  link:
-    "Generate a link to share directly, no email or name needed. The " +
-    "person you invite opens it and sets up their own login (name, email, " +
-    "and password).",
-};
-
-const EXPIRY_OPTIONS: { value: string; label: string }[] = [
-  { value: "24h", label: "24 hours" },
-  { value: "7d", label: "7 days" },
-  { value: "30d", label: "30 days" },
-  { value: "custom", label: "Custom date & time…" },
-];
-
-const GROUP_ASSIGNMENT_LABELS: Record<
-  InviteUserSuccess["groupAssignmentState"],
-  string
-> = {
-  none: "no group assignment",
-  created: "group assignment created",
-  reactivated: "group assignment reactivated",
-  already_active: "group assignment already active",
-};
-
-const AUTH_USER_LABELS: Record<InviteUserSuccess["authUserState"], string> = {
-  invited: "invite email sent",
-  existing_reused: "existing login reused",
-};
+//
+// The state choreography (payload assembly, result settlement, button views,
+// success reset) is the pure view model in lib/admin/invite-workflow-view.ts
+// (ADR 0039); this shell keeps the hooks, clipboard, and markup.
 
 const TWO_COL_ROW = "grid grid-cols-1 items-end gap-3 md:grid-cols-2";
 
@@ -95,21 +63,17 @@ const HINT_TEXT = "m-0 font-sans text-sm text-ink2";
 
 const FINEPRINT = "m-0 font-sans text-xs text-ink3";
 
-function formatExpiry(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
-}
-
-export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
+export function InviteWorkflowForm({
+  groups,
+}: {
+  groups: InviteGroupOption[];
+}) {
   const { state, formAction, pending, formRef } =
     useActionForm<InviteUserSuccess>(superAdminInviteUser, {
       resetOnSuccess: true,
     });
 
-  const [delivery, setDelivery] = useState<Delivery>("email");
+  const [delivery, setDelivery] = useState<InviteDelivery>("email");
 
   // Shared across both delivery paths — picked once, never duplicated.
   const [role, setRole] = useState<InviteRole>("leader");
@@ -134,16 +98,23 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
 
-  const groupVisible = role === "leader" || role === "co_leader";
+  const groupVisible = inviteGroupVisible(role);
+
+  const buttons = inviteWorkflowButtonsView({
+    emailPending: pending,
+    namedLinkPending,
+    sharePending,
+  });
 
   // useActionForm resets the <form> on success; role/group are React state.
   // Also clear any stale named-link UI so a copied link doesn't linger after
   // the email path resets the form. Derived during render rather than in an
   // effect to avoid the cascading-render smell.
   useValueChange(state, (next) => {
-    if (next?.ok) {
-      setRole("leader");
-      setGroupId("");
+    const reset = inviteEmailSuccessReset(next);
+    if (reset) {
+      setRole(reset.role);
+      setGroupId(reset.groupId);
       setNamedLink(null);
       setNamedLinkNote(null);
       setNamedLinkError(null);
@@ -170,25 +141,25 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
     setNamedLinkCopied(false);
     const fd = new FormData(form);
     startNamedLink(async () => {
-      const res = await superAdminGenerateInviteLink(fd);
-      if (!res.ok) {
-        setNamedLink(null);
-        setNamedLinkError(res.errors.join(" "));
-        return;
-      }
-      if (res.value.inviteLink) {
-        setNamedLink(res.value.inviteLink);
-        const ok = await copyToClipboard(res.value.inviteLink);
-        if (ok) {
-          setNamedLinkCopied(true);
-          setTimeout(() => setNamedLinkCopied(false), 2000);
+      const outcome = namedLinkOutcome(await superAdminGenerateInviteLink(fd));
+      switch (outcome.kind) {
+        case "error":
+          setNamedLink(null);
+          setNamedLinkError(outcome.message);
+          return;
+        case "link": {
+          setNamedLink(outcome.url);
+          const ok = await copyToClipboard(outcome.url);
+          if (ok) {
+            setNamedLinkCopied(true);
+            setTimeout(() => setNamedLinkCopied(false), 2000);
+          }
+          return;
         }
-      } else {
-        // New-users-only: an existing login was reused, so no link exists.
-        setNamedLink(null);
-        setNamedLinkNote(
-          "Existing login reused: no invite link to copy. Ask them to use Forgot password to set a new password."
-        );
+        case "existing_reused":
+          setNamedLink(null);
+          setNamedLinkNote(outcome.note);
+          return;
       }
     });
   }
@@ -205,34 +176,32 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
   function handleGenerateShareLink() {
     setShareError(null);
     setShareCopied(false);
-    const payload: Record<string, string> = {
+    const payload = shareLinkPayload({
       role,
-      expiry_preset: expiryPreset,
-      single_use: singleUse ? "true" : "false",
-    };
-    if (groupVisible && groupId) payload.group_id = groupId;
-    if (expiryPreset === "custom" && customExpiry) {
-      // datetime-local yields a local wall-clock string; Date parses it in the
-      // browser's zone, and the action re-serializes to an absolute ISO.
-      payload.expires_at = new Date(customExpiry).toISOString();
-    }
+      groupId,
+      expiryPreset,
+      customExpiry,
+      singleUse,
+    });
 
     startShare(async () => {
-      const res = await superAdminCreateInviteLink(payload);
-      if (!res.ok) {
+      const outcome = shareLinkOutcome(
+        await superAdminCreateInviteLink(payload)
+      );
+      if (outcome.kind === "error") {
         setShareResult(null);
-        setShareError(res.errors.join(" "));
+        setShareError(outcome.message);
         return;
       }
-      setShareResult(res.value);
-      handleCopyShareLink(res.value.url);
+      setShareResult(outcome.value);
+      handleCopyShareLink(outcome.value.url);
     });
   }
 
   // The shareable-link path is not a form action; route Enter-key submissions
   // in link mode to the same handler as the "Generate link" button.
   function handleFormSubmit(e: FormEvent<HTMLFormElement>) {
-    if (delivery === "link") {
+    if (inviteSubmitRoute(delivery) === "share_link") {
       e.preventDefault();
       handleGenerateShareLink();
     }
@@ -287,7 +256,9 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
   return (
     <form
       ref={formRef}
-      action={delivery === "email" ? formAction : undefined}
+      action={
+        inviteSubmitRoute(delivery) === "form_action" ? formAction : undefined
+      }
       onSubmit={handleFormSubmit}
       className="grid gap-3"
     >
@@ -385,19 +356,19 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
               type="submit"
               variant="primary"
               size="md"
-              disabled={pending || namedLinkPending}
+              disabled={buttons.sendInvite.disabled}
             >
-              {pending ? "Sending invite…" : "Send invite"}
+              {buttons.sendInvite.label}
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="md"
               onClick={handleGenerateNamedLink}
-              disabled={pending || namedLinkPending}
+              disabled={buttons.copyInviteLink.disabled}
             >
               <Icon name="clipboard" size={16} />
-              {namedLinkPending ? "Generating link…" : "Copy invite link"}
+              {buttons.copyInviteLink.label}
             </Button>
           </div>
 
@@ -450,10 +421,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                 invite email to choose their name and set their password, or use
                 Forgot password if the link expires.
               </p>
-              <p className={FINEPRINT}>
-                {AUTH_USER_LABELS[state.value.authUserState]};{" "}
-                {GROUP_ASSIGNMENT_LABELS[state.value.groupAssignmentState]}.
-              </p>
+              <p className={FINEPRINT}>{inviteResultLine(state.value)}</p>
               {state.value.warnings.length > 0 ? (
                 <ul className="m-0 grid list-disc gap-1 pl-[18px]">
                   {state.value.warnings.map((w, i) => (
@@ -528,10 +496,10 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
               type="submit"
               variant="primary"
               size="md"
-              disabled={sharePending}
+              disabled={buttons.generateShareLink.disabled}
             >
               <Icon name="clipboard" size={16} />
-              {sharePending ? "Generating…" : "Generate link"}
+              {buttons.generateShareLink.label}
             </Button>
           </div>
 
@@ -542,12 +510,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
           {shareResult ? (
             <div className="grid gap-1.5">
               <span className={successTextClassName}>
-                Invite link generated and copied to your clipboard. Anyone who
-                opens it sets their own login as {ROLE_LABELS[shareResult.role]}
-                {shareResult.singleUse
-                  ? ", single use"
-                  : ", reusable until it expires"}
-                . Expires {formatExpiry(shareResult.expiresAt)}.
+                {shareLinkDescription(shareResult)}
               </span>
               <div className="flex items-center gap-2">
                 <input

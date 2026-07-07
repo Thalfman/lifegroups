@@ -953,6 +953,42 @@ flowchart TB
                 class="rounded-full bg-slate-100 text-slate-600 text-xs px-3 py-1"
                 >in-process</span
               >
+              <span
+                class="rounded-full bg-emerald-600 text-white text-xs font-semibold px-3 py-1"
+                >✅ Implemented (safe slice) 2026-07-07</span
+              >
+            </div>
+          </div>
+
+          <div
+            class="rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm px-4 py-3 space-y-1"
+          >
+            <div>
+              <strong>Status:</strong> the branchiest untested shell — the
+              invite workflow — got the seam: its state choreography (share-link
+              payload assembly with group/expiry gating, settlement of the two
+              imperative server-action calls incl. the existing-login-reused
+              branch, success reset, button views, and Enter routing) is the
+              pure view model <code>lib/admin/invite-workflow-view.ts</code>,
+              unit-tested in the default lane plus a thin jsdom wiring test; the
+              shell keeps the hooks, clipboard, and markup, rendered output
+              unchanged. The check-in detail/review "near-twins" sub-item was
+              <strong>found already satisfied</strong>: both are stateless
+              server components over the tested
+              <code>lib/admin/check-ins.ts</code> derivation. See
+              <a
+                href="../adr/0039-invite-workflow-view-model-seam.md"
+                class="underline"
+                >ADR 0039</a
+              >.
+            </div>
+            <div>
+              <strong>Remaining (future slices):</strong> the other big shells —
+              <code>groups-directory.tsx</code>, <code>scenario-form.tsx</code>,
+              <code>leader/check-in-form.tsx</code> (low branching today), and
+              the +10 more ≥275 ln — taken one at a time only where branching
+              earns it, per this candidate's own rule; the twins' ErrorBanner
+              dedup was declined (DOM-changing on two gated surfaces).
             </div>
           </div>
 
@@ -1111,8 +1147,15 @@ flowchart TB
           sub-item was found already satisfied) and the harness's four clean
           seam-backed surfaces routed through their real build functions over
           demo reads adapters (ADR 0038, a safe slice — the messier and
-          seam-less surfaces stay for future slices). Candidate 6 remains open
-          (speculative).
+          seam-less surfaces stay for future slices).
+        </p>
+        <p class="text-emerald-300 text-sm max-w-3xl">
+          ✅ Candidate 6 closed 2026-07-07 as a deliberate safe slice: the
+          invite workflow's state choreography is a pure view model
+          (<code>lib/admin/invite-workflow-view.ts</code>, ADR 0039); the
+          check-in twins were found already satisfied, and the remaining big
+          shells stay for future slices where branching earns it. All six
+          candidates are now dispositioned — the review is fully closed.
         </p>
       </section>
     </main>

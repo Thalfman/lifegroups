@@ -11,13 +11,11 @@ import {
 } from "@/lib/shared/invite-token";
 import { readFormPayloadStringified } from "@/lib/shared/form-data";
 import { runAdminWriteAction } from "@/lib/admin/run-action";
+import type { CreateInviteLinkSuccess } from "@/lib/admin/invite-workflow-view";
 
-export type CreateInviteLinkSuccess = {
-  url: string;
-  role: "ministry_admin" | "over_shepherd" | "leader" | "co_leader";
-  singleUse: boolean;
-  expiresAt: string;
-};
+// Declared in the view model (lib never imports app; ADR 0039); re-exported
+// here so this action module's public contract is unchanged.
+export type { CreateInviteLinkSuccess } from "@/lib/admin/invite-workflow-view";
 
 // The link context is minted just before the RPC: only the token's hash is
 // written; the raw token exists solely inside the returned URL.
