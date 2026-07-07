@@ -15,7 +15,10 @@ import {
   type CareFeedItemKind,
   type SealedLeaderSummary,
 } from "@/lib/admin/care-note-feed";
-import { prayerRequestStatusChipLabel } from "@/lib/admin/prayer-request-status";
+import {
+  PrayerStatusChip,
+  noteBodyClassName,
+} from "@/components/notes/note-card";
 import { CareLeaderActionsMenu } from "@/components/admin/care/care-row-actions";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { pluralize } from "@/lib/shared/pluralize";
@@ -108,10 +111,8 @@ const FeedItemCard = memo(function FeedItemCard({
         <Badge tone={KIND_TONES[item.kind]}>
           {CARE_FEED_KIND_LABELS[item.kind]}
         </Badge>
-        {item.prayerStatus && item.prayerStatus !== "open" ? (
-          <Badge tone={item.prayerStatus === "answered" ? "sage" : "neutral"}>
-            {prayerRequestStatusChipLabel(item.prayerStatus)}
-          </Badge>
+        {item.prayerStatus ? (
+          <PrayerStatusChip status={item.prayerStatus} />
         ) : null}
         {/* Only ACTIVE leader-subject items map to a leader entity to act on:
             group notes have no per-leader care lane, and a historical note about
@@ -128,9 +129,7 @@ const FeedItemCard = memo(function FeedItemCard({
           </span>
         ) : null}
       </div>
-      <p className="m-0 whitespace-pre-wrap font-sans text-base text-ink">
-        {item.body}
-      </p>
+      <p className={noteBodyClassName}>{item.body}</p>
       <p className="m-0 mt-1.5 font-sans text-xs text-ink3">
         {about} · by {item.authorName}
         {item.viewerAuthored ? " (you)" : ""} · Recorded{" "}

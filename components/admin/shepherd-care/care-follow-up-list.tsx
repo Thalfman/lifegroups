@@ -1,5 +1,6 @@
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { noteBodyClassName } from "@/components/notes/note-card";
 import { CareFollowUpStatusControls } from "@/components/admin/shepherd-care/care-follow-up-status-controls";
 import { shepherdCareFollowUpStatusLabel } from "@/lib/dashboard/labels";
 import { formatIsoDate } from "@/lib/shared/date";
@@ -77,9 +78,7 @@ export function CareFollowUpList({
               ) : null}
             </div>
             {row.notes ? (
-              <p className="m-0 mt-2 whitespace-pre-wrap font-sans text-base text-ink">
-                {row.notes}
-              </p>
+              <p className={`${noteBodyClassName} mt-2`}>{row.notes}</p>
             ) : null}
             <div className="mt-2.5">
               <CareFollowUpStatusControls

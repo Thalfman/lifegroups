@@ -35,6 +35,9 @@ import {
 } from "@/lib/supabase/shepherd-care-directory-reads";
 import { fetchShepherdCareInteractionsForAdmin } from "@/lib/supabase/shepherd-care-interaction-reads";
 import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
+import { fetchOverShepherdCoverageForCaller } from "@/lib/over-shepherd/coverage";
+import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
+import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 
 type ReadClient = AppSupabaseClient;
 
@@ -183,6 +186,13 @@ const OVER_SHEPHERD_FETCHERS = {
   // transparency toggle).
   fetchCareNotesForSubject,
   fetchPrayerRequestsForSubject,
+  // Landing-page reads (ADR 0015 completion — 2026-07-06 review candidate 3):
+  // the caller's coverage resolution, the first-run orientation flag, and the
+  // global cadence defaults join the seam so buildOverShepherdData
+  // (over-shepherd-data.ts) is a pure function of this interface.
+  fetchOverShepherdCoverageForCaller,
+  readFirstRunOrientationSeen,
+  fetchMetricDefaultsCached,
 };
 
 export type OverShepherdReads = BoundReads<typeof OVER_SHEPHERD_FETCHERS>;

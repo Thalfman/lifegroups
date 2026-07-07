@@ -290,6 +290,35 @@
                 class="rounded-full bg-slate-100 text-slate-600 text-xs px-3 py-1"
                 >in-process</span
               >
+              <span
+                class="rounded-full bg-emerald-600 text-white text-xs font-semibold px-3 py-1"
+                >✅ Implemented 2026-07-06</span
+              >
+            </div>
+          </div>
+
+          <div
+            class="rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm px-4 py-3 space-y-1"
+          >
+            <div>
+              <strong>Status:</strong> the kit landed as
+              <code>components/notes/</code> — a server-safe
+              <code>note-card.tsx</code> (NoteCard, NoteList, PrayerStatusChip,
+              style tokens) plus a client <code>note-write-form.tsx</code>. The
+              admin and Shepherd write forms became thin configs with unchanged
+              public props (all call sites and the #785 id-namespacing invariant
+              byte-stable); the admin Care section and the Over-Shepherd "my
+              notes" surface render through NoteList; the feed and the
+              interaction/follow-up timelines adopted the tokens. See
+              <a href="../adr/0036-care-note-surface-kit.md" class="underline"
+                >ADR 0036</a
+              >.
+            </div>
+            <div>
+              <strong>Deferred with reasons:</strong> LogBroadNoteForm (a
+              different entity — field <code>note</code>, its own length cap, no
+              care/prayer kind) and FeedItemCard's structure (a genuinely richer
+              sibling card; it shares tokens + chip only).
             </div>
           </div>
 
@@ -450,6 +479,33 @@
                 class="rounded-full bg-slate-100 text-slate-600 text-xs px-3 py-1"
                 >local-substitutable</span
               >
+              <span
+                class="rounded-full bg-emerald-600 text-white text-xs font-semibold px-3 py-1"
+                >✅ Implemented 2026-07-06</span
+              >
+            </div>
+          </div>
+
+          <div
+            class="rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm px-4 py-3 space-y-1"
+          >
+            <div>
+              <strong>Status:</strong>
+              <code>buildOverShepherdData</code> /
+              <code>buildLeaderCareData</code> landed
+              (<code>lib/over-shepherd/over-shepherd-data.ts</code>,
+              <code>lib/leader/leader-care-data.ts</code>) with widened fetcher
+              maps (coverage, orientation, cadence defaults join the seams) and
+              new in-memory unit suites pinning the redirect-vs-empty decision,
+              both degrade paths, the cadence fallback, and the name sort. Both
+              pages shrank to guard + switch-on-kind; the effects (redirect,
+              throw-to-error-boundary) stay in the pages per ADR 0028.
+              <a
+                href="../adr/0015-reads-seam-for-surface-orchestration.md"
+                class="underline"
+                >ADR 0015</a
+              >
+              is now completed — this was its last asymmetry.
             </div>
           </div>
 
@@ -964,6 +1020,13 @@ flowchart TB
           invite-link / welcome / account; Edge-Function invokers and
           reset-password stay outside by design) — see the status note on the
           candidate and ADR 0035.
+        </p>
+        <p class="text-emerald-300 text-sm max-w-3xl">
+          ✅ Candidates 2 and 3 followed on 2026-07-06: the Care Note surface
+          kit (<code>components/notes/</code>, ADR 0036, with the broad-note
+          form staying outside by design) and the Over-Shepherd / Leader landing
+          build functions that complete ADR 0015 — see the status notes on each
+          candidate.
         </p>
       </section>
     </main>
