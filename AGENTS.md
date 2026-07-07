@@ -29,10 +29,12 @@ routes through the run-action adapter (or a documented exemption). As of the
 **no hard deletes** outside the danger-zone RPCs / the one allowlisted leader
 check-in (`no-hard-delete.test.ts`), **no broad RLS** read policy
 (`using (true)` / `auth.uid() is not null`, `no-broad-rls.test.ts`), and the
-**Care Note TS↔SQL visibility** resolver matching the RLS `USING` clause
-(`care-note-visibility-divergence.test.ts`). A regression fails the build — but
-the scans are static and conservative, so keep reviewing the rest of the list
-(audit pairing, role boundaries, the conventions below) by hand.
+**Care Note TS↔SQL visibility** resolver agreeing with a pinned TS mirror of
+the RLS `USING` clause over a shared 270-row input matrix — behavioral, both
+note types, both policies (`care-note-visibility-divergence.test.ts`, ADR
+0037). A regression fails the build — but the other scans are static and
+conservative, so keep reviewing the rest of the list (audit pairing, role
+boundaries, the conventions below) by hand.
 
 ## Security migration conventions (standing rules)
 
