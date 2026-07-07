@@ -4,30 +4,76 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  applicableGrantProfileId,
+  canReadNote,
+  type NoteSubjectMeta,
+  type NoteViewer,
+  type TransparencyGrant,
+} from "@/lib/admin/care-note-visibility";
+import {
+  AUTHOR_ID,
+  SUBJECT_ID,
+  enumerateVisibilityMatrix,
+  type VisibilityMatrixRow,
+} from "@/lib/admin/__tests__/care-note-visibility-matrix";
+import {
   readSourceFiles,
   repoRoot,
   type SourceFile,
 } from "./support/source-globber";
 import { stripSqlComments } from "./support/scan";
 
-// Security invariant (audit 2026-06-21 SEC-1 / TEST-5c): the Care Note read
-// boundary is expressed TWICE — once in TypeScript (`lib/admin/care-note-
-// visibility.ts::canReadNote`, the app-layer copy the UI uses to decide what to
-// even attempt to render) and once in SQL RLS (the `care_notes_author_or_granted
-// _select` policy, the REAL boundary). They must stay hand-synchronised; a UI
-// change without the matching migration (or vice versa) is silent divergence.
+// Security invariant (audit 2026-06-21 SEC-1 / TEST-5c; deepened 2026-07-07 /
+// ADR 0037): the Care Note read boundary is expressed TWICE — once in
+// TypeScript (`lib/admin/care-note-visibility.ts::canReadNote`, the app-layer
+// copy the UI uses to decide what to even attempt to render) and once in SQL
+// RLS (the `care_notes_author_or_granted_select` policy, the REAL boundary).
+// They must stay hand-synchronised; a UI change without the matching migration
+// (or vice versa) is silent divergence.
 //
-// This is the machine-checked pin the audit asked for. It folds the
-// NET-EFFECTIVE policy across all migrations (append-only history: a later
-// migration can drop/recreate the policy with a different USING), parses that
-// clause, and asserts the load-bearing BOOLEAN RELATIONSHIP that mirrors the
-// resolver — author OR (admin AND grant) — is intact on BOTH sides, with no
-// broader Super-Admin bypass. The TS resolver carries the reciprocal pointer in
-// its header comment; this test fails the build if the two drift.
+// The pin has three layers, each catching what the previous can't:
+//
+//   1. SHAPE (the original audit pin, kept unchanged): folds the NET-EFFECTIVE
+//      policy across all migrations (append-only history: a later migration
+//      can drop/recreate the policy with a different USING) and asserts the
+//      load-bearing BOOLEAN RELATIONSHIP — author OR (admin AND grant) — is
+//      intact on both sides, with no broader Super-Admin bypass.
+//   2. FRESHNESS: the folded USING clause must equal PINNED_CARE_NOTES_USING
+//      verbatim, and the prayer_requests policy must be its exact sibling.
+//      The pinned text is what the TS mirror below transcribes — the equality
+//      is what makes the differential layer trustworthy.
+//   3. BEHAVIORAL DIFFERENTIAL: `sqlCanReadNote` (a TS transcription of the
+//      pinned USING clause) and the production resolver run over EVERY row of
+//      the shared input matrix (lib/admin/__tests__/care-note-visibility-
+//      matrix.ts — both note types, every viewer role/identity, independent
+//      author/subject grant states) and must agree. This is what the shape
+//      layer can't see: e.g. swapping the two grant keys (gating a subject
+//      note on the AUTHOR's toggle) passes every regex but disagrees with the
+//      resolver on concrete rows and fails here.
+//
+// The TS resolver carries the reciprocal pointer in its header comment; this
+// test fails the build if the two drift. The opt-in integration lane
+// (tests/integration/rls-visibility.test.ts) additionally exercises the real
+// policy against a live local stack.
 
 const ROOT = repoRoot();
 const TS_PATH = "lib/admin/care-note-visibility.ts";
 const POLICY = "care_notes_author_or_granted_select";
+const PRAYER_POLICY = "prayer_requests_author_or_granted_select";
+
+// The net-effective USING clause `sqlCanReadNote` below transcribes, pinned
+// verbatim (whitespace-normalized by effectivePolicyUsing). If a migration
+// changes the policy, this test fails HERE first: re-transcribe the mirror,
+// re-verify the differential suite passes, THEN update this constant. The
+// friction is deliberate — the mirror must never silently rot.
+const PINNED_CARE_NOTES_USING =
+  "author_profile_id = public.auth_profile_id() or ( public.auth_is_admin() " +
+  "and ( ( care_notes.subject_profile_id is not null and exists ( select 1 " +
+  "from public.note_transparency_grants g where g.subject_profile_id = " +
+  "care_notes.subject_profile_id and g.granted ) ) or ( " +
+  "care_notes.subject_group_id is not null and exists ( select 1 from " +
+  "public.note_transparency_grants g where g.subject_profile_id = " +
+  "care_notes.author_profile_id and g.granted ) ) ) )";
 
 const MIGRATIONS = readSourceFiles({
   roots: ["supabase/migrations"],
@@ -128,5 +174,100 @@ describe("fitness: Care Note TS resolver matches the RLS USING clause (SEC-1)", 
     // TS: both ladder roles are gated identically through LADDER_ROLES; there is
     // no role-specific early return that singles out super_admin.
     expect(ts).not.toMatch(/role\s*===\s*"super_admin"/);
+  });
+});
+
+describe("fitness: the SQL mirror is fresh (SEC-1 layer 2)", () => {
+  it("the folded care_notes USING clause equals the pinned transcription source", () => {
+    expect(effectivePolicyUsing(MIGRATIONS, POLICY)).toBe(
+      PINNED_CARE_NOTES_USING
+    );
+  });
+
+  it("the prayer_requests policy is the exact sibling, so one mirror covers both", () => {
+    const prayer = effectivePolicyUsing(MIGRATIONS, PRAYER_POLICY);
+    expect(prayer.length).toBeGreaterThan(0);
+    expect(prayer.replaceAll("prayer_requests", "care_notes")).toBe(
+      PINNED_CARE_NOTES_USING
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Layer 3: behavioral differential. `sqlCanReadNote` transcribes
+// PINNED_CARE_NOTES_USING into TypeScript, arm by arm; the freshness pin above
+// guarantees the transcription source is the live policy. The production
+// resolver and the mirror then decide every row of the shared input matrix and
+// must agree — a genuine semantic divergence (not just a reworded clause)
+// between resolver and policy shows up as a concrete disagreeing row.
+// ---------------------------------------------------------------------------
+
+// `grants` maps a profile id to its toggle; a missing entry is "no grant row".
+// `exists (… where g.subject_profile_id = <id> and g.granted)` is true only
+// for a present row with granted = true.
+function sqlCanReadNote(
+  note: NoteSubjectMeta,
+  viewer: NoteViewer,
+  grants: ReadonlyMap<string, boolean>
+): boolean {
+  // author_profile_id = public.auth_profile_id()
+  if (note.authorProfileId === viewer.profileId) return true;
+  // public.auth_is_admin() — auth_role() in ('super_admin','ministry_admin')
+  // (20260518000000_phase4_rls.sql).
+  if (viewer.role !== "ministry_admin" && viewer.role !== "super_admin") {
+    return false;
+  }
+  const granted = (id: string | null) => id !== null && grants.get(id) === true;
+  return (
+    // subject arm: care_notes.subject_profile_id is not null and exists(...)
+    (note.subjectProfileId !== null && granted(note.subjectProfileId)) ||
+    // author arm: care_notes.subject_group_id is not null and exists(...)
+    (note.subjectGroupId !== null && granted(note.authorProfileId))
+  );
+}
+
+function grantRows(row: VisibilityMatrixRow): ReadonlyMap<string, boolean> {
+  const rows = new Map<string, boolean>();
+  if (row.grants.author !== "absent") {
+    rows.set(AUTHOR_ID, row.grants.author === "on");
+  }
+  if (row.grants.subject !== "absent") {
+    rows.set(SUBJECT_ID, row.grants.subject === "on");
+  }
+  return rows;
+}
+
+describe("fitness: TS resolver and SQL mirror agree on every matrix row (SEC-1 layer 3)", () => {
+  const matrix = enumerateVisibilityMatrix();
+
+  it("enumerates the full matrix (2 note shapes × 15 viewers × 9 grant states)", () => {
+    expect(matrix).toHaveLength(270);
+  });
+
+  it("decides every read attempt identically on both sides", () => {
+    for (const row of matrix) {
+      const grants = grantRows(row);
+      const sql = sqlCanReadNote(row.note, row.viewer, grants);
+
+      // The resolver takes the already-selected applicable grant; the
+      // selection rule (whose toggle gates this note) is the exported helper.
+      const gatingId = applicableGrantProfileId(row.note);
+      const gatingState = grants.get(gatingId);
+      const grant: TransparencyGrant =
+        gatingState === undefined ? null : { granted: gatingState };
+      const resolver = canReadNote(
+        row.viewer,
+        {
+          authorProfileId: row.note.authorProfileId,
+          subjectProfileId: gatingId,
+        },
+        grant
+      );
+
+      expect(
+        resolver,
+        `resolver=${resolver} sql=${sql} for ${JSON.stringify(row)}`
+      ).toBe(sql);
+    }
   });
 });

@@ -18,11 +18,14 @@
 // fitness check below, so a policy change can never silently diverge from the
 // documented rule. Do not delete it for being "unused"; its use is the pin.
 //
-// SEC-1 pin (audit 2026-06-21): the fitness check
-// tests/fitness/care-note-visibility-divergence.test.ts asserts that THIS
-// resolver and the `care_notes_author_or_granted_select` policy USING clause in
-// 20260608090000_phase_pivot9_care_notes.sql keep the same three arms (author /
-// grant-gated ladder / sealed), so a change here without the matching migration
+// SEC-1 pin (audit 2026-06-21, deepened 2026-07-07 / ADR 0037): the fitness
+// check tests/fitness/care-note-visibility-divergence.test.ts is DIFFERENTIAL —
+// it executes THIS resolver and a pinned TS transcription of the net-effective
+// `care_notes_author_or_granted_select` USING clause over one shared input
+// matrix (lib/admin/__tests__/care-note-visibility-matrix.ts: both note types,
+// every viewer role/identity, independent author/subject grant states) and
+// asserts they agree on every row; the prayer_requests policy is proven
+// identical modulo table name. A change here without the matching migration
 // (or vice versa) fails the build instead of drifting silently.
 //
 // Visibility truth table (default = SEALED):
@@ -46,10 +49,15 @@
 //     caller loads the grant for note.subjectProfileId.
 //   * Leader's group note — the leader is the AUTHOR (the subject is a group,
 //     not a profile), so the caller loads the grant for note.authorProfileId.
-// Either way this resolver takes the already-resolved grant; the RLS policy in
-// 20260608100000_phase_pivot11_leader_group_notes.sql ORs the two arms so each
-// note is gated by exactly that leader's toggle. This pure function is unchanged
-// by the group-note case: given the applicable grant, it resolves the boolean.
+// `applicableGrantProfileId` below is the executable form of that selection
+// rule. Either way this resolver takes the already-resolved grant; the RLS
+// policy in 20260608100000_phase_pivot11_leader_group_notes.sql ORs the two
+// arms so each note is gated by exactly that leader's toggle. This pure
+// function is unchanged by the group-note case: given the applicable grant, it
+// resolves the boolean. Production reads rely on RLS itself; the one place that
+// loads a grant to *display* transparency state (shepherd-care-detail-data)
+// views a leader who is simultaneously subject (OS notes) and author (group
+// notes), so the selection collapses to the same profile id there.
 
 import type { UserRole } from "@/types/enums";
 
@@ -74,6 +82,25 @@ export type NoteMeta = {
 export type TransparencyGrant = {
   granted: boolean;
 } | null;
+
+// A note's subject slots as the database stores them: exactly one of
+// subjectProfileId / subjectGroupId is set (the `care_notes_one_subject` /
+// `prayer_requests_one_subject` XOR checks enforce it).
+export type NoteSubjectMeta = {
+  authorProfileId: string;
+  subjectProfileId: string | null;
+  subjectGroupId: string | null;
+};
+
+// Whose transparency toggle gates this note for the oversight ladder — the
+// pivot-11 rule (#382 / ADR 0020) in executable form. The gating toggle is
+// always the LEADER's: the SUBJECT of a profile-subject note (Over-Shepherd
+// note about a leader), the AUTHOR of a group note (the leader wrote it about
+// their group). Mirrors the two not-null-guarded arms of the RLS USING clause;
+// the differential fitness test runs both sides over every matrix row.
+export function applicableGrantProfileId(note: NoteSubjectMeta): string {
+  return note.subjectProfileId ?? note.authorProfileId;
+}
 
 // The oversight-ladder roles that the transparency grant gates. Both read
 // EXACTLY the same thing through the same gate: a Super Admin gets no broader
