@@ -133,11 +133,13 @@ These are hard rules. Violating one is a P0 (see `AGENTS.md` and the README
 lane (`npm run test:run`) — no service-role key, no `select("*")`, no direct
 table writes, no hardcoded identity in `lib/auth/**`/RLS, run-action routing,
 no hard deletes, no broad RLS read policies, audit-pairing on every write RPC,
-and the Care Note TS↔SQL visibility resolver matching its RLS `USING` clause —
-so a regression fails the build. The scans are static and conservative; what
-still relies on review is the **semantics**: audit-pairing correctness (the
-right before/after content), RLS `USING`-clause meaning beyond the pinned
-care-note resolver, and revalidate-path coverage.
+and the Care Note TS↔SQL visibility resolver agreeing with a pinned mirror of
+its RLS `USING` clause over a shared input matrix (both note types, both
+policies — behavioral, not just shape; ADR 0037) — so a regression fails the
+build. The scans are otherwise static and conservative; what still relies on
+review is the **semantics**: audit-pairing correctness (the right before/after
+content), RLS `USING`-clause meaning beyond the pinned care-note resolver, and
+revalidate-path coverage.
 
 - **No service-role key in Next runtime code.** The service role is confined to
   Supabase Edge Functions (`invite-user`, `manage-test-auth-users`,

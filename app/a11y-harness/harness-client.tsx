@@ -28,15 +28,8 @@ import { AdminMasterCalendarGrid } from "@/components/admin/admin-master-calenda
 import { AdminMasterCalendarShell } from "@/components/admin/admin-master-calendar-shell";
 import { CalendarMonthGrid } from "@/components/calendar/calendar-month-grid";
 import { FollowUpStatusControls } from "@/components/admin/follow-ups/follow-up-status-controls";
-import {
-  AdminFollowUpsShell,
-  type AdminFollowUpsData,
-} from "@/components/admin/follow-ups/follow-ups-shell";
-import {
-  PeopleManagementShell,
-  type PeopleManagementData,
-  type PeoplePipelineData,
-} from "@/components/admin/people-management-shell";
+import { AdminFollowUpsShell } from "@/components/admin/follow-ups/follow-ups-shell";
+import { PeopleManagementShell } from "@/components/admin/people-management-shell";
 import {
   PersonDetailShell,
   type PersonDetail,
@@ -58,10 +51,7 @@ import type {
   CareAccordionPane,
   CareGradeEntryBundle,
 } from "@/lib/admin/care-accordion";
-import {
-  SettingsShell,
-  type SettingsShellData,
-} from "@/components/admin/settings-shell";
+import { SettingsShell } from "@/components/admin/settings-shell";
 import { DashboardClient } from "@/components/lg/admin/dashboard/DashboardClient";
 import { MinistrySnapshotSection } from "@/components/lg/admin/dashboard/MinistrySnapshotSection";
 import { RecentActivitySection } from "@/components/lg/admin/dashboard/RecentActivitySection";
@@ -108,8 +98,10 @@ import {
   DEMO_SELECTED_WEEK,
   DEMO_SESSIONS,
 } from "@/lib/dashboard/demo-seed";
-import { group, profile, settings } from "@/lib/dashboard/group-fixtures";
-import { buildPipelineRollup } from "@/lib/admin/leader-pipeline";
+import { group } from "@/lib/dashboard/group-fixtures";
+// Type-only: the demo payload is BUILT server-side (./demo-data.ts is a server
+// module — its build functions are server-bound) and arrives as a prop.
+import type { HarnessDemoData } from "./demo-data";
 import type {
   MasterCalendarGroupSummary,
   MasterCalendarLeader,
@@ -482,90 +474,11 @@ const FOLLOW_UPS = [
   },
 ];
 
-// Admin Follow-ups surface (#267, Admin Interaction Model req 1). Proves the
-// validated Editing Pattern propagated to Follow-up creation: the queue renders
-// no full inline create form, "Add follow-up" opens the shared EditingSurface
-// drawer (focus moves in, Escape / Close close it, focus returns), and the
-// queue's filter state survives the round trip. A small deterministic queue so
-// the surface renders rows rather than the empty state.
-const FOLLOW_UPS_ADMIN_DATA: AdminFollowUpsData = {
-  followUps: [
-    {
-      id: "afu-1",
-      type: "guest",
-      title: "Reach out to Skyler about placement",
-      related_group_id: null,
-      related_member_id: null,
-      related_guest_id: "guest-skyler",
-      assigned_to: "admin-1",
-      priority: "high",
-      due_date: "2026-05-20",
-      status: "open",
-      leader_visible_note: null,
-      admin_private_note: null,
-      created_at: STAMP,
-    },
-    {
-      id: "afu-2",
-      type: "leader",
-      title: "Confirm Anderson apprentice plan",
-      related_group_id: DEMO_GROUPS[0]?.id ?? null,
-      related_member_id: null,
-      related_guest_id: null,
-      assigned_to: null,
-      priority: "normal",
-      due_date: null,
-      status: "in_progress",
-      leader_visible_note: null,
-      admin_private_note: null,
-      created_at: STAMP,
-    },
-  ],
-  groups: DEMO_GROUPS,
-  members: [
-    {
-      id: "mem-1",
-      full_name: "Jordan Avery",
-      email: null,
-      phone: null,
-      household_name: null,
-      status: "active",
-      care_sensitivity_flag: false,
-      created_at: STAMP,
-      updated_at: STAMP,
-    },
-  ],
-  guests: [
-    {
-      id: "guest-skyler",
-      full_name: "Skyler Monroe",
-      email: null,
-      phone: null,
-      first_attended_group_id: null,
-      first_attended_date: null,
-      pipeline_stage: "new",
-      assigned_group_id: null,
-      follow_up_owner_id: null,
-      notes: null,
-      created_at: STAMP,
-    },
-  ],
-  assigneeProfiles: DEMO_PROFILES,
-  errors: {
-    followUps: null,
-    groups: null,
-    members: null,
-    guests: null,
-    profiles: null,
-  },
-};
-
-// First-run state: an empty queue. Used to prove the "No follow-ups yet" empty
-// state is replaced (not left stale) while the create drawer is open (#267).
-const FOLLOW_UPS_EMPTY_DATA: AdminFollowUpsData = {
-  ...FOLLOW_UPS_ADMIN_DATA,
-  followUps: [],
-};
+// The Admin Follow-ups (#267), Settings (req 5 / #469 / #478), People (#302),
+// and Multiply Shepherds (#815) surfaces are fed from the `demo` prop: their
+// payloads are derived server-side by the SAME buildXData functions the live
+// pages call, over in-memory demo adapters (./demo-data.ts, ADR 0038) — so
+// those fixtures can't drift from the live surfaces' shapes or derivations.
 
 // Settings is req 5 (semantics / grouping / progressive disclosure / labels).
 // Unlike the req-4 surfaces above it has no repeated-action collisions to prove;
@@ -828,117 +741,6 @@ const MULTIPLY_UNPIPELINED: CandidateView[] = [
   }),
 ];
 
-// Multiply Shepherds tab (#815): the same LeaderPipeline the People surface
-// embeds, mounted standalone with its own id namespace. Two apprentices at the
-// SAME stage so the repeated Advance / Edit controls must stay unique by name,
-// plus one group with no apprentice for the gap list.
-const MULTIPLY_SHEPHERD_GROUPS = [
-  { id: "ms-group-1", name: "Riverside Men" },
-  { id: "ms-group-2", name: "Harbor Women" },
-  { id: "ms-group-3", name: "Kingsway Couples" },
-];
-const MULTIPLY_SHEPHERD_ROLLUP = buildPipelineRollup(
-  [
-    {
-      id: "ms-appr-1",
-      groupId: "ms-group-1",
-      groupName: "Riverside Men",
-      displayName: "Miguel Torres",
-      memberId: "ms-mem-1",
-      stage: "in_training",
-      expectedReadyOn: "2026-09-01",
-      notes: null,
-    },
-    {
-      id: "ms-appr-2",
-      groupId: "ms-group-2",
-      groupName: "Harbor Women",
-      displayName: "Dana Whitfield",
-      memberId: null,
-      stage: "in_training",
-      expectedReadyOn: null,
-      notes: null,
-    },
-  ],
-  MULTIPLY_SHEPHERD_GROUPS
-);
-const MULTIPLY_SHEPHERD_MEMBER_OPTIONS = {
-  "ms-group-1": [
-    { id: "ms-mem-1", name: "Miguel Torres" },
-    { id: "ms-mem-2", name: "Caleb Ruiz" },
-  ],
-};
-
-const SETTINGS_DATA: SettingsShellData = {
-  defaults: DEMO_METRIC_DEFAULTS,
-  defaultsSource: "live",
-  groups: DEMO_GROUPS,
-  // #478 (P2.2): one extra row with a manual health-status override (kept out
-  // of the shared DEMO_METRIC_SETTINGS so the dashboard demo seed's health
-  // buckets stay untouched), so the "Currently overridden" summary's canonical
-  // status label ("Needs follow-up", never de-underscored enum text) is in the
-  // tree for the spec.
-  groupMetricSettings: [
-    ...DEMO_METRIC_SETTINGS,
-    settings({
-      group_id: "fb-cap-ok-1",
-      manual_health_status_override: "needs_follow_up",
-    }),
-  ],
-  groupRubricCriteria: [
-    { key: "attendance", label: "Attendance", weight: 60 },
-    { key: "unity", label: "Unity", weight: 40 },
-  ],
-  hasSavedGroupRubric: true,
-  leaderRubricCriteria: [
-    { key: "walk", label: "Walk with God", weight: 50 },
-    { key: "team", label: "Team development", weight: 50 },
-  ],
-  // Settings > Groups: the admin-managed free-text group-type list, so the
-  // group-types editor (a single textarea) is in the tree for the a11y scan.
-  groupTypes: ["Men's", "Women's", "Married Couples"],
-  // Settings > Multiply: the single global readiness rule, so the readiness
-  // editor (pillar controls) is in the tree for the a11y scan.
-  readiness: {
-    ministryYear: 2026,
-    rule: {
-      interest: { required: true, min: 3 },
-      capacity: { required: true },
-      groupHealth: { required: false, min: "C" },
-      leaderHealth: { required: false, min: "C" },
-      memberCount: { required: false, min: 12 },
-      groupTenure: { required: false, min: 3 },
-      coShepherdTenure: { required: false, min: 1 },
-    },
-    // demo rule decodes cleanly — no stored-trigger-unreadable notice.
-    ruleFellBack: false,
-  },
-  errors: {
-    defaults: null,
-    groups: null,
-    overrides: null,
-    groupRubric: null,
-    leaderRubric: null,
-    groupTypes: null,
-    readiness: null,
-  },
-};
-
-// #469: the same Settings shell with every section read FAILED, so the spec
-// can prove the read-error split: each section renders the calm "couldn't
-// load" notice naming its own failing read — never the "not set up yet" copy,
-// and never an editor that could overwrite configuration that failed to load.
-const SETTINGS_ERRORS_DATA: SettingsShellData = {
-  ...SETTINGS_DATA,
-  errors: {
-    ...SETTINGS_DATA.errors,
-    groupRubric: "read failed",
-    leaderRubric: "read failed",
-    groupTypes: "read failed",
-    readiness: "read failed",
-  },
-};
-
 // Home — the /admin landing (#480). Mounts the real DashboardClient with the
 // typed demo seeds the no-client preview renders (the same payload the
 // structure tests pin), under the DEFAULT nav flags (Groups / People / Planning
@@ -1030,99 +832,9 @@ const HOME_QUIET_READINESS: MultiplyReadinessDashboardSummary = {
 // defaults to the Directory view, with Add person and Assignments as secondary
 // views reached by explicit actions, and that group assignment happens in a
 // detail surface (the EditingSurface drawer) rather than repeated inline per
-// group. Reuses the dashboard demo seed for the directory + assignment rosters,
-// plus a couple of member records (the seed has none).
-const PEOPLE_MEMBERS = [
-  {
-    id: "people-mem-1",
-    full_name: "Jordan Avery",
-    email: null,
-    phone: null,
-    household_name: null,
-    status: "active" as const,
-    care_sensitivity_flag: false,
-    created_at: STAMP,
-    updated_at: STAMP,
-  },
-  {
-    id: "people-mem-2",
-    full_name: "Riley Chen",
-    email: "riley@example.test",
-    phone: null,
-    household_name: null,
-    status: "active" as const,
-    care_sensitivity_flag: false,
-    created_at: STAMP,
-    updated_at: STAMP,
-  },
-];
-
-// The directory renders one section per role, ordered down the oversight
-// ladder. The dashboard demo seed is all leaders, so add one profile for each
-// remaining rung so every section heading (and its rows) is in the DOM for
-// axe and the section-grouping assertions.
-const PEOPLE_PROFILES = [
-  ...DEMO_PROFILES,
-  profile({
-    id: "people-ma",
-    full_name: "Maya Whitfield",
-    role: "ministry_admin",
-  }),
-  profile({
-    id: "people-os",
-    full_name: "Omar Castillo",
-    role: "over_shepherd",
-  }),
-  profile({ id: "people-co", full_name: "Cora Nguyen", role: "co_leader" }),
-];
-
-const PEOPLE_DATA: PeopleManagementData = {
-  currentActorProfileId: "p-priya",
-  profiles: PEOPLE_PROFILES,
-  members: PEOPLE_MEMBERS,
-  groups: DEMO_GROUPS,
-  groupLeaders: DEMO_LEADERS,
-  memberships: DEMO_MEMBERSHIPS,
-  errors: {
-    profiles: null,
-    members: null,
-    groups: null,
-    leaders: null,
-    memberships: null,
-  },
-};
-
-// The Apprentices tab embeds the leader pipeline (issue #302). Seed one group
-// with member options and one apprentice so the add form — group select,
-// member-link dropdown, name input — and an apprentice row are in the DOM for
-// axe to scan (an empty availableGroups would hide the form entirely).
-const PEOPLE_PIPELINE_GROUPS = [{ id: "people-group-1", name: "Harbor Group" }];
-const PEOPLE_PIPELINE: PeoplePipelineData = {
-  rollup: buildPipelineRollup(
-    [
-      {
-        id: "people-appr-1",
-        groupId: "people-group-1",
-        groupName: "Harbor Group",
-        displayName: "Jordan Avery",
-        memberId: "people-mem-1",
-        stage: "in_training",
-        expectedReadyOn: null,
-        notes: null,
-      },
-    ],
-    PEOPLE_PIPELINE_GROUPS
-  ),
-  availableGroups: PEOPLE_PIPELINE_GROUPS,
-  memberOptionsByGroup: {
-    "people-group-1": [
-      { id: "people-mem-1", name: "Jordan Avery" },
-      { id: "people-mem-2", name: "Riley Chen" },
-    ],
-  },
-  error: null,
-};
-
+// group. Directory + pipeline payloads come from the `demo` prop; the
+// needs-contact indicator set is glanceable context only, so the harness keeps
+// it empty (it is a Set, which can't cross the RSC boundary as a plain prop).
 const PEOPLE_NEEDS_CONTACT: ReadonlySet<string> = new Set();
 
 // Person detail shell: the leader variant carries the full tab ladder
@@ -1215,7 +927,7 @@ function Surface({
   );
 }
 
-export function A11yHarnessClient() {
+export function A11yHarnessClient({ demo }: { demo: HarnessDemoData }) {
   const searchParams = useSearchParams();
   const [, setSelected] = useState<MasterOccurrence | null>(null);
   // #469: whether the Settings surface renders the read-error payload.
@@ -1424,8 +1136,8 @@ export function A11yHarnessClient() {
             Suspense. */}
         <Suspense fallback={null}>
           <PeopleManagementShell
-            data={PEOPLE_DATA}
-            pipeline={PEOPLE_PIPELINE}
+            data={demo.people}
+            pipeline={demo.peoplePipeline}
             needsContactProfileIds={PEOPLE_NEEDS_CONTACT}
           />
         </Suspense>
@@ -1453,11 +1165,11 @@ export function A11yHarnessClient() {
       </Surface>
 
       <Surface id="follow-ups" heading="Follow-ups (admin queue)">
-        <AdminFollowUpsShell data={FOLLOW_UPS_ADMIN_DATA} />
+        <AdminFollowUpsShell data={demo.followUps} />
       </Surface>
 
       <Surface id="follow-ups-empty" heading="Follow-ups (empty queue)">
-        <AdminFollowUpsShell data={FOLLOW_UPS_EMPTY_DATA} />
+        <AdminFollowUpsShell data={demo.followUpsEmpty} />
       </Surface>
 
       {/* Leader care follow-ups (#268, Admin Interaction Model req 1). Proves
@@ -1621,9 +1333,9 @@ export function A11yHarnessClient() {
           form's field ids so the two mounted instances can't collide. */}
       <Surface id="multiply-shepherds" heading="Multiply shepherds (pipeline)">
         <LeaderPipeline
-          rollup={MULTIPLY_SHEPHERD_ROLLUP}
-          availableGroups={MULTIPLY_SHEPHERD_GROUPS}
-          memberOptionsByGroup={MULTIPLY_SHEPHERD_MEMBER_OPTIONS}
+          rollup={demo.multiplyShepherds.rollup}
+          availableGroups={demo.multiplyShepherds.availableGroups}
+          memberOptionsByGroup={demo.multiplyShepherds.memberOptionsByGroup}
           idPrefix="ms-ap"
         />
       </Surface>
@@ -1648,7 +1360,7 @@ export function A11yHarnessClient() {
       >
         <SettingsShell
           key={settingsReadErrors ? "read-errors" : "healthy"}
-          data={settingsReadErrors ? SETTINGS_ERRORS_DATA : SETTINGS_DATA}
+          data={settingsReadErrors ? demo.settingsErrors : demo.settings}
         />
       </Surface>
 

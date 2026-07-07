@@ -614,6 +614,43 @@ flowchart TB
                 class="rounded-full bg-slate-100 text-slate-600 text-xs px-3 py-1"
                 >ports &amp; adapters</span
               >
+              <span
+                class="rounded-full bg-emerald-600 text-white text-xs font-semibold px-3 py-1"
+                >✅ Implemented (safe slice) 2026-07-07</span
+              >
+            </div>
+          </div>
+
+          <div
+            class="rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm px-4 py-3 space-y-1"
+          >
+            <div>
+              <strong>Status:</strong> the four clean seam-backed surfaces —
+              Follow-ups (+ empty variant), Settings (+ the #469 failing-reads
+              variant), People (directory + apprentice pipeline), and Multiply
+              Shepherds — now render what the REAL
+              <code>buildXData</code> functions derive from in-memory demo
+              adapters (<code>app/a11y-harness/demo-data.ts</code>), with a
+              default-lane pin test on the spec-load-bearing values. Because
+              every builder is server-bound (<code>@/lib/supabase/server</code>
+              → <code>next/headers</code>, <code>server-only</code> reads), the
+              build happens in the harness's server page and flows down as one
+              plain-JSON prop — not in the client module. The Settings error
+              variant now exercises the builder's genuine degrade path instead
+              of hand-typed healthy-data-with-errors. See
+              <a
+                href="../adr/0038-a11y-harness-demo-reads-adapters.md"
+                class="underline"
+                >ADR 0038</a
+              >.
+            </div>
+            <div>
+              <strong>Remaining (future slices):</strong> the messier
+              seam-backed surfaces (Home — the widest reads map plus
+              result-unwrapping; person-detail's two-phase spine/body;
+              group-roster's tab union; notes-feed's decomposed props) and the
+              ~15 surfaces with no reads seam at all (pure presentational
+              components), which keep their hand-typed fixtures by design.
             </div>
           </div>
 
@@ -716,6 +753,46 @@ flowchart TB
                 class="rounded-full bg-slate-100 text-slate-600 text-xs px-3 py-1"
                 >in-process</span
               >
+              <span
+                class="rounded-full bg-emerald-600 text-white text-xs font-semibold px-3 py-1"
+                >✅ Implemented 2026-07-07</span
+              >
+            </div>
+          </div>
+
+          <div
+            class="rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm px-4 py-3 space-y-1"
+          >
+            <div>
+              <strong>Status:</strong> the SEC-1 pin is now BEHAVIORAL — a
+              differential suite runs <code>canReadNote</code> and a pinned TS
+              transcription of the net-effective USING clause over one shared
+              input matrix
+              (<code>lib/admin/__tests__/care-note-visibility-matrix.ts</code>:
+              270 rows — both note types, every viewer role/identity,
+              independent author/subject grant states) and asserts they agree on
+              every row; the prayer policy is proven identical modulo table
+              name. This closes a gap the regex pin could not see: the pivot-11
+              policy's two grant keys (subject-keyed for OS notes, author-keyed
+              for group notes) could have been swapped without failing any prior
+              assertion. All prior shape pins stay;
+              <code>applicableGrantProfileId</code> makes the whose-toggle rule
+              (ADR 0020) executable. See
+              <a
+                href="../adr/0037-care-note-visibility-differential-spec.md"
+                class="underline"
+                >ADR 0037</a
+              >.
+            </div>
+            <div>
+              <strong>Found already satisfied:</strong> the "four reads modules
+              re-apply sealing → shared projector" sub-item was stale — the
+              accordion already routes through the one shared projector
+              (<code>buildNoteStateByLeaderId</code>), the feed's sealed counts
+              come from a count-only RPC, <code>care-note-reads</code> leans on
+              RLS by design, and the private-note module is the INVERSE SC.4
+              rule (creator-only), pinned separately. No projector work was
+              needed.
             </div>
           </div>
 
@@ -1027,6 +1104,15 @@ flowchart TB
           form staying outside by design) and the Over-Shepherd / Leader landing
           build functions that complete ADR 0015 — see the status notes on each
           candidate.
+        </p>
+        <p class="text-emerald-300 text-sm max-w-3xl">
+          ✅ Candidates 5 and 4 followed on 2026-07-07: the behavioral TS↔SQL
+          differential for Care Note visibility (ADR 0037; the shared-projector
+          sub-item was found already satisfied) and the harness's four clean
+          seam-backed surfaces routed through their real build functions over
+          demo reads adapters (ADR 0038, a safe slice — the messier and
+          seam-less surfaces stay for future slices). Candidate 6 remains open
+          (speculative).
         </p>
       </section>
     </main>

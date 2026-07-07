@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  applicableGrantProfileId,
   canReadNote,
   type NoteMeta,
   type NoteViewer,
@@ -125,6 +126,27 @@ describe("care-note-visibility — canReadNote truth table", () => {
       // The grant gates the LADDER only; flipping it on must not leak to peers.
       const peer = viewer("over_shepherd", OTHER_ID);
       expect(canReadNote(peer, NOTE, GRANT_ON)).toBe(false);
+    });
+  });
+
+  describe("applicableGrantProfileId — whose toggle gates the note (ADR 0020)", () => {
+    it("a profile-subject note (OS note about a leader) is gated by the SUBJECT's toggle", () => {
+      expect(
+        applicableGrantProfileId({
+          authorProfileId: AUTHOR_ID,
+          subjectProfileId: SUBJECT_ID,
+          subjectGroupId: null,
+        })
+      ).toBe(SUBJECT_ID);
+    });
+    it("a group note (leader-authored) is gated by the AUTHOR's toggle", () => {
+      expect(
+        applicableGrantProfileId({
+          authorProfileId: AUTHOR_ID,
+          subjectProfileId: null,
+          subjectGroupId: "44444444-4444-4444-8444-444444444444",
+        })
+      ).toBe(AUTHOR_ID);
     });
   });
 
