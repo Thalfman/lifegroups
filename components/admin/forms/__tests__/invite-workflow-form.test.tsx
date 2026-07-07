@@ -2,8 +2,15 @@
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { actionFail, actionOk } from "@/lib/shared/action-result";
-import type { InviteUserSuccess } from "@/lib/admin/invite-workflow-view";
+import {
+  actionFail,
+  actionOk,
+  type ActionResult,
+} from "@/lib/shared/action-result";
+import type {
+  CreateInviteLinkSuccess,
+  InviteUserSuccess,
+} from "@/lib/admin/invite-workflow-view";
 
 // The form binds two "use server" action modules; stub them so the client
 // render never pulls server-only deps. The choreography itself is pure and
@@ -11,11 +18,15 @@ import type { InviteUserSuccess } from "@/lib/admin/invite-workflow-view";
 // these cases cover only the residual wiring: that each settled outcome lands
 // in the right state slot and the delivery toggle routes the submit.
 const superAdminInviteUser = vi.fn(
-  async (_prev: unknown, _formData: FormData) =>
+  async (
+    _prev: unknown,
+    _formData: FormData
+  ): Promise<ActionResult<InviteUserSuccess>> =>
     actionFail(["not expected in these tests"])
 );
-const superAdminGenerateInviteLink = vi.fn(async (_formData: FormData) =>
-  actionFail(["stub me per test"])
+const superAdminGenerateInviteLink = vi.fn(
+  async (_formData: FormData): Promise<ActionResult<InviteUserSuccess>> =>
+    actionFail(["stub me per test"])
 );
 vi.mock("@/app/(protected)/admin/super-admin/invite-user-actions", () => ({
   superAdminInviteUser: (prev: unknown, formData: FormData) =>
@@ -25,7 +36,10 @@ vi.mock("@/app/(protected)/admin/super-admin/invite-user-actions", () => ({
 }));
 
 const superAdminCreateInviteLink = vi.fn(
-  async (_payload: Record<string, unknown>) => actionFail(["stub me per test"])
+  async (
+    _payload: Record<string, unknown>
+  ): Promise<ActionResult<CreateInviteLinkSuccess>> =>
+    actionFail(["stub me per test"])
 );
 vi.mock("@/app/(protected)/admin/super-admin/invite-link-actions", () => ({
   superAdminCreateInviteLink: (payload: Record<string, unknown>) =>
