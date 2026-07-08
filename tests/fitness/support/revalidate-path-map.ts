@@ -104,7 +104,7 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
   "admin.groups.close": ["/admin", "/admin/groups", "/admin/groups/${*}"],
   "admin.groups.create": ["/admin", "/admin/groups"],
   "admin.groups.reopen": ["/admin", "/admin/groups", "/admin/groups/${*}"],
-  "admin.groups.update": ["/admin", "/admin/groups"],
+  "admin.groups.update": ["/admin", "/admin/groups", "/admin/groups/${*}"],
   "admin.guests.create": ["/admin", "/admin/follow-ups", "/admin/guests"],
   "admin.guests.update_pipeline": [
     "/admin",
@@ -355,7 +355,10 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
     "/admin/shepherd-care/over-shepherds",
     "/admin/shepherd-care/over-shepherds/${*}",
   ],
-  "admin.super_admin.update_profile_role": ["/admin/super-admin"],
+  "admin.super_admin.update_profile_role": [
+    "/admin/people",
+    "/admin/super-admin",
+  ],
   // Self-service: the RPC archives the requester's own profile and the wrapper
   // ends the session; nothing they can still see needs revalidating.
   "account.request_deletion": [],
@@ -447,5 +450,5 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
   "super_admin.restore_tombstone": ["/admin", "/admin/super-admin"],
   "super_admin.set_feature_flag": ["/admin/super-admin"],
   "super_admin.set_platform_config": ["/admin/super-admin"],
-  "super_admin.set_profile_status": ["/admin/super-admin"],
+  "super_admin.set_profile_status": ["/admin/people", "/admin/super-admin"],
 };
