@@ -69,7 +69,9 @@ export type PersonSpine = {
 export type PersonSpineResult =
   | { kind: "ok"; spine: PersonSpine }
   | { kind: "not_found" }
-  | { kind: "db_unavailable" };
+  | { kind: "db_unavailable" }
+  // A transient read failure — rendered as a try-again notice, never as 404.
+  | { kind: "read_failed" };
 
 // The streamed body: the full PersonDetail the client shell renders (spine
 // fields + the deferred reads) plus the assignable-group options.
@@ -139,6 +141,15 @@ async function leaderNeedsContact(
   return profileNeedsContact(resolution, profileId);
 }
 
+// Outcome of the spine resolution. `read_failed` keeps a transient read error
+// distinct from a genuinely absent row: conflating them made the route 404 an
+// existing person during a momentary backend failure — an affirmative false
+// claim, not the degrade-gracefully suppression the reads convention requires.
+export type PersonSpineResolution =
+  | { kind: "found"; spine: PersonSpine }
+  | { kind: "missing" }
+  | { kind: "read_failed" };
+
 // Resolve only the spine: the identity that titles the header and decides 404.
 // One read (the profiles list narrowed by id, or a targeted member read). Pure
 // in the reads seam so a test can drive it with an in-memory adapter.
@@ -146,49 +157,57 @@ export async function resolvePersonSpine(
   reads: PersonDetailReads,
   kind: PersonKind,
   personId: string
-): Promise<PersonSpine | null> {
+): Promise<PersonSpineResolution> {
   if (kind === "profile") {
     const profilesRes = await reads.fetchProfilesForAdmin({
       statuses: ["active", "inactive"],
     });
+    if (profilesRes.error) return { kind: "read_failed" };
     const profile = (profilesRes.data ?? []).find((p) => p.id === personId);
-    if (!profile) return null;
+    if (!profile) return { kind: "missing" };
     return {
-      kind: "profile",
-      id: profile.id,
-      fullName: profile.full_name,
-      email: profile.email,
-      phone: profile.phone,
-      status: profile.status,
-      roleLabel: ROLE_LABELS[profile.role],
-      isLoginBacked: true,
-      isLeader: isLeaderRole(profile.role),
-      leaderRole:
-        profile.role === "leader" || profile.role === "co_leader"
-          ? profile.role
-          : null,
-      role: profile.role,
+      kind: "found",
+      spine: {
+        kind: "profile",
+        id: profile.id,
+        fullName: profile.full_name,
+        email: profile.email,
+        phone: profile.phone,
+        status: profile.status,
+        roleLabel: ROLE_LABELS[profile.role],
+        isLoginBacked: true,
+        isLeader: isLeaderRole(profile.role),
+        leaderRole:
+          profile.role === "leader" || profile.role === "co_leader"
+            ? profile.role
+            : null,
+        role: profile.role,
+      },
     };
   }
 
   const memberRes = await reads.fetchMembersByIds([personId]);
+  if (memberRes.error) return { kind: "read_failed" };
   const member = (memberRes.data ?? [])[0];
-  if (!member) return null;
+  if (!member) return { kind: "missing" };
   return {
-    kind: "member",
-    id: member.id,
-    fullName: member.full_name,
-    email: member.email,
-    phone: member.phone,
-    status: member.status,
-    // Members are non-login participant records — never a login role, never an
-    // Access tab, never a per-leader care model (issue #302 boundaries).
-    roleLabel: "Member",
-    isLoginBacked: false,
-    isLeader: false,
-    // Members are non-login participant records — never a shepherd role.
-    leaderRole: null,
-    role: null,
+    kind: "found",
+    spine: {
+      kind: "member",
+      id: member.id,
+      fullName: member.full_name,
+      email: member.email,
+      phone: member.phone,
+      status: member.status,
+      // Members are non-login participant records — never a login role, never
+      // an Access tab, never a per-leader care model (issue #302 boundaries).
+      roleLabel: "Member",
+      isLoginBacked: false,
+      isLeader: false,
+      // Members are non-login participant records — never a shepherd role.
+      leaderRole: null,
+      role: null,
+    },
   };
 }
 
@@ -290,13 +309,14 @@ export async function loadPersonSpine(
 ): Promise<PersonSpineResult> {
   const client = await createSupabaseServerClient();
   if (!client) return { kind: "db_unavailable" };
-  const spine = await resolvePersonSpine(
+  const resolution = await resolvePersonSpine(
     supabasePersonDetailReads(client),
     kind,
     personId
   );
-  if (!spine) return { kind: "not_found" };
-  return { kind: "ok", spine };
+  if (resolution.kind === "read_failed") return { kind: "read_failed" };
+  if (resolution.kind === "missing") return { kind: "not_found" };
+  return { kind: "ok", spine: resolution.spine };
 }
 
 // Binds the live client and runs the deferred body reads against the
