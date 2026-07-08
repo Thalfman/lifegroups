@@ -45,6 +45,21 @@ export default async function AdminPersonDetailPage({
     );
   }
 
+  // A transient read failure is not a 404 — an existing person must never be
+  // reported "not found" because a backend read hiccuped.
+  if (spine.kind === "read_failed") {
+    return (
+      <>
+        <PageHeader eyebrow="People" title="Person" italic="detail" />
+        <PageBody>
+          <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
+            We couldn&rsquo;t load this person right now. Please try again.
+          </p>
+        </PageBody>
+      </>
+    );
+  }
+
   if (spine.kind === "not_found") notFound();
   const { spine: person } = spine;
 

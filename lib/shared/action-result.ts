@@ -30,12 +30,19 @@ export function makeRpcErrorMapper(
   messages: RpcErrorMessages,
   fallback: string
 ): (raw: string | undefined | null) => string {
+  // Substring fallback tries longer tokens first: several tables carry a token
+  // that is a prefix of a sibling (invalid_status / invalid_status_transition,
+  // candidate_exists / type_candidate_exists), and insertion order would let
+  // the short one shadow the long one in any wrapped message.
+  const tokensLongestFirst = Object.keys(messages).sort(
+    (a, b) => b.length - a.length
+  );
   return (raw) => {
     if (!raw) return fallback;
     // Postgres surfaces a token-form message via PostgrestError.message with
     // nothing extra; match exactly first, then fall back to substring.
     if (messages[raw]) return messages[raw];
-    for (const token of Object.keys(messages)) {
+    for (const token of tokensLongestFirst) {
       if (raw.includes(token)) return messages[token];
     }
     return fallback;

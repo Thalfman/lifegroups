@@ -7,6 +7,8 @@
 // 2025 ministry year spans Aug 2025 → May 2026. So Sep 2025 and Feb 2026 are
 // both in ministry year 2025; Jul 2025 is in none.
 
+import { churchMonthIso, churchTodayIso } from "@/lib/shared/church-time";
+
 // The result of locating a date in the ministry-year calendar.
 //   * { year }          — the date is in that ministry year (Aug–May).
 //   * { year: null }    — the date is in the Jun/Jul off-season (no year).
@@ -47,20 +49,26 @@ export function isInMinistryYear(date: Date, year: number): boolean {
   return located.year === year;
 }
 
-// First-of-month ISO (YYYY-MM-DD), UTC — the assessment period key the health
+// First-of-month ISO (YYYY-MM-DD) — the assessment period key the health
 // grades resolve FOR. An override's "this_month" expiry pivots on this, and its
 // month locates the Ministry Year. The one home for the period key the group-
 // and leader-health read paths share (previously copied in each).
+//
+// Anchored to the church's wall clock (lib/shared/church-time), not UTC: from
+// ~6-7 PM Central on the last day of a month until midnight, UTC is already
+// tomorrow, so a UTC anchor keyed evening writes (a rating saved, a Recompute)
+// into the NEXT month's assessment row — and at the May→June boundary into the
+// off-season, where no ministry year exists at all.
 export function currentPeriodMonthIso(now: Date = new Date()): string {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10);
+  return `${churchMonthIso(now)}-01`;
 }
 
 // The current Ministry Year (its August-start calendar year), or null in the
-// Jun/Jul off-season. Health grades are keyed to this. (The Multiply boards use
-// their own off-season-clamping variant in multiply-data.ts — different
-// contract, deliberately separate.)
+// Jun/Jul off-season. Health grades are keyed to this. Church-local for the
+// same month-boundary reason as currentPeriodMonthIso: a UTC anchor put the
+// app in the June off-season during the evening of May 31. (The Multiply
+// boards use their own off-season-clamping variant in multiply-data.ts —
+// different contract, deliberately separate.)
 export function currentMinistryYear(now: Date = new Date()): number | null {
-  return ministryYearOf(now).year;
+  return ministryYearOf(new Date(`${churchTodayIso(now)}T00:00:00Z`)).year;
 }

@@ -96,34 +96,80 @@ function personReads(
 
 describe("resolvePersonSpine", () => {
   it("resolves a login profile's identity for the header", async () => {
-    const spine = await resolvePersonSpine(personReads(), "profile", LEADER_ID);
-    expect(spine).toMatchObject({
-      kind: "profile",
-      id: LEADER_ID,
-      fullName: "Dana Leader",
-      isLoginBacked: true,
-      isLeader: true,
+    const resolution = await resolvePersonSpine(
+      personReads(),
+      "profile",
+      LEADER_ID
+    );
+    expect(resolution).toMatchObject({
+      kind: "found",
+      spine: {
+        kind: "profile",
+        id: LEADER_ID,
+        fullName: "Dana Leader",
+        isLoginBacked: true,
+        isLeader: true,
+      },
     });
   });
 
-  it("returns null (→ 404) for an unknown profile id", async () => {
-    const spine = await resolvePersonSpine(personReads(), "profile", "nope");
-    expect(spine).toBeNull();
+  it("reports missing (→ 404) for an unknown profile id", async () => {
+    const resolution = await resolvePersonSpine(
+      personReads(),
+      "profile",
+      "nope"
+    );
+    expect(resolution).toEqual({ kind: "missing" });
   });
 
   it("resolves a member as a non-login, non-leader record", async () => {
-    const spine = await resolvePersonSpine(personReads(), "member", MEMBER_ID);
-    expect(spine).toMatchObject({
-      kind: "member",
-      roleLabel: "Member",
-      isLoginBacked: false,
-      isLeader: false,
+    const resolution = await resolvePersonSpine(
+      personReads(),
+      "member",
+      MEMBER_ID
+    );
+    expect(resolution).toMatchObject({
+      kind: "found",
+      spine: {
+        kind: "member",
+        roleLabel: "Member",
+        isLoginBacked: false,
+        isLeader: false,
+      },
     });
   });
 
-  it("returns null (→ 404) for an unknown member id", async () => {
-    const spine = await resolvePersonSpine(personReads(), "member", "nope");
-    expect(spine).toBeNull();
+  it("reports missing (→ 404) for an unknown member id", async () => {
+    const resolution = await resolvePersonSpine(
+      personReads(),
+      "member",
+      "nope"
+    );
+    expect(resolution).toEqual({ kind: "missing" });
+  });
+
+  // A transient read error must stay distinct from an absent row: 404-ing an
+  // existing person on a backend hiccup is an affirmative false claim.
+  it("reports read_failed (not missing) when the profile read errors", async () => {
+    const resolution = await resolvePersonSpine(
+      personReads({
+        fetchProfilesForAdmin: async () => fail("transient failure"),
+      }),
+      "profile",
+      LEADER_ID
+    );
+    expect(resolution).toEqual({ kind: "read_failed" });
+  });
+
+  it("reports read_failed (not missing) when the member read errors", async () => {
+    const resolution = await resolvePersonSpine(
+      personReads({
+        fetchMembersByIds: async () => fail("transient failure"),
+      }),
+      "member",
+      MEMBER_ID
+    );
+    expect(resolution).toEqual({ kind: "read_failed" });
   });
 });
 

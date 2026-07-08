@@ -35,7 +35,11 @@ export const HISTORY_RESET_CATEGORY_META: Record<
   },
   follow_ups: {
     label: "Follow-ups",
-    description: "Shepherd-care follow-up tasks created from the dashboard.",
+    // Covers the pre-pivot `follow_ups` table (dashboard/guest follow-up
+    // tasks), NOT shepherd-care follow-ups — those live in the separate
+    // "Shepherd care" category below. Mislabeling this destructive control
+    // risks an operator wiping the wrong history.
+    description: "Dashboard and guest follow-up tasks (pre-pivot).",
   },
   attendance: {
     label: "Attendance",

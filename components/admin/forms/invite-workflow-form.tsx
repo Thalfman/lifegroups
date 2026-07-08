@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { FormEvent } from "react";
 import { useValueChange } from "@/lib/hooks/use-value-change";
 import { Icon } from "@/components/lg/Icon";
@@ -122,13 +122,38 @@ export function InviteWorkflowForm({
     }
   });
 
+  // The "Copied!" flashes are single timers per path: a re-copy replaces the
+  // pending timer instead of stacking one that would hide the fresh
+  // confirmation early, and unmount clears both so neither fires afterwards.
+  const namedCopiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shareCopiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (namedCopiedTimer.current) clearTimeout(namedCopiedTimer.current);
+      if (shareCopiedTimer.current) clearTimeout(shareCopiedTimer.current);
+    },
+    []
+  );
+
+  function flashNamedLinkCopied() {
+    setNamedLinkCopied(true);
+    if (namedCopiedTimer.current) clearTimeout(namedCopiedTimer.current);
+    namedCopiedTimer.current = setTimeout(
+      () => setNamedLinkCopied(false),
+      2000
+    );
+  }
+
+  function flashShareCopied() {
+    setShareCopied(true);
+    if (shareCopiedTimer.current) clearTimeout(shareCopiedTimer.current);
+    shareCopiedTimer.current = setTimeout(() => setShareCopied(false), 2000);
+  }
+
   function handleCopyNamedLink() {
     if (!namedLink) return;
     void copyToClipboard(namedLink).then((ok) => {
-      if (ok) {
-        setNamedLinkCopied(true);
-        setTimeout(() => setNamedLinkCopied(false), 2000);
-      }
+      if (ok) flashNamedLinkCopied();
     });
   }
 
@@ -150,10 +175,7 @@ export function InviteWorkflowForm({
         case "link": {
           setNamedLink(outcome.url);
           const ok = await copyToClipboard(outcome.url);
-          if (ok) {
-            setNamedLinkCopied(true);
-            setTimeout(() => setNamedLinkCopied(false), 2000);
-          }
+          if (ok) flashNamedLinkCopied();
           return;
         }
         case "existing_reused":
@@ -166,10 +188,7 @@ export function InviteWorkflowForm({
 
   function handleCopyShareLink(url: string) {
     void copyToClipboard(url).then((ok) => {
-      if (ok) {
-        setShareCopied(true);
-        setTimeout(() => setShareCopied(false), 2000);
-      }
+      if (ok) flashShareCopied();
     });
   }
 

@@ -78,6 +78,11 @@ export function CoverageAssignmentForm({
                 id="cov-over_shepherd_id"
                 name="over_shepherd_id"
                 required
+                // Keyed on the current assignment: the select is uncontrolled,
+                // so without a remount a cleared/reassigned coverage (this
+                // form's own "Clear coverage", or another session) kept
+                // displaying the stale over-shepherd after revalidation.
+                key={currentOverShepherdId ?? "unassigned"}
                 defaultValue={currentOverShepherdId ?? ""}
                 className={FIELD_INPUT}
               >

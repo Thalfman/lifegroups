@@ -55,12 +55,18 @@ describe("hubTilesForRole", () => {
     ]);
   });
 
-  // leader / co_leader are no-access (ADR 0002): they never reach
-  // the hub (page routes them to /unauthorized), so they must surface no tiles.
+  // The Leader surface is live by default (ADR 0017/0024), so leader /
+  // co_leader get a focused Care tile pointing at /leader — matching their
+  // navItemsForRole / navGroupsForRole entries. Without it the Home page
+  // dead-ends a signed-in shepherd at /unauthorized whenever the landing-hint
+  // cookie is absent. The requireLeader guard still holds the
+  // verify-before-flip gate on the route itself.
   it.each<UserRole>(["leader", "co_leader"])(
-    "gives no tiles to the no-access role %s",
+    "gives the shepherd role %s a focused Care tile",
     (role) => {
-      expect(hubTilesForRole(role)).toEqual([]);
+      expect(hubTilesForRole(role).map((t) => [t.label, t.href])).toEqual([
+        ["Care", "/leader"],
+      ]);
     }
   );
 });

@@ -353,6 +353,11 @@ export async function fetchAttentionResetState(
       ]);
     if (baselinesRes.error) throw baselinesRes.error;
     if (snapshotRows.error) throw snapshotRows.error;
+    // A failed head-count must fail the read, not degrade to `count: null` —
+    // `?? 0` below would otherwise render a false "this reset would touch 0
+    // entities" preview on a destructive-action card.
+    if (careCount.error) throw careCount.error;
+    if (groupCount.error) throw groupCount.error;
 
     const baselines = (baselinesRes.data ?? []) as Pick<
       AttentionResetBaselinesRow,

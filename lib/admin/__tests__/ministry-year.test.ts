@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { isInMinistryYear, ministryYearOf } from "@/lib/admin/ministry-year";
+import {
+  currentMinistryYear,
+  currentPeriodMonthIso,
+  isInMinistryYear,
+  ministryYearOf,
+} from "@/lib/admin/ministry-year";
 
 // Ministry Year (#374 / ADR 0018): Aug–May window, named by the August-start
 // calendar year; Jun/Jul are the off-season (no ministry year). Dates built in
@@ -45,5 +50,26 @@ describe("isInMinistryYear — membership", () => {
   it("an off-season date is in no ministry year", () => {
     expect(isInMinistryYear(utc(2026, 7), 2025)).toBe(false);
     expect(isInMinistryYear(utc(2026, 7), 2026)).toBe(false);
+  });
+});
+
+// The "current" helpers anchor to the church wall clock (America/Chicago), not
+// UTC. From ~6-7 PM Central on the last day of a month, UTC is already
+// tomorrow; a UTC anchor keyed evening grade writes into the next month's
+// assessment row — and at the May→June boundary into the off-season.
+describe("currentPeriodMonthIso / currentMinistryYear — church-local anchor", () => {
+  // 2026-06-01T01:00Z is 8 PM May 31 Central (CDT, UTC-5).
+  const may31Evening = new Date("2026-06-01T01:00:00Z");
+  // 2026-06-01T14:00Z is 9 AM June 1 Central — genuinely June.
+  const june1Morning = new Date("2026-06-01T14:00:00Z");
+
+  it("keys a late-evening month-end instant to the church-local month", () => {
+    expect(currentPeriodMonthIso(may31Evening)).toBe("2026-05-01");
+    expect(currentPeriodMonthIso(june1Morning)).toBe("2026-06-01");
+  });
+
+  it("stays in the ministry year through the evening of May 31", () => {
+    expect(currentMinistryYear(may31Evening)).toBe(2025);
+    expect(currentMinistryYear(june1Morning)).toBeNull(); // June off-season
   });
 });
