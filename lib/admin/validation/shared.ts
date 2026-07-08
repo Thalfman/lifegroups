@@ -100,12 +100,19 @@ export function readOptionalInteger(
   return "invalid";
 }
 
-// ISO date `YYYY-MM-DD`. The RPC takes `date` so we trust the value if
-// parseable; this just keeps obviously-malformed input out of the network.
+// ISO date `YYYY-MM-DD`, verified against the real calendar. Format alone let
+// impossible dates (2026-02-30, 2026-13-01) through to the RPC's Postgres
+// `date` cast, which rejected them with the generic rpc-error fallback instead
+// of a friendly validation message. The round-trip check mirrors the
+// launch-planning and calendar validators (isRealIsoDate).
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function isIsoDate(value: string): boolean {
-  return ISO_DATE_RE.test(value);
+  if (!ISO_DATE_RE.test(value)) return false;
+  const d = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return false;
+  // Round-trip: 2026-02-30 parses as 2026-03-02, so it fails the compare.
+  return d.toISOString().slice(0, 10) === value;
 }
 
 // The admin boolean-flag vocabulary. Shared mechanics live in

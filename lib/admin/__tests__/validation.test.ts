@@ -582,6 +582,24 @@ describe("validateLogShepherdCareInteractionPayload", () => {
     }
   });
 
+  // The shared isIsoDate verifies against the real calendar, so an impossible
+  // date fails here with a friendly message instead of reaching the RPC's
+  // Postgres `date` cast and surfacing the generic rpc-error fallback.
+  it("rejects an impossible calendar date like Feb 30", () => {
+    const r = validateLogShepherdCareInteractionPayload(
+      {
+        shepherd_profile_id: UUID_A,
+        interaction_at: "2026-02-30",
+        interaction_type: "call",
+      },
+      { todayIso: "2026-05-21" }
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /interaction date/i.test(e))).toBe(true);
+    }
+  });
+
   it("rejects a future interaction date", () => {
     const r = validateLogShepherdCareInteractionPayload(
       {
