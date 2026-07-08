@@ -502,11 +502,17 @@ function buildGroupReviewRow(
     leaderNotePreview: truncatePreview(session?.leader_note ?? null),
     dueLabel: formatCheckInDueLabel(dueResult.due),
     dueRelative: formatCheckInDueRelative(dueResult),
-    // Only treat the row as "overdue" if (1) due-date math worked AND
-    // (2) the leader hasn't already submitted *anything* for this week
-    // (submitted / admin_entered / did_not_meet / planned_pause all
-    // count as "in").
-    isOverdue: dueResult.isOverdue && !isCheckedInThisWeek,
+    // Only treat the row as "overdue" if (1) due-date math worked, (2) the
+    // leader hasn't already submitted *anything* for this week (submitted /
+    // admin_entered / did_not_meet / planned_pause all count as "in"), AND
+    // (3) the group's lifecycle is active — a group on a planned pause or
+    // seasonal break legitimately submits nothing, so accusing its card of
+    // "Overdue" next to its own pause badge is wrong (the summary tiles and
+    // the missing-highlight already skip non-active rows).
+    isOverdue:
+      dueResult.isOverdue &&
+      !isCheckedInThisWeek &&
+      g.lifecycle_status === "active",
     isScheduledThisWeek: dueResult.isScheduledThisWeek,
   };
 }
