@@ -17,10 +17,14 @@ export async function GET(
   const { snapshotId } = await params;
 
   // Explicit super-admin gate — the (protected) layout guard is not in effect.
+  // Checks active status as well as role, matching the session guards
+  // (resolveGuardVerdict): a deactivated super_admin with a still-live cookie
+  // session must not pass the app-layer gate on a full-database export.
   const session = await getCurrentSession();
   if (
     session.kind !== "authenticated" ||
-    session.profile.role !== "super_admin"
+    session.profile.role !== "super_admin" ||
+    session.profile.status !== "active"
   ) {
     return new Response("Forbidden", { status: 403 });
   }
