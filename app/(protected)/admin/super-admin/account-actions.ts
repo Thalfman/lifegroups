@@ -117,6 +117,36 @@ export async function superAdminRequestPasswordReset(
     return actionFail(["Database is not configured."]);
   }
 
+  // The email and profile_id arrive as two independent form fields, but the
+  // audit row is keyed by profile_id while the reset email goes to the
+  // address — a tampered or stale form could send Alice's reset while the
+  // audit trail permanently records Bob as the target. Verify the address is
+  // the profile's stored email BEFORE anything goes out.
+  const profileRes = await client
+    .from("profiles")
+    .select("id, email")
+    .eq("id", profileId)
+    .maybeSingle<{ id: string; email: string | null }>();
+  if (profileRes.error) {
+    ctx.finish("fail", {
+      error_code: "target_lookup_failed",
+      target_profile_id: profileId,
+    });
+    return actionFail([
+      "We couldn't verify the reset target. Please try again.",
+    ]);
+  }
+  const target = profileRes.data;
+  if (!target || (target.email ?? "").toLowerCase() !== email.toLowerCase()) {
+    ctx.finish("fail", {
+      error_code: "target_email_mismatch",
+      target_profile_id: profileId,
+    });
+    return actionFail([
+      "That email doesn't match the selected profile. Refresh and try again.",
+    ]);
+  }
+
   // Resolve the reset-link target the same way the invite + forgot-password
   // flows do (lib/shared/site-origin). Prefers NEXT_PUBLIC_SITE_URL / SITE_URL,
   // falling back to the request's forwarded host. A null origin (nothing

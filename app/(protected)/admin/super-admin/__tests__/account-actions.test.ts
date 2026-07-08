@@ -7,6 +7,7 @@ const {
   mockResolveSiteOrigin,
   mockRpc,
   mockResetPasswordForEmail,
+  mockMaybeSingle,
   mockLog,
 } = vi.hoisted(() => ({
   mockRequireSuperAdminSession: vi.fn(),
@@ -15,6 +16,7 @@ const {
   mockResolveSiteOrigin: vi.fn(),
   mockRpc: vi.fn(),
   mockResetPasswordForEmail: vi.fn(),
+  mockMaybeSingle: vi.fn(),
   mockLog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
@@ -58,8 +60,20 @@ beforeEach(() => {
   mockResolveSiteOrigin.mockResolvedValue("https://example.test");
   mockResetPasswordForEmail.mockResolvedValue({ error: null });
   mockRpc.mockResolvedValue({ data: PROFILE_ID, error: null });
+  // The target-verification read: profiles row whose stored email matches the
+  // posted address (the happy path). Tests override per case.
+  mockMaybeSingle.mockResolvedValue({
+    data: { id: PROFILE_ID.toLowerCase(), email: EMAIL },
+    error: null,
+  });
+  const profileBuilder = {
+    select: () => profileBuilder,
+    eq: () => profileBuilder,
+    maybeSingle: mockMaybeSingle,
+  };
   mockCreateClient.mockResolvedValue({
     rpc: mockRpc,
+    from: () => profileBuilder,
     auth: { resetPasswordForEmail: mockResetPasswordForEmail },
   });
 });
@@ -103,6 +117,38 @@ describe("superAdminRequestPasswordReset", () => {
     const result = await superAdminRequestPasswordReset(
       undefined,
       form({ email: EMAIL })
+    );
+
+    expect(result.ok).toBe(false);
+    expect(mockResetPasswordForEmail).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  // The email and profile_id arrive as independent form fields; the audit row
+  // keys on profile_id while the email goes to the address. A mismatched pair
+  // (tampered or stale form) must never send a reset the audit misattributes.
+  it("rejects an email that doesn't match the target profile", async () => {
+    mockMaybeSingle.mockResolvedValue({
+      data: { id: PROFILE_ID.toLowerCase(), email: "other@example.test" },
+      error: null,
+    });
+
+    const result = await superAdminRequestPasswordReset(
+      undefined,
+      form({ email: EMAIL, profile_id: PROFILE_ID })
+    );
+
+    expect(result.ok).toBe(false);
+    expect(mockResetPasswordForEmail).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unknown target profile before any email goes out", async () => {
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null });
+
+    const result = await superAdminRequestPasswordReset(
+      undefined,
+      form({ email: EMAIL, profile_id: PROFILE_ID })
     );
 
     expect(result.ok).toBe(false);
