@@ -15,7 +15,9 @@ import {
 } from "@/lib/admin/run-action";
 import { adminRpc } from "@/lib/admin/rpc";
 
-const REVALIDATE_PATH = "/admin/super-admin";
+// A changed role also renders on the People directory, so revalidate it
+// alongside the console (matching the invite action).
+const REVALIDATE_PATHS = ["/admin/super-admin", "/admin/people"] as const;
 
 const ROLE_CHANGE_KEYS = ["profile_id", "new_role"] as const;
 
@@ -55,7 +57,7 @@ const UPDATE_PROFILE_ROLE_SPEC: AdminWriteActionSpec<
       p_profile_id: value.profile_id,
       p_new_role: value.new_role,
     }),
-  revalidate: () => REVALIDATE_PATH,
+  revalidate: () => REVALIDATE_PATHS,
   noDataError: "The role was not updated. Please try again.",
 };
 

@@ -30,6 +30,7 @@ vi.mock("@/lib/observability/logger", () => ({
 
 import {
   adminCreateGroup,
+  adminUpdateGroup,
   adminCloseGroup,
   adminReopenGroup,
 } from "../actions";
@@ -84,6 +85,23 @@ describe("adminCreateGroup", () => {
     expect(result.ok).toBe(false);
     expect(mockRpc).not.toHaveBeenCalled();
     expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe("adminUpdateGroup", () => {
+  it("revalidates the group detail route so an edit from the list drawer isn't stale", async () => {
+    const result = await adminUpdateGroup(
+      undefined,
+      form({ group_id: GROUP_ID, name: "Renamed Group" })
+    );
+
+    expect(result).toEqual({ ok: true, value: { id: NEW_ID } });
+    // Edited fields render most prominently on the detail page; the
+    // list-only revalidate left `/admin/groups/[id]` stale.
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/groups");
+    expect(mockRevalidatePath).toHaveBeenCalledWith(
+      `/admin/groups/${GROUP_ID}`
+    );
   });
 });
 

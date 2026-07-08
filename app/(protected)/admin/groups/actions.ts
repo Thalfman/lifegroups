@@ -87,7 +87,9 @@ const UPDATE_GROUP_SPEC: AdminWriteActionSpec<
       p_group_id: value.group_id,
       ...toRpcArgs(value, GROUP_KEYS),
     }),
-  revalidate: () => GROUP_REVALIDATE_PATHS,
+  // Edited fields (name, schedule, type) render most prominently on the group
+  // DETAIL page, so update revalidates it like close/reopen do.
+  revalidate: (value) => groupLifecyclePaths(value.group_id),
   noDataError: "The group was not updated. Please try again.",
 };
 

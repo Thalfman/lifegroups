@@ -24,6 +24,9 @@ import { isUuid } from "@/lib/shared/uuid";
 import { startActionLog } from "@/lib/observability/instrument";
 
 const REVALIDATE_PATH = "/admin/super-admin";
+// A changed active/inactive status also renders on the People directory, so
+// the status write revalidates it alongside the console (matching invites).
+const STATUS_REVALIDATE_PATHS = [REVALIDATE_PATH, "/admin/people"] as const;
 
 // Phase SAC.3 (#163): disable / re-enable a profile. Self-target is blocked here
 // (defense-in-depth) and again in the RPC; the bootstrap super_admin guard lives
@@ -50,7 +53,7 @@ const SET_PROFILE_STATUS_SPEC: AdminWriteActionSpec<
       p_profile_id: value.profile_id,
       p_status: value.status,
     }),
-  revalidate: () => REVALIDATE_PATH,
+  revalidate: () => STATUS_REVALIDATE_PATHS,
   noDataError: "The profile status was not updated. Please try again.",
 };
 
