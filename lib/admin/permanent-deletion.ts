@@ -51,7 +51,8 @@ const LAUNCH_SCENARIO: PermanentDeletionEntity = {
     const { data } = await client
       .from("launch_planning_scenarios")
       .select("id, name, is_current, archived_at")
-      .order("name", { ascending: true });
+      .order("name", { ascending: true })
+      .limit(200);
     return mapRows(
       data,
       (r: {
@@ -82,7 +83,8 @@ const GROUP: PermanentDeletionEntity = {
     const { data } = await client
       .from("groups")
       .select("id, name, lifecycle_status")
-      .order("name", { ascending: true });
+      .order("name", { ascending: true })
+      .limit(200);
     return mapRows(
       data,
       (r: { id: string; name: string; lifecycle_status: string | null }) => ({
@@ -111,7 +113,8 @@ const PROFILE: PermanentDeletionEntity = {
       .from("profiles")
       .select("id, full_name, email, role, status")
       .neq("role", "super_admin")
-      .order("full_name", { ascending: true });
+      .order("full_name", { ascending: true })
+      .limit(200);
     return mapRows(
       data,
       (r: {
@@ -202,7 +205,8 @@ const APPRENTICE: PermanentDeletionEntity = {
     const { data } = await client
       .from("leader_pipeline")
       .select("id, display_name, readiness_stage")
-      .order("display_name", { ascending: true });
+      .order("display_name", { ascending: true })
+      .limit(200);
     return mapRows(
       data,
       (r: { id: string; display_name: string; readiness_stage: string }) => ({
@@ -224,7 +228,8 @@ const OVER_SHEPHERD: PermanentDeletionEntity = {
     const { data } = await client
       .from("over_shepherds")
       .select("id, full_name, active")
-      .order("full_name", { ascending: true });
+      .order("full_name", { ascending: true })
+      .limit(200);
     return mapRows(
       data,
       (r: { id: string; full_name: string; active: boolean }) => ({
