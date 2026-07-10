@@ -24,6 +24,7 @@ function careNote(overrides: Partial<CareNotesRow> = {}): CareNotesRow {
   return {
     id: "cn-1",
     author_profile_id: "author-1",
+    author_descriptor: null,
     subject_profile_id: "leader-1",
     subject_group_id: null,
     body: "Checked in after surgery.",
@@ -39,6 +40,7 @@ function prayerRequest(
   return {
     id: "pr-1",
     author_profile_id: VIEWER,
+    author_descriptor: null,
     subject_profile_id: "leader-1",
     subject_group_id: null,
     body: "Pray for the retreat.",

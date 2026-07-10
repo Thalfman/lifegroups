@@ -20,6 +20,7 @@ function prayerRow(
   return {
     id,
     author_profile_id: "00000000-0000-4000-8000-00000000000a",
+    author_descriptor: null,
     subject_profile_id: "00000000-0000-4000-8000-00000000000b",
     subject_group_id: null,
     body: `Prayer body ${id}`,

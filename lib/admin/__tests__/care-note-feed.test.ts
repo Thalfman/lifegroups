@@ -29,6 +29,7 @@ function careNote(overrides: Partial<CareNotesRow> = {}): CareNotesRow {
   return {
     id: "10000000-0000-4000-8000-000000000001",
     author_profile_id: OS,
+    author_descriptor: null,
     subject_profile_id: LEADER,
     subject_group_id: null,
     body: "Checked in after the move.",
@@ -44,6 +45,7 @@ function prayerRequest(
   return {
     id: "20000000-0000-4000-8000-000000000001",
     author_profile_id: LEADER,
+    author_descriptor: null,
     subject_profile_id: null,
     subject_group_id: GROUP,
     body: "Pray for the group's new families.",
@@ -141,6 +143,57 @@ describe("buildCareNoteFeed", () => {
       authorName: "Unknown person",
       subjectName: "Unknown person",
     });
+  });
+
+  it("labels a purged author's rows with the stamped descriptor (issue #880)", () => {
+    // A permanently purged author leaves author_profile_id null (FK SET NULL)
+    // and a stamped descriptor — that renders, not "Unknown person".
+    const items = build({
+      careNotes: [
+        careNote({
+          author_profile_id: null,
+          author_descriptor: "Former Shepherd",
+        }),
+      ],
+      prayerRequests: [
+        prayerRequest({
+          author_profile_id: null,
+          author_descriptor: "Former Shepherd",
+        }),
+      ],
+    });
+    for (const item of items) {
+      expect(item).toMatchObject({
+        authorProfileId: null,
+        authorName: "Former Shepherd",
+        viewerAuthored: false,
+      });
+    }
+  });
+
+  it("falls back to the default descriptor when a null-author row has none", () => {
+    // Defensive: a null author without a stamped descriptor still reads as a
+    // purge fact ("Former Shepherd"), never as a failed name lookup.
+    const [item] = build({
+      careNotes: [
+        careNote({ author_profile_id: null, author_descriptor: null }),
+      ],
+    });
+    expect(item.authorName).toBe("Former Shepherd");
+  });
+
+  it("prefers the live name map for a non-null author even when a descriptor lingers", () => {
+    // Restore coherence: a tombstone restore re-links author_profile_id but
+    // does NOT clear the descriptor — the live name must win again.
+    const [item] = build({
+      careNotes: [
+        careNote({
+          author_profile_id: OS,
+          author_descriptor: "Former Shepherd",
+        }),
+      ],
+    });
+    expect(item.authorName).toBe("Omar Shepherd");
   });
 
   it("uses the broad note's interaction date and author attribution", () => {

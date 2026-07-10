@@ -26,9 +26,13 @@ import {
 // Exported so the cross-subject feed reads (care-note-feed-reads.ts, ADR 0023)
 // reuse exactly this allowlist rather than declaring a second one that could
 // drift wider.
+// author_descriptor (issue #880) is the anonymized authorship label a profile
+// purge stamps in place ("Former Shepherd") — rendered only when
+// author_profile_id is null (the FK is ON DELETE SET NULL).
 export const CARE_NOTE_COLUMNS = columns<CareNotesRow>()(
   "id",
   "author_profile_id",
+  "author_descriptor",
   "subject_profile_id",
   "subject_group_id",
   "body",
@@ -39,6 +43,7 @@ export const CARE_NOTE_COLUMNS = columns<CareNotesRow>()(
 export const PRAYER_REQUEST_COLUMNS = columns<PrayerRequestsRow>()(
   "id",
   "author_profile_id",
+  "author_descriptor",
   "subject_profile_id",
   "subject_group_id",
   "body",
