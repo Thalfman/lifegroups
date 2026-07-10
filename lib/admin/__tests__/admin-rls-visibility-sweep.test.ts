@@ -144,7 +144,11 @@ describe.each(MATRIX)("$table [$cls]", (entry) => {
       const predicate = authoritativePolicy(entry)?.predicate ?? "";
       // A bare disjunctive admin read would let the ladder (or super_admin) read
       // a sealed note. The admin arm must always be AND-ed with the grant EXISTS.
-      expect(predicate).not.toMatch(/or\s+public\.auth_is_admin\(\)\s*\)/);
+      // Both call forms are forbidden: the bare helper and its #860
+      // InitPlan-wrapped `(select public.auth_is_admin())` spelling.
+      expect(predicate).not.toMatch(
+        /or\s+(?:\(\s*select\s+)?public\.auth_is_admin\(\)\s*\)?\s*\)/
+      );
     });
   }
 });

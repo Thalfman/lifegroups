@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRequireAdminSession, mockCreateClient, mockRevalidatePath } = vi.hoisted(() => ({
-  mockRequireAdminSession: vi.fn(),
-  mockCreateClient: vi.fn(),
-  mockRevalidatePath: vi.fn(),
-}));
+const { mockRequireAdminSession, mockCreateClient, mockRevalidatePath } =
+  vi.hoisted(() => ({
+    mockRequireAdminSession: vi.fn(),
+    mockCreateClient: vi.fn(),
+    mockRevalidatePath: vi.fn(),
+  }));
 
-vi.mock("@/lib/auth/session", () => ({ requireAdminSession: mockRequireAdminSession }));
-vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: mockCreateClient }));
+vi.mock("@/lib/auth/session", () => ({
+  requireAdminSession: mockRequireAdminSession,
+}));
+vi.mock("@/lib/supabase/server", () => ({
+  createSupabaseServerClient: mockCreateClient,
+}));
 vi.mock("next/cache", () => ({ revalidatePath: mockRevalidatePath }));
 vi.mock("@/lib/observability/logger", () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -20,7 +25,7 @@ import {
   adminRemovePrivateNoteKeySlot,
   adminRotatePrivateNoteRecovery,
   adminUpsertShepherdCarePrivateNote,
-} from "@/app/(protected)/admin/shepherd-care/actions";
+} from "@/app/(protected)/admin/shepherd-care/private-note-actions";
 
 const b64 = (n: number) => bytesToBase64(new Uint8Array(n));
 
@@ -53,14 +58,19 @@ describe("adminUpsertShepherdCarePrivateNote", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(rpc).toHaveBeenCalledWith("admin_upsert_shepherd_care_private_note", {
-      p_care_profile_id: CARE,
-      p_ciphertext: "AAAA",
-      p_iv: "AAAAAAAAAAAAAAAA",
-      p_dek_version: 1,
-      p_set_body: true,
-    });
-    expect(mockRevalidatePath).toHaveBeenCalledWith(`/admin/shepherd-care/${SHEPHERD}`);
+    expect(rpc).toHaveBeenCalledWith(
+      "admin_upsert_shepherd_care_private_note",
+      {
+        p_care_profile_id: CARE,
+        p_ciphertext: "AAAA",
+        p_iv: "AAAAAAAAAAAAAAAA",
+        p_dek_version: 1,
+        p_set_body: true,
+      }
+    );
+    expect(mockRevalidatePath).toHaveBeenCalledWith(
+      `/admin/shepherd-care/${SHEPHERD}`
+    );
   });
 });
 
@@ -87,7 +97,9 @@ describe("adminEnrollPrivateNoteKeys", () => {
       p_dek_version: 1,
       p_slots: [slot],
     });
-    expect(mockRevalidatePath).toHaveBeenCalledWith(`/admin/shepherd-care/${SHEPHERD}`);
+    expect(mockRevalidatePath).toHaveBeenCalledWith(
+      `/admin/shepherd-care/${SHEPHERD}`
+    );
   });
 });
 
@@ -112,7 +124,9 @@ describe("adminAddPrivateNoteKeySlot", () => {
       p_wrapped_dek: b64(48),
       p_wrap_iv: b64(12),
     });
-    expect(mockRevalidatePath).toHaveBeenCalledWith(`/admin/shepherd-care/${SHEPHERD}`);
+    expect(mockRevalidatePath).toHaveBeenCalledWith(
+      `/admin/shepherd-care/${SHEPHERD}`
+    );
   });
 });
 

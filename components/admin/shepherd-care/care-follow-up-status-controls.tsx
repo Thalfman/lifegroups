@@ -3,7 +3,7 @@
 import {
   adminArchiveShepherdCareFollowUp,
   adminUpdateShepherdCareFollowUpStatus,
-} from "@/app/(protected)/admin/shepherd-care/actions";
+} from "@/app/(protected)/admin/shepherd-care/follow-up-actions";
 import {
   useActionForm,
   FormStatus,

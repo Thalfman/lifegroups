@@ -1,7 +1,7 @@
 "use client";
 
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
-import { adminUpdateOverShepherd } from "@/app/(protected)/admin/shepherd-care/actions";
+import { adminUpdateOverShepherd } from "@/app/(protected)/admin/shepherd-care/over-shepherd-actions";
 import {
   useActionForm,
   FormStatus,

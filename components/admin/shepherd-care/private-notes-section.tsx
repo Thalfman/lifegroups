@@ -8,7 +8,7 @@ import {
   adminRemovePrivateNoteKeySlot,
   adminRotatePrivateNoteRecovery,
   adminUpsertShepherdCarePrivateNote,
-} from "@/app/(protected)/admin/shepherd-care/actions";
+} from "@/app/(protected)/admin/shepherd-care/private-note-actions";
 import {
   errorTextClassName,
   fieldInputClassName as FIELD_INPUT,

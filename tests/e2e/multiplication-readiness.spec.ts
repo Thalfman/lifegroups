@@ -147,7 +147,22 @@ test.describe("Multiplication-readiness assessment pipeline", () => {
         await expect(addButton).toBeEnabled({ timeout: 2_000 });
       }).toPass();
       await addButton.click();
-      // Revalidation renders the new type section without a reload.
+      // Revalidation renders the new type section without a reload — but this
+      // is SETUP for the assessment under test, so it tolerates the CI
+      // stack's intermittent >30s server-action stalls (#839) like the funnel
+      // spec's create: the upsert commits before the response stream stalls,
+      // so a reload renders the section from the fresh force-dynamic read
+      // (the URL still carries ?tab=pipeline).
+      const liveAdd = await section
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (!liveAdd) {
+        console.log(
+          "[e2e] pipeline add-type: no live signal in 15s, reloading"
+        );
+        await page.reload();
+      }
       await expect(section).toBeVisible();
     }
     await expect(section.getByText("Potential candidates")).toBeVisible();

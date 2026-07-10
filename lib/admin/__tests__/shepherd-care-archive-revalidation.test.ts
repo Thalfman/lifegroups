@@ -21,7 +21,7 @@ vi.mock("@/lib/observability/logger", () => ({
 import {
   adminSetOverShepherdActive,
   adminUpdateOverShepherd,
-} from "@/app/(protected)/admin/shepherd-care/actions";
+} from "@/app/(protected)/admin/shepherd-care/over-shepherd-actions";
 
 const ACTOR = "11111111-1111-1111-1111-111111111111";
 const OS_ID = "22222222-2222-2222-2222-222222222222";

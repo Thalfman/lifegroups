@@ -66,12 +66,14 @@ const PRAYER_POLICY = "prayer_requests_author_or_granted_select";
 // changes the policy, this test fails HERE first: re-transcribe the mirror,
 // re-verify the differential suite passes, THEN update this constant. The
 // friction is deliberate — the mirror must never silently rot.
+// (The helper calls are `(select …)`-wrapped since 20260714010000 — an
+// InitPlan-only change, #860; the boolean relationship is identical.)
 const PINNED_CARE_NOTES_USING =
-  "author_profile_id = public.auth_profile_id() or ( public.auth_is_admin() " +
-  "and ( ( care_notes.subject_profile_id is not null and exists ( select 1 " +
-  "from public.note_transparency_grants g where g.subject_profile_id = " +
-  "care_notes.subject_profile_id and g.granted ) ) or ( " +
-  "care_notes.subject_group_id is not null and exists ( select 1 from " +
+  "author_profile_id = (select public.auth_profile_id()) or ( (select " +
+  "public.auth_is_admin()) and ( ( care_notes.subject_profile_id is not null " +
+  "and exists ( select 1 from public.note_transparency_grants g where " +
+  "g.subject_profile_id = care_notes.subject_profile_id and g.granted ) ) or " +
+  "( care_notes.subject_group_id is not null and exists ( select 1 from " +
   "public.note_transparency_grants g where g.subject_profile_id = " +
   "care_notes.author_profile_id and g.granted ) ) ) )";
 
@@ -145,15 +147,17 @@ describe("fitness: Care Note TS resolver matches the RLS USING clause (SEC-1)", 
   });
 
   it("the RLS USING clause keeps the author OR (admin AND grant) relationship", () => {
-    // Author arm: the author always reads their own note.
+    // Author arm: the author always reads their own note. The helper is
+    // InitPlan-wrapped (`(select public.auth_profile_id())`, #860); the
+    // `(?:\(select\s+)?` tolerates either form without weakening the arm.
     expect(using).toMatch(
-      /author_profile_id\s*=\s*public\.auth_profile_id\(\)/i
+      /author_profile_id\s*=\s*(?:\(select\s+)?public\.auth_profile_id\(\)/i
     );
     // Oversight-ladder arm: the admin check must be ANDed with the grant — not
     // merely present somewhere. A widened clause like `… OR auth_is_admin() OR
     // g.granted` (admins read every note without a grant) must FAIL this.
     expect(using).toMatch(
-      /public\.auth_is_admin\(\)\s+and\b[\s\S]*\bg\.granted\b/i
+      /public\.auth_is_admin\(\)\)?\s+and\b[\s\S]*\bg\.granted\b/i
     );
     // And the grant must not be ORed in as a standalone all-rows escape hatch.
     expect(using).not.toMatch(/\bor\s+g\.granted\b/i);
