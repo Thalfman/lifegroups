@@ -54,11 +54,11 @@ export E2E_LEADER_PASSWORD="$TEST_LEADER1_PASSWORD"
 
 # Service-role access for the PLAYWRIGHT TEST PROCESS ONLY (tests/e2e/db.ts):
 # audit-pairing assertions and the invite spec's super-admin fixture (the seed
-# tooling refuses to create a super_admin). Deliberately NOT named
-# SUPABASE_SERVICE_ROLE_KEY: the Next runtime never reads any E2E_* variable,
-# so even though the Playwright webServer command inherits this shell, the
-# served app cannot pick the key up under the name its code would look for —
-# the repo invariant (no service-role key in the Next runtime) holds.
+# tooling refuses to create a super_admin). Two layers keep the repo invariant
+# (no service-role key in the Next runtime): the name is deliberately NOT
+# SUPABASE_SERVICE_ROLE_KEY (runtime code never reads any E2E_* variable), and
+# playwright.e2e.config.ts blanks E2E_SERVICE_ROLE_KEY in the webServer env so
+# the served app's process holds no service-role credential at all.
 export E2E_SUPABASE_URL="$SUPABASE_URL_LOCAL"
 export E2E_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY_LOCAL"
 

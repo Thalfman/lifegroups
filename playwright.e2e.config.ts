@@ -90,10 +90,19 @@ export default defineConfig({
     // acceptable noise for an advisory diagnostics lane.
     stdout: "pipe",
     stderr: "pipe",
-    // Deliberately NO env block: the command inherits the shell environment
-    // (the Supabase env exported by scripts/e2e.sh), and
-    // NEXT_PUBLIC_A11Y_HARNESS stays unset — real routes only. The
-    // service-role key is never exported by the runner, so it cannot reach
-    // this server (repo invariant).
+    // The command needs the shell environment (the Supabase env exported by
+    // scripts/e2e.sh), and NEXT_PUBLIC_A11Y_HARNESS stays unset — real routes
+    // only. But scripts/e2e.sh also exports E2E_SERVICE_ROLE_KEY for the TEST
+    // process (audit read-back in tests/e2e/db.ts), and the repo invariant is
+    // that no service-role credential reaches the Next runtime under ANY env
+    // name — so pass the environment through with that key explicitly blanked.
+    // (Spelled as full-env-plus-override so it holds whether Playwright merges
+    // this over process.env or replaces it.)
+    env: {
+      ...Object.fromEntries(
+        Object.entries(process.env).filter(([, value]) => value !== undefined)
+      ),
+      E2E_SERVICE_ROLE_KEY: "",
+    } as Record<string, string>,
   },
 });
