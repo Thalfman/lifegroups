@@ -15,6 +15,30 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error(error);
+    // Beacon the failure to the structured log drain (#861). global-error
+    // renders when the root layout itself failed, so this stays inline and
+    // dependency-free (no app imports, window.location over usePathname) —
+    // the fewer modules this boundary pulls in, the less can take it down too.
+    try {
+      const body = JSON.stringify({
+        name: error.name,
+        message: String(error.message ?? "").slice(0, 300),
+        digest: error.digest,
+        pathname: window.location.pathname,
+      });
+      if ("sendBeacon" in navigator) {
+        navigator.sendBeacon("/api/client-error", body);
+      } else {
+        fetch("/api/client-error", {
+          method: "POST",
+          body,
+          keepalive: true,
+          referrerPolicy: "no-referrer",
+        }).catch(() => {});
+      }
+    } catch {
+      // Reporting must never crash the last-resort boundary.
+    }
   }, [error]);
 
   return (

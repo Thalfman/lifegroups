@@ -11,6 +11,8 @@
 // malformed URL — genuine misconfigurations that today get silently swallowed
 // as "not configured".
 
+import { log } from "@/lib/observability/logger";
+
 export type SupabaseEnv = {
   url: string;
   key: string;
@@ -90,7 +92,14 @@ export function getSupabaseEnvSafe(): SupabaseEnv | null {
     return getSupabaseEnv();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[supabase] ignoring misconfigured environment: ${message}`);
+    // Structured so alerting can key on the event (#861); the message names
+    // the offending variable per #593 and carries no secret value (the
+    // validators quote only variable NAMES, never key material).
+    log.error({
+      event: "supabase_env_misconfigured",
+      outcome: "fail",
+      error_message: message,
+    });
     return null;
   }
 }

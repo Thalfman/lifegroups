@@ -18,6 +18,8 @@ export const config = {
     // /reset-password instead of receiving the metadata. /api/vitals is also
     // excluded: the web-vitals beacon needs no session, so refreshing it there
     // would add a getClaims() round trip to the very surface it measures.
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|api/vitals|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // /api/client-error is excluded for the same reason — it fires from a
+    // page that already crashed (#861).
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|api/vitals|api/client-error|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

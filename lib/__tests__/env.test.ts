@@ -155,8 +155,13 @@ describe("getSupabaseEnvSafe", () => {
   it("degrades to null and logs when only a key is set (no site-wide throw)", () => {
     process.env.SUPABASE_ANON_KEY = "anon-key";
     expect(getSupabaseEnvSafe()).toBeNull();
+    // Structured event (#861) so alerting can key on it; the message names
+    // the missing variable half.
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringMatching(/misconfigured environment/i)
+      expect.stringMatching(/supabase_env_misconfigured/)
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringMatching(/half-configured/)
     );
   });
 

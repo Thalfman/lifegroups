@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { AppErrorState } from "@/components/lg/AppErrorState";
 import { Button, LinkButton } from "@/components/ui/button";
+import { reportClientError } from "@/components/observability/report-client-error";
 
 // Shared body for the data-heavy detail routes' segment-level `error.tsx`
 // boundaries (repo-sweep #586). A failed detail read is caught here — scoped to
@@ -29,9 +31,13 @@ export function DetailRouteError({
   title?: string;
   message?: string;
 }) {
+  const pathname = usePathname();
   useEffect(() => {
+    // Console for local debugging; the beacon puts the failure in the
+    // structured log drain (#861).
     console.error(error);
-  }, [error]);
+    reportClientError(error, pathname);
+  }, [error, pathname]);
 
   return (
     <AppErrorState
