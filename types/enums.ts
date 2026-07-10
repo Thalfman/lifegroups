@@ -5,8 +5,11 @@ export type UserRole =
   | "leader"
   | "co_leader";
 // Note: a legacy no-access role was removed from this union (#190). Existing
-// rows were migrated to inactive `leader` (also no-access per ADR 0002) and the
-// value was dropped from the `user_role` Postgres enum.
+// rows were migrated to inactive `leader` (also no-access per ADR 0002). The
+// value was deliberately KEPT in the `user_role` Postgres enum but made inert
+// (20260531140000: `auth_role()` returns `public.user_role`, so recreating the
+// type would cascade through every predicate); the types-drift guard
+// allowlists this divergence (tests/integration/support/types-drift-manifest.ts).
 export type ProfileStatus = "active" | "inactive" | "invited";
 export type GroupLifecycleStatus =
   | "active"
@@ -54,6 +57,13 @@ export type FollowUpStatus = "open" | "in_progress" | "done" | "snoozed";
 export type FollowUpPriority = "low" | "normal" | "high";
 export type MeetingFrequency = "weekly" | "biweekly" | "monthly";
 export type MeetingWeekParity = "odd" | "even";
+// Deliberate retention: 20260611000000_phase_groups2_group_category_retire_
+// life_stage.sql dropped the `groups.life_stage` COLUMN but intentionally kept
+// the `group_life_stage` Postgres enum TYPE (dropping the column does not
+// require dropping its type; keeping it avoids breaking other objects and
+// leaves it available for reuse). This union stays to mirror that live type;
+// the types-drift guard allowlists the no-column state
+// (tests/integration/support/types-drift-manifest.ts).
 export type GroupLifeStage =
   | "young_professionals"
   | "young_families"
