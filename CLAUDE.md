@@ -27,20 +27,22 @@ but stay hidden behind Super-Admin nav flags (turned off, not deleted).
 
 ## Commands
 
-| Command                    | What it does                                |
-| -------------------------- | ------------------------------------------- |
-| `npm run dev`              | Next dev server (http://localhost:3000)     |
-| `npm run build`            | Production build                            |
-| `npm run analyze`          | Build + Turbopack bundle analyzer (sizes)   |
-| `npm run start`            | Serve the production build                  |
-| `npm run lint`             | ESLint CLI (`next/core-web-vitals`)         |
-| `npm run typecheck`        | `tsc --noEmit` (strict)                     |
-| `npm test`                 | Vitest, watch mode                          |
-| `npm run test:run`         | Vitest once (what CI runs)                  |
-| `npm run test:a11y`        | Playwright + axe accessibility suite        |
-| `npm run test:e2e`         | E2E specs vs a local seeded Supabase stack  |
-| `npm run seed:test-auth`   | Create local test Auth users (`tsx` script) |
-| `npm run remove:test-auth` | Remove local test Auth users                |
+| Command                    | What it does                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| `npm run dev`              | Next dev server (http://localhost:3000)                                           |
+| `npm run build`            | Production build                                                                  |
+| `npm run analyze`          | Build + Turbopack bundle analyzer (sizes)                                         |
+| `npm run start`            | Serve the production build                                                        |
+| `npm run lint`             | ESLint CLI (`next/core-web-vitals`)                                               |
+| `npm run typecheck`        | `tsc --noEmit` (strict)                                                           |
+| `npm test`                 | Vitest, watch mode                                                                |
+| `npm run test:run`         | Vitest once (what CI runs)                                                        |
+| `npm run test:coverage`    | Vitest once with coverage report                                                  |
+| `npm run test:integration` | RLS integration suite vs a local Supabase stack (needs Docker + the Supabase CLI) |
+| `npm run test:a11y`        | Playwright + axe accessibility suite                                              |
+| `npm run test:e2e`         | E2E specs vs a local seeded Supabase stack                                        |
+| `npm run seed:test-auth`   | Create local test Auth users (`tsx` script)                                       |
+| `npm run remove:test-auth` | Remove local test Auth users                                                      |
 
 - **Run a single test:** `npx vitest run path/to/file.test.ts` (add `-t "name"`
   to filter by test name).
@@ -128,18 +130,23 @@ typed shape to a stateful client **shell**. There are two paths:
 ## Security invariants — MUST follow
 
 These are hard rules. Violating one is a P0 (see `AGENTS.md` and the README
-"Security posture"). Treat them as non-negotiable. Several are now
-**machine-checked** by the fitness suite (`tests/fitness/**`) in the gating CI
-lane (`npm run test:run`) — no service-role key, no `select("*")`, no direct
-table writes, no hardcoded identity in `lib/auth/**`/RLS, run-action routing,
-no hard deletes, no broad RLS read policies, audit-pairing on every write RPC,
-and the Care Note TS↔SQL visibility resolver agreeing with a pinned mirror of
-its RLS `USING` clause over a shared input matrix (both note types, both
-policies — behavioral, not just shape; ADR 0037) — so a regression fails the
-build. The scans are otherwise static and conservative; what still relies on
-review is the **semantics**: audit-pairing correctness (the right before/after
-content), RLS `USING`-clause meaning beyond the pinned care-note resolver, and
-revalidate-path coverage.
+"Security posture"). Treat them as non-negotiable. Most are now
+**machine-checked** by the fitness suite (`tests/fitness/**` — currently 21
+checks) in the gating CI lane (`npm run test:run`), so a regression fails the
+build. Highlights: no service-role key, no `select("*")`, no direct table
+writes, no hardcoded identity, run-action routing, no hard deletes, no broad
+RLS read policies, audit-pairing on every write RPC, no sensitive columns in
+structured logs or audit plaintext, pinned `search_path` on every `SECURITY
+DEFINER` function, RLS coverage completeness + doc sync, **every write
+action's revalidate-path set pinned against
+`tests/fitness/support/revalidate-path-map.ts`**
+(`write-action-revalidate-paths.test.ts` — a new action without a map entry
+fails the suite), and the Care Note TS↔SQL visibility resolver agreeing with a
+pinned mirror of its RLS `USING` clause over a shared input matrix (both note
+types, both policies — behavioral, not just shape; ADR 0037). The scans are
+otherwise static and conservative; what still relies on review is the
+**semantics**: audit-pairing correctness (the right before/after content) and
+RLS `USING`-clause meaning beyond the pinned care-note resolver.
 
 - **No service-role key in Next runtime code.** The service role is confined to
   Supabase Edge Functions (`invite-user`, `manage-test-auth-users`,
@@ -216,10 +223,16 @@ result-returning guards (`requireAdminSession`, …) in server actions.
 - **Branches:** `claude/<slug>-<id>`. **Commits:** concise, imperative subjects
   that describe intent (not implementation), e.g. "Gate invite/recovery sessions
   to set-password until a password exists".
-- **CI** (`.github/workflows/ci.yml`, on PRs and push to `main`): one job runs
-  `lint` → `typecheck` → `test:run`; a second job runs the Playwright a11y
-  suite. The **Codex review loop is advisory only** — it never auto-merges,
-  enables auto-merge, or deletes branches.
+- **CI** (`.github/workflows/ci.yml`, on PRs and push to `main`): the required
+  job runs `lint` → `typecheck` → `build` → `test:run`, plus an **embedded,
+  path-gated RLS integration harness** (#811) that boots a local Supabase
+  stack on Node 22 and runs `test:integration` when migrations / RLS-relevant
+  modules change; a second job runs the Playwright a11y suite. Advisory lanes
+  live in their own workflows: `rls-integration.yml` (full RLS harness),
+  `seeded-auth-route-smoke.yml`, and `e2e.yml` (dispatch + weekly cron +
+  path-filtered PRs — never a required check). The **Codex review loop is
+  advisory only** — it never auto-merges, enables auto-merge, or deletes
+  branches.
 - Issue tracker and triage-label conventions live in
   [`docs/agents/`](./docs/agents/).
 

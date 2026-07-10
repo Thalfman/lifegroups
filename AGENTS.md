@@ -32,9 +32,17 @@ check-in (`no-hard-delete.test.ts`), **no broad RLS** read policy
 **Care Note TS↔SQL visibility** resolver agreeing with a pinned TS mirror of
 the RLS `USING` clause over a shared 270-row input matrix — behavioral, both
 note types, both policies (`care-note-visibility-divergence.test.ts`, ADR
-0037). A regression fails the build — but the other scans are static and
-conservative, so keep reviewing the rest of the list (audit pairing, role
-boundaries, the conventions below) by hand.
+0037). Since then the suite has grown to 21 checks — including
+**audit-pairing on every write RPC** (`write-rpc-audit-pairing.test.ts`),
+no-sensitive-data-in-logs / audit plaintext, pinned `SECURITY DEFINER`
+`search_path`, RLS coverage completeness, and every write action's
+**revalidate-path set** pinned against
+`tests/fitness/support/revalidate-path-map.ts`
+(`write-action-revalidate-paths.test.ts`). A regression fails the build — but
+the scans are static and conservative, so keep reviewing the **semantics** by
+hand: audit-pairing content correctness (the right before/after fields), RLS
+`USING`-clause meaning beyond the pinned care-note resolver, role boundaries,
+and the conventions below.
 
 ## Security migration conventions (standing rules)
 
