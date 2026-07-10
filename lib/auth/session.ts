@@ -185,11 +185,20 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
 
   let assignedGroupIds: string[] = [];
   if (profile.role === "leader" || profile.role === "co_leader") {
-    const leaderRows = await client
-      .from("group_leaders")
-      .select("group_id")
-      .eq("profile_id", profile.id)
-      .eq("active", true);
+    // Sequential by necessity, not an accidental waterfall: the read is keyed
+    // by profile.id, which only exists once the profile read above resolves
+    // (joining through profiles on auth_user_id would widen the RLS/allowlist
+    // surface for no measured win). Instrumented so leader-session latency is
+    // visible in the read_bundle drain like the sibling session reads.
+    const leaderRows = await measureReadBundle(
+      "session_leader_assignments",
+      async () =>
+        client
+          .from("group_leaders")
+          .select("group_id")
+          .eq("profile_id", profile.id)
+          .eq("active", true)
+    );
     if (leaderRows.error) {
       log.error({
         event: "session_lookup_failed",
