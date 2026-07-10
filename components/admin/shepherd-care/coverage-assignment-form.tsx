@@ -3,7 +3,7 @@
 import {
   adminAssignShepherdCoverage,
   adminEndShepherdCoverage,
-} from "@/app/(protected)/admin/shepherd-care/actions";
+} from "@/app/(protected)/admin/shepherd-care/over-shepherd-actions";
 import {
   useActionForm,
   FormStatus,

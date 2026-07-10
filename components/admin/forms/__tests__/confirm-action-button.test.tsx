@@ -29,7 +29,7 @@ vi.mock("@/app/(protected)/admin/settings/actions", () => ({
   adminSetGroupTypes: vi.fn(),
   adminSetGroupTypeConfig: vi.fn(),
 }));
-vi.mock("@/app/(protected)/admin/shepherd-care/actions", () => ({
+vi.mock("@/app/(protected)/admin/shepherd-care/over-shepherd-actions", () => ({
   adminSetOverShepherdActive: vi.fn(),
 }));
 vi.mock("@/app/(protected)/admin/shepherd-care/follow-up-actions", () => ({

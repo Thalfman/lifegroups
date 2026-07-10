@@ -1,6 +1,6 @@
 "use client";
 
-import { adminSetOverShepherdActive } from "@/app/(protected)/admin/shepherd-care/actions";
+import { adminSetOverShepherdActive } from "@/app/(protected)/admin/shepherd-care/over-shepherd-actions";
 import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
 
 // A focused Archive / Restore toggle for an over-shepherd, usable from the list
