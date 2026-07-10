@@ -14,6 +14,10 @@ import { logClientError } from "@/lib/observability/client-errors";
 // round trip.
 const RESPONSE = { status: 204 } as const;
 
+// Must cover the parser's 2 KB raw cap (lib/observability/client-errors.ts)
+// with headroom; anything larger is dropped before the body is buffered.
+const MAX_BODY_BYTES = 4096;
+
 export async function POST(request: Request): Promise<NextResponse> {
   // Drop cross-site traffic cheaply: browsers tag a same-origin beacon with
   // `Sec-Fetch-Site: same-origin`, so an explicit cross-site/`cross-origin`
@@ -22,6 +26,20 @@ export async function POST(request: Request): Promise<NextResponse> {
   // `logClientError`. First layer only — rate limiting is infra-level.
   const site = request.headers.get("sec-fetch-site");
   if (site && site !== "same-origin") {
+    return new NextResponse(null, RESPONSE);
+  }
+
+  // Reject oversized bodies BEFORE buffering: this route is unauthenticated
+  // and proxy-exempt, so a hostile large POST must not get to allocate the
+  // whole payload just to have the parser drop it. The reporter sends a
+  // string body, so a missing/absurd Content-Length is itself disqualifying.
+  const contentLength = request.headers.get("content-length");
+  const declaredBytes = Number(contentLength);
+  if (
+    !contentLength ||
+    !Number.isFinite(declaredBytes) ||
+    declaredBytes > MAX_BODY_BYTES
+  ) {
     return new NextResponse(null, RESPONSE);
   }
 

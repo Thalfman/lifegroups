@@ -313,11 +313,15 @@ Deno.serve(async (req: Request) => {
 
   if (rpcErr) {
     // Roll back the orphaned auth user so the email can be retried cleanly.
+    // Best-effort; surface the original error regardless — but leave an
+    // operator trail for the now-orphaned auth user. supabase-js resolves
+    // API failures as `{ error }` rather than throwing, so inspect the
+    // result AND keep the catch for transport-level throws.
     try {
-      await service.auth.admin.deleteUser(authUserId);
+      const { error: cleanupErr } =
+        await service.auth.admin.deleteUser(authUserId);
+      if (cleanupErr) logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
     } catch (cleanupErr) {
-      // Best-effort; surface the original error regardless — but leave an
-      // operator trail for the now-orphaned auth user.
       logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
     }
     const mapped = mapRpcToken(rpcErr.message ?? "");
@@ -326,10 +330,13 @@ Deno.serve(async (req: Request) => {
 
   const result = (rpcData ?? {}) as { profile_id?: string };
   if (!result.profile_id) {
+    // Best-effort; same operator trail + resolved-error inspection as the
+    // RPC-failure rollback above.
     try {
-      await service.auth.admin.deleteUser(authUserId);
+      const { error: cleanupErr } =
+        await service.auth.admin.deleteUser(authUserId);
+      if (cleanupErr) logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
     } catch (cleanupErr) {
-      // Best-effort; same operator trail as the RPC-failure rollback above.
       logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
     }
     return padded(fail("db_error", 500));

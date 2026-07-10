@@ -19,6 +19,9 @@ export default function GlobalError({
     // renders when the root layout itself failed, so this stays inline and
     // dependency-free (no app imports, window.location over usePathname) —
     // the fewer modules this boundary pulls in, the less can take it down too.
+    // fetch, NOT sendBeacon: sendBeacon cannot set a referrer policy, and the
+    // crashing page's path (possibly a secret-bearing /invite/<token>) must
+    // never reach access logs via the Referer.
     try {
       const body = JSON.stringify({
         name: error.name,
@@ -26,16 +29,12 @@ export default function GlobalError({
         digest: error.digest,
         pathname: window.location.pathname,
       });
-      if ("sendBeacon" in navigator) {
-        navigator.sendBeacon("/api/client-error", body);
-      } else {
-        fetch("/api/client-error", {
-          method: "POST",
-          body,
-          keepalive: true,
-          referrerPolicy: "no-referrer",
-        }).catch(() => {});
-      }
+      fetch("/api/client-error", {
+        method: "POST",
+        body,
+        keepalive: true,
+        referrerPolicy: "no-referrer",
+      }).catch(() => {});
     } catch {
       // Reporting must never crash the last-resort boundary.
     }

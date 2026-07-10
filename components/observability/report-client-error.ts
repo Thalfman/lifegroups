@@ -21,12 +21,12 @@ export function reportClientError(
       digest: error.digest,
       pathname,
     });
-    // sendBeacon survives page teardown without keeping the page alive; fall
-    // back to a keepalive fetch where it's unavailable.
-    if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
-      navigator.sendBeacon("/api/client-error", body);
-      return;
-    }
+    // Deliberately fetch, NOT sendBeacon: keepalive gives the same
+    // survives-unload guarantee, but sendBeacon cannot set a referrer policy —
+    // under the global strict-origin-when-cross-origin header a same-origin
+    // beacon would carry the full crashing page's path (possibly
+    // /invite/<token>) in the Referer to access logs. Same rationale as the
+    // web-vitals reporter.
     fetch("/api/client-error", {
       method: "POST",
       body,
