@@ -1,4 +1,6 @@
+import type { WebSocketLikeConstructor } from "@supabase/realtime-js";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 // Service-role Supabase access for the PLAYWRIGHT TEST PROCESS ONLY (#871/#872).
 //
@@ -78,6 +80,13 @@ export function e2eServiceClient(): SupabaseClient {
   }
   cachedClient = createClient(env.supabaseUrl, env.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    // supabase-js constructs its Realtime client eagerly and refuses to run on
+    // Node 20 without a WebSocket implementation, even though this harness
+    // never opens a realtime channel. Hand it the ws transport explicitly —
+    // the same documented workaround scripts/test-auth-shared.ts uses (ws's
+    // constructor signature is wider than WebSocketLikeConstructor, so the
+    // cast narrows, never widens).
+    realtime: { transport: ws as unknown as WebSocketLikeConstructor },
   });
   return cachedClient;
 }

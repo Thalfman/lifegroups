@@ -114,7 +114,9 @@ test.describe("Group management pipeline", () => {
       console.log("[e2e] group create: no live signal in 15s, reloading");
       await page.reload();
     }
-    await expect(main.getByText(groupName)).toBeVisible();
+    // .first(): the directory renders the name in both its table and card
+    // views, so the bare text locator is ambiguous under strict mode.
+    await expect(main.getByText(groupName).first()).toBeVisible();
 
     // --- Into the detail page (the list link is the only way in) ------------
     // No location/day was set, so the card's accessible label is exactly
@@ -156,7 +158,7 @@ test.describe("Group management pipeline", () => {
       console.log("[e2e] member add: no live signal in 15s, reloading");
       await page.reload();
     }
-    await expect(main.getByText(personName)).toBeVisible();
+    await expect(main.getByText(personName).first()).toBeVisible();
 
     // --- Assign the seeded Shepherd -----------------------------------------
     // Native select (uncontrolled), so the selection sticks pre- or
@@ -186,7 +188,7 @@ test.describe("Group management pipeline", () => {
     // --- Round-trip: a fresh render proves revalidation/persistence ---------
     await page.reload();
     await expect(main.getByRole("heading", { name: groupName })).toBeVisible();
-    await expect(main.getByText(personName)).toBeVisible();
+    await expect(main.getByText(personName).first()).toBeVisible();
     await expect(shepherdRow).toBeVisible();
     // Rendered domain vocabulary (ADR 0025): the badge says "Shepherd" —
     // never the `leader` enum value.
