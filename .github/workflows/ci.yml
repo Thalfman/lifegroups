@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: ".nvmrc"
           cache: npm
 
       - name: Install dependencies
@@ -84,6 +84,10 @@ jobs:
       # before any assertion runs. This flips PATH for the remaining steps
       # only; the Node-20 `npm ci` above stays valid (the integration path is
       # pure JS, and the standalone workflow runs the same lockfile on 22).
+      # The base version everywhere else comes from .nvmrc (via
+      # node-version-file); package.json `engines` is ">=20.19" — deliberately
+      # uncapped so this harness override stays inside the supported range
+      # (#874: the app runs on 20, the harness on 22).
       - name: Use Node 22 for the harness
         if: steps.rls-paths.outputs.rls == 'true'
         uses: actions/setup-node@v4
@@ -133,7 +137,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: ".nvmrc"
           cache: npm
 
       - name: Install dependencies
