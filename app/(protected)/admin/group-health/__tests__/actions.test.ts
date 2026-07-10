@@ -108,6 +108,30 @@ describe("adminRecomputeGroupHealthAssessment revalidation", () => {
     expect(result.ok).toBe(false);
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
+
+  it("persists F for a failing composite instead of capping at D (#855)", async () => {
+    // No attendance weeks (dimension drops) and rock-bottom 1/5 ratings map to
+    // a weighted numeric of 0 — below the d cut-line, so the letter reaching
+    // the RPC must be F.
+    mockFetchRatings.mockResolvedValue({
+      data: { spiritual_growth_score: 1, group_question_score: 1 },
+      error: null,
+    });
+
+    const result = await adminRecomputeGroupHealthAssessment(
+      undefined,
+      form({ group_id: GROUP_ID })
+    );
+
+    expect(result.ok).toBe(true);
+    expect(mockRpc).toHaveBeenCalledWith(
+      "admin_upsert_group_health_assessment",
+      expect.objectContaining({
+        p_computed_numeric: 0,
+        p_computed_letter: "F",
+      })
+    );
+  });
 });
 
 describe("adminSetGroupHealthRatings revalidation", () => {
