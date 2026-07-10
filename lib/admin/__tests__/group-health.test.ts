@@ -116,7 +116,7 @@ describe("dimensionScoresFromInputs — assessment row → 0–100 dimension sco
   });
 });
 
-describe("computeGrade — weighted dimensions → numeric → A–D letter", () => {
+describe("computeGrade — weighted dimensions → numeric → A–F letter", () => {
   it("grades on attendance alone when it is the only dimension (the tracer case)", () => {
     // One live dimension: the numeric is just that score; 92 ≥ cut-line a (90) → A.
     expect(computeGrade({ attendance: 92 })).toEqual({
@@ -125,13 +125,20 @@ describe("computeGrade — weighted dimensions → numeric → A–D letter", ()
     });
   });
 
-  it("maps the internal numeric onto A/B/C/D by the cut-lines (default 90/75/60)", () => {
+  it("maps the internal numeric onto A/B/C/D/F by the cut-lines (default 90/75/60/45)", () => {
     expect(computeGrade({ attendance: 90 }).letter).toBe("A");
     expect(computeGrade({ attendance: 89 }).letter).toBe("B");
     expect(computeGrade({ attendance: 75 }).letter).toBe("B");
     expect(computeGrade({ attendance: 74 }).letter).toBe("C");
     expect(computeGrade({ attendance: 60 }).letter).toBe("C");
     expect(computeGrade({ attendance: 59 }).letter).toBe("D");
+    expect(computeGrade({ attendance: 45 }).letter).toBe("D");
+  });
+
+  it("awards F below the d cut-line so a failing group is not capped at D (#855)", () => {
+    expect(computeGrade({ attendance: 44.9 }).letter).toBe("F");
+    expect(computeGrade({ attendance: 20 }).letter).toBe("F");
+    expect(computeGrade({ attendance: 0 }).letter).toBe("F");
   });
 
   it("combines three dimensions with the default 40/40/20 weights", () => {
@@ -175,10 +182,12 @@ describe("computeGrade — weighted dimensions → numeric → A–D letter", ()
   it("honors tuned cut-lines from the config", () => {
     const config = {
       ...BUILT_IN_GROUP_HEALTH_RUBRIC,
-      cut_lines: { a: 70, b: 55, c: 40 },
+      cut_lines: { a: 70, b: 55, c: 40, d: 25 },
     };
     // 72 would be a B under defaults but an A under these cut-lines.
     expect(computeGrade({ attendance: 72 }, config).letter).toBe("A");
+    // 24 sits below the tuned d floor → F.
+    expect(computeGrade({ attendance: 24 }, config).letter).toBe("F");
   });
 });
 
@@ -225,13 +234,36 @@ describe("decodeGroupHealthRubric — tunable rubric from settings", () => {
     expect(rubric.cut_lines.b).toBe(BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines.b);
   });
 
+  it("reads a full 4-cut-line set including the d floor", () => {
+    const rubric = decodeGroupHealthRubric({
+      cut_lines: { a: 85, b: 70, c: 55, d: 30 },
+    });
+    expect(rubric.cut_lines).toEqual({ a: 85, b: 70, c: 55, d: 30 });
+  });
+
+  it("derives the d floor for legacy 3-cut-line settings from the tuned c (#855)", () => {
+    // A pre-F stored setting carries only a/b/c. The d floor extends the
+    // TUNED ladder one default-band-width (15) below its own c — importing the
+    // built-in d (45) here would invert the ladder (40 < 45) and wrongly
+    // reject the whole config.
+    const rubric = decodeGroupHealthRubric({
+      cut_lines: { a: 70, b: 55, c: 40 },
+    });
+    expect(rubric.cut_lines).toEqual({ a: 70, b: 55, c: 40, d: 25 });
+  });
+
   it("rejects non-descending cut-lines, keeping the built-in ladder intact", () => {
-    // a must be > b > c; this set would make every score an A. Reject wholesale
-    // rather than grade on a broken ladder.
+    // a must be > b > c > d; this set would make every score an A. Reject
+    // wholesale rather than grade on a broken ladder.
     const rubric = decodeGroupHealthRubric({
       cut_lines: { a: 50, b: 75, c: 60 },
     });
     expect(rubric.cut_lines).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines);
+    // Same for a d floor at or above c.
+    const badD = decodeGroupHealthRubric({
+      cut_lines: { a: 90, b: 75, c: 60, d: 60 },
+    });
+    expect(badD.cut_lines).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines);
   });
 
   it("rejects a weight set that can't grade (negative or all-zero)", () => {

@@ -251,6 +251,16 @@ describe("requireRole (page-route guard)", () => {
     const { requireRole } = await loadSession();
     const result = await requireRole(["leader"]);
     expect(result.assignedGroupIds).toEqual([GROUP_1_ID, GROUP_2_ID]);
+    // The leader assignment read is on the first-paint path — it must stay
+    // observable in the read_bundle drain like the sibling session reads (#862).
+    const { log } = await import("@/lib/observability/logger");
+    expect(log.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "read_bundle",
+        surface: "session_leader_assignments",
+        outcome: "ok",
+      })
+    );
   });
 });
 

@@ -16,7 +16,7 @@ import {
   fieldLabelClassName as FIELD_LABEL,
   formNoteClassName,
 } from "@/components/admin/forms/field-styles";
-import { todayLocalIso } from "@/lib/shared/date";
+import { churchTodayIso } from "@/lib/shared/church-time";
 import type { ShepherdCareProfilesRow } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import type {
@@ -132,8 +132,8 @@ export function LogTouchForm({
           name="interaction_at"
           type="date"
           required
-          defaultValue={todayLocalIso()}
-          max={todayLocalIso()}
+          defaultValue={churchTodayIso()}
+          max={churchTodayIso()}
           className={FIELD_INPUT}
         />
       </div>

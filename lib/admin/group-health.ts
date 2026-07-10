@@ -29,10 +29,12 @@ export type GroupHealthDimensionWeights = {
 
 export type GroupHealthCutLines = {
   // Internal-numeric (0–100) floors for each letter. A value at or above `a`
-  // is an A; at or above `b` a B; at or above `c` a C; anything below `c` a D.
+  // is an A; at or above `b` a B; at or above `c` a C; at or above `d` a D;
+  // anything below `d` an F (ADR 0018, no E).
   a: number;
   b: number;
   c: number;
+  d: number;
 };
 
 export type GroupHealthRubricConfig = {
@@ -51,7 +53,7 @@ export const BUILT_IN_GROUP_HEALTH_RUBRIC: GroupHealthRubricConfig = {
   attendance_window_weeks: 8,
   healthy_attendance_pct: 60,
   weights: { attendance: 40, spiritual_growth: 40, group_question: 20 },
-  cut_lines: { a: 90, b: 75, c: 60 },
+  cut_lines: { a: 90, b: 75, c: 60, d: 45 },
 };
 
 // ---------------------------------------------------------------------------
@@ -229,7 +231,7 @@ export function ratingToScore(rating: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Grade computation (weighted dimensions → internal numeric → A–D letter).
+// Grade computation (weighted dimensions → internal numeric → A–F letter).
 // ---------------------------------------------------------------------------
 
 // Each dimension contributes a 0–100 score. Omit a dimension (undefined) when
@@ -244,7 +246,7 @@ export type GroupHealthDimensionScores = {
 export type ComputedGrade = {
   // Weighted 0–100 internal numeric, or null when no dimension has a score.
   numeric: number | null;
-  // A–D letter from the cut-lines, or null when numeric is null.
+  // A–F letter from the cut-lines, or null when numeric is null.
   letter: GroupHealthLetter | null;
 };
 
@@ -283,7 +285,8 @@ function letterFor(
   if (numeric >= cutLines.a) return "A";
   if (numeric >= cutLines.b) return "B";
   if (numeric >= cutLines.c) return "C";
-  return "D";
+  if (numeric >= cutLines.d) return "D";
+  return "F";
 }
 
 export function computeGrade(
@@ -391,10 +394,18 @@ function decodeCutLines(raw: unknown): GroupHealthCutLines {
     a: jsonNumber(source, "a", def.a),
     b: jsonNumber(source, "b", def.b),
     c: jsonNumber(source, "c", def.c),
+    d: jsonNumber(source, "d", Number.NaN),
   };
-  // The letter ladder only works on a strictly descending set (a > b > c).
+  // Stored settings written before the F floor existed (#855) carry only
+  // a/b/c. Extend such a ladder one step down from ITS OWN `c` using the
+  // built-in D-band width — importing the built-in `d` outright could sit
+  // above a low tuned `c` and knock out a valid legacy config.
+  if (Number.isNaN(tuned.d)) tuned.d = tuned.c - (def.c - def.d);
+  // The letter ladder only works on a strictly descending set (a > b > c > d).
   // A tuned set that isn't is rejected wholesale rather than graded on — a
   // half-applied ladder would silently mis-letter every group.
-  if (!(tuned.a > tuned.b && tuned.b > tuned.c)) return { ...def };
+  if (!(tuned.a > tuned.b && tuned.b > tuned.c && tuned.c > tuned.d)) {
+    return { ...def };
+  }
   return tuned;
 }

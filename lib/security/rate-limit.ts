@@ -24,7 +24,20 @@ type LimiterPair = {
 };
 
 let cached: LimiterPair | null | undefined;
-let disabledWarned = false;
+// Once-per-process dedupe, keyed by route_or_action so each unconfigured
+// limiter reports itself exactly once — a shared boolean would let whichever
+// route is hit first suppress the other's warning (#856).
+const disabledWarnedRoutes = new Set<string>();
+
+function warnDisabledOnce(routeOrAction: string, requestId?: string): void {
+  if (disabledWarnedRoutes.has(routeOrAction)) return;
+  disabledWarnedRoutes.add(routeOrAction);
+  log.warn({
+    event: "rate_limit_disabled",
+    route_or_action: routeOrAction,
+    request_id: requestId,
+  });
+}
 
 // One place that reads the Upstash credentials and builds the client; returns
 // null when the env vars are absent so callers fall open. Shared by both the
@@ -92,14 +105,7 @@ export async function checkInviteRedeemLimit(
   if (cachedRedeem === undefined) cachedRedeem = buildRedeemLimiter();
   const limiter = cachedRedeem;
   if (!limiter) {
-    if (!disabledWarned) {
-      disabledWarned = true;
-      log.warn({
-        event: "rate_limit_disabled",
-        route_or_action: "invite-redeem",
-        request_id: input.requestId,
-      });
-    }
+    warnDisabledOnce("invite-redeem", input.requestId);
     return { configured: false };
   }
   // No IP available (untrusted proxy header) -> skip the per-IP bucket rather
@@ -136,14 +142,7 @@ export async function checkForgotPasswordLimit(
 ): Promise<ForgotPasswordLimitResult> {
   const limiters = getLimiters();
   if (!limiters) {
-    if (!disabledWarned) {
-      disabledWarned = true;
-      log.warn({
-        event: "rate_limit_disabled",
-        route_or_action: "forgot-password",
-        request_id: input.requestId,
-      });
-    }
+    warnDisabledOnce("forgot-password", input.requestId);
     return { configured: false };
   }
 

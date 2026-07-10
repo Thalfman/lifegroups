@@ -11,6 +11,12 @@
 // malformed URL — genuine misconfigurations that today get silently swallowed
 // as "not configured".
 
+// RELATIVE import, not `@/…`: this module is pulled into next.config.ts (via
+// lib/security/headers.ts), whose standalone transpile step cannot resolve
+// the tsconfig path alias — an aliased import here breaks `next build`.
+// The logger is itself dependency-free, so this adds no further reach.
+import { log } from "./observability/logger";
+
 export type SupabaseEnv = {
   url: string;
   key: string;
@@ -90,7 +96,14 @@ export function getSupabaseEnvSafe(): SupabaseEnv | null {
     return getSupabaseEnv();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[supabase] ignoring misconfigured environment: ${message}`);
+    // Structured so alerting can key on the event (#861); the message names
+    // the offending variable per #593 and carries no secret value (the
+    // validators quote only variable NAMES, never key material).
+    log.error({
+      event: "supabase_env_misconfigured",
+      outcome: "fail",
+      error_message: message,
+    });
     return null;
   }
 }

@@ -58,6 +58,33 @@ function fail(code: string, status: number): Response {
   return jsonResponse({ ok: false, code, errors: [code] }, status);
 }
 
+// A failed rollback leaves an auth user with no linked profile, and the
+// emailHasAuthUser pre-check then rejects every later redeem for that email
+// with email_unavailable — permanently, with no self-service recovery. Leave
+// an operator-actionable trail (ids only — never the email or token, per this
+// function's enumeration/log discipline) so the orphan can be found and
+// deleted by hand. Reconciliation stays manual; no in-request retry (the
+// timing-floor discipline in _shared/timing.ts caps request work).
+function logOrphanedAuthUser(
+  authUserId: string,
+  invitationId: string,
+  cleanupError: unknown
+): void {
+  console.error(
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      level: "error",
+      event: "invite_redeem_orphaned_auth_user",
+      auth_user_id: authUserId,
+      invitation_id: invitationId,
+      error_message:
+        cleanupError instanceof Error
+          ? cleanupError.message
+          : String(cleanupError),
+    })
+  );
+}
+
 async function sha256Hex(input: string): Promise<string> {
   const data = new TextEncoder().encode(input);
   const digest = await globalThis.crypto.subtle.digest("SHA-256", data);
@@ -286,10 +313,16 @@ Deno.serve(async (req: Request) => {
 
   if (rpcErr) {
     // Roll back the orphaned auth user so the email can be retried cleanly.
+    // Best-effort; surface the original error regardless — but leave an
+    // operator trail for the now-orphaned auth user. supabase-js resolves
+    // API failures as `{ error }` rather than throwing, so inspect the
+    // result AND keep the catch for transport-level throws.
     try {
-      await service.auth.admin.deleteUser(authUserId);
-    } catch {
-      // best-effort; surface the original error regardless.
+      const { error: cleanupErr } =
+        await service.auth.admin.deleteUser(authUserId);
+      if (cleanupErr) logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
+    } catch (cleanupErr) {
+      logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
     }
     const mapped = mapRpcToken(rpcErr.message ?? "");
     return padded(fail(mapped.code, mapped.status));
@@ -297,10 +330,14 @@ Deno.serve(async (req: Request) => {
 
   const result = (rpcData ?? {}) as { profile_id?: string };
   if (!result.profile_id) {
+    // Best-effort; same operator trail + resolved-error inspection as the
+    // RPC-failure rollback above.
     try {
-      await service.auth.admin.deleteUser(authUserId);
-    } catch {
-      // best-effort.
+      const { error: cleanupErr } =
+        await service.auth.admin.deleteUser(authUserId);
+      if (cleanupErr) logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
+    } catch (cleanupErr) {
+      logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
     }
     return padded(fail("db_error", 500));
   }
