@@ -85,6 +85,8 @@ export type E2ECred = {
 export function e2eCreds(): {
   admin: E2ECred;
   overShepherd: E2ECred;
+  leader: E2ECred;
+  superAdmin: E2ECred;
 } {
   const admin = {
     email: process.env.E2E_ADMIN_EMAIL,
@@ -94,11 +96,27 @@ export function e2eCreds(): {
     email: process.env.E2E_OVER_SHEPHERD_EMAIL,
     password: process.env.E2E_OVER_SHEPHERD_PASSWORD,
   };
+  const leader = {
+    email: process.env.E2E_LEADER_EMAIL,
+    password: process.env.E2E_LEADER_PASSWORD,
+  };
+  // No super_admin is seeded (the seed tooling refuses to create one); these
+  // are the credentials tests/e2e/db.ts ensureSuperAdmin() provisions-or-reuses
+  // against the local stack.
+  const superAdmin = {
+    email: process.env.E2E_SUPER_ADMIN_EMAIL,
+    password: process.env.E2E_SUPER_ADMIN_PASSWORD,
+  };
   return {
     admin: { ...admin, present: Boolean(admin.email && admin.password) },
     overShepherd: {
       ...overShepherd,
       present: Boolean(overShepherd.email && overShepherd.password),
+    },
+    leader: { ...leader, present: Boolean(leader.email && leader.password) },
+    superAdmin: {
+      ...superAdmin,
+      present: Boolean(superAdmin.email && superAdmin.password),
     },
   };
 }
