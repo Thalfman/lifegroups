@@ -259,6 +259,16 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
       ) : (
         <div className="text-ink">No blocking dependents. Safe to delete.</div>
       )}
+      {report.cleanup.length > 0 ? (
+        <div className="mt-1">
+          Will remove and back up{" "}
+          {report.cleanup.reduce((n, c) => n + c.count, 0)} assignment record
+          {report.cleanup.reduce((n, c) => n + c.count, 0) === 1
+            ? ""
+            : "s"}{" "}
+          (kept in the backup copy; not re-created on restore).
+        </div>
+      ) : null}
       {report.setNull.length > 0 ? (
         <div className="mt-1">
           Will clear and back up{" "}
