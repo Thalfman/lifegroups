@@ -71,6 +71,9 @@ const ENROLL_PRIVATE_NOTE_KEYS = [
   "shepherd_profile_id",
 ] as const;
 
+// Kept file-local (duplicated across the shepherd-care `*-actions.ts`
+// siblings, like care-notes-actions.ts's careSubjectPaths): the
+// revalidate-path fitness extractor resolves same-file declarations only.
 function shepherdCarePaths(shepherdProfileId?: string): string[] {
   return [
     "/admin/shepherd-care",
