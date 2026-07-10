@@ -28,7 +28,7 @@ vi.mock("@/lib/observability/logger", () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-import { adminUpsertShepherdCareProfile } from "../actions";
+import { adminUpsertShepherdCareProfile } from "../care-profile-actions";
 
 const ADMIN_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const SHEPHERD_ID = "ffffffff-ffff-ffff-ffff-ffffffffffff";

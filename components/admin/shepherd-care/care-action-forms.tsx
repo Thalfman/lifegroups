@@ -5,7 +5,7 @@ import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
 import {
   adminLogShepherdCareInteraction,
   adminUpsertShepherdCareProfile,
-} from "@/app/(protected)/admin/shepherd-care/actions";
+} from "@/app/(protected)/admin/shepherd-care/care-profile-actions";
 import { shepherdCareStatusLabel } from "@/lib/dashboard/labels";
 import {
   useActionForm,
