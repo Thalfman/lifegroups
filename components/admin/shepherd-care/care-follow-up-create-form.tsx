@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { NOTE_MAX_CHARS } from "@/lib/shared/limits";
-import { adminCreateShepherdCareFollowUp } from "@/app/(protected)/admin/shepherd-care/actions";
+import { adminCreateShepherdCareFollowUp } from "@/app/(protected)/admin/shepherd-care/follow-up-actions";
 import {
   useActionForm,
   FormStatus,

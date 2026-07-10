@@ -31,6 +31,8 @@ vi.mock("@/app/(protected)/admin/settings/actions", () => ({
 }));
 vi.mock("@/app/(protected)/admin/shepherd-care/actions", () => ({
   adminSetOverShepherdActive: vi.fn(),
+}));
+vi.mock("@/app/(protected)/admin/shepherd-care/follow-up-actions", () => ({
   adminArchiveShepherdCareFollowUp: vi.fn(),
   adminUpdateShepherdCareFollowUpStatus: vi.fn(),
 }));
