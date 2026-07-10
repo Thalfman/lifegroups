@@ -11,7 +11,11 @@
 // malformed URL — genuine misconfigurations that today get silently swallowed
 // as "not configured".
 
-import { log } from "@/lib/observability/logger";
+// RELATIVE import, not `@/…`: this module is pulled into next.config.ts (via
+// lib/security/headers.ts), whose standalone transpile step cannot resolve
+// the tsconfig path alias — an aliased import here breaks `next build`.
+// The logger is itself dependency-free, so this adds no further reach.
+import { log } from "./observability/logger";
 
 export type SupabaseEnv = {
   url: string;
