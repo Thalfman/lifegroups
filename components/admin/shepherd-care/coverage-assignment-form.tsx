@@ -15,21 +15,11 @@ import {
 } from "@/components/admin/forms/field-styles";
 import type { OverShepherdListRow } from "@/lib/supabase/shepherd-coverage-reads";
 import { Button } from "@/components/ui/button";
+import { churchTodayIso } from "@/lib/shared/church-time";
 
 // Form anatomy comes from the canonical field styles (design direction §4);
 // only the lede spacing below it is local.
 const FORM_NOTE = `${formNoteClassName} mb-3`;
-
-// `defaultValue` uses the caller's LOCAL calendar day for the same
-// rationale as care-action-forms.tsx — keep the picker on the
-// admin's natural "today" without rejecting it server-side.
-function todayLocalIso(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 export function CoverageAssignmentForm({
   shepherdProfileId,
@@ -104,8 +94,8 @@ export function CoverageAssignmentForm({
                 id="cov-assigned_at"
                 name="assigned_at"
                 type="date"
-                defaultValue={todayLocalIso()}
-                max={todayLocalIso()}
+                defaultValue={churchTodayIso()}
+                max={churchTodayIso()}
                 className={FIELD_INPUT}
               />
             </div>

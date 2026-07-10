@@ -87,6 +87,13 @@ describe("churchTodayIso / churchMonthIso", () => {
     expect(churchTodayIso(utcFirstButCentralLast)).toBe("2026-05-31");
     expect(churchMonthIso(utcFirstButCentralLast)).toBe("2026-05");
   });
+
+  it("anchors date-picker prefills to the church day, not the host TZ (#857)", () => {
+    // 2026-07-08 03:30 UTC is 2026-07-07 22:30 in Chicago. The prefill
+    // helpers use churchTodayIso, so the picker default matches the church
+    // calendar the weeks/due-dates reason in, wherever the page renders.
+    expect(churchTodayIso(new Date("2026-07-08T03:30:00Z"))).toBe("2026-07-07");
+  });
 });
 
 describe("churchDayStartUtcIso", () => {
