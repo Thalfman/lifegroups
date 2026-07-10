@@ -15,7 +15,14 @@
 --      shepherd_coverage_assignments, shepherd_care_profiles — are cleaned up
 --      pre-purge; their content is captured on the tombstone (the new
 --      cleanup_snapshot column below) so the record survives even though the
---      rows do not.
+--      rows do not. The care-profile delete CASCADES two children, so those
+--      are captured too before the delete: shepherd_care_admin_notes and
+--      shepherd_care_follow_ups. The remaining care-profile children never
+--      cascade un-captured: shepherd_care_interactions is ON DELETE RESTRICT
+--      (the purge refuses with has_blocking_dependents), and
+--      shepherd_care_private_notes is refused earlier by the preserved SC.4
+--      confidential-block arm — a profile whose care profile holds private
+--      notes is never purgeable, so that cascade is unreachable.
 --   3. Purge invariants hold: Super-Admin-only, paired audit_events row,
 --      tombstone snapshot, all in the SAME transaction.
 --   4. The account_deletion_requests finalize-on-purge trigger (20260704000000)
@@ -199,6 +206,8 @@ declare
   v_group_leaders_cleaned bigint := 0;
   v_coverage_cleaned bigint := 0;
   v_care_profiles_cleaned bigint := 0;
+  v_care_admin_notes_captured bigint := 0;
+  v_care_follow_ups_captured bigint := 0;
   v_tombstone_id uuid := gen_random_uuid();
 begin
   if public.auth_role() <> 'super_admin' then
@@ -302,8 +311,48 @@ begin
       );
     end if;
 
-    -- A care profile with restrict-linked children (interactions, follow-ups)
-    -- still refuses the purge — map the FK violation to the engine's existing
+    -- c. The care-profile delete CASCADES two children — capture them first so
+    --    no care history leaves without a tombstone record:
+    --      * shepherd_care_admin_notes (ON DELETE CASCADE, PK = care_profile_id,
+    --        holds the admin summary);
+    --      * shepherd_care_follow_ups  (ON DELETE CASCADE).
+    --    The other two care-profile children never reach this cascade:
+    --    shepherd_care_interactions is ON DELETE RESTRICT (the FK-violation
+    --    catch below refuses the purge), and shepherd_care_private_notes —
+    --    though ON DELETE CASCADE — is refused far earlier by the preserved
+    --    SC.4 arm of super_admin_confidential_block, which runs before this
+    --    pre-step. The `column` here names the join path (care_profile_id via
+    --    the target's care profile), matching the {table, column, rows} shape.
+    select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
+      into v_rows
+      from public.shepherd_care_admin_notes t
+      join public.shepherd_care_profiles cp on cp.id = t.care_profile_id
+     where cp.shepherd_profile_id = p_id;
+    v_care_admin_notes_captured := jsonb_array_length(v_rows);
+    if v_care_admin_notes_captured > 0 then
+      v_cleanup := v_cleanup || jsonb_build_object(
+        'table', 'shepherd_care_admin_notes',
+        'column', 'care_profile_id',
+        'rows', v_rows
+      );
+    end if;
+
+    select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
+      into v_rows
+      from public.shepherd_care_follow_ups t
+      join public.shepherd_care_profiles cp on cp.id = t.care_profile_id
+     where cp.shepherd_profile_id = p_id;
+    v_care_follow_ups_captured := jsonb_array_length(v_rows);
+    if v_care_follow_ups_captured > 0 then
+      v_cleanup := v_cleanup || jsonb_build_object(
+        'table', 'shepherd_care_follow_ups',
+        'column', 'care_profile_id',
+        'rows', v_rows
+      );
+    end if;
+
+    -- A care profile with restrict-linked children (interactions) still
+    -- refuses the purge — map the FK violation to the engine's existing
     -- blocker token so callers see the same vocabulary either way.
     begin
       delete from public.group_leaders
@@ -348,7 +397,9 @@ begin
       'anonymized_prayer_request_count', v_prayers_anonymized,
       'cleaned_group_leader_count', v_group_leaders_cleaned,
       'cleaned_coverage_assignment_count', v_coverage_cleaned,
-      'cleaned_care_profile_count', v_care_profiles_cleaned
+      'cleaned_care_profile_count', v_care_profiles_cleaned,
+      'captured_care_admin_note_count', v_care_admin_notes_captured,
+      'captured_care_follow_up_count', v_care_follow_ups_captured
     );
   end if;
 
@@ -406,6 +457,7 @@ declare
   v_remaining jsonb := '[]'::jsonb;
   v_cleanup jsonb := '[]'::jsonb;
   v_set_null jsonb := '[]'::jsonb;
+  v_count bigint;
   r jsonb;
 begin
   if public.auth_role() <> 'super_admin' then
@@ -454,6 +506,38 @@ begin
     end if;
   end loop;
 
+  -- The care-profile delete cascades two children the engine also captures;
+  -- they hang off shepherd_care_profiles (not profiles directly), so the
+  -- collector never sees them — count them via the join so the announced
+  -- cleanup matches what the purge will actually remove.
+  if p_entity_type = 'profile' then
+    select count(*)
+      into v_count
+      from public.shepherd_care_admin_notes t
+      join public.shepherd_care_profiles cp on cp.id = t.care_profile_id
+     where cp.shepherd_profile_id = p_id;
+    if v_count > 0 then
+      v_cleanup := v_cleanup || jsonb_build_object(
+        'table', 'shepherd_care_admin_notes',
+        'column', 'care_profile_id',
+        'count', v_count
+      );
+    end if;
+
+    select count(*)
+      into v_count
+      from public.shepherd_care_follow_ups t
+      join public.shepherd_care_profiles cp on cp.id = t.care_profile_id
+     where cp.shepherd_profile_id = p_id;
+    if v_count > 0 then
+      v_cleanup := v_cleanup || jsonb_build_object(
+        'table', 'shepherd_care_follow_ups',
+        'column', 'care_profile_id',
+        'count', v_count
+      );
+    end if;
+  end if;
+
   for r in select * from jsonb_array_elements(v_deps->'set_null')
   loop
     v_set_null := v_set_null || jsonb_build_object(
@@ -480,4 +564,93 @@ revoke all     on function public.super_admin_permanent_delete_preflight(text, u
 grant  execute on function public.super_admin_permanent_delete_preflight(text, uuid) to authenticated;
 
 comment on function public.super_admin_permanent_delete_preflight(text, uuid) is
-  'ADR 0014 (#313/#314) + #880: super-admin permanent-deletion preflight. Reports forbidden targets (incl. super_admin profiles), the opaque confidential block, the named blockers + set-null preview, and — for profile targets — the operational assignment rows the engine will clean up in-transaction (cleanup bucket, excluded from blockers/deletable).';
+  'ADR 0014 (#313/#314) + #880: super-admin permanent-deletion preflight. Reports forbidden targets (incl. super_admin profiles), the opaque confidential block, the named blockers + set-null preview, and — for profile targets — the operational assignment rows the engine will clean up in-transaction (cleanup bucket, excluded from blockers/deletable), incl. the care-profile cascade children (admin notes / follow-ups).';
+
+-- ---------------------------------------------------------------------------
+-- 6. admin_sealed_note_counts — make the presence counts null-author-safe.
+--    Two halves, both consequences of the nullable author FK above:
+--      a. `author_profile_id <> v_actor` is NULL for a purged (null) author,
+--         so a retained profile-subject sealed note silently vanished from the
+--         counts even though RLS still withholds the row. `is distinct from`
+--         keeps it counted (a null author is never the caller).
+--      b. group-subject rows with a purged author have NO gating leader left
+--         (coalesce(subject_profile_id, author_profile_id) is NULL — the
+--         documented permanently-sealed bucket): exclude them rather than emit
+--         a meaningless NULL gating row the feed cannot attribute or unlock.
+--    Everything else — the gating-arm coalesce, the grant test, the
+--    auth_is_admin gate, definer + pinned search_path, EXECUTE lockdown, the
+--    counts-only posture — is unchanged from 20260701010000.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.admin_sealed_note_counts()
+returns table (
+  gating_profile_id uuid,
+  sealed_care_note_count integer,
+  sealed_prayer_request_count integer
+)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_actor uuid;
+begin
+  if not public.auth_is_admin() then
+    raise exception 'insufficient_privilege';
+  end if;
+  v_actor := public.auth_profile_id();
+  if v_actor is null then
+    raise exception 'insufficient_privilege';
+  end if;
+
+  return query
+  with sealed as (
+    select
+      coalesce(n.subject_profile_id, n.author_profile_id) as gating_id,
+      'care_note'::text as kind
+    from public.care_notes n
+    -- #880: null-safe — a purged (null) author is never the caller, so the
+    -- retained row still counts as sealed to this admin.
+    where n.author_profile_id is distinct from v_actor
+      -- #880: a row with no gating leader left (group-subject + purged author)
+      -- is permanently sealed with nobody to attribute the count to — skip it.
+      and coalesce(n.subject_profile_id, n.author_profile_id) is not null
+      and not exists (
+        select 1
+          from public.note_transparency_grants g
+         where g.subject_profile_id
+               = coalesce(n.subject_profile_id, n.author_profile_id)
+           and g.granted
+      )
+    union all
+    select
+      coalesce(r.subject_profile_id, r.author_profile_id) as gating_id,
+      'prayer_request'::text as kind
+    from public.prayer_requests r
+    where r.author_profile_id is distinct from v_actor
+      and coalesce(r.subject_profile_id, r.author_profile_id) is not null
+      and not exists (
+        select 1
+          from public.note_transparency_grants g
+         where g.subject_profile_id
+               = coalesce(r.subject_profile_id, r.author_profile_id)
+           and g.granted
+      )
+  )
+  select
+    s.gating_id,
+    (count(*) filter (where s.kind = 'care_note'))::integer,
+    (count(*) filter (where s.kind = 'prayer_request'))::integer
+  from sealed s
+  group by s.gating_id;
+end;
+$$;
+
+-- EXECUTE lockdown: deny by default, allow authenticated; the in-body
+-- auth_is_admin() gate is the real boundary (unchanged posture).
+revoke all on function public.admin_sealed_note_counts() from public, anon, authenticated;
+grant execute on function public.admin_sealed_note_counts() to authenticated;
+
+comment on function public.admin_sealed_note_counts() is
+  'ADR 0023 presence-only read + #880 null-author safety: per gating leader, how many care_notes / prayer_requests are SEALED to the calling admin (author is distinct from the caller, gating leader''s transparency grant off/absent). Purged-author profile-subject rows stay counted; rows with no gating leader left (group-subject + purged author) are excluded rather than emitted as a NULL gating row. Counts only — never bodies, dates, authors, or group ids. auth_is_admin() gate; no audit row (read-only).';

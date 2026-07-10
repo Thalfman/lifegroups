@@ -162,6 +162,35 @@ describe("#880 — super_admin_permanent_delete profile pre-step", () => {
     expect(body).toContain("when foreign_key_violation then");
   });
 
+  it("captures the care-profile CASCADE children before the delete (no unsnapshotted cascade)", () => {
+    const body = functionBody(sql, "super_admin_permanent_delete");
+    // shepherd_care_admin_notes (holds admin_summary) and
+    // shepherd_care_follow_ups cascade off the care-profile delete — both are
+    // snapshotted into v_cleanup via the care-profile join, BEFORE the delete.
+    for (const table of [
+      "shepherd_care_admin_notes",
+      "shepherd_care_follow_ups",
+    ]) {
+      expect(body).toContain(`from public.${table} t`);
+      expect(body).toContain(`'${table}'`);
+      // Captured, never deleted directly: the cascade does the removal.
+      expect(body).not.toContain(`delete from public.${table}`);
+    }
+    expect(body).toContain("join public.shepherd_care_profiles cp");
+    expect(body).toContain("cp.shepherd_profile_id = p_id");
+    // Both captures happen before the care-profile delete fires the cascade.
+    const captureIdx = body.indexOf("from public.shepherd_care_admin_notes t");
+    const followUpIdx = body.indexOf("from public.shepherd_care_follow_ups t");
+    const deleteIdx = body.indexOf("delete from public.shepherd_care_profiles");
+    expect(captureIdx).toBeGreaterThan(-1);
+    expect(followUpIdx).toBeGreaterThan(-1);
+    expect(deleteIdx).toBeGreaterThan(captureIdx);
+    expect(deleteIdx).toBeGreaterThan(followUpIdx);
+    // The unreachable-cascade rationale stays documented in the body: private
+    // notes are refused by the SC.4 confidential arm before this pre-step.
+    expect(body).toContain("shepherd_care_private_notes");
+  });
+
   it("runs the pre-step AFTER the target snapshot and BEFORE the dependent collector", () => {
     const body = functionBody(sql, "super_admin_permanent_delete");
     const snapshotIdx = body.indexOf("select to_jsonb(t) from public.%i");
@@ -214,6 +243,8 @@ describe("#880 — super_admin_permanent_delete profile pre-step", () => {
     expect(body).toContain("anonymized_care_note_count");
     expect(body).toContain("anonymized_prayer_request_count");
     expect(body).toContain("cleaned_group_leader_count");
+    expect(body).toContain("captured_care_admin_note_count");
+    expect(body).toContain("captured_care_follow_up_count");
     // The captured row snapshots (v_cleanup) go to the tombstone, never to
     // audit metadata.
     const metadataAssignments = body.split("v_metadata :=").slice(1).join("\n");
@@ -265,6 +296,17 @@ describe("#880 — preflight mirrors the engine's profile pre-step", () => {
     expect(body).toContain("'set_null', v_set_null");
   });
 
+  it("also announces the care-profile cascade children in the cleanup bucket (join counts)", () => {
+    const body = functionBody(sql, "super_admin_permanent_delete_preflight");
+    expect(body).toContain("'shepherd_care_admin_notes'");
+    expect(body).toContain("'shepherd_care_follow_ups'");
+    expect(body).toContain("'care_profile_id'");
+    expect(body).toContain("join public.shepherd_care_profiles cp");
+    expect(body).toContain("cp.shepherd_profile_id = p_id");
+    // Count-only preview: the preflight never reads the child rows themselves.
+    expect(body).not.toContain("jsonb_agg(to_jsonb(t))");
+  });
+
   it("stays a pure read: no DML, no audit row", () => {
     const body = functionBody(sql, "super_admin_permanent_delete_preflight");
     expect(body).not.toContain("delete from");
@@ -278,6 +320,43 @@ describe("#880 — preflight mirrors the engine's profile pre-step", () => {
       "super_admin_permanent_delete_preflight",
       "text, uuid"
     );
+  });
+});
+
+describe("#880 — sealed-note counts survive a purged author", () => {
+  it("keeps the definer + pinned search_path + admin gate posture", () => {
+    assertSecurityDefiner(sql, "admin_sealed_note_counts");
+    const body = functionBody(sql, "admin_sealed_note_counts");
+    expect(body).toContain("auth_is_admin()");
+    expect(body).toContain("raise exception 'insufficient_privilege'");
+  });
+
+  it("uses a null-safe author comparison so a purged author's rows stay counted", () => {
+    const body = functionBody(sql, "admin_sealed_note_counts");
+    expect(body).toContain("author_profile_id is distinct from v_actor");
+    // The null-hostile form must be gone from BOTH arms.
+    expect(body).not.toContain("author_profile_id <> v_actor");
+  });
+
+  it("excludes rows with no gating leader left instead of emitting a NULL gating row", () => {
+    const body = functionBody(sql, "admin_sealed_note_counts");
+    const exclusions = body.match(
+      /coalesce\(\w\.subject_profile_id, \w\.author_profile_id\) is not null/g
+    );
+    // Once per arm (care_notes + prayer_requests).
+    expect(exclusions).toHaveLength(2);
+  });
+
+  it("stays a counts-only read: no bodies, no DML, no audit row", () => {
+    const body = functionBody(sql, "admin_sealed_note_counts");
+    expect(body).not.toContain(".body");
+    expect(body).not.toContain("delete from");
+    expect(body).not.toContain("update public.");
+    expect(body).not.toContain("insert into");
+  });
+
+  it("locks EXECUTE down to authenticated only", () => {
+    assertExecuteLockdown(sql, "admin_sealed_note_counts");
   });
 });
 
