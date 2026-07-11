@@ -172,7 +172,9 @@ export function SuperAdminInlineDelete({
   );
 }
 
-function DeletePreview({
+// Exported for the colocated render tests: the popover content only mounts on
+// open (Radix), so the preview states are asserted by rendering this directly.
+export function DeletePreview({
   pending,
   failed,
   report,
@@ -220,9 +222,24 @@ function DeletePreview({
       </p>
     );
   }
+  // #880: a profile purge also removes its assignment records in the same
+  // step. That part is NOT undone by a restore (only the record itself and
+  // its cleared references come back), so say so before the operator clicks
+  // — inform the delete, don't block it. Mirrors the danger-zone
+  // PreflightReport copy.
+  const cleanupTotal = report.cleanup.reduce((n, c) => n + c.count, 0);
   return (
-    <p className={NOTE_CLASS}>
-      Safe to delete. A backup copy is captured first so it can be recovered.
-    </p>
+    <div className="grid gap-1.5">
+      {cleanupTotal > 0 ? (
+        <p className={NOTE_CLASS}>
+          Will remove and back up {cleanupTotal} assignment record
+          {cleanupTotal === 1 ? "" : "s"} (kept in the backup copy; not
+          re-created on restore).
+        </p>
+      ) : null}
+      <p className={NOTE_CLASS}>
+        Safe to delete. A backup copy is captured first so it can be recovered.
+      </p>
+    </div>
   );
 }
