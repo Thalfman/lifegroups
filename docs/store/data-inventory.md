@@ -64,7 +64,7 @@ Notes:
 | **Email delivery** (Supabase Auth, plus any SMTP provider configured in Supabase) | Recipient email address for invite / password-reset messages                                            | Transactional auth email only                                                  |
 
 The service-role key that can bypass RLS is confined to Supabase Edge Functions
-(`invite-user`, `manage-test-auth-users`, `redeem-invite`) — it is **never**
+(`invite-user`, `purge-profile-auth`, `redeem-invite`, `manage-test-auth-users`) — it is **never**
 present in the Next.js runtime.
 
 ## 3. Device permissions & notifications

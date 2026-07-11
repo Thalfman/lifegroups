@@ -1,5 +1,5 @@
 // Shared Edge-Function error plumbing for the Super-Admin surfaces that invoke
-// Supabase Edge Functions (invite-user, manage-test-auth-users) and surface the
+// Supabase Edge Functions (invite-user, manage-test-auth-users, profile purge) and surface the
 // failure to a diagnostics panel. Both surfaces redact JWTs, pull the structured
 // body off the thrown Response, map known tokens to human messages, and
 // synthesize a token from the HTTP status when no body is available. The pieces

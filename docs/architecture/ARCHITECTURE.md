@@ -133,9 +133,10 @@ backwards compatibility; the `/staff` surface was removed.
   validate → guard → RPC → `revalidatePath` → log pipeline (the Write
   Action Runner, ADR 0001/0005).
 - **No service role key in the Next runtime.** Service role is confined to
-  Supabase Edge Functions. In production exactly **two** run: `invite-user`
-  (super-admin-initiated invites) and `redeem-invite` (public token
-  redemption). `manage-test-auth-users` is `enabled = false` in
+  Supabase Edge Functions. In production exactly **three** run: `invite-user`
+  (super-admin-initiated invites), `redeem-invite` (public token redemption),
+  and `purge-profile-auth` (Super-Admin profile/Auth deletion).
+  `manage-test-auth-users` is `enabled = false` in
   `supabase/config.toml` so it is never deployed to prod — local
   test-account seeding uses `npm run seed:test-auth` /
   `remove:test-auth` instead. See

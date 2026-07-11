@@ -16,7 +16,11 @@ import { describe, expect, it } from "vitest";
 // `enabled = false`), not a full TOML parser — no new dependency, and it only
 // needs to understand `[functions.*]` sections.
 
-const PRODUCTION_FUNCTIONS = ["invite-user", "redeem-invite"];
+const PRODUCTION_FUNCTIONS = [
+  "invite-user",
+  "purge-profile-auth",
+  "redeem-invite",
+];
 
 const CONFIG_PATH = fileURLToPath(
   new URL("../../../supabase/config.toml", import.meta.url)
@@ -70,7 +74,7 @@ describe("edge-function production allowlist", () => {
     expect(manageTestAuth?.enabled).toBe(false);
   });
 
-  it("keeps the production-deployed function set exactly invite-user + redeem-invite", () => {
+  it("keeps the production-deployed function set on the approved allowlist", () => {
     const deployed = configs
       .filter((c) => c.enabled)
       .map((c) => c.name)

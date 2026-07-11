@@ -178,7 +178,7 @@ Two clarifications:
   through narrow `public.admin_*`, `public.leader_*`, and `public.super_admin_*`
   `SECURITY DEFINER` RPCs, each writing a paired `audit_events` row in the same
   transaction. The service role is confined to Supabase Edge Functions
-  (`invite-user`, `redeem-invite`, `manage-test-auth-users`).
+  (`invite-user`, `purge-profile-auth`, `redeem-invite`, `manage-test-auth-users`).
 - **No hard deletes** outside RPC bodies in normal workflows; operational tables
   use soft-deactivation.
 - **Every table read uses explicit column allowlists** — there are **no**

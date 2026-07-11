@@ -1,17 +1,19 @@
 import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolveIntegrationEnv } from "./support/env";
+import { makeServiceClient } from "./support/clients";
 import { provisionFixtures, type Fixtures } from "./support/fixtures";
 import { queryRows, runSql } from "./support/sql";
 
-// Issue #880 — live proof of the per-dependent FK strategies behind the
+// Issues #880/#881/#882 — live proof of the complete profile purge path and
 // profile purge. A leader encumbered with every dependent class the issue
 // names — an active group_leaders assignment, a shepherd_coverage_assignments
 // row, a shepherd_care_profiles row, and an authored Care Note + Prayer
-// Request — is permanently deleted through super_admin_permanent_delete by an
-// authenticated Super Admin (real RLS, real RPC). The pinned outcomes:
+// Request — is permanently deleted through purge-profile-auth by an
+// authenticated Super Admin (real RLS, real RPC, real Auth). The pinned outcomes:
 //
 //   * the purge SUCCEEDS (no has_blocking_dependents / has_confidential_records);
 //   * authored notes/prayers SURVIVE with author_profile_id nulled and the
@@ -23,12 +25,16 @@ import { queryRows, runSql } from "./support/sql";
 //   * a care profile with a RESTRICT-linked interaction still REFUSES with
 //     has_blocking_dependents (no partial purge);
 //   * the tombstone + the paired audit_events row exist (same transaction);
+//   * the linked Auth user is deleted and the same email can be invited again;
+//   * the pending account-deletion request becomes completed, loses its profile
+//     link, and has its free-text reason wiped;
+//   * an id-only audit event records the Auth-side deletion;
 //   * the sealed-note presence counts still include a retained (null-author)
 //     profile-subject note whose gating leader's grant is off.
 //
 // Seeding and unsealed assertions go through the harness's superuser SQL
-// escape hatch (support/sql.ts — local stack only); the purge call itself runs
-// as the authenticated Super Admin tier.
+// escape hatch (support/sql.ts — local stack only); the purge call itself goes
+// through the authenticated Super Admin's Edge Function boundary.
 
 const probe = resolveIntegrationEnv();
 const suite = probe.kind === "ready" ? describe : describe.skip;
@@ -37,7 +43,7 @@ if (probe.kind === "skip") {
   console.warn(`[rls-integration] ${probe.reason}`);
 }
 
-suite("profile purge — per-dependent FK strategies (#880)", () => {
+suite("complete profile purge (#880/#881/#882)", () => {
   let fx: Fixtures;
 
   const targetProfileId = randomUUID();
@@ -48,24 +54,68 @@ suite("profile purge — per-dependent FK strategies (#880)", () => {
   const careNoteId = randomUUID();
   const subjectNoteId = randomUUID();
   const prayerRequestId = randomUUID();
+  const accountDeletionRequestId = randomUUID();
   // A second encumbered leader whose care profile holds a RESTRICT-linked
   // interaction — the refusal control.
   const blockedProfileId = randomUUID();
   const blockedCareProfileId = randomUUID();
   let tombstoneId: string;
+  let service: SupabaseClient;
+  let targetAuthUserId = "";
+  let replacementAuthUserId = "";
+  let targetEmail = "";
+
+  async function invokeProfilePurge(
+    client: SupabaseClient,
+    profileId: string
+  ): Promise<Response> {
+    if (probe.kind !== "ready") throw new Error("integration env unavailable");
+    const { data, error } = await client.auth.getSession();
+    const accessToken = data.session?.access_token;
+    if (error || !accessToken) {
+      throw new Error("integration caller has no Auth access token");
+    }
+
+    return fetch(`${probe.env.supabaseUrl}/functions/v1/purge-profile-auth`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: probe.env.anonKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ profileId }),
+    });
+  }
 
   beforeAll(async () => {
     if (probe.kind !== "ready") return;
     fx = await provisionFixtures(probe.env);
 
+    service = makeServiceClient(probe.env);
+    targetEmail = `purge-target.${fx.runId}@lifegroups.local`;
+    const { data: targetAuth, error: targetAuthError } =
+      await service.auth.admin.createUser({
+        email: targetEmail,
+        password: "Integ-Purge-Target-Aa1!",
+        email_confirm: true,
+      });
+    if (targetAuthError || !targetAuth.user) {
+      throw new Error(
+        `target Auth setup failed: ${targetAuthError?.message ?? "no user"}`
+      );
+    }
+    targetAuthUserId = targetAuth.user.id;
     // The encumbered leader: active Leader of a group, covered by an
     // Over-Shepherd, tracked in shepherd care, and the AUTHOR of a group-
     // scoped Care Note + Prayer Request. Superuser seeding (setup, not
     // assertion) so the harness's narrow service grants don't matter.
     await runSql(`
-      insert into public.profiles (id, email, full_name, role, status)
-      values ('${targetProfileId}', 'purge-target.${fx.runId}@lifegroups.local',
+      insert into public.profiles (id, auth_user_id, email, full_name, role, status)
+      values ('${targetProfileId}', '${targetAuthUserId}', '${targetEmail}',
               'Integ Purge Target', 'leader', 'active');
+      insert into public.account_deletion_requests (id, profile_id, reason)
+      values ('${accountDeletionRequestId}', '${targetProfileId}',
+              'Personal reason that must be wiped when the purge completes.');
 
       insert into public.groups (id, name)
       values ('${groupId}', 'Integ Purge Group ${fx.runId}');
@@ -132,7 +182,10 @@ suite("profile purge — per-dependent FK strategies (#880)", () => {
       delete from public.audit_events
        where entity_id in ('${targetProfileId}', '${careNoteId}',
                            '${subjectNoteId}', '${prayerRequestId}',
-                           '${blockedProfileId}');
+                            '${blockedProfileId}')
+          or (action = 'super_admin.auth_user_delete'
+              and metadata->>'profile_id' = '${targetProfileId}');
+      delete from public.account_deletion_requests where id = '${accountDeletionRequestId}';
       delete from public.tombstones where entity_id = '${targetProfileId}';
       delete from public.care_notes
        where id in ('${careNoteId}', '${subjectNoteId}');
@@ -153,7 +206,28 @@ suite("profile purge — per-dependent FK strategies (#880)", () => {
       delete from public.profiles
        where id in ('${targetProfileId}', '${blockedProfileId}');
     `);
+    if (replacementAuthUserId) {
+      await service.auth.admin.deleteUser(replacementAuthUserId);
+    }
+    if (targetAuthUserId) {
+      await service.auth.admin.deleteUser(targetAuthUserId);
+    }
     if (fx) await fx.teardown();
+  });
+
+  it("denies a non-Super-Admin caller inside the Edge Function", async () => {
+    const response = await invokeProfilePurge(
+      fx.ministryAdmin.client,
+      targetProfileId
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      code: "super_admin_required",
+    });
+    const lookup = await service.auth.admin.getUserById(targetAuthUserId);
+    expect(lookup.data.user?.id).toBe(targetAuthUserId);
   });
 
   it("preflight reports the encumbered profile deletable, with the cleanup announced", async () => {
@@ -209,23 +283,62 @@ suite("profile purge — per-dependent FK strategies (#880)", () => {
     expect(setNullTables).toContain("prayer_requests.author_profile_id");
   });
 
-  it("purges the encumbered author profile as the Super Admin", async () => {
-    const purge = await fx.superAdmin.client.rpc(
-      "super_admin_permanent_delete",
-      {
-        p_entity_type: "profile",
-        p_id: targetProfileId,
-      }
+  it("purges through the Edge Function and frees the Auth email", async () => {
+    const response = await invokeProfilePurge(
+      fx.superAdmin.client,
+      targetProfileId
     );
-    expect(purge.error, purge.error?.message).toBeNull();
-    tombstoneId = purge.data as string;
+    expect(response.status).toBe(200);
+    const result = (await response.json()) as {
+      ok: boolean;
+      code: string;
+      tombstoneId?: string;
+      authUserState?: string;
+    };
+    expect(result).toMatchObject({
+      ok: true,
+      code: "ok",
+      authUserState: "deleted",
+    });
+    tombstoneId = result.tombstoneId ?? "";
     expect(tombstoneId).toBeTruthy();
+
+    const deletedAuth = await service.auth.admin.getUserById(targetAuthUserId);
+    expect(deletedAuth.data.user).toBeNull();
+    expect(deletedAuth.error).not.toBeNull();
+
+    const { data: replacement, error: replacementError } =
+      await service.auth.admin.createUser({
+        email: targetEmail,
+        password: "Integ-Purge-Recreated-Aa1!",
+        email_confirm: true,
+      });
+    expect(replacementError, replacementError?.message).toBeNull();
+    expect(replacement.user).not.toBeNull();
+    replacementAuthUserId = replacement.user?.id ?? "";
 
     const gone = await queryRows<{ id: string }>(
       "select id from public.profiles where id = $1",
       [targetProfileId]
     );
     expect(gone).toHaveLength(0);
+
+    const requests = await queryRows<{
+      status: string;
+      profile_id: string | null;
+      reason: string | null;
+      processed_at: string | null;
+    }>(
+      "select status, profile_id, reason, processed_at from public.account_deletion_requests where id = $1",
+      [accountDeletionRequestId]
+    );
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      status: "completed",
+      profile_id: null,
+      reason: null,
+    });
+    expect(requests[0].processed_at).toBeTruthy();
   });
 
   it("retains the authored note + prayer with anonymized authorship", async () => {
@@ -347,7 +460,7 @@ suite("profile purge — per-dependent FK strategies (#880)", () => {
     ).toContain(prayerRequestId);
   });
 
-  it("wrote the paired audit_events row in the same transaction", async () => {
+  it("writes the database and Auth-side audit events", async () => {
     const audits = await queryRows<{
       action: string;
       actor_profile_id: string | null;
@@ -373,6 +486,24 @@ suite("profile purge — per-dependent FK strategies (#880)", () => {
     // Content-free: never a note body or the admin summary.
     expect(JSON.stringify(audits[0].metadata)).not.toContain("outlive");
     expect(JSON.stringify(audits[0].metadata)).not.toContain("Admin summary");
+    const authAudits = await queryRows<{
+      actor_profile_id: string | null;
+      metadata: Record<string, unknown>;
+    }>(
+      "select actor_profile_id, metadata from public.audit_events where entity_type = 'auth_user' and entity_id = $1 and action = 'super_admin.auth_user_delete'",
+      [targetAuthUserId]
+    );
+    expect(authAudits).toHaveLength(1);
+    expect(authAudits[0].actor_profile_id).toBe(fx.superAdmin.profileId);
+    expect(authAudits[0].metadata).toMatchObject({
+      profile_id: targetProfileId,
+      tombstone_id: tombstoneId,
+      outcome: "deleted",
+    });
+    expect(JSON.stringify(authAudits[0].metadata)).not.toContain(targetEmail);
+    expect(JSON.stringify(authAudits[0].metadata)).not.toContain(
+      "Personal reason"
+    );
   });
 
   it("still counts the retained null-author note in the sealed presence counts", async () => {

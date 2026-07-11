@@ -106,6 +106,7 @@ function emptyReads(
     fetchAttentionResetState: async () => fail("not provided"),
     fetchPermanentDeletionTargets: async () => [],
     fetchRecentTombstones: async () => [],
+    fetchPendingAccountDeletionRequests: async () => ok([]),
     fetchRecentUsageEvents: async () => ok([]),
     ...overrides,
   };
@@ -145,6 +146,7 @@ describe("buildSuperAdminConsoleData", () => {
     expect(rowTone(data.checklist, "audit_access")).toBe("ok");
     // The leader (not the current actor) is offered for role reassignment.
     expect(data.assignableProfiles.map((p) => p.id)).toEqual(["p-leader"]);
+    expect(data.accountDeletionRequestQueue).toEqual({ status: "empty" });
   });
 
   it("surfaces a single failed read and flips only that checklist row", async () => {
@@ -167,10 +169,47 @@ describe("buildSuperAdminConsoleData", () => {
     expect(data.groupsById.size).toBe(0);
   });
 
+  it("loads pending account deletion requests into an explicit queue state", async () => {
+    const request = {
+      id: "request-1",
+      profileId: "profile-1",
+      requesterName: "Avery Requester",
+      requesterEmail: "avery@example.com",
+      reason: "Please remove my account.",
+      status: "pending" as const,
+      requestedAt: "2026-07-10T12:00:00.000Z",
+    };
+
+    const data = await buildSuperAdminConsoleData(
+      emptyReads({
+        fetchPendingAccountDeletionRequests: async () => ok([request]),
+      }),
+      { currentActorProfileId: ACTOR_ID }
+    );
+
+    expect(data.accountDeletionRequestQueue).toEqual({
+      status: "loaded",
+      requests: [request],
+    });
+  });
+
+  it("does not present a failed deletion-request read as an empty queue", async () => {
+    const data = await buildSuperAdminConsoleData(
+      emptyReads({
+        fetchPendingAccountDeletionRequests: async () =>
+          fail("request queue unavailable"),
+      }),
+      { currentActorProfileId: ACTOR_ID }
+    );
+
+    expect(data.accountDeletionRequestQueue).toEqual({ status: "failed" });
+  });
+
   it("renders the no-client fallback with built-in config and all rows warned", async () => {
     const data = buildNoClientConsoleData();
 
     expect(data.appConfig).toBe(BUILT_IN_APP_CONFIG);
+    expect(data.accountDeletionRequestQueue).toEqual({ status: "failed" });
     expect(rowTone(data.checklist, "supabase")).toBe("warn");
     expect(rowTone(data.checklist, "groups")).toBe("warn");
     expect(rowTone(data.checklist, "leaders")).toBe("warn");

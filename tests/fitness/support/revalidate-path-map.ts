@@ -371,6 +371,11 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
     "/admin",
     "/admin/super-admin",
   ],
+  "file:app/(protected)/admin/super-admin/permanent-delete-actions.ts#direct": [
+    "/admin",
+    "/admin/people",
+    "/admin/super-admin",
+  ],
   "file:app/(protected)/admin/super-admin/invite-user-actions.ts#direct": [
     "/admin/people",
     "/admin/super-admin",

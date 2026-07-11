@@ -24,10 +24,12 @@ const ROW = "22222222-2222-2222-2222-222222222222";
 const TOMBSTONE = "33333333-3333-3333-3333-333333333333";
 
 let rpc: ReturnType<typeof vi.fn>;
+let invoke: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
   rpc = vi.fn();
+  invoke = vi.fn();
   mockRequireSuperAdminSession.mockResolvedValue({
     ok: true,
     session: {
@@ -37,7 +39,7 @@ beforeEach(() => {
       },
     },
   });
-  mockCreateClient.mockResolvedValue({ rpc });
+  mockCreateClient.mockResolvedValue({ rpc, functions: { invoke } });
 });
 
 describe("superAdminInlineDelete", () => {
@@ -110,6 +112,35 @@ describe("superAdminInlineDelete", () => {
       expect(result.value.entityType).toBe("follow_up");
     }
     expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/care");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin");
+  });
+
+  it("routes an inline profile deletion through the Auth purge function", async () => {
+    invoke.mockResolvedValue({
+      data: {
+        ok: true,
+        code: "ok",
+        profileId: ROW,
+        tombstoneId: TOMBSTONE,
+        authUserState: "deleted",
+        warnings: [],
+        errors: [],
+      },
+      error: null,
+    });
+
+    const result = await superAdminInlineDelete(undefined, {
+      entityType: "profile",
+      id: ROW,
+      path: "/admin/people",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(invoke).toHaveBeenCalledWith("purge-profile-auth", {
+      body: { profileId: ROW },
+    });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/people");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/admin");
   });
 

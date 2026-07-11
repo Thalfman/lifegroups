@@ -77,8 +77,9 @@ record the results.
    **RLS integration lane** (`npm run test:integration` against the restored
    stack) if available.
 4. **Verify the data spines load.** Auth sign-in, then `profiles`, `groups`,
-   care data, prayer data, `audit_events`, and the invite flows
-   (`invite-user` / `redeem-invite`).
+   care data, prayer data, `audit_events`, the invite flows
+   (`invite-user` / `redeem-invite`), and the permanent profile purge
+   (`purge-profile-auth`) in a disposable account.
 5. **Confirm sensitive-data access rules still hold.** The two visibility
    exceptions survive the restore: the Ministry Admin's encrypted Private Care
    Note stays hidden from the Super Admin, and author-private Care Notes /
