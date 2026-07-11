@@ -140,23 +140,40 @@ describe("#880 — super_admin_permanent_delete profile pre-step", () => {
     expect(body).not.toContain("full_name");
   });
 
-  it("locks the care-profile row FOR UPDATE before the confidential check (TOCTOU guard)", () => {
+  it("locks the target profiles row AND its care-profile row FOR UPDATE, in that order (TOCTOU guard)", () => {
     const body = functionBody(sql, "super_admin_permanent_delete");
-    // The lock statement itself: the target's care-profile row, FOR UPDATE.
-    // A child FK insert takes FOR KEY SHARE on that parent row, which
-    // conflicts with FOR UPDATE — so no care-profile child (admin note,
-    // follow-up, SC.4 private note) can appear between the confidential
-    // check, the captures, and the cascade-firing delete.
-    expect(body).toMatch(
+    // Lock 1: the target profiles row itself. Every child insert referencing
+    // profiles(id) takes FOR KEY SHARE on it, which conflicts with FOR UPDATE
+    // — so no direct child (an authored note, a group_leaders row, a coverage
+    // row) can commit between the stamps / collect_dependents pass and the
+    // final delete.
+    const profilesLock = body.search(
+      /perform 1\s+from public\.profiles\s+where id = p_id\s+for update/
+    );
+    // Lock 2: the target's care-profile row. Care-profile children (admin
+    // note, follow-up, SC.4 private note) FK the care profile, not the
+    // profile, so they need their own parent lock.
+    const careProfileLock = body.search(
       /perform 1\s+from public\.shepherd_care_profiles\s+where shepherd_profile_id = p_id\s+for update/
     );
-    // Ordering is load-bearing: lock -> confidential check -> stamps/captures.
-    const lockIdx = body.indexOf("perform 1");
+    expect(profilesLock).toBeGreaterThan(-1);
+    expect(careProfileLock).toBeGreaterThan(-1);
+    // Fixed lock order — profiles row first, care-profile row second — then:
+    // confidential check -> descriptor stamps -> dependent collector.
     const confidentialIdx = body.indexOf("super_admin_confidential_block");
     const stampIdx = body.indexOf("update public.care_notes");
-    expect(lockIdx).toBeGreaterThan(-1);
-    expect(confidentialIdx).toBeGreaterThan(lockIdx);
+    const collectIdx = body.indexOf("super_admin_collect_dependents");
+    expect(careProfileLock).toBeGreaterThan(profilesLock);
+    expect(confidentialIdx).toBeGreaterThan(careProfileLock);
     expect(stampIdx).toBeGreaterThan(confidentialIdx);
+    expect(collectIdx).toBeGreaterThan(stampIdx);
+  });
+
+  it("takes the generic target-row snapshot FOR UPDATE (closes the class for non-profile targets)", () => {
+    const body = functionBody(sql, "super_admin_permanent_delete");
+    expect(body).toContain(
+      "select to_jsonb(t) from public.%i t where t.id = $1 for update"
+    );
   });
 
   it("cleans up each operational assignment table atomically (DELETE … RETURNING captures)", () => {

@@ -58,12 +58,27 @@
 --     has_blocking_dependents — the engine stays authoritative.
 --
 -- Concurrency posture (profile targets):
---   * The engine takes FOR UPDATE on the target's care-profile row BEFORE the
---     confidential-block check. Child inserts (admin notes, follow-ups, SC.4
---     private notes) take FOR KEY SHARE on that parent row, which conflicts
---     with FOR UPDATE — so no care-profile child can appear between the
---     confidential check / cleanup captures and the cascade-firing delete,
---     and any in-flight child insert commits first and is seen by both.
+--   * The engine takes TWO row locks, always in this order, from a single
+--     acquisition site (no deadlock partner exists):
+--       1. the target profiles row, FOR UPDATE, at the very start of profile
+--          handling. Every child insert referencing profiles(id) — a
+--          last-minute authored note, a new group_leaders row, a coverage
+--          assignment — takes FOR KEY SHARE on that row, which conflicts with
+--          FOR UPDATE, so ALL direct children are frozen in one lock: nothing
+--          can commit between the descriptor stamps /
+--          super_admin_collect_dependents pass and the final delete (which
+--          would otherwise SET NULL a row missing from set_null_dependents —
+--          unrestorable — and under-report the audit/tombstone counts);
+--       2. the target's care-profile row, FOR UPDATE, BEFORE the
+--          confidential-block check. Care-profile children (admin notes,
+--          follow-ups, SC.4 private notes) FK the care profile, not the
+--          profile, so lock 1 does not freeze them; lock 2 does, keeping the
+--          confidential answer and the cascade-children captures true through
+--          the delete.
+--     The generic target-row snapshot also runs FOR UPDATE for every entity
+--     type, closing the same class for non-profile targets (group, member, …)
+--     between collect_dependents and the delete; for profiles it merely
+--     re-locks the row lock 1 already holds.
 --   * The direct cleanups use DELETE ... RETURNING, so each tombstone capture
 --     is exactly the set of rows that statement deleted — capture and delete
 --     cannot diverge by construction.
@@ -72,6 +87,8 @@
 --     profile delete, and the read path falls back to the default 'Former
 --     Shepherd' label whenever author_profile_id is null and author_descriptor
 --     was never stamped. No content is lost either way (the rows are retained).
+--     (With lock 1 this path is now unreachable for direct children; the
+--     degrade remains as defense-in-depth.)
 --
 -- super_admin_confidential_block loses ONLY its author arms for profile
 -- targets (a profile that merely AUTHORED notes is now purgeable — decision 1
@@ -197,9 +214,11 @@ comment on function public.super_admin_confidential_block(text, uuid) is
 --         shepherd_coverage_assignments, shepherd_care_profiles) via
 --         DELETE ... RETURNING — capture and delete in one statement — so
 --         they never reach the collector as cascade/restrict blockers.
---    A FOR UPDATE lock on the target's care-profile row is taken BEFORE the
---    confidential-block check (see "Concurrency posture" in the header), so
---    no care-profile child can slip in between check, capture, and cascade.
+--    Two FOR UPDATE locks are taken first — the target profiles row, then the
+--    target's care-profile row, always in that order — and the generic
+--    target-row snapshot is FOR UPDATE for every entity type (see
+--    "Concurrency posture" in the header), so no child row can slip in
+--    between check, capture, collector, and delete.
 --    Everything else — role gate, allowlist, super_admin forbidden-target
 --    guard, opaque confidential block, blocker refusal, tombstone + paired
 --    audit row + delete in one transaction — is unchanged.
@@ -250,11 +269,25 @@ begin
     raise exception 'forbidden_target';
   end if;
 
-  -- Forbid ANY super_admin profile target (not just self / bootstrap), matching
-  -- the super_admin_set_profile_status forbidden_target guard. Permanent
-  -- deletion is strictly more destructive than disable, so the role-boundary
-  -- guard must be at least as wide.
   if p_entity_type = 'profile' then
+    -- #880 TOCTOU guard, lock 1 of 2: the target profiles row itself, FOR
+    -- UPDATE, at the very START of profile handling. Every child insert that
+    -- references profiles(id) — a last-minute authored care note, a new
+    -- group_leaders row, a coverage assignment — takes FOR KEY SHARE on this
+    -- referenced row, which conflicts with FOR UPDATE. So ALL direct children
+    -- are frozen by this one lock: nothing can commit between the descriptor
+    -- stamps / dependent-collector pass and the final delete (which would
+    -- fire the FK SET NULL on a row missing from set_null_dependents —
+    -- unrestorable — and under-report the audit / tombstone counts).
+    perform 1
+      from public.profiles
+     where id = p_id
+       for update;
+
+    -- Forbid ANY super_admin profile target (not just self / bootstrap),
+    -- matching the super_admin_set_profile_status forbidden_target guard.
+    -- Permanent deletion is strictly more destructive than disable, so the
+    -- role-boundary guard must be at least as wide.
     if exists (
       select 1 from public.profiles
        where id = p_id and role = 'super_admin'
@@ -262,16 +295,19 @@ begin
       raise exception 'forbidden_target';
     end if;
 
-    -- #880 TOCTOU guard: lock the target's care-profile row BEFORE the
-    -- confidential-block check. A child insert (admin note, follow-up, or an
-    -- SC.4 private note) takes FOR KEY SHARE on its parent care-profile row,
-    -- which conflicts with FOR UPDATE — so holding FOR UPDATE here blocks new
-    -- children until this transaction commits, and any in-flight child insert
-    -- must commit before this lock acquires, landing in the confidential check
-    -- and the cleanup captures below. Ordering is load-bearing: lock ->
-    -- confidential check -> captures -> deletes, all in this one transaction —
-    -- without it a private note inserted after the check (or an admin note /
-    -- follow-up inserted after the captures) would cascade away un-captured.
+    -- #880 TOCTOU guard, lock 2 of 2: the target's care-profile row BEFORE
+    -- the confidential-block check. Care-profile children (admin notes,
+    -- follow-ups, SC.4 private notes) FK the CARE PROFILE, not the profile,
+    -- so the profiles lock above does not freeze them; their inserts take
+    -- FOR KEY SHARE on this parent row, which conflicts with FOR UPDATE. Any
+    -- in-flight child insert must commit before this lock acquires, landing
+    -- in the confidential check and the cleanup captures below. Ordering is
+    -- load-bearing: locks -> confidential check -> captures -> deletes, all
+    -- in this one transaction — without it a private note inserted after the
+    -- check (or an admin note / follow-up inserted after the captures) would
+    -- cascade away un-captured. Lock ORDER is fixed and single-sited:
+    -- profiles row first, care-profile row second — no other path acquires
+    -- these two in the opposite order, so there is no deadlock partner.
     perform 1
       from public.shepherd_care_profiles
      where shepherd_profile_id = p_id
@@ -279,13 +315,22 @@ begin
   end if;
 
   -- Opaque permanent block: confidential records (SC.4 + subject-side sealed
-  -- notes) can never be deleted. Runs under the care-profile lock above for
-  -- profile targets, so its answer stays true through the delete.
+  -- notes) can never be deleted. Runs under the two locks above for profile
+  -- targets, so its answer stays true through the delete.
   if public.super_admin_confidential_block(p_entity_type, p_id) then
     raise exception 'has_confidential_records';
   end if;
 
-  execute format('select to_jsonb(t) from public.%I t where t.id = $1', v_table)
+  -- Target-row snapshot, taken FOR UPDATE for EVERY entity type: for profiles
+  -- this re-locks the row already held above (a no-op in the same
+  -- transaction); for every other target (group, member, …) it closes the
+  -- same TOCTOU class generically — a child insert referencing the target
+  -- takes FOR KEY SHARE on it, so nothing can slip in between the dependent
+  -- collector and the final delete.
+  execute format(
+    'select to_jsonb(t) from public.%I t where t.id = $1 for update',
+    v_table
+  )
     into v_row
     using p_id;
   if v_row is null then
