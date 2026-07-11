@@ -6,6 +6,7 @@ import {
   DB_ENUM_VALUES,
   DRIFT_ALLOWLIST,
   TABLE_ROW_KEYS,
+  UNGUARDED_TABLES,
   type DriftAllowlistEntry,
 } from "./support/types-drift-manifest";
 
@@ -20,6 +21,11 @@ import {
 // Deliberate divergences live in DRIFT_ALLOWLIST — and each entry is itself
 // asserted still-live below, so a resolved divergence fails the suite until
 // the stale entry is deleted.
+//
+// Coverage is CLOSED over the live schema (#885): every live `public` base
+// table must be pinned in TABLE_ROW_KEYS or explicitly excluded (with a
+// reason) in UNGUARDED_TABLES, and every exclusion is asserted still-live —
+// a new table or a newly-read table can never silently escape the guard.
 
 const probe = resolveIntegrationEnv();
 const suite = probe.kind === "ready" ? describe : describe.skip;
@@ -43,9 +49,15 @@ interface PgEnumRow {
   enumlabel: string;
 }
 
+interface InformationSchemaTableRow {
+  table_name: string;
+}
+
 interface LiveSchema {
-  /** table name -> set of live column names (schema `public`). */
+  /** table name -> set of live column names (schema `public`; incl. views). */
   columns: Map<string, Set<string>>;
+  /** live BASE TABLE names (schema `public`; views excluded). */
+  baseTables: Set<string>;
   /** enum type name -> set of live labels (schema `public`). */
   enums: Map<string, Set<string>>;
   /** udt_names of user-defined types used by at least one live column. */
@@ -57,6 +69,12 @@ async function loadLiveSchema(): Promise<LiveSchema> {
     `select table_name, column_name, data_type, udt_name
        from information_schema.columns
       where table_schema = 'public'`
+  );
+  const tableRows = await queryRows<InformationSchemaTableRow>(
+    `select table_name
+       from information_schema.tables
+      where table_schema = 'public'
+        and table_type = 'BASE TABLE'`
   );
   const enumRows = await queryRows<PgEnumRow>(
     `select t.typname, e.enumlabel
@@ -75,6 +93,8 @@ async function loadLiveSchema(): Promise<LiveSchema> {
     if (row.data_type === "USER-DEFINED") enumColumnUse.add(row.udt_name);
   }
 
+  const baseTables = new Set<string>(tableRows.map((row) => row.table_name));
+
   const enums = new Map<string, Set<string>>();
   for (const row of enumRows) {
     const set = enums.get(row.typname) ?? new Set<string>();
@@ -82,7 +102,7 @@ async function loadLiveSchema(): Promise<LiveSchema> {
     enums.set(row.typname, set);
   }
 
-  return { columns, enums, enumColumnUse };
+  return { columns, baseTables, enums, enumColumnUse };
 }
 
 function allowlisted<K extends DriftAllowlistEntry["kind"]>(
@@ -145,6 +165,41 @@ suite("types/ trust boundary vs live schema (types-drift guard)", () => {
         expect(problems).toEqual([]);
       });
     }
+  });
+
+  describe("table coverage — the guard is closed over the live schema", () => {
+    it("every live public base table is guarded or explicitly excluded", () => {
+      const problems: string[] = [];
+      for (const table of live.baseTables) {
+        if (table in TABLE_ROW_KEYS || table in UNGUARDED_TABLES) continue;
+        problems.push(
+          `live table "${table}" is neither pinned in TABLE_ROW_KEYS nor ` +
+            `excluded in UNGUARDED_TABLES — pin its <Table>Row key set, or ` +
+            `add an UNGUARDED_TABLES entry with a reason, in ${MANIFEST_PATH}`
+        );
+      }
+      expect(problems).toEqual([]);
+    });
+
+    it("no table is both guarded and excluded, and no exclusion is stale", () => {
+      const problems: string[] = [];
+      for (const table of Object.keys(UNGUARDED_TABLES)) {
+        if (table in TABLE_ROW_KEYS) {
+          problems.push(
+            `"${table}" is pinned in TABLE_ROW_KEYS AND excluded in ` +
+              `UNGUARDED_TABLES — remove the exclusion from ${MANIFEST_PATH}`
+          );
+        }
+        if (!live.baseTables.has(table)) {
+          problems.push(
+            `stale exclusion: "${table}" (UNGUARDED_TABLES) no longer ` +
+              `exists as a live base table — remove the entry from ` +
+              MANIFEST_PATH
+          );
+        }
+      }
+      expect(problems).toEqual([]);
+    });
   });
 
   describe("enums — types/enums.ts unions vs Postgres enum types", () => {

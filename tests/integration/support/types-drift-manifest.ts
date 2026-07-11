@@ -1,10 +1,14 @@
 import type {
+  ActivityResetBaselinesRow,
   AppSettingsRow,
   AttendanceRecordsRow,
   AttendanceSessionsRow,
+  AttentionResetBaselinesRow,
+  AttentionResetSnapshotsRow,
   AuditEventsRow,
   CareNotesRow,
   ChurchAttendanceSnapshotsRow,
+  CleanSlateSnapshotsRow,
   FollowUpsRow,
   GroupCalendarEventsRow,
   GroupHealthAssessmentsRow,
@@ -13,25 +17,33 @@ import type {
   GroupMembershipsRow,
   GroupMetricSettingsRow,
   GroupRubricGradesRow,
+  GroupStatusHistoryRow,
   GroupTypeConfigsRow,
   GroupsRow,
   GuestsRow,
   HealthRubricsRow,
+  HistoryResetSnapshotsRow,
+  InvitationsRow,
   LaunchPlanningScenariosRow,
   LeaderPipelineRow,
   LeaderRubricGradesRow,
   MembersRow,
   MultiplicationCandidatesRow,
   MultiplicationReadinessRuleRow,
+  NoteTransparencyGrantsRow,
   OverShepherdsRow,
+  PlatformConfigRow,
   PrayerRequestsRow,
   ProfilesRow,
+  ProspectsRow,
+  ShepherdCareAdminNotesRow,
   ShepherdCareFollowUpsRow,
   ShepherdCareInteractionsRow,
   ShepherdCareNoteKeySlotsRow,
   ShepherdCarePrivateNotesRow,
   ShepherdCareProfilesRow,
   ShepherdCoverageAssignmentsRow,
+  TombstonesRow,
   UsageEventsRow,
 } from "@/types/database";
 import type * as E from "@/types/enums";
@@ -52,12 +64,17 @@ import type * as E from "@/types/enums";
 // therefore forces the matching manifest edit, and the integration spec then
 // proves the edit against the real database.
 //
-// SCOPE: tables are the READ-PATH set — the tables the `*_COLUMNS` allowlists
-// (built via `columns<Row>()` in lib/supabase/read-core.ts) select from — not
-// all of types/database.ts. Enums cover every union in types/enums.ts that
-// mirrors a Postgres enum type. GroupHealthLetter / LeaderHealthLetter are
-// deliberately absent: their columns are `text` with CHECK constraints in
-// Postgres (see 20260608010000/20260608050000/20260608060000), not enum types.
+// SCOPE: TABLE_ROW_KEYS pins every table the app READS at runtime via
+// PostgREST (`.from("…")` in lib/** and app/** — the `*_COLUMNS` allowlist
+// tables plus the danger-zone/settings read models). Tables deliberately NOT
+// guarded live in UNGUARDED_TABLES with a reason each, and the spec asserts
+// every live `public` base table lands in exactly one of the two lists — a
+// new table can never silently fall through. Enums cover every union in
+// types/enums.ts that mirrors a Postgres enum type, plus the inline
+// HealthRubricsRow["kind"] union (db enum health_rubric_kind).
+// GroupHealthLetter / LeaderHealthLetter are deliberately absent: their
+// columns are `text` with CHECK constraints in Postgres (see
+// 20260608010000/20260608050000/20260608060000), not enum types.
 
 /** Pin a Row interface's full key set; both drift directions fail `tsc`. */
 const rowKeys =
@@ -388,11 +405,6 @@ export const TABLE_ROW_KEYS: Readonly<Record<string, TableManifestEntry>> = {
       archived_at: true,
     }),
   },
-  // NOTE (#880 forward-pin): `author_descriptor` is pinned here ahead of the
-  // concurrent care-note authorship-descriptor slice (types/database.ts +
-  // migration 20260715000000_…). Until that slice lands in the same tree,
-  // `tsc` reports an excess-property error on these two maps — reconciled at
-  // integration; do not "fix" it by dropping the key.
   care_notes: {
     rowType: "CareNotesRow",
     keys: rowKeys<CareNotesRow>()({
@@ -602,6 +614,204 @@ export const TABLE_ROW_KEYS: Readonly<Record<string, TableManifestEntry>> = {
       created_at: true,
     }),
   },
+  // ── #885 sweep additions: runtime read tables the first cut missed ────────
+  prospects: {
+    rowType: "ProspectsRow",
+    keys: rowKeys<ProspectsRow>()({
+      id: true,
+      full_name: true,
+      email: true,
+      phone: true,
+      state: true,
+      group_id: true,
+      archived: true,
+      next_step: true,
+      additional_note: true,
+      desired_group_type: true,
+      created_by: true,
+      updated_by: true,
+      created_at: true,
+      updated_at: true,
+    }),
+  },
+  note_transparency_grants: {
+    rowType: "NoteTransparencyGrantsRow",
+    keys: rowKeys<NoteTransparencyGrantsRow>()({
+      id: true,
+      subject_profile_id: true,
+      granted: true,
+      set_by: true,
+      created_at: true,
+      updated_at: true,
+    }),
+  },
+  shepherd_care_admin_notes: {
+    rowType: "ShepherdCareAdminNotesRow",
+    keys: rowKeys<ShepherdCareAdminNotesRow>()({
+      care_profile_id: true,
+      admin_summary: true,
+      created_at: true,
+      updated_at: true,
+    }),
+  },
+  invitations: {
+    rowType: "InvitationsRow",
+    keys: rowKeys<InvitationsRow>()({
+      id: true,
+      token_hash: true,
+      role: true,
+      group_id: true,
+      single_use: true,
+      max_uses: true,
+      used_count: true,
+      expires_at: true,
+      revoked_at: true,
+      created_by_profile_id: true,
+      created_at: true,
+    }),
+  },
+  platform_config: {
+    rowType: "PlatformConfigRow",
+    keys: rowKeys<PlatformConfigRow>()({
+      id: true,
+      setting_key: true,
+      setting_value: true,
+      created_at: true,
+      updated_at: true,
+    }),
+  },
+  tombstones: {
+    rowType: "TombstonesRow",
+    keys: rowKeys<TombstonesRow>()({
+      id: true,
+      entity_type: true,
+      table_name: true,
+      entity_id: true,
+      row_snapshot: true,
+      set_null_dependents: true,
+      cleanup_snapshot: true,
+      deleted_by: true,
+      deleted_at: true,
+      restored_at: true,
+      restored_by: true,
+    }),
+  },
+  clean_slate_snapshots: {
+    rowType: "CleanSlateSnapshotsRow",
+    keys: rowKeys<CleanSlateSnapshotsRow>()({
+      id: true,
+      created_by: true,
+      created_at: true,
+      kind: true,
+      payload: true,
+      row_counts: true,
+      total_rows: true,
+      restored_at: true,
+      restored_by: true,
+    }),
+  },
+  history_reset_snapshots: {
+    rowType: "HistoryResetSnapshotsRow",
+    keys: rowKeys<HistoryResetSnapshotsRow>()({
+      id: true,
+      created_by: true,
+      created_at: true,
+      category: true,
+      kind: true,
+      payload: true,
+      row_counts: true,
+      total_rows: true,
+      restored_at: true,
+      restored_by: true,
+    }),
+  },
+  attention_reset_baselines: {
+    rowType: "AttentionResetBaselinesRow",
+    keys: rowKeys<AttentionResetBaselinesRow>()({
+      id: true,
+      surface: true,
+      scope: true,
+      entity_id: true,
+      baseline_on: true,
+      created_by: true,
+      created_at: true,
+    }),
+  },
+  attention_reset_snapshots: {
+    rowType: "AttentionResetSnapshotsRow",
+    keys: rowKeys<AttentionResetSnapshotsRow>()({
+      id: true,
+      created_by: true,
+      created_at: true,
+      surface: true,
+      scope: true,
+      entity_id: true,
+      kind: true,
+      payload: true,
+      row_counts: true,
+      total_rows: true,
+      superseded_at: true,
+      restored_at: true,
+      restored_by: true,
+    }),
+  },
+  activity_reset_baselines: {
+    rowType: "ActivityResetBaselinesRow",
+    keys: rowKeys<ActivityResetBaselinesRow>()({
+      id: true,
+      scope: true,
+      baseline_on: true,
+      created_by: true,
+      created_at: true,
+    }),
+  },
+  // Head-only count reads (the Clean Slate impact preview in
+  // lib/supabase/maintenance-reads.ts) still traverse RLS against this table,
+  // so its Row type is guarded like any other runtime read.
+  group_status_history: {
+    rowType: "GroupStatusHistoryRow",
+    keys: rowKeys<GroupStatusHistoryRow>()({
+      id: true,
+      group_id: true,
+      previous_lifecycle_status: true,
+      new_lifecycle_status: true,
+      previous_health_status: true,
+      new_health_status: true,
+      reason: true,
+      changed_by: true,
+      created_at: true,
+    }),
+  },
+};
+
+// Live `public` base tables DELIBERATELY not guarded, each with its reason.
+// The spec asserts completeness (every live base table is guarded or listed
+// here) AND staleness (a listed table must still exist and must not also be
+// guarded), so this list can only shrink or be consciously extended.
+export const UNGUARDED_TABLES: Readonly<Record<string, string>> = {
+  audit_events_archive:
+    "Reset-audit-logs backup (PRD-SAC6 #290). All access flows through the " +
+    "super_admin_* SECURITY DEFINER RPCs — no runtime PostgREST read path, " +
+    "so no read allowlist to drift against (AuditEventsArchiveRow mirrors " +
+    "AuditEventsRow; guard it if a read surface ever lands).",
+  account_deletion_requests:
+    "Self-service deletion requests (#563): written via " +
+    "request_own_account_deletion and consumed inside the super_admin_* " +
+    "purge RPCs — no runtime PostgREST read path.",
+  invite_redeem_throttle:
+    "Internal rate-limit ledger (IL.2), touched only inside the " +
+    "redeem-invite SECURITY DEFINER path — never read by app code.",
+  member_care_profiles:
+    "Schema landed ahead of the member-care surface (20260624 " +
+    "phase_care_member_list_foundation); no Row type in types/database.ts " +
+    "and no runtime read path yet — guard it when the surface lands.",
+  member_care_interactions:
+    "Schema landed ahead of the member-care surface (20260624 " +
+    "phase_care_member_list_foundation); no Row type in types/database.ts " +
+    "and no runtime read path yet — guard it when the surface lands.",
+  first_run_orientations:
+    "First-run orientation state (20260705): accessed only via its RPCs — " +
+    "no Row type in types/database.ts and no runtime PostgREST read path.",
 };
 
 export interface EnumManifestEntry {
@@ -839,6 +1049,16 @@ export const DB_ENUM_VALUES: Readonly<Record<string, EnumManifestEntry>> = {
       until_cleared: true,
     }),
   },
+  // Mirrored by the INLINE union on HealthRubricsRow["kind"] rather than a
+  // named union in types/enums.ts — pinned all the same so the live enum
+  // can't drift unchecked (#885 review finding).
+  health_rubric_kind: {
+    tsType: 'HealthRubricsRow["kind"]',
+    values: enumValues<HealthRubricsRow["kind"]>({
+      group: true,
+      leader: true,
+    }),
+  },
   prospect_state: {
     tsType: "ProspectState",
     values: enumValues<E.ProspectState>({
@@ -924,13 +1144,5 @@ export const DRIFT_ALLOWLIST: readonly DriftAllowlistEntry[] = [
       "The Audience × Category cell model was retired (20260708000000 " +
       "dropped every column using it) but the enum TYPE was kept, mirroring " +
       "the group_life_stage retention. No named TS union exists for it.",
-  },
-  {
-    kind: "db-enum-without-ts-union",
-    dbEnum: "health_rubric_kind",
-    reason:
-      'Mirrored inline as the "group" | "leader" literal on ' +
-      "HealthRubricsRow['kind'] (types/database.ts) rather than as a named " +
-      "union in types/enums.ts.",
   },
 ];
