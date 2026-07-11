@@ -10,8 +10,8 @@ There are two bootstrap workflows here:
 
 - **Super admin bootstrap** (Phase 4.1) — link your own Supabase Auth user
   to a `super_admin` profile so you (the owner/operator) can sign in.
-- **Seed test users** (Phase 4) — link the five demo profiles in
-  `phase2_seed.sql` to Supabase Auth users so you can exercise every role.
+- **Seed test users** (Phase 4) — link the active demo profiles in
+  `phase2_seed.sql` to Supabase Auth users so you can exercise the active roles.
 
 ## Bootstrap steps
 
@@ -29,13 +29,12 @@ There are two bootstrap workflows here:
 
    Seed profile emails (from `supabase/seed/phase2_seed.sql`):
 
-   | Email                          | Role             | Notes                                                       |
-   |--------------------------------|------------------|-------------------------------------------------------------|
-   | `avery.bennett@example.org`    | `ministry_admin` | Verifies admin dashboard access                             |
-   | `jordan.hayes@example.org`     | `staff_viewer`   | Deprecated — routes to `/unauthorized` (Phase 5B.0 cleanup) |
-   | `casey.morgan@example.org`     | `leader`         | Has 2 assigned groups (good test)                           |
-   | `riley.cruz@example.org`       | `leader`         | Has 2 assigned groups                                       |
-   | `taylor.kim@example.org`       | `leader`         | Has 1 assigned group                                        |
+   | Email                       | Role             | Notes                             |
+   | --------------------------- | ---------------- | --------------------------------- |
+   | `avery.bennett@example.org` | `ministry_admin` | Verifies admin dashboard access   |
+   | `casey.morgan@example.org`  | `leader`         | Has 2 assigned groups (good test) |
+   | `riley.cruz@example.org`    | `leader`         | Has 2 assigned groups             |
+   | `taylor.kim@example.org`    | `leader`         | Has 1 assigned group              |
 
 3. **Link each Supabase Auth user to its profile row.**
    - Copy the new auth user's UUID from the dashboard (under each user's
@@ -61,9 +60,6 @@ Once test users are linked, sign in to the app and confirm:
   `/admin/super-admin`, and `/leader`.
 - `ministry_admin` lands on `/admin` and sees all 5 seeded groups.
   `/admin/super-admin` redirects them to `/unauthorized` (Phase 5A.3).
-- `staff_viewer` is redirected to `/unauthorized` on sign-in (the
-  `/staff` route was removed in the Phase 5B.0 cleanup; the role
-  value is retained in the SQL enum for compat only).
 - `leader` Casey lands on `/leader` and sees **both** assigned groups
   (Northside Young Adults and South Campus Women). They cannot reach
   `/admin` or `/admin/super-admin`.
@@ -76,6 +72,7 @@ select count(*) from groups;
 ```
 
 Expected:
+
 - Anonymous role → 0.
 - Leader Casey → 2.
 - Ministry admin → 5.
@@ -99,8 +96,8 @@ select count(*) from shepherd_care_note_key_slots;
 
 Expected (the boundary): only the **creating** `ministry_admin` sees their own
 rows. Everyone else sees **0** — a second `ministry_admin`, `super_admin`,
-`over_shepherd`, `leader`, `co_leader`, and `staff_viewer` alike. The key-slot
-table is fenced identically to the note table.
+`over_shepherd`, `leader`, and `co_leader` alike. The key-slot table is fenced
+identically to the note table.
 
 Confirm the at-rest guarantee with a raw read (service role / SQL editor, which
 bypasses RLS): the `ciphertext`/`iv` and the key-slot `wrapped_dek` come back as
@@ -141,6 +138,7 @@ bootstrap path.
    placeholders is still present, so running the file unedited never
    creates a bogus super_admin row — you must edit all three before the
    insert/upsert will execute.
+
 5. **Run it in the Supabase SQL Editor.** The insert uses
    `INSERT … ON CONFLICT (email) DO UPDATE`, so it works whether or not a
    placeholder profile already exists for that email.
@@ -166,7 +164,7 @@ deployed app or a local `npm run dev` instance.
 - [ ] `super_admin` **cannot** access `/leader` at all — they are
       redirected to `/unauthorized`. This is expected: `requireLeader()`
       in `lib/auth/session.ts` calls `requireRole(["leader", "co_leader"])`,
-      which rejects on role *before* any `group_leaders` assignments are
+      which rejects on role _before_ any `group_leaders` assignments are
       considered. Adding a `group_leaders` row to a super_admin profile
       does **not** grant `/leader` access. If the owner needs to see the
       leader view in practice, that is a Phase 5A design question (e.g.
@@ -176,10 +174,6 @@ deployed app or a local `npm run dev` instance.
       `/admin/groups`.
 - [ ] `ministry_admin` is redirected to `/unauthorized` from
       `/admin/super-admin` (Phase 5A.3).
-- [ ] `staff_viewer` is redirected to `/unauthorized` on sign-in. The
-      `/staff` route was removed in the Phase 5B.0 cleanup; the enum
-      value remains for compatibility but is no longer promoted in
-      navigation.
 - [ ] `leader` can access `/leader` only and sees their assigned groups
       only.
 - [ ] A signed-in Auth user with **no** linked `profiles` row is sent to
@@ -194,8 +188,7 @@ deployed app or a local `npm run dev` instance.
 - [ ] On `/admin/super-admin`, the super_admin can change a test leader
       to `ministry_admin` and back, and each change records an
       `super_admin.update_profile_role` row in the Audit log panel
-      above. Self-target, `super_admin`, and `staff_viewer` choices are
-      rejected.
+      above. Self-target and `super_admin` choices are rejected.
 
 ## Multiplication planner seed (Julian #144)
 

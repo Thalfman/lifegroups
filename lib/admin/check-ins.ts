@@ -2,8 +2,8 @@
 // review. Every helper here composes existing single-table readers from
 // the lib/supabase/*-reads modules; no new RPC, no new RLS policy, no
 // service-role escape hatch. RLS already permits super_admin /
-// ministry_admin SELECT on every table referenced below via the Phase 4
-// auth_is_admin_or_staff() policies.
+// ministry_admin SELECT on every table referenced below via the current
+// auth_is_admin() policies.
 //
 // The "missing" rule mirrors the one already used by the admin
 // dashboard (lib/dashboard/queries.ts:157-160): a group is missing for

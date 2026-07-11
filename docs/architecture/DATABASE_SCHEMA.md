@@ -11,9 +11,12 @@ coverage, and launch-planning storage.
 
 - **profiles**: app-login user records mapped to Supabase Auth users via
   nullable `auth_user_id`. Phase 4 reads this column when resolving the
-  signed-in session. `profiles.role` uses the `user_role` enum with five
-  values: `super_admin`, `ministry_admin`, `staff_viewer`, `leader`,
-  `co_leader`. `member` is intentionally **not** present here — members
+  signed-in session. `profiles.role` uses the `user_role` enum. The live app
+  roles are `super_admin`, `ministry_admin`, `over_shepherd`, `leader`, and
+  `co_leader`; the retired `staff_viewer` value remains inert in the Postgres
+  enum only for historical compatibility (`20260531140000`). It is absent from
+  the TypeScript union and cannot be assigned by an app write path. `member` is
+  intentionally **not** present here — members
   are non-auth participant records (see `members` below).
   `full_name_pending` (ADR 0032) is true while an invited person hasn't
   chosen their own display name yet; `full_name` then holds a placeholder
@@ -129,9 +132,6 @@ and are only executable by the `authenticated` role.
 - `auth_role()` — the caller's `user_role` (also gated on
   `status = 'active'`).
 - `auth_is_admin()` — `super_admin` or `ministry_admin`.
-- `auth_is_staff_viewer()` — `staff_viewer`.
-- `auth_is_admin_or_staff()` — convenience for read policies that allow either
-  admins or staff.
 - `auth_is_leader_of(p_group_id uuid)` — true iff the caller has an
   `active = true` row in `group_leaders` for that group with
   `role in ('leader','co_leader')`. Inherits the active-profile gate via
