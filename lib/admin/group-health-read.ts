@@ -119,8 +119,10 @@ const ASSESSMENT_COLUMNS =
   "computed_letter, needs_follow_up, updated_at";
 
 // One row per group from the group_health_latest_follow_up view: the group's
-// latest assessment flag, carried across months.
-type LatestFollowUpRow = {
+// latest assessment flag, carried across months. Exported so the types-drift
+// guard (tests/integration/support/types-drift-manifest.ts) can pin this
+// hand-rolled view row against the live view's column set.
+export type LatestFollowUpRow = {
   group_id: string;
   needs_follow_up: boolean;
 };

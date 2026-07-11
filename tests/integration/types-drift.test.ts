@@ -7,6 +7,8 @@ import {
   DRIFT_ALLOWLIST,
   TABLE_ROW_KEYS,
   UNGUARDED_TABLES,
+  UNGUARDED_VIEWS,
+  VIEW_ROW_KEYS,
   type DriftAllowlistEntry,
 } from "./support/types-drift-manifest";
 
@@ -24,8 +26,10 @@ import {
 //
 // Coverage is CLOSED over the live schema (#885): every live `public` base
 // table must be pinned in TABLE_ROW_KEYS or explicitly excluded (with a
-// reason) in UNGUARDED_TABLES, and every exclusion is asserted still-live —
-// a new table or a newly-read table can never silently escape the guard.
+// reason) in UNGUARDED_TABLES, and every live `public` VIEW must be pinned in
+// VIEW_ROW_KEYS (against its hand-rolled read-seam row type) or excluded in
+// UNGUARDED_VIEWS. Every exclusion is asserted still-live — a new table, view,
+// or newly-read relation can never silently escape the guard.
 
 const probe = resolveIntegrationEnv();
 const suite = probe.kind === "ready" ? describe : describe.skip;
@@ -51,6 +55,7 @@ interface PgEnumRow {
 
 interface InformationSchemaTableRow {
   table_name: string;
+  table_type: string;
 }
 
 interface LiveSchema {
@@ -58,6 +63,8 @@ interface LiveSchema {
   columns: Map<string, Set<string>>;
   /** live BASE TABLE names (schema `public`; views excluded). */
   baseTables: Set<string>;
+  /** live VIEW names (schema `public`). */
+  views: Set<string>;
   /** enum type name -> set of live labels (schema `public`). */
   enums: Map<string, Set<string>>;
   /** udt_names of user-defined types used by at least one live column. */
@@ -71,10 +78,10 @@ async function loadLiveSchema(): Promise<LiveSchema> {
       where table_schema = 'public'`
   );
   const tableRows = await queryRows<InformationSchemaTableRow>(
-    `select table_name
+    `select table_name, table_type
        from information_schema.tables
       where table_schema = 'public'
-        and table_type = 'BASE TABLE'`
+        and table_type in ('BASE TABLE', 'VIEW')`
   );
   const enumRows = await queryRows<PgEnumRow>(
     `select t.typname, e.enumlabel
@@ -93,7 +100,11 @@ async function loadLiveSchema(): Promise<LiveSchema> {
     if (row.data_type === "USER-DEFINED") enumColumnUse.add(row.udt_name);
   }
 
-  const baseTables = new Set<string>(tableRows.map((row) => row.table_name));
+  const baseTables = new Set<string>();
+  const views = new Set<string>();
+  for (const row of tableRows) {
+    (row.table_type === "VIEW" ? views : baseTables).add(row.table_name);
+  }
 
   const enums = new Map<string, Set<string>>();
   for (const row of enumRows) {
@@ -102,7 +113,7 @@ async function loadLiveSchema(): Promise<LiveSchema> {
     enums.set(row.typname, set);
   }
 
-  return { columns, baseTables, enums, enumColumnUse };
+  return { columns, baseTables, views, enums, enumColumnUse };
 }
 
 function allowlisted<K extends DriftAllowlistEntry["kind"]>(
@@ -167,7 +178,41 @@ suite("types/ trust boundary vs live schema (types-drift guard)", () => {
     }
   });
 
-  describe("table coverage — the guard is closed over the live schema", () => {
+  describe("view columns — hand-rolled read-seam row types", () => {
+    for (const [view, { rowType, keys }] of Object.entries(VIEW_ROW_KEYS)) {
+      it(`${view}: ${rowType} matches the live view column set`, () => {
+        const liveColumns = live.columns.get(view);
+        expect(
+          liveColumns,
+          `view "${view}" is pinned in the manifest (${rowType}) but ` +
+            `missing from the live schema — if it was dropped or renamed, ` +
+            `update the read-seam row type and ${MANIFEST_PATH}`
+        ).toBeDefined();
+        if (!liveColumns) return;
+
+        const problems: string[] = [];
+        for (const key of keys) {
+          if (liveColumns.has(key)) continue;
+          problems.push(
+            `${view}: column "${key}" is declared on ${rowType} but ` +
+              `missing from the live view — update the row type ` +
+              `(and ${MANIFEST_PATH}) or fix the view migration`
+          );
+        }
+        for (const column of liveColumns) {
+          if (keys.includes(column)) continue;
+          problems.push(
+            `${view}: live view column "${column}" is missing from ` +
+              `${rowType} — add it to the row type and pin it in ` +
+              MANIFEST_PATH
+          );
+        }
+        expect(problems).toEqual([]);
+      });
+    }
+  });
+
+  describe("coverage — the guard is closed over the live schema", () => {
     it("every live public base table is guarded or explicitly excluded", () => {
       const problems: string[] = [];
       for (const table of live.baseTables) {
@@ -181,7 +226,21 @@ suite("types/ trust boundary vs live schema (types-drift guard)", () => {
       expect(problems).toEqual([]);
     });
 
-    it("no table is both guarded and excluded, and no exclusion is stale", () => {
+    it("every live public view is guarded or explicitly excluded", () => {
+      const problems: string[] = [];
+      for (const view of live.views) {
+        if (view in VIEW_ROW_KEYS || view in UNGUARDED_VIEWS) continue;
+        problems.push(
+          `live view "${view}" is neither pinned in VIEW_ROW_KEYS nor ` +
+            `excluded in UNGUARDED_VIEWS — pin its read-seam row type's ` +
+            `key set, or add an UNGUARDED_VIEWS entry with a reason, in ` +
+            MANIFEST_PATH
+        );
+      }
+      expect(problems).toEqual([]);
+    });
+
+    it("nothing is both guarded and excluded, and no exclusion is stale", () => {
       const problems: string[] = [];
       for (const table of Object.keys(UNGUARDED_TABLES)) {
         if (table in TABLE_ROW_KEYS) {
@@ -195,6 +254,20 @@ suite("types/ trust boundary vs live schema (types-drift guard)", () => {
             `stale exclusion: "${table}" (UNGUARDED_TABLES) no longer ` +
               `exists as a live base table — remove the entry from ` +
               MANIFEST_PATH
+          );
+        }
+      }
+      for (const view of Object.keys(UNGUARDED_VIEWS)) {
+        if (view in VIEW_ROW_KEYS) {
+          problems.push(
+            `"${view}" is pinned in VIEW_ROW_KEYS AND excluded in ` +
+              `UNGUARDED_VIEWS — remove the exclusion from ${MANIFEST_PATH}`
+          );
+        }
+        if (!live.views.has(view)) {
+          problems.push(
+            `stale exclusion: "${view}" (UNGUARDED_VIEWS) no longer exists ` +
+              `as a live view — remove the entry from ${MANIFEST_PATH}`
           );
         }
       }

@@ -47,6 +47,9 @@ import type {
   UsageEventsRow,
 } from "@/types/database";
 import type * as E from "@/types/enums";
+// Type-only import (erased at compile time), so the module's "server-only"
+// guard never executes in the vitest process.
+import type { LatestFollowUpRow } from "@/lib/admin/group-health-read";
 
 // Compile-time-pinned manifest for the types-drift guard (issue #864).
 //
@@ -69,7 +72,11 @@ import type * as E from "@/types/enums";
 // tables plus the danger-zone/settings read models). Tables deliberately NOT
 // guarded live in UNGUARDED_TABLES with a reason each, and the spec asserts
 // every live `public` base table lands in exactly one of the two lists — a
-// new table can never silently fall through. Enums cover every union in
+// new table can never silently fall through. VIEWS get the same treatment:
+// PostgREST view reads carry hand-rolled row types that bypass
+// types/database.ts entirely, so VIEW_ROW_KEYS pins each read view against
+// its live column set and UNGUARDED_VIEWS holds the deliberate exclusions
+// (the spec closes coverage over live views too). Enums cover every union in
 // types/enums.ts that mirrors a Postgres enum type, plus the inline
 // HealthRubricsRow["kind"] union (db enum health_rubric_kind).
 // GroupHealthLetter / LeaderHealthLetter are deliberately absent: their
@@ -813,6 +820,24 @@ export const UNGUARDED_TABLES: Readonly<Record<string, string>> = {
     "First-run orientation state (20260705): accessed only via its RPCs — " +
     "no Row type in types/database.ts and no runtime PostgREST read path.",
 };
+
+// Live `public` VIEWS the app reads via PostgREST, pinned against their
+// hand-rolled row types (which live beside the read seam, not in
+// types/database.ts — the whole reason views need their own census, #885).
+export const VIEW_ROW_KEYS: Readonly<Record<string, TableManifestEntry>> = {
+  group_health_latest_follow_up: {
+    rowType: "LatestFollowUpRow (lib/admin/group-health-read.ts)",
+    keys: rowKeys<LatestFollowUpRow>()({
+      group_id: true,
+      needs_follow_up: true,
+    }),
+  },
+};
+
+// Live `public` views DELIBERATELY not guarded (none today). Same contract as
+// UNGUARDED_TABLES: the spec asserts every live view is pinned or listed here,
+// and that no listed view is stale.
+export const UNGUARDED_VIEWS: Readonly<Record<string, string>> = {};
 
 export interface EnumManifestEntry {
   /** The `types/enums.ts` union name, for failure messages. */
