@@ -57,6 +57,22 @@
 --     cleanable, but the engine's cleanup delete still refuses safely with
 --     has_blocking_dependents — the engine stays authoritative.
 --
+-- Concurrency posture (profile targets):
+--   * The engine takes FOR UPDATE on the target's care-profile row BEFORE the
+--     confidential-block check. Child inserts (admin notes, follow-ups, SC.4
+--     private notes) take FOR KEY SHARE on that parent row, which conflicts
+--     with FOR UPDATE — so no care-profile child can appear between the
+--     confidential check / cleanup captures and the cascade-firing delete,
+--     and any in-flight child insert commits first and is seen by both.
+--   * The direct cleanups use DELETE ... RETURNING, so each tombstone capture
+--     is exactly the set of rows that statement deleted — capture and delete
+--     cannot diverge by construction.
+--   * A care note / prayer request authored concurrently AFTER the descriptor
+--     stamp still degrades gracefully: the FK SET NULL nulls its author at the
+--     profile delete, and the read path falls back to the default 'Former
+--     Shepherd' label whenever author_profile_id is null and author_descriptor
+--     was never stamped. No content is lost either way (the rows are retained).
+--
 -- super_admin_confidential_block loses ONLY its author arms for profile
 -- targets (a profile that merely AUTHORED notes is now purgeable — decision 1
 -- retains the notes). The SC.4 private-note arm, the profile SUBJECT arms, and
@@ -175,9 +191,15 @@ comment on function public.super_admin_confidential_block(text, uuid) is
 --    profile-specific pre-step, placed AFTER the target-row snapshot and
 --    BEFORE super_admin_collect_dependents:
 --      a. stamp the anonymized author descriptor on retained notes/prayers;
---      b. capture-then-delete the operational assignment rows (group_leaders,
---         shepherd_coverage_assignments, shepherd_care_profiles) so they never
---         reach the collector as cascade/restrict blockers.
+--      b. capture the care-profile CASCADE children (admin notes, follow-ups)
+--         for the tombstone;
+--      c. clean up the operational assignment rows (group_leaders,
+--         shepherd_coverage_assignments, shepherd_care_profiles) via
+--         DELETE ... RETURNING — capture and delete in one statement — so
+--         they never reach the collector as cascade/restrict blockers.
+--    A FOR UPDATE lock on the target's care-profile row is taken BEFORE the
+--    confidential-block check (see "Concurrency posture" in the header), so
+--    no care-profile child can slip in between check, capture, and cascade.
 --    Everything else — role gate, allowlist, super_admin forbidden-target
 --    guard, opaque confidential block, blocker refusal, tombstone + paired
 --    audit row + delete in one transaction — is unchanged.
@@ -239,10 +261,26 @@ begin
     ) then
       raise exception 'forbidden_target';
     end if;
+
+    -- #880 TOCTOU guard: lock the target's care-profile row BEFORE the
+    -- confidential-block check. A child insert (admin note, follow-up, or an
+    -- SC.4 private note) takes FOR KEY SHARE on its parent care-profile row,
+    -- which conflicts with FOR UPDATE — so holding FOR UPDATE here blocks new
+    -- children until this transaction commits, and any in-flight child insert
+    -- must commit before this lock acquires, landing in the confidential check
+    -- and the cleanup captures below. Ordering is load-bearing: lock ->
+    -- confidential check -> captures -> deletes, all in this one transaction —
+    -- without it a private note inserted after the check (or an admin note /
+    -- follow-up inserted after the captures) would cascade away un-captured.
+    perform 1
+      from public.shepherd_care_profiles
+     where shepherd_profile_id = p_id
+       for update;
   end if;
 
   -- Opaque permanent block: confidential records (SC.4 + subject-side sealed
-  -- notes) can never be deleted.
+  -- notes) can never be deleted. Runs under the care-profile lock above for
+  -- profile targets, so its answer stays true through the delete.
   if public.super_admin_confidential_block(p_entity_type, p_id) then
     raise exception 'has_confidential_records';
   end if;
@@ -271,58 +309,20 @@ begin
      where author_profile_id = p_id;
     get diagnostics v_prayers_anonymized = row_count;
 
-    -- b. Capture-then-delete the operational assignment records so their
-    --    cascade/restrict FKs never reach the collector as blockers. The
-    --    snapshots land on the tombstone (cleanup_snapshot); restore does NOT
-    --    resurrect them (see the migration header).
-    select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
-      into v_rows
-      from public.group_leaders t
-     where t.profile_id = p_id;
-    if jsonb_array_length(v_rows) > 0 then
-      v_cleanup := v_cleanup || jsonb_build_object(
-        'table', 'group_leaders',
-        'column', 'profile_id',
-        'rows', v_rows
-      );
-    end if;
-
-    select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
-      into v_rows
-      from public.shepherd_coverage_assignments t
-     where t.shepherd_profile_id = p_id;
-    if jsonb_array_length(v_rows) > 0 then
-      v_cleanup := v_cleanup || jsonb_build_object(
-        'table', 'shepherd_coverage_assignments',
-        'column', 'shepherd_profile_id',
-        'rows', v_rows
-      );
-    end if;
-
-    select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
-      into v_rows
-      from public.shepherd_care_profiles t
-     where t.shepherd_profile_id = p_id;
-    if jsonb_array_length(v_rows) > 0 then
-      v_cleanup := v_cleanup || jsonb_build_object(
-        'table', 'shepherd_care_profiles',
-        'column', 'shepherd_profile_id',
-        'rows', v_rows
-      );
-    end if;
-
-    -- c. The care-profile delete CASCADES two children — capture them first so
-    --    no care history leaves without a tombstone record:
+    -- b. The care-profile delete CASCADES two children — capture them BEFORE
+    --    the deletes below so no care history leaves without a tombstone
+    --    record (running under the FOR UPDATE care-profile lock above, so no
+    --    new child can appear between this capture and the delete):
     --      * shepherd_care_admin_notes (ON DELETE CASCADE, PK = care_profile_id,
     --        holds the admin summary);
     --      * shepherd_care_follow_ups  (ON DELETE CASCADE).
     --    The other two care-profile children never reach this cascade:
     --    shepherd_care_interactions is ON DELETE RESTRICT (the FK-violation
     --    catch below refuses the purge), and shepherd_care_private_notes —
-    --    though ON DELETE CASCADE — is refused far earlier by the preserved
-    --    SC.4 arm of super_admin_confidential_block, which runs before this
-    --    pre-step. The `column` here names the join path (care_profile_id via
-    --    the target's care profile), matching the {table, column, rows} shape.
+    --    though ON DELETE CASCADE — is refused earlier by the preserved SC.4
+    --    arm of super_admin_confidential_block, which also runs under the
+    --    lock. The `column` here names the join path (care_profile_id via the
+    --    target's care profile), matching the {table, column, rows} shape.
     select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
       into v_rows
       from public.shepherd_care_admin_notes t
@@ -351,21 +351,63 @@ begin
       );
     end if;
 
-    -- A care profile with restrict-linked children (interactions) still
-    -- refuses the purge — map the FK violation to the engine's existing
-    -- blocker token so callers see the same vocabulary either way.
+    -- c. Clean up the operational assignment records so their cascade/restrict
+    --    FKs never reach the collector as blockers. Each DELETE ... RETURNING
+    --    captures exactly the rows it removed in the SAME statement — the
+    --    snapshot can never diverge from the delete, closing the remaining
+    --    capture/delete race by construction. Snapshots land on the tombstone
+    --    (cleanup_snapshot); restore does NOT resurrect them (see the header).
+    --    A care profile with restrict-linked children (interactions) still
+    --    refuses the purge — map the FK violation to the engine's existing
+    --    blocker token so callers see the same vocabulary either way.
     begin
-      delete from public.group_leaders
-       where profile_id = p_id;
-      get diagnostics v_group_leaders_cleaned = row_count;
+      with deleted as (
+        delete from public.group_leaders
+         where profile_id = p_id
+        returning *
+      )
+      select coalesce(jsonb_agg(to_jsonb(d)), '[]'::jsonb), count(*)
+        into v_rows, v_group_leaders_cleaned
+        from deleted d;
+      if v_group_leaders_cleaned > 0 then
+        v_cleanup := v_cleanup || jsonb_build_object(
+          'table', 'group_leaders',
+          'column', 'profile_id',
+          'rows', v_rows
+        );
+      end if;
 
-      delete from public.shepherd_coverage_assignments
-       where shepherd_profile_id = p_id;
-      get diagnostics v_coverage_cleaned = row_count;
+      with deleted as (
+        delete from public.shepherd_coverage_assignments
+         where shepherd_profile_id = p_id
+        returning *
+      )
+      select coalesce(jsonb_agg(to_jsonb(d)), '[]'::jsonb), count(*)
+        into v_rows, v_coverage_cleaned
+        from deleted d;
+      if v_coverage_cleaned > 0 then
+        v_cleanup := v_cleanup || jsonb_build_object(
+          'table', 'shepherd_coverage_assignments',
+          'column', 'shepherd_profile_id',
+          'rows', v_rows
+        );
+      end if;
 
-      delete from public.shepherd_care_profiles
-       where shepherd_profile_id = p_id;
-      get diagnostics v_care_profiles_cleaned = row_count;
+      with deleted as (
+        delete from public.shepherd_care_profiles
+         where shepherd_profile_id = p_id
+        returning *
+      )
+      select coalesce(jsonb_agg(to_jsonb(d)), '[]'::jsonb), count(*)
+        into v_rows, v_care_profiles_cleaned
+        from deleted d;
+      if v_care_profiles_cleaned > 0 then
+        v_cleanup := v_cleanup || jsonb_build_object(
+          'table', 'shepherd_care_profiles',
+          'column', 'shepherd_profile_id',
+          'rows', v_rows
+        );
+      end if;
     exception
       when foreign_key_violation then
         raise exception 'has_blocking_dependents';

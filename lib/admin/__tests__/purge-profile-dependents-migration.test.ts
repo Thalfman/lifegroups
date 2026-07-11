@@ -140,23 +140,44 @@ describe("#880 — super_admin_permanent_delete profile pre-step", () => {
     expect(body).not.toContain("full_name");
   });
 
-  it("captures then deletes each operational assignment table, scoped to the target", () => {
+  it("locks the care-profile row FOR UPDATE before the confidential check (TOCTOU guard)", () => {
+    const body = functionBody(sql, "super_admin_permanent_delete");
+    // The lock statement itself: the target's care-profile row, FOR UPDATE.
+    // A child FK insert takes FOR KEY SHARE on that parent row, which
+    // conflicts with FOR UPDATE — so no care-profile child (admin note,
+    // follow-up, SC.4 private note) can appear between the confidential
+    // check, the captures, and the cascade-firing delete.
+    expect(body).toMatch(
+      /perform 1\s+from public\.shepherd_care_profiles\s+where shepherd_profile_id = p_id\s+for update/
+    );
+    // Ordering is load-bearing: lock -> confidential check -> stamps/captures.
+    const lockIdx = body.indexOf("perform 1");
+    const confidentialIdx = body.indexOf("super_admin_confidential_block");
+    const stampIdx = body.indexOf("update public.care_notes");
+    expect(lockIdx).toBeGreaterThan(-1);
+    expect(confidentialIdx).toBeGreaterThan(lockIdx);
+    expect(stampIdx).toBeGreaterThan(confidentialIdx);
+  });
+
+  it("cleans up each operational assignment table atomically (DELETE … RETURNING captures)", () => {
     const body = functionBody(sql, "super_admin_permanent_delete");
     for (const [table, column] of [
       ["group_leaders", "profile_id"],
       ["shepherd_coverage_assignments", "shepherd_profile_id"],
       ["shepherd_care_profiles", "shepherd_profile_id"],
     ] as const) {
-      // Snapshot capture (full rows, for the tombstone record)…
-      expect(body).toContain(`from public.${table} t`);
-      // …and the scoped delete.
-      expect(body).toContain(
-        `delete from public.${table}\n       where ${column} = p_id`
+      // One statement per table: the delete IS the capture (RETURNING), so
+      // the tombstone snapshot can never diverge from what was removed.
+      expect(body).toMatch(
+        new RegExp(
+          `delete from public\\.${table}\\s+where ${column} = p_id\\s+returning \\*`
+        )
       );
       // Named in the cleanup_snapshot entries.
       expect(body).toContain(`'${table}'`);
     }
-    expect(body).toContain("jsonb_agg(to_jsonb(t))");
+    // The captured rows come from the deleting CTE, not a separate read.
+    expect(body).toContain("jsonb_agg(to_jsonb(d))");
     // A restrict-linked care-profile child still refuses the purge with the
     // engine's established token, not a raw FK error.
     expect(body).toContain("when foreign_key_violation then");
