@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { readFirstRunOrientationSeen } from "@/lib/account/orientation";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 
 // The read goes through callJsonRpc, which calls client.rpc(name, args) and
 // returns { data: r.data ?? null, error: r.error }. A minimal stub mirroring
@@ -9,7 +10,7 @@ function clientReturning(result: {
   data: unknown;
   error: { message: string } | null;
 }) {
-  return { rpc: async () => result } as never;
+  return { rpc: async () => result } as unknown as AppSupabaseClient;
 }
 
 describe("readFirstRunOrientationSeen", () => {

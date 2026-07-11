@@ -7,6 +7,12 @@ import {
   type CareNeedsContactReads,
 } from "@/lib/admin/care-needs-contact";
 import type { ReadResult } from "@/lib/supabase/read-core";
+import type { ActiveShepherdCoverageAssignmentSummary } from "@/lib/supabase/shepherd-coverage-reads";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
+import type {
+  AppSettingsRow,
+  AttentionResetBaselinesRow,
+} from "@/types/database";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
 const fail = (message: string): ReadResult<never> => ({
@@ -45,12 +51,12 @@ describe("resolveCareNeedsContact", () => {
               shepherd_care_stale_days_direct: 15,
               shepherd_care_stale_days_delegated: 45,
             },
-          } as never),
+          } as unknown as AppSettingsRow),
         fetchActiveAssignments: async () =>
           ok([
             { shepherd_profile_id: "s1" },
             { shepherd_profile_id: "s2" },
-          ] as never),
+          ] as unknown as ActiveShepherdCoverageAssignmentSummary[]),
         fetchAttentionBaselines: async () =>
           ok([
             {
@@ -65,7 +71,7 @@ describe("resolveCareNeedsContact", () => {
               entity_id: "s1",
               baseline_on: "2026-06-10",
             },
-          ] as never),
+          ] as unknown as AttentionResetBaselinesRow[]),
         fetchCareDirectory: async (options) => {
           captured = options;
           return ok([]);
@@ -97,7 +103,7 @@ describe("resolveCareNeedsContact", () => {
             { profile: { id: "p1" }, needs_attention: true },
             { profile: { id: "p2" }, needs_attention: false },
             { profile: { id: "p3" }, needs_attention: true },
-          ] as never),
+          ] as unknown as ShepherdCareDirectoryEntry[]),
       }),
       { todayIso: TODAY }
     );
@@ -119,7 +125,7 @@ describe("resolveCareNeedsContact", () => {
           captured = options;
           return ok([
             { profile: { id: "p1" }, needs_attention: true },
-          ] as never);
+          ] as unknown as ShepherdCareDirectoryEntry[]);
         },
       }),
       { todayIso: TODAY }

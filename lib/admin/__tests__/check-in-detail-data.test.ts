@@ -49,7 +49,7 @@ function detailReads(
   overrides: Partial<CheckInDetailReads> = {}
 ): CheckInDetailReads {
   return {
-    fetchGroupsByIds: async () => ok([GROUP] as never),
+    fetchGroupsByIds: async () => ok([GROUP]),
     fetchAllGroupLeaders: async () =>
       ok([
         {
@@ -58,24 +58,22 @@ function detailReads(
           profile_id: LEADER_PROFILE_ID,
           active: true,
         },
-      ] as never),
+      ]),
     fetchProfilesForAdmin: async () =>
-      ok([{ id: LEADER_PROFILE_ID, full_name: "Avery Leader" }] as never),
-    fetchAttendanceSessions: async () => ok([SESSION] as never),
+      ok([{ id: LEADER_PROFILE_ID, full_name: "Avery Leader" }]),
+    fetchAttendanceSessions: async () => ok([SESSION]),
     fetchLatestHealthUpdates: async () =>
-      ok([
-        { group_id: GROUP_ID, pulse: "healthy", follow_up_needed: false },
-      ] as never),
+      ok([{ group_id: GROUP_ID, pulse: "healthy", follow_up_needed: false }]),
     fetchActiveMemberships: async () =>
       ok([
         { group_id: GROUP_ID, member_id: "m-1", status: "active" },
         { group_id: GROUP_ID, member_id: "m-2", status: "active" },
         { group_id: GROUP_ID, member_id: "m-3", status: "active" },
-      ] as never),
-    fetchMembersByIds: async () => ok(MEMBERS as never),
-    fetchAttendanceRecordsForSessions: async () => ok(RECORDS as never),
+      ]),
+    fetchMembersByIds: async () => ok(MEMBERS),
+    fetchAttendanceRecordsForSessions: async () => ok(RECORDS),
     ...overrides,
-  };
+  } as unknown as CheckInDetailReads;
 }
 
 const OPTIONS = { groupId: GROUP_ID, meetingWeek: MEETING_WEEK };

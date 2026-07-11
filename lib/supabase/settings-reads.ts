@@ -12,6 +12,7 @@ import type {
   PlatformConfigRow,
 } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
+import { callPinnedRpc } from "@/lib/shared/rpc";
 import { readBatch } from "./read-batch";
 import {
   columns,
@@ -177,7 +178,11 @@ export async function fetchPlatformConfig(
 export async function fetchAdminFeatureFlags(
   client: ReadClient
 ): Promise<ReadResult<unknown>> {
-  const { data, error } = await client.rpc("admin_read_feature_flags" as never);
+  const { data, error } = await callPinnedRpc(
+    client,
+    "admin_read_feature_flags",
+    {}
+  );
   if (error)
     return { data: null, error: wrapError("fetchAdminFeatureFlags", error) };
   return { data: data ?? null, error: null };
@@ -185,7 +190,7 @@ export async function fetchAdminFeatureFlags(
 
 // Returns the single `group_health_rubric` row from `app_settings`, holding the
 // admin-tuned Group-Health weights / cut-lines / attendance window (#129). No
-// row yet means the rubric has never been tuned; callers decode `null` to the
+// no row yet means the rubric has not been tuned; callers decode `null` to the
 // built-in rubric, so an absent row is a safe no-op rather than an error.
 export async function fetchGroupHealthRubricSetting(
   client: ReadClient
@@ -310,7 +315,7 @@ export async function fetchGroupMetricSettings(
 // Uses the shared APP_SETTINGS_COLUMNS allowlist (no select("*") on
 // launch-planning paths) and the same `isAppSettingsRow` trust-boundary
 // guard as the metric_defaults reader. A `null` data return means either
-// the row was never seeded (treat as "use built-in defaults") or the shape
+// the row was not seeded (treat as "use built-in defaults") or the shape
 // guard rejected the row.
 export async function fetchLaunchPlanningAssumptions(
   client: ReadClient

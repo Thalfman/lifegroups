@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import type { GroupHealthLatestFollowUpRow } from "@/types/database";
 import type { GroupHealthLetter } from "@/types/enums";
 import type {
   AttendanceWeekTally,
@@ -121,11 +122,8 @@ const ASSESSMENT_COLUMNS =
 // One row per group from the group_health_latest_follow_up view: the group's
 // latest assessment flag, carried across months. Exported so the types-drift
 // guard (tests/integration/support/types-drift-manifest.ts) can pin this
-// hand-rolled view row against the live view's column set.
-export type LatestFollowUpRow = {
-  group_id: string;
-  needs_follow_up: boolean;
-};
+// view row against the live view's column set.
+export type LatestFollowUpRow = GroupHealthLatestFollowUpRow;
 
 // The two admin-entered 1–5 ratings (and the spiritual-growth note) for a
 // group's month, or nulls when no assessment row exists yet. The write action
@@ -139,10 +137,8 @@ export type GroupHealthRatings = {
 // ---------------------------------------------------------------------------
 // Leaf fetchers for this module's own tables.
 //
-// The new group_health_assessments table is not in the generated supabase
-// schema types, so its select is cast in this one place — the same trust seam
-// callUuidRpc uses for admin RPCs. The group_health_latest_follow_up view read
-// sits behind the same cast for the same reason.
+// Both sources are represented in the pinned Database read types, so their
+// names, columns, and filters stay typed.
 // ---------------------------------------------------------------------------
 
 // The persisted assessment for one group + period (the ratings + last-saved
@@ -152,11 +148,11 @@ async function fetchGroupHealthAssessment(
   groupId: string,
   periodMonthIso: string
 ): Promise<ReadResult<PersistedAssessment | null>> {
-  const { data, error } = await (client as AppSupabaseClient)
-    .from("group_health_assessments" as never)
-    .select(ASSESSMENT_COLUMNS as never)
-    .eq("group_id" as never, groupId as never)
-    .eq("period_month" as never, periodMonthIso as never)
+  const { data, error } = await client
+    .from("group_health_assessments")
+    .select(ASSESSMENT_COLUMNS)
+    .eq("group_id", groupId)
+    .eq("period_month", periodMonthIso)
     .maybeSingle<PersistedAssessment>();
   if (error) return { data: null, error: toError(error) };
   return { data: data ?? null, error: null };
@@ -168,10 +164,10 @@ async function fetchGroupHealthAssessmentsForPeriod(
   client: AppSupabaseClient,
   periodMonthIso: string
 ): Promise<ReadResult<PersistedAssessment[]>> {
-  const { data, error } = await (client as AppSupabaseClient)
-    .from("group_health_assessments" as never)
-    .select(ASSESSMENT_COLUMNS as never)
-    .eq("period_month" as never, periodMonthIso as never)
+  const { data, error } = await client
+    .from("group_health_assessments")
+    .select(ASSESSMENT_COLUMNS)
+    .eq("period_month", periodMonthIso)
     .returns<PersistedAssessment[]>();
   if (error) return { data: null, error: toError(error) };
   return { data: data ?? [], error: null };
@@ -183,9 +179,9 @@ async function fetchGroupHealthAssessmentsForPeriod(
 async function fetchLatestFollowUpFlags(
   client: AppSupabaseClient
 ): Promise<ReadResult<LatestFollowUpRow[]>> {
-  const { data, error } = await (client as AppSupabaseClient)
-    .from("group_health_latest_follow_up" as never)
-    .select("group_id, needs_follow_up" as never)
+  const { data, error } = await client
+    .from("group_health_latest_follow_up")
+    .select("group_id, needs_follow_up")
     .returns<LatestFollowUpRow[]>();
   if (error) return { data: null, error: toError(error) };
   return { data: data ?? [], error: null };
@@ -197,10 +193,10 @@ async function fetchLatestFollowUpFlagForGroup(
   client: AppSupabaseClient,
   groupId: string
 ): Promise<ReadResult<LatestFollowUpRow | null>> {
-  const { data, error } = await (client as AppSupabaseClient)
-    .from("group_health_latest_follow_up" as never)
-    .select("group_id, needs_follow_up" as never)
-    .eq("group_id" as never, groupId as never)
+  const { data, error } = await client
+    .from("group_health_latest_follow_up")
+    .select("group_id, needs_follow_up")
+    .eq("group_id", groupId)
     .maybeSingle<LatestFollowUpRow>();
   if (error) return { data: null, error: toError(error) };
   return { data: data ?? null, error: null };

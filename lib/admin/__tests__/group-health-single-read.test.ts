@@ -10,6 +10,7 @@ vi.mock("@/lib/supabase/cached-config", () => ({
 }));
 
 import { getGroupHealthOverviewForGroup } from "@/lib/admin/group-health-read";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 
 const PERIOD = "2026-05-01";
 const GROUP_ID = "g-1";
@@ -92,7 +93,7 @@ describe("getGroupHealthOverviewForGroup", () => {
     });
 
     const res = await getGroupHealthOverviewForGroup(
-      client as never,
+      client as unknown as AppSupabaseClient,
       GROUP_ID,
       PERIOD
     );
@@ -118,7 +119,11 @@ describe("getGroupHealthOverviewForGroup", () => {
       attendance_records: [],
     });
 
-    await getGroupHealthOverviewForGroup(client as never, GROUP_ID, PERIOD);
+    await getGroupHealthOverviewForGroup(
+      client as unknown as AppSupabaseClient,
+      GROUP_ID,
+      PERIOD
+    );
 
     const groupReads = calls.filter((c) => c.table === "groups");
     expect(groupReads.length).toBeGreaterThan(0);
@@ -146,7 +151,7 @@ describe("getGroupHealthOverviewForGroup", () => {
     });
 
     const res = await getGroupHealthOverviewForGroup(
-      client as never,
+      client as unknown as AppSupabaseClient,
       GROUP_ID,
       PERIOD
     );

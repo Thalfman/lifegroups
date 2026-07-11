@@ -34,7 +34,7 @@ import {
 // Admin-only data; these run behind the admin layout guard and the tables'
 // admin-only RLS. The grade tables are in the typed schema (types/database.ts ›
 // group_rubric_grades / leader_rubric_grades), so the selects are fully typed —
-// no `as never` casts. The note/prayer/grant reads go through the typed client
+// no bottom-type assertions. The note/prayer/grant reads use the typed client
 // and return only what the caller's RLS admits (sealed Leaders contribute
 // nothing).
 

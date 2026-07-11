@@ -35,7 +35,7 @@ export async function fetchLeaderHealthRubric(
 
 // The persisted Leader-Health Grade row read moved to the column-allowlisted
 // reads seam (lib/supabase/rubric-grade-reads), so it is typed I/O behind
-// the seam rather than an `as never` cast. Re-exported here so the shepherd-care
+// the typed seam. Re-exported here so the shepherd-care
 // detail surface keeps its existing import and seam binding unchanged.
 export {
   fetchLeaderRubricGradeRow as fetchLeaderRubricGrade,

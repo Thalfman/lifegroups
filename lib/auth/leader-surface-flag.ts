@@ -18,6 +18,7 @@
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { log } from "@/lib/observability/logger";
+import { callPinnedRpc } from "@/lib/shared/rpc";
 
 // Resolve a frozen-surface flag (enabled AND verified) for a leader-context
 // caller. `flagKey` must be a frozen-surface key; any other key resolves to
@@ -28,14 +29,10 @@ export async function readFrozenSurfaceFlagForLeader(
 ): Promise<boolean> {
   const client = await createSupabaseServerClient();
   if (!client) return false;
-  // The RPC is not in the generated DB types yet, so the name + args are cast
-  // through `never` exactly as the other hand-pinned RPC calls do
-  // (lib/shared/rpc.ts, the lib/supabase/*-reads modules).
-  const { data, error } = await client.rpc(
-    "read_frozen_surface_flag" as never,
-    {
-      p_key: flagKey,
-    } as never
+  const { data, error } = await callPinnedRpc(
+    client,
+    "read_frozen_surface_flag",
+    { p_key: flagKey }
   );
   if (error) {
     log.error({

@@ -324,7 +324,7 @@ export function hasActiveOverrides(
 
 // Returns true when a group's latest known attendance session is older
 // than the configured warning window relative to `now`. A null session
-// means the group has never submitted a check-in, which we treat as
+// means the group has not submitted a check-in, which we treat as
 // missing iff the configured warning window has elapsed since group
 // creation -- but Phase 5A.4 only stores the inputs and lets the caller
 // supply the comparison `now`, so we keep this function purely

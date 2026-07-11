@@ -22,6 +22,7 @@ import type {
   GroupRubricGradePayload,
   LeaderHealthGradePayload,
 } from "@/lib/admin/validation";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 
 const GROUP_ID = "11111111-1111-1111-1111-111111111111";
 const PROFILE_ID = "33333333-3333-3333-3333-333333333333";
@@ -66,7 +67,7 @@ function fakeClient() {
     data: NEW_ID,
     error: null,
   }));
-  return { client: { rpc } as never, rpc };
+  return { client: { rpc } as unknown as AppSupabaseClient, rpc };
 }
 
 function payload(

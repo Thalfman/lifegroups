@@ -54,6 +54,15 @@ type UserSummary = {
   skipReason: string | null;
 };
 
+type GroupLeaderRow = {
+  id: string;
+  active: boolean;
+  role: string;
+  groups: { name: string } | null;
+};
+
+type GroupLeaderStatusRow = Pick<GroupLeaderRow, "active" | "role" | "groups">;
+type GroupLeaderAssignmentRow = Pick<GroupLeaderRow, "id" | "active">;
 type GroupsSummary = Record<
   "a" | "b",
   "exists" | "created" | "archived" | "missing"
@@ -375,14 +384,13 @@ async function handleStatus(
             .select("active, role, groups(name)")
             .eq("profile_id", p.id)
             .eq("role", spec.groupRole)
-            .maybeSingle();
+            .maybeSingle<GroupLeaderStatusRow>();
           if (glErr)
             throw new Error(`group_leaders lookup failed: ${glErr.message}`);
           if (glRow) {
-            const g = glRow as any;
-            row.groupAssignment = g.active ? "active" : "inactive";
-            row.groupName = g.groups?.name ?? null;
-            if (!g.active) allEnabled = false;
+            row.groupAssignment = glRow.active ? "active" : "inactive";
+            row.groupName = glRow.groups?.name ?? null;
+            if (!glRow.active) allEnabled = false;
           } else {
             row.groupAssignment = "none";
             allEnabled = false;
@@ -542,15 +550,15 @@ async function handleEnable(
           .eq("group_id", group.id)
           .eq("profile_id", profileId)
           .eq("role", spec.groupRole)
-          .maybeSingle();
+          .maybeSingle<GroupLeaderAssignmentRow>();
         if (glErr)
           throw new Error(`group_leaders lookup failed: ${glErr.message}`);
         if (glRow) {
-          if (!(glRow as any).active) {
+          if (!glRow.active) {
             const { error: updErr } = await service
               .from("group_leaders")
               .update({ active: true })
-              .eq("id", (glRow as any).id);
+              .eq("id", glRow.id);
             if (updErr)
               throw new Error(
                 `group_leaders reactivate failed: ${updErr.message}`

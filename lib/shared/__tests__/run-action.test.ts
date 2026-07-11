@@ -141,9 +141,13 @@ describe("runWriteAction context seam", () => {
 
   it("bails supabase_not_configured before the context step runs", async () => {
     mockCreateClient.mockResolvedValue(null);
-    const context = vi.fn();
+    const context = vi.fn(async () => ({
+      ok: true as const,
+      context: { token: "unused" },
+      fields: {},
+    }));
     const core = baseCore<{ token: string }>({
-      context: context as never,
+      context,
     });
 
     const result = await runWriteAction(core, { name: "x" });

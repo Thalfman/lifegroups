@@ -28,4 +28,4 @@ export const rpcRequestOwnAccountDeletion = (
 export const rpcMarkFirstRunOrientationSeen = (
   client: AppSupabaseClient
 ): Promise<UuidRpcResult> =>
-  callUuidRpc(client, "mark_first_run_orientation_seen");
+  callUuidRpc(client, "mark_first_run_orientation_seen", {});
