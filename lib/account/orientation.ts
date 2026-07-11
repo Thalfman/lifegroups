@@ -10,7 +10,7 @@ import { callJsonRpc } from "@/lib/shared/rpc";
 export async function readFirstRunOrientationSeen(
   client: AppSupabaseClient
 ): Promise<boolean> {
-  const r = await callJsonRpc(client, "first_run_orientation_seen");
+  const r = await callJsonRpc(client, "first_run_orientation_seen", {});
   if (r.error) return true;
   return r.data === true;
 }

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { CareNotesRow, PrayerRequestsRow } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
+import { callPinnedRpc } from "@/lib/shared/rpc";
 import { CARE_NOTE_COLUMNS, PRAYER_REQUEST_COLUMNS } from "./care-note-reads";
 import {
   projectJoinRows,
@@ -43,9 +44,11 @@ function isSealedNoteCount(v: unknown): v is SealedNoteCount {
 export async function fetchSealedNoteCounts(
   client: ReadClient
 ): Promise<ReadResult<SealedNoteCount[]>> {
-  // The RPC is not in the generated DB types; cast through `never` exactly as
-  // the other hand-pinned RPC calls do (lib/auth/leader-surface-flag.ts).
-  const { data, error } = await client.rpc("admin_sealed_note_counts" as never);
+  const { data, error } = await callPinnedRpc(
+    client,
+    "admin_sealed_note_counts",
+    {}
+  );
   if (error)
     return { data: null, error: wrapError("fetchSealedNoteCounts", error) };
   const rows: unknown = data ?? [];

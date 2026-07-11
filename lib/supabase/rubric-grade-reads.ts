@@ -69,7 +69,7 @@ export async function fetchHealthRubric(
 // interface. Admin-only data — runs under the admin layout guard and the table's
 // admin-only RLS. Column-allowlisted (named columns, never select("*")). The
 // table is in the typed schema (types/database.ts › group_rubric_grades), so the
-// select is fully typed — no `as never` cast. Resolution into an effective
+// select is fully typed with no bottom-type assertion. Resolution into an effective
 // letter stays in the model (lib/admin/group-rubric-grade), keeping this pure I/O.
 
 // One persisted Group-Health Grade row after the trust-boundary decode: the
@@ -150,7 +150,7 @@ export async function fetchGroupRubricGradeRow(
 // the reads seam (ADR 0015). Admin-only data — runs under the admin layout guard
 // and the table's admin-only RLS. Column-allowlisted (named columns, never
 // select("*")). The table is in the typed schema (types/database.ts ›
-// leader_rubric_grades), so the select is fully typed — no `as never` cast. The
+// leader_rubric_grades), so the select is fully typed without a boundary cast. The
 // raw jsonb `criterion_scores` is decoded to a clean Record at the trust
 // boundary here; the effective-letter resolution lives in the model.
 

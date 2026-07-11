@@ -24,8 +24,9 @@ vi.mock("@/lib/supabase/overview-reads", () => ({
 }));
 
 import { loadHubStats } from "../hub-stats";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 
-const client = {} as never;
+const client = {} as unknown as AppSupabaseClient;
 
 beforeEach(() => {
   vi.clearAllMocks();

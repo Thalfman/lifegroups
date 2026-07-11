@@ -87,6 +87,11 @@ export interface GroupHealthAssessmentsRow {
   needs_follow_up: boolean;
 }
 
+export interface GroupHealthLatestFollowUpRow {
+  group_id: UUID;
+  needs_follow_up: boolean;
+}
+
 export interface GroupLeadersRow {
   id: UUID;
   group_id: UUID;
@@ -1248,7 +1253,12 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      group_health_latest_follow_up: {
+        Row: GroupHealthLatestFollowUpRow;
+        Relationships: [];
+      };
+    };
     Functions: {
       admin_create_leader_profile: {
         Args: { p_full_name: string; p_email: string; p_phone: string | null };

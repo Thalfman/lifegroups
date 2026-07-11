@@ -136,7 +136,7 @@ function makeSelectCapturingClient(
       returns: () => builder,
       maybeSingle: async () => ({ data: null, error: null }),
       then: (onFulfilled, onRejected) =>
-        Promise.resolve({ data: [] as never[], error: null }).then(
+        Promise.resolve({ data: [], error: null }).then(
           onFulfilled,
           onRejected
         ),

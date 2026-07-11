@@ -2,8 +2,8 @@
 // ADR 0001). One typed table per channel maps each LITERAL Postgres function
 // name to its argument shape; the generic entry points (`adminRpc`,
 // `adminJsonRpc`, `adminTextRpc`) pin name + args together at the call site
-// and delegate to `lib/shared/rpc.ts`, which owns the supabase-js `as never`
-// cast and the per-channel trust-boundary read. The gateway does no
+// and delegate to `lib/shared/rpc.ts`, which owns the pinned boundary adapter
+// and the per-channel trust-boundary read. The gateway does no
 // validation of its own -- the action layer validates first.
 //
 // This module is now a thin BARREL: the named argument shapes and the per-

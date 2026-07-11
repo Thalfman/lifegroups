@@ -8,6 +8,8 @@ import {
   careCadenceWindowsFromDefaults,
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
+import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/shepherd-care-directory-reads";
+import type { AppSettingsRow } from "@/types/database";
 import type { ReadResult } from "@/lib/supabase/read-core";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
@@ -18,7 +20,8 @@ const fail = (message: string): ReadResult<never> => ({
 
 // The directory assembly is covered by over-shepherd-reads.test.ts; here an
 // entry is opaque — the build function only counts and forwards them.
-const entry = (shepherdProfileId: string) => ({ shepherdProfileId }) as never;
+const entry = (shepherdProfileId: string) =>
+  ({ shepherdProfileId }) as unknown as ShepherdCareDirectoryEntry;
 
 const coverage = (coveredShepherdIds: string[]) => ({
   data: { overShepherdId: "os-1", coveredShepherdIds },
@@ -107,7 +110,7 @@ describe("buildOverShepherdData", () => {
         shepherd_care_stale_days_direct: 21,
         shepherd_care_stale_days_delegated: 45,
       },
-    } as never;
+    } as unknown as AppSettingsRow;
     await buildOverShepherdData(
       landingReads({
         fetchMetricDefaultsCached: async () => ok(settingsRow),

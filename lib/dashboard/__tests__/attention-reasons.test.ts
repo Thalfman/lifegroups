@@ -102,7 +102,9 @@ describe("collectReasonsFor — dead reporting loop removed", () => {
   it("still surfaces live operational reasons (capacity, follow-ups)", () => {
     const row = healthyRow({
       capacityStatusValue: "full",
-      followUpsForGroup: [{ id: "x" } as never],
+      followUpsForGroup: [
+        { id: "x" } as unknown as DerivedGroupRow["followUpsForGroup"][number],
+      ],
     });
     const reasons = collectReasonsFor(row);
     expect(reasons).toContain("capacity_full");

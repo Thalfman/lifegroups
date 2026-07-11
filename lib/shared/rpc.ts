@@ -1,31 +1,100 @@
-// Single gateway for the narrow SECURITY DEFINER RPCs. Every
-// admin_*/leader_*/super_admin_* call repeats the same two boundary
-// casts: the `as never` that sidesteps supabase-js' generic resolution
-// (our hand-rolled Database type doesn't structurally match its internal
-// GenericSchema, in ways that don't affect `.from()` calls), and the
-// per-channel trust-boundary read of the value the RPC returns on success
-// (uuid / jsonb / text). This collapses both into one place. The
-// per-surface modules (`lib/admin/rpc.ts`, `lib/leader/rpc.ts`,
-// `lib/over-shepherd/rpc.ts`) layer a declarative, typed RPC table on top:
-// one args map per channel keyed by the LITERAL Postgres function name,
-// plus a generic entry point (`adminRpc`, `leaderRpc`, `overShepherdRpc`,
-// ...) whose key parameter pins the function name and argument shape
-// together at the call site.
+// Single runtime gateway for the hand-pinned RPC registry. The generated
+// Database function map is incomplete until #864, so supabase-js cannot type
+// every live RPC directly. `rpcMethod` is the one explicit adapter from that
+// incomplete generated surface to our complete pinned registry; every exported
+// caller still pins the literal function name to its exact args at compile time.
+// The per-channel helpers also preserve the existing uuid/jsonb/text trust-
+// boundary reads.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { readUuidRpcData } from "@/lib/shared/uuid";
+import type {
+  AccountJsonRpcArgs,
+  AccountUuidRpcArgs,
+  PinnedAdminJsonRpcArgs,
+  PinnedAdminUuidRpcArgs,
+  PinnedLeaderUuidRpcArgs,
+  PinnedOverShepherdUuidRpcArgs,
+  PinnedRpcArgsFor,
+  PinnedRpcName,
+  PinnedTextRpcArgs,
+  UsageUuidRpcArgs,
+} from "@/lib/shared/rpc-registry";
+
+export type RpcBoundaryError = {
+  message: string;
+  code?: string;
+};
+
+export type RawRpcResult = {
+  data: unknown;
+  error: RpcBoundaryError | null;
+};
+
+type RpcBoundaryMethod = (
+  name: string,
+  args: unknown
+) => PromiseLike<RawRpcResult>;
+
+function rpcMethod(client: AppSupabaseClient): RpcBoundaryMethod {
+  // Keep the receiver bound: supabase-js reads client state through `this`.
+  // The assertion is confined to this adapter; callers cannot supply an
+  // unregistered name or a mismatched args object.
+  return client.rpc.bind(client) as unknown as RpcBoundaryMethod;
+}
+
+async function invokeRpc(
+  client: AppSupabaseClient,
+  name: string,
+  args: unknown
+): Promise<RawRpcResult> {
+  return rpcMethod(client)(name, args);
+}
+
+export function callPinnedRpc<Name extends PinnedRpcName>(
+  client: AppSupabaseClient,
+  name: Name,
+  args: PinnedRpcArgsFor<Name>
+): Promise<RawRpcResult> {
+  return invokeRpc(client, name, args);
+}
 
 export type UuidRpcResult = {
   data: string | null;
   error: { message: string } | null;
 };
 
+export function callUuidRpc<Name extends keyof PinnedAdminUuidRpcArgs>(
+  client: AppSupabaseClient,
+  name: Name,
+  args: PinnedAdminUuidRpcArgs[Name]
+): Promise<UuidRpcResult>;
+export function callUuidRpc<Name extends keyof PinnedLeaderUuidRpcArgs>(
+  client: AppSupabaseClient,
+  name: Name,
+  args: PinnedLeaderUuidRpcArgs[Name]
+): Promise<UuidRpcResult>;
+export function callUuidRpc<Name extends keyof PinnedOverShepherdUuidRpcArgs>(
+  client: AppSupabaseClient,
+  name: Name,
+  args: PinnedOverShepherdUuidRpcArgs[Name]
+): Promise<UuidRpcResult>;
+export function callUuidRpc<Name extends keyof AccountUuidRpcArgs>(
+  client: AppSupabaseClient,
+  name: Name,
+  args: AccountUuidRpcArgs[Name]
+): Promise<UuidRpcResult>;
+export function callUuidRpc<Name extends keyof UsageUuidRpcArgs>(
+  client: AppSupabaseClient,
+  name: Name,
+  args: UsageUuidRpcArgs[Name]
+): Promise<UuidRpcResult>;
 export async function callUuidRpc(
   client: AppSupabaseClient,
   name: string,
-  args: unknown = {}
+  args: unknown
 ): Promise<UuidRpcResult> {
-  const r = await client.rpc(name as never, args as never);
+  const r = await invokeRpc(client, name, args);
   return { data: readUuidRpcData(r.data), error: r.error };
 }
 
@@ -39,12 +108,22 @@ export type JsonRpcResult = {
   error: { message: string } | null;
 };
 
+export function callJsonRpc<Name extends keyof PinnedAdminJsonRpcArgs>(
+  client: AppSupabaseClient,
+  name: Name,
+  args: PinnedAdminJsonRpcArgs[Name]
+): Promise<JsonRpcResult>;
+export function callJsonRpc<Name extends keyof AccountJsonRpcArgs>(
+  client: AppSupabaseClient,
+  name: Name,
+  args: AccountJsonRpcArgs[Name]
+): Promise<JsonRpcResult>;
 export async function callJsonRpc(
   client: AppSupabaseClient,
   name: string,
-  args: unknown = {}
+  args: unknown
 ): Promise<JsonRpcResult> {
-  const r = await client.rpc(name as never, args as never);
+  const r = await invokeRpc(client, name, args);
   return { data: r.data ?? null, error: r.error };
 }
 
@@ -59,12 +138,12 @@ export type TextRpcResult = {
   error: { message: string } | null;
 };
 
-export async function callTextRpc(
+export async function callTextRpc<Name extends keyof PinnedTextRpcArgs>(
   client: AppSupabaseClient,
-  name: string,
-  args: unknown = {}
+  name: Name,
+  args: PinnedTextRpcArgs[Name]
 ): Promise<TextRpcResult> {
-  const r = await client.rpc(name as never, args as never);
+  const r = await invokeRpc(client, name, args);
   const data: unknown = r.data ?? null;
   return { data: typeof data === "string" ? data : null, error: r.error };
 }

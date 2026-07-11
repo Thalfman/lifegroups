@@ -13,15 +13,17 @@ describe("callUuidRpc", () => {
   it("forwards the function name and args to the supabase client", async () => {
     const { client, rpc } = clientReturning({ data: UUID, error: null });
 
-    await callUuidRpc(client, "admin_create_group", { p_name: "Alpha" });
+    await callUuidRpc(client, "admin_close_group", { p_group_id: UUID });
 
-    expect(rpc).toHaveBeenCalledWith("admin_create_group", { p_name: "Alpha" });
+    expect(rpc).toHaveBeenCalledWith("admin_close_group", {
+      p_group_id: UUID,
+    });
   });
 
-  it("defaults args to an empty object for no-argument RPCs", async () => {
+  it("forwards an empty args object for no-argument RPCs", async () => {
     const { client, rpc } = clientReturning({ data: UUID, error: null });
 
-    await callUuidRpc(client, "admin_reset_metric_defaults");
+    await callUuidRpc(client, "admin_reset_metric_defaults", {});
 
     expect(rpc).toHaveBeenCalledWith("admin_reset_metric_defaults", {});
   });
@@ -30,7 +32,9 @@ describe("callUuidRpc", () => {
     const upper = "ABCDEF12-3456-7890-ABCD-EF1234567890";
     const { client } = clientReturning({ data: upper, error: null });
 
-    const result = await callUuidRpc(client, "admin_create_group", {});
+    const result = await callUuidRpc(client, "admin_close_group", {
+      p_group_id: UUID,
+    });
 
     expect(result).toEqual({ data: upper.toLowerCase(), error: null });
   });
@@ -38,7 +42,9 @@ describe("callUuidRpc", () => {
   it("returns null data when the RPC yields a non-uuid value", async () => {
     const { client } = clientReturning({ data: "rejected", error: null });
 
-    const result = await callUuidRpc(client, "admin_create_group", {});
+    const result = await callUuidRpc(client, "admin_close_group", {
+      p_group_id: UUID,
+    });
 
     expect(result.data).toBeNull();
   });
@@ -47,7 +53,9 @@ describe("callUuidRpc", () => {
     const error = { message: "insufficient_privilege" };
     const { client } = clientReturning({ data: null, error });
 
-    const result = await callUuidRpc(client, "admin_create_group", {});
+    const result = await callUuidRpc(client, "admin_close_group", {
+      p_group_id: UUID,
+    });
 
     expect(result).toEqual({ data: null, error });
   });

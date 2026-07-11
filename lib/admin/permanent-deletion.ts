@@ -800,7 +800,7 @@ export function findPermanentDeletionEntity(
 // invitations, attendance records, launch-planning records, …) still requires the
 // PERMANENTLY DELETE phrase on the danger-zone card. Keeping this explicit, rather
 // than "anything in the registry", means a crafted no-phrase request can't drop a
-// target the quick-confirm UX was never meant to cover. Every token here must also
+// target the quick-confirm UX was not meant to cover. Every token here must also
 // be a registered PERMANENT_DELETION_ENTITIES entry (asserted in tests).
 export const INLINE_DELETABLE_ENTITY_TYPES: ReadonlySet<string> = new Set([
   // Care surface (the original ask): everything under Care except the

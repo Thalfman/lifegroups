@@ -10,6 +10,7 @@
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { isUuid } from "@/lib/shared/uuid";
+import { callPinnedRpc } from "@/lib/shared/rpc";
 
 export type OverShepherdCoverage = {
   overShepherdId: string;
@@ -53,9 +54,11 @@ export async function fetchOverShepherdCoverageForCaller(
     return { data: null, error: new Error("Database is not configured.") };
   }
 
-  const result = await client.rpc("over_shepherd_caller_coverage" as never);
-  const error = result.error as { message: string } | null;
-  const data: unknown = result.data;
+  const { data, error } = await callPinnedRpc(
+    client,
+    "over_shepherd_caller_coverage",
+    {}
+  );
 
   if (error) {
     return {

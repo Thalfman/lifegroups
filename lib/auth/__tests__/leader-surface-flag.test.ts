@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { readFrozenSurfaceFlagForLeader } from "@/lib/auth/leader-surface-flag";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 
 const { mockCreateClient } = vi.hoisted(() => ({
   mockCreateClient: vi.fn(),
@@ -17,7 +18,7 @@ vi.mock("@/lib/observability/logger", () => ({
 // Stub client exposing only the rpc surface the module touches.
 function clientWithRpc(result: { data: unknown; error: unknown }) {
   const rpc = vi.fn(async () => result);
-  return { client: { rpc } as never, rpc };
+  return { client: { rpc } as unknown as AppSupabaseClient, rpc };
 }
 
 // The flag read is an authorization gate for the whole /leader surface and is
