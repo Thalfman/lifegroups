@@ -50,6 +50,14 @@ describe("IL.2 migration — check_invite_redeem_rate", () => {
     );
   });
 
+  it("covers keyed peer-IP attempts but deliberately permits a missing key", () => {
+    const body = functionBody(sql, "check_invite_redeem_rate");
+    expect(body).toMatch(
+      /if p_key is null or btrim\(p_key\) = '' then\s+return true;/
+    );
+    expect(body).toContain("where throttle_key = p_key");
+  });
+
   it("serializes same-key checks with a per-key advisory lock", () => {
     const body = functionBody(sql, "check_invite_redeem_rate");
     expect(body).toContain("pg_advisory_xact_lock");

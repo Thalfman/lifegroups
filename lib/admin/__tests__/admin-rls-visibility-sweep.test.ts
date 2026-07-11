@@ -32,7 +32,7 @@ import {
 //      negative ladder needs the post-override state.
 //
 // Visibility classes (who may SELECT):
-//   ADMIN_READ            — both admins (auth_is_admin / auth_is_admin_or_staff).
+//   ADMIN_READ            — both admins (auth_is_admin).
 //   CONFIG_SCOPED         — admins read all keys; non-admins read one shared key.
 //   SUPER_ADMIN_ONLY      — super_admin only; Ministry Admin EXCLUDED.
 //   LEADER_SCOPED         — admins read all; a leader reads their group's rows.

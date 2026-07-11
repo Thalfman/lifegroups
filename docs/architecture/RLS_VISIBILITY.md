@@ -19,10 +19,8 @@ interactive diagrams.net viewer link — lives in
 Read access is enforced in Postgres by RLS `USING` predicates, gating on
 `profiles.role` via helper functions — never on hardcoded UUIDs/emails:
 
-- `auth_is_admin()` → `role in ('super_admin','ministry_admin')`.
-- `auth_is_admin_or_staff()` → identical to `auth_is_admin()` since `staff_viewer`
-  was retired (`20260531140000`); the name is kept so the many SELECT policies
-  that call it need no change.
+- `(select public.auth_is_admin())` → `role in ('super_admin','ministry_admin')`,
+  InitPlan-wrapped so the result is computed once per statement.
 - `auth_role() = 'super_admin'` → Super Admin only.
 - `auth_is_leader_of(group_id)`, `over_shepherd_covered_profile_ids()`,
   `auth_over_shepherd_id()` → group / coverage scoping.
@@ -35,7 +33,7 @@ Read access is enforced in Postgres by RLS `USING` predicates, gating on
 | **ADMIN_READ**             | Super Admin + Ministry Admin (identical)                        | `auth_is_admin()`                                      |
 | **CONFIG_SCOPED**          | Admins read all keys; non-admins read one shared key            | `auth_is_admin() or setting_key = '...'`               |
 | **SUPER_ADMIN_ONLY**       | Super Admin only — **Ministry Admin excluded**                  | `auth_role() = 'super_admin'`                          |
-| **LEADER_SCOPED**          | Admins read all; a Leader reads their group's rows              | `auth_is_admin_or_staff() or auth_is_leader_of(...)`   |
+| **LEADER_SCOPED**          | Admins read all; a Leader reads their group's rows              | `auth_is_admin() or auth_is_leader_of(...)`            |
 | **OVER_SHEPHERD_SCOPED**   | Admins read all; an Over-Shepherd reads their coverage          | `auth_is_admin[...]() or <coverage>`                   |
 | **CARE_NOTE_EXCEPTION**    | Author always; ladder only on the **same active grant**         | author `or (auth_is_admin() and grant)`                |
 | **PRIVATE_NOTE_EXCEPTION** | Creator-only Ministry Admin — **Super Admin excluded**          | `auth_role() = 'ministry_admin' and created_by = self` |

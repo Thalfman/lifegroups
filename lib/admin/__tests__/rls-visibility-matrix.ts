@@ -80,14 +80,20 @@ const M = {
   // group-catalog tables dropped by collapseCells and the two SC.4
   // creator-scoped policies were not recreated and keep their old pointers.)
   initplanWrap: "20260714010000_rls_initplan_wrap_noarg_helpers.sql",
+  // #866 last-writes the 11 leader-scoped policies plus profiles after
+  // replacing only the dead admin-or-staff helper with the wrapped admin helper.
+  staffViewerCollapse: "20260717000000_collapse_staff_viewer_helpers.sql",
 } as const;
 
-// Token bundles shared by a whole class. Helper calls appear in their #860
+// Token bundles shared by a whole class. Helper calls appear in their #860/#866
 // InitPlan-wrapped form — `(select public.helper())` — where the wrapping
 // changes the surrounding text a token pins.
-const ADMIN = ["auth_is_admin"] as const; // matches auth_is_admin() + _or_staff()
+const ADMIN = ["auth_is_admin"] as const;
 const SUPER = ["(select public.auth_role()) = 'super_admin'"] as const;
-const LEADER = ["auth_is_admin_or_staff()", "auth_is_leader_of"] as const;
+const LEADER = [
+  "(select public.auth_is_admin())",
+  "auth_is_leader_of",
+] as const;
 const CARE_NOTE = [
   "author_profile_id = (select public.auth_profile_id())",
   "public.auth_is_admin()",
@@ -375,77 +381,77 @@ export const MATRIX: readonly RlsExpectation[] = [
   {
     table: "groups",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "groups_read",
     expect: LEADER,
   },
   {
     table: "group_leaders",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "group_leaders_read",
     expect: LEADER,
   },
   {
     table: "members",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "members_read",
     expect: LEADER,
   },
   {
     table: "group_memberships",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "group_memberships_read",
     expect: LEADER,
   },
   {
     table: "attendance_sessions",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "attendance_sessions_read",
     expect: LEADER,
   },
   {
     table: "attendance_records",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "attendance_records_read",
     expect: LEADER,
   },
   {
     table: "guests",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "guests_read",
     expect: LEADER,
   },
   {
     table: "follow_ups",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "follow_ups_read",
     expect: LEADER,
   },
   {
     table: "group_health_updates",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "group_health_updates_read",
     expect: LEADER,
   },
   {
     table: "group_status_history",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "group_status_history_read",
     expect: LEADER,
   },
   {
     table: "group_calendar_events",
     cls: "LEADER_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "group_calendar_events_read",
     expect: LEADER,
   },
@@ -454,9 +460,12 @@ export const MATRIX: readonly RlsExpectation[] = [
   {
     table: "profiles",
     cls: "OVER_SHEPHERD_SCOPED",
-    authoritativeMigration: M.initplanWrap,
+    authoritativeMigration: M.staffViewerCollapse,
     policyName: "profiles_read",
-    expect: ["auth_is_admin_or_staff()", "over_shepherd_covered_profile_ids"],
+    expect: [
+      "(select public.auth_is_admin())",
+      "over_shepherd_covered_profile_ids",
+    ],
   },
   {
     table: "shepherd_care_profiles",

@@ -13,10 +13,10 @@ import { log } from "@/lib/observability/logger";
 // password-reset stays available; a `rate_limit_backend_error` line is
 // emitted for ops visibility.
 //
-// When the caller cannot determine a client IP (no trusted forwarded
-// header present) it passes `ip: null` so the per-IP bucket is skipped,
-// preventing all `unknown`-keyed callers from sharing a single bucket and
-// throttling each other (a cross-user denial of service).
+// Forgot-password callers with no trusted client IP skip only the IP bucket;
+// its email bucket still provides enforcement. Invite-redeem has no secondary
+// identity dimension, so null-IP calls use a generous shared fallback bucket
+// instead of bypassing throttling entirely.
 
 type LimiterPair = {
   ip: Ratelimit;
@@ -73,21 +73,39 @@ function getLimiters(): LimiterPair | null {
   return cached;
 }
 
-// Invite-redeem limiter (Phase IL.1). A separate per-IP sliding window guards
+// Invite-redeem limiters (Phase IL.1). A separate per-IP sliding window guards
 // the public /invite redemption endpoint against token brute-forcing and mass
 // self-signup. Lazily built and cached like the forgot-password pair; shares
 // the same Upstash credentials and the same fail-open posture.
-let cachedRedeem: Ratelimit | null | undefined;
+type InviteRedeemLimiters = {
+  ip: Ratelimit;
+  fallback: Ratelimit;
+};
 
-function buildRedeemLimiter(): Ratelimit | null {
+const INVITE_REDEEM_FALLBACK_KEY = "global";
+
+let cachedRedeem: InviteRedeemLimiters | null | undefined;
+
+function buildRedeemLimiters(): InviteRedeemLimiters | null {
   const redis = getRedis();
   if (!redis) return null;
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, "15 m"),
-    prefix: "rl:invredeem:ip",
-    analytics: false,
-  });
+  return {
+    ip: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, "15 m"),
+      prefix: "rl:invredeem:ip",
+      analytics: false,
+    }),
+    // Trusted-proxy resolution failures should be rare. Fifty attempts per
+    // 15 minutes leaves room for legitimate shared traffic while bounding an
+    // otherwise-unlimited token-guessing stream.
+    fallback: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(50, "15 m"),
+      prefix: "rl:invredeem:fallback",
+      analytics: false,
+    }),
+  };
 }
 
 export type InviteRedeemLimitInput = {
@@ -102,17 +120,27 @@ export type InviteRedeemLimitResult =
 export async function checkInviteRedeemLimit(
   input: InviteRedeemLimitInput
 ): Promise<InviteRedeemLimitResult> {
-  if (cachedRedeem === undefined) cachedRedeem = buildRedeemLimiter();
-  const limiter = cachedRedeem;
-  if (!limiter) {
+  if (cachedRedeem === undefined) cachedRedeem = buildRedeemLimiters();
+  const limiters = cachedRedeem;
+  if (!limiters) {
     warnDisabledOnce("invite-redeem", input.requestId);
     return { configured: false };
   }
-  // No IP available (untrusted proxy header) -> skip the per-IP bucket rather
-  // than collapse every caller into one shared key.
-  if (!input.ip) return { configured: true, allowed: true };
+
+  const usesFallback = input.ip === null;
+  const limiter = usesFallback ? limiters.fallback : limiters.ip;
+  const key = input.ip ?? INVITE_REDEEM_FALLBACK_KEY;
   try {
-    const res = await limiter.limit(input.ip);
+    const res = await limiter.limit(key);
+    if (usesFallback && !res.success) {
+      log.warn({
+        event: "invite_redeem_throttled",
+        outcome: "throttled",
+        route_or_action: "invite-redeem",
+        request_id: input.requestId,
+        dimension: "global_fallback",
+      });
+    }
     return { configured: true, allowed: res.success };
   } catch (err) {
     log.error({

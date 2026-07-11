@@ -94,9 +94,11 @@ export async function redeemInviteAction(
     return { error: "Signup is not configured on this deployment." };
   }
 
-  // The per-IP limit above guards the browser flow; the Edge Function applies
-  // its own always-on DB-backed per-IP throttle so a direct POST can't bypass
-  // rate limiting (Phase IL.2).
+  // The Upstash check above guards the browser flow, including a coarse null-IP
+  // fallback before any Edge/DB work. The Edge Function separately applies an
+  // always-on DB-backed 100-per-15-minute peer-IP throttle so direct POSTs can't
+  // bypass Next. That DB RPC deliberately permits a missing peer-IP key, making
+  // the app fallback complementary defense in depth rather than duplication.
   const { data, error } = await client.functions.invoke<EdgeResponse>(
     "redeem-invite",
     { body: { token, full_name: fullName, email, password } }
