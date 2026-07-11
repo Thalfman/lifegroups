@@ -37,9 +37,10 @@ fi
 LOG_TAG="e2e"
 # Reads the local stack, applies the seed, seeds the test auth users, and
 # exports the app's Supabase env (defines log/fail; aborts on any non-local
-# stack). The service-role key stays inline on the seed command in there and is
+# stack). The seed's own privileged env (SUPABASE_SERVICE_ROLE_KEY + the
+# ENABLE_TEST_AUTH_USERS gate) stays inline on the seed command in there and is
 # never exported into this shell — so the Next server Playwright builds below
-# cannot inherit it.
+# cannot inherit it under the name the runtime would read.
 # shellcheck source=scripts/seeded-local-stack.sh
 . "$ROOT_DIR/scripts/seeded-local-stack.sh"
 
@@ -48,6 +49,24 @@ export E2E_ADMIN_EMAIL="$TEST_ADMIN_EMAIL"
 export E2E_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD"
 export E2E_OVER_SHEPHERD_EMAIL="$TEST_OVERSHEPHERD_EMAIL"
 export E2E_OVER_SHEPHERD_PASSWORD="$TEST_OVERSHEPHERD_PASSWORD"
+export E2E_LEADER_EMAIL="$TEST_LEADER1_EMAIL"
+export E2E_LEADER_PASSWORD="$TEST_LEADER1_PASSWORD"
+
+# Service-role access for the PLAYWRIGHT TEST PROCESS ONLY (tests/e2e/db.ts):
+# audit-pairing assertions and the invite spec's super-admin fixture (the seed
+# tooling refuses to create a super_admin). Two layers keep the repo invariant
+# (no service-role key in the Next runtime): the name is deliberately NOT
+# SUPABASE_SERVICE_ROLE_KEY (runtime code never reads any E2E_* variable), and
+# playwright.e2e.config.ts blanks E2E_SERVICE_ROLE_KEY in the webServer env so
+# the served app's process holds no service-role credential at all.
+export E2E_SUPABASE_URL="$SUPABASE_URL_LOCAL"
+export E2E_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY_LOCAL"
+
+# The invite-redeem spec provisions/reuses its own super_admin via
+# tests/e2e/db.ts ensureSuperAdmin() (create-or-reuse, local stack only);
+# these are the credentials it pins.
+export E2E_SUPER_ADMIN_EMAIL="${E2E_SUPER_ADMIN_EMAIL:-test.superadmin@lifegroups.local}"
+export E2E_SUPER_ADMIN_PASSWORD="${E2E_SUPER_ADMIN_PASSWORD:-route-smoke-superadmin-pw}"
 
 # Playwright builds + serves the app itself (webServer in
 # playwright.e2e.config.ts) with NO a11y harness — the real routes only. Pass

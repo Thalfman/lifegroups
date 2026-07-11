@@ -143,6 +143,55 @@ describe("superAdminPermanentDeletePreflight", () => {
       expect(result.value.blockers).toHaveLength(1);
       expect(result.value.blockers[0].count).toBe(3);
       expect(result.value.setNull[0].count).toBe(2);
+      // A report without the #880 cleanup key degrades to an empty bucket.
+      expect(result.value.cleanup).toEqual([]);
+    }
+  });
+
+  it("parses the #880 cleanup bucket without letting it gate deletable", async () => {
+    // An encumbered profile: the engine cleans these up in-transaction, so the
+    // preflight reports them as cleanup — announced work, not blockers.
+    rpc.mockResolvedValue({
+      data: {
+        deletable: true,
+        forbidden: false,
+        confidential: false,
+        blockers: [],
+        cleanup: [
+          { table: "group_leaders", column: "profile_id", count: 1 },
+          {
+            table: "shepherd_coverage_assignments",
+            column: "shepherd_profile_id",
+            count: 1,
+          },
+        ],
+        set_null: [
+          { table: "care_notes", column: "author_profile_id", count: 2 },
+        ],
+      },
+      error: null,
+    });
+    const result = await superAdminPermanentDeletePreflight(undefined, {
+      entityType: "profile",
+      id: SCENARIO,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.deletable).toBe(true);
+      expect(result.value.blockers).toHaveLength(0);
+      expect(result.value.cleanup).toEqual([
+        { table: "group_leaders", column: "profile_id", count: 1 },
+        {
+          table: "shepherd_coverage_assignments",
+          column: "shepherd_profile_id",
+          count: 1,
+        },
+      ]);
+      expect(result.value.setNull[0]).toEqual({
+        table: "care_notes",
+        column: "author_profile_id",
+        count: 2,
+      });
     }
   });
 

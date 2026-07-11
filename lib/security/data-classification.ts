@@ -366,6 +366,10 @@ export const DATA_CLASSIFICATION: readonly TableClassification[] = [
     columns: [
       { column: "row_snapshot", classification: "danger_zone_snapshot" },
       { column: "set_null_dependents", classification: "danger_zone_snapshot" },
+      // #880: full row snapshots of the operational records a profile purge
+      // removed in-transaction (incl. shepherd_care_admin_notes.admin_summary)
+      // — the same before-image class as row_snapshot.
+      { column: "cleanup_snapshot", classification: "danger_zone_snapshot" },
     ],
     note: "Permanent-deletion before-image; super_admin-only.",
   },

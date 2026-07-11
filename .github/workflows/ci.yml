@@ -67,6 +67,7 @@ jobs:
               - "supabase/seed/**" # repo uses the seed/ DIRECTORY, not a single seed.sql
               - "supabase/functions/**"
               - "lib/auth/**"
+              - "types/**" # hand-rolled trust boundary — types-drift guard (#864) proves it against the live schema
               - "lib/**/*read*.ts" # *-reads.ts, read-model*.ts, *-read.ts read paths
               - "lib/**/*rpc*.ts" # typed SECURITY DEFINER write wrappers (rpc.ts, *-rpc.ts)
               - "app/**/*actions.ts" # server actions: actions.ts AND *-actions.ts suffixes

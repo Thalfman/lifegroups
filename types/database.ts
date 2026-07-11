@@ -314,6 +314,9 @@ export interface AttentionResetSnapshotsRow {
 // never itself a delete target. Writes only via the super_admin_* SECURITY
 // DEFINER RPCs. row_snapshot is the full deleted row; set_null_dependents is the
 // array of {table, column, ids} the delete nulled, so restore (#315) can re-link.
+// Issue #880: cleanup_snapshot captures the operational assignment rows a
+// profile purge deleted pre-flight ({table, column, rows}); restore
+// deliberately does NOT resurrect them.
 export interface TombstonesRow {
   id: UUID;
   entity_type: string;
@@ -325,6 +328,11 @@ export interface TombstonesRow {
     column: string;
     ids: UUID[];
     count?: number;
+  }>;
+  cleanup_snapshot: Array<{
+    table: string;
+    column: string;
+    rows: Array<Record<string, unknown>>;
   }>;
   deleted_by: UUID | null;
   deleted_at: Timestamp;
@@ -565,9 +573,14 @@ export interface NoteTransparencyGrantsRow {
 // Over-Shepherd note about a leader) OR a group (a leader note about their
 // group). Exactly one of subject_profile_id / subject_group_id is set, enforced
 // by the care_notes_one_subject / prayer_requests_one_subject DB checks.
+// Issue #880: author_profile_id is nullable (ON DELETE SET NULL — a purged
+// author's notes are retained), with author_descriptor as the anonymized
+// authorship label ("Former Shepherd") the purge stamps in place. The read
+// path consults the descriptor only when author_profile_id is null.
 export interface CareNotesRow {
   id: UUID;
-  author_profile_id: UUID;
+  author_profile_id: UUID | null;
+  author_descriptor: string | null;
   subject_profile_id: UUID | null;
   subject_group_id: UUID | null;
   body: string;
@@ -577,7 +590,8 @@ export interface CareNotesRow {
 
 export interface PrayerRequestsRow {
   id: UUID;
-  author_profile_id: UUID;
+  author_profile_id: UUID | null;
+  author_descriptor: string | null;
   subject_profile_id: UUID | null;
   subject_group_id: UUID | null;
   body: string;
@@ -935,6 +949,7 @@ export interface Database {
           TombstonesRow,
           | "id"
           | "set_null_dependents"
+          | "cleanup_snapshot"
           | "deleted_by"
           | "deleted_at"
           | "restored_at"
@@ -1093,7 +1108,10 @@ export interface Database {
       };
       care_notes: {
         Row: CareNotesRow;
-        Insert: InsertOf<CareNotesRow, "id" | "created_at" | "updated_at">;
+        Insert: InsertOf<
+          CareNotesRow,
+          "id" | "created_at" | "updated_at" | "author_descriptor"
+        >;
         Update: Partial<CareNotesRow>;
         Relationships: [];
       };
@@ -1101,7 +1119,7 @@ export interface Database {
         Row: PrayerRequestsRow;
         Insert: InsertOf<
           PrayerRequestsRow,
-          "id" | "created_at" | "updated_at" | "status"
+          "id" | "created_at" | "updated_at" | "status" | "author_descriptor"
         >;
         Update: Partial<PrayerRequestsRow>;
         Relationships: [];

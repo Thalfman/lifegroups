@@ -19,6 +19,7 @@
     "test:coverage": "npm run verify:toolchain && vitest run --coverage",
     "test:a11y": "npm run verify:toolchain && playwright test",
     "test:e2e": "bash scripts/e2e.sh",
+    "gen:types": "supabase gen types typescript --local",
     "seed:test-auth": "tsx scripts/seed-test-auth-users.ts",
     "remove:test-auth": "tsx scripts/remove-test-auth-users.ts",
     "prepare": "husky"

@@ -83,12 +83,22 @@ function parsePreflight(
         count: asNumber(s.count),
       }))
     : [];
+  // #880: the operational assignment rows a profile purge removes
+  // in-transaction (captured on the tombstone) — announced, never blocking.
+  const cleanup = Array.isArray(doc.cleanup)
+    ? doc.cleanup.filter(isRecord).map((c) => ({
+        table: typeof c.table === "string" ? c.table : "",
+        column: typeof c.column === "string" ? c.column : "",
+        count: asNumber(c.count),
+      }))
+    : [];
   return {
     deletable: doc.deletable === true,
     confidential: doc.confidential === true,
     forbidden: doc.forbidden === true,
     blockers,
     setNull,
+    cleanup,
   };
 }
 

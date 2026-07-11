@@ -86,6 +86,9 @@ export type DeletionBlocker = {
 // block (#314) — when true the UI shows the opaque message and NO blocker
 // detail, by design. `forbidden` covers a rejected target (e.g. a super_admin
 // profile). `setNull` previews the dependents the delete will null + capture.
+// `cleanup` (#880) previews the operational assignment rows a profile purge
+// removes in-transaction and captures on the tombstone — announced work, not
+// blockers, so they never gate `deletable`.
 export type DeletionPreflight = {
   // The target this report describes, so the UI can discard it once the
   // operator selects a different row (a stale report must never gate a delete).
@@ -96,6 +99,7 @@ export type DeletionPreflight = {
   forbidden: boolean;
   blockers: DeletionBlocker[];
   setNull: { table: string; column: string; count: number }[];
+  cleanup: { table: string; column: string; count: number }[];
 };
 
 // A tombstone restore (#315) echoes the re-inserted row + how many set-null

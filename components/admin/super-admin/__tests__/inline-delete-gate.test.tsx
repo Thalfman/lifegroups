@@ -11,7 +11,9 @@ vi.mock("@/app/(protected)/admin/super-admin/permanent-delete-actions", () => ({
 }));
 
 import { CareItemList } from "@/components/admin/care/care-item-list";
+import { DeletePreview } from "@/components/admin/super-admin/inline-delete";
 import type { CareItem } from "@/lib/admin/care-area";
+import type { DeletionPreflight } from "@/lib/admin/danger-zone";
 
 // A Care follow-up row carries a deletable DB target; a derived needs-contact
 // aggregate does not (deleteTarget: null).
@@ -100,5 +102,92 @@ describe("SuperAdminOnlyMark on the inline delete", () => {
       />
     );
     expect(html).not.toContain('data-testid="super-admin-only-mark"');
+  });
+});
+
+// The popover's preview states. The panel only mounts when Radix opens it, so
+// these render DeletePreview (exported for exactly this) directly. #880: a
+// deletable report with a non-empty cleanup bucket must ANNOUNCE the
+// assignment-record removal (kept in the backup copy, not re-created on
+// restore) instead of a bare "Safe to delete" — inform the delete, not block it.
+describe("DeletePreview cleanup announcement (#880)", () => {
+  function report(
+    overrides: Partial<DeletionPreflight> = {}
+  ): DeletionPreflight {
+    return {
+      entityType: "profile",
+      entityId: "22222222-2222-2222-2222-222222222222",
+      deletable: true,
+      confidential: false,
+      forbidden: false,
+      blockers: [],
+      setNull: [],
+      cleanup: [],
+      ...overrides,
+    };
+  }
+
+  function render(r: DeletionPreflight): string {
+    return renderToStaticMarkup(
+      <DeletePreview
+        pending={false}
+        failed={false}
+        report={r}
+        onRetry={() => {}}
+      />
+    );
+  }
+
+  it("announces the assignment cleanup on a deletable report with cleanup entries", () => {
+    const html = render(
+      report({
+        cleanup: [
+          { table: "group_leaders", column: "profile_id", count: 1 },
+          {
+            table: "shepherd_coverage_assignments",
+            column: "shepherd_profile_id",
+            count: 2,
+          },
+        ],
+      })
+    );
+    expect(html).toContain("Will remove and back up 3 assignment records");
+    expect(html).toContain("not re-created on restore");
+    // Still safe to delete — the cleanup informs, it never blocks.
+    expect(html).toContain("Safe to delete.");
+  });
+
+  it("singularizes a one-record cleanup", () => {
+    const html = render(
+      report({
+        cleanup: [{ table: "group_leaders", column: "profile_id", count: 1 }],
+      })
+    );
+    expect(html).toContain("Will remove and back up 1 assignment record (");
+  });
+
+  it("renders the plain safe-to-delete line when there is no cleanup", () => {
+    const html = render(report());
+    expect(html).toContain("Safe to delete.");
+    expect(html).not.toContain("Will remove and back up");
+  });
+
+  it("keeps blockers ahead of the cleanup announcement", () => {
+    const html = render(
+      report({
+        deletable: false,
+        blockers: [
+          {
+            table: "group_memberships",
+            column: "group_id",
+            action: "c",
+            count: 2,
+          },
+        ],
+        cleanup: [{ table: "group_leaders", column: "profile_id", count: 1 }],
+      })
+    );
+    expect(html).toContain("Blocked by 2 dependents");
+    expect(html).not.toContain("Safe to delete.");
   });
 });

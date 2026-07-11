@@ -47,6 +47,23 @@ export const CARE_FEED_KIND_LABELS: Record<CareFeedItemKind, string> = {
 
 const UNKNOWN_PERSON = "Unknown person";
 const UNKNOWN_GROUP = "Unknown group";
+const FORMER_SHEPHERD = "Former Shepherd";
+
+// Issue #880: a permanently purged author leaves author_profile_id null and an
+// anonymized descriptor stamped on the row ("Former Shepherd"). Render the
+// descriptor for those rows — a null author is a purge fact, not a failed name
+// lookup — and keep the name-map path (with its UNKNOWN_PERSON degrade) for
+// live authors, so a tombstone restore re-links the author with no descriptor
+// clearing needed.
+function resolveAuthorName(
+  row: Pick<CareNotesRow, "author_profile_id" | "author_descriptor">,
+  nameByProfileId: ReadonlyMap<string, string>
+): string {
+  if (row.author_profile_id === null) {
+    return row.author_descriptor ?? FORMER_SHEPHERD;
+  }
+  return nameByProfileId.get(row.author_profile_id) ?? UNKNOWN_PERSON;
+}
 
 // Newest-first ordering: by calendar DAY of occurredAt, then by recordedAt.
 // occurredAt mixes timestamptz strings (care notes / prayer requests) with
@@ -113,7 +130,7 @@ export function buildCareNoteFeed(input: {
       occurredAt: n.created_at,
       recordedAt: n.created_at,
       authorProfileId: n.author_profile_id,
-      authorName: nameByProfileId.get(n.author_profile_id) ?? UNKNOWN_PERSON,
+      authorName: resolveAuthorName(n, nameByProfileId),
       viewerAuthored: n.author_profile_id === viewerProfileId,
       ...noteSubject(n, nameByProfileId, groupNameByGroupId),
     });
@@ -127,7 +144,7 @@ export function buildCareNoteFeed(input: {
       occurredAt: r.created_at,
       recordedAt: r.created_at,
       authorProfileId: r.author_profile_id,
-      authorName: nameByProfileId.get(r.author_profile_id) ?? UNKNOWN_PERSON,
+      authorName: resolveAuthorName(r, nameByProfileId),
       viewerAuthored: r.author_profile_id === viewerProfileId,
       ...noteSubject(r, nameByProfileId, groupNameByGroupId),
       prayerStatus: r.status,
