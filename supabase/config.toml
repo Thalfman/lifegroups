@@ -24,6 +24,12 @@ verify_jwt = true
 # the super_admin profile before doing any privileged work.
 [functions.invite-user]
 verify_jwt = true
+# Irreversible account purge: the function re-verifies an active Super Admin,
+# runs the caller-scoped profile purge, and confines Auth admin deletion to its
+# service-role runtime (#881).
+[functions.purge-profile-auth]
+verify_jwt = true
+
 
 # Public self-signup redemption: the invite token is the bearer credential, so
 # the platform JWT gate is intentionally off and the function validates the

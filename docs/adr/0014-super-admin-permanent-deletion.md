@@ -76,9 +76,13 @@ null` (the one non-blocking exception below); `cascade` stays a blocker.**
   `audit_events` insert: the repo invariant that every RPC mutation writes a
   paired `audit_events` row in the same transaction still holds, so the deletion
   stays in the canonical immutable audit feed and existing audit tooling.
-- **Users are `public.profiles` rows only.** `auth.users` is never touched, so
-  the no-service-role-key invariant holds. Disable/re-enable
-  (`set_profile_status`) remains the normal lever for logins.
+- **Profile targets remove both the app profile and linked Auth identity.**
+  The transactional database RPC remains confined to the profile/tombstone
+  domain, while the amended flow routes profile targets through a verified
+  Edge Function that owns the service-role Auth deletion and final audit.
+  The service role never enters Next.js or client code. Disable/re-enable
+  (`set_profile_status`) remains the normal lever for logins; permanent
+  deletion remains the bounded exception.
   `audit_events.actor_profile_id` currently has no on-delete clause (so it would
   block like `restrict`); we migrate it to **`on delete set null`** so it falls
   under the set-null "not a blocker" rule above and the audit event survives with
@@ -102,9 +106,10 @@ null` (the one non-blocking exception below); `cascade` stays a blocker.**
 - **Literal "delete any table", with cascade.** Rejected: one click could erase
   a person plus all their care history, and including audit logs would let a
   Super Admin erase evidence of their own deletes.
-- **Full auth-identity delete via the service-role admin API.** Rejected: would
-  reverse the no-service-role-key invariant for a marginal gain over a deleted
-  profile row plus a disabled login.
+- **Full auth-identity delete via a service-role client in Next.js.** Rejected:
+  it would reverse the runtime no-service-role invariant. A narrowly scoped,
+  caller-verifying Edge Function was later accepted for permanent profile
+  deletion only; see the 2026-07-10 amendment.
 - **Delete reaches Private Care Notes (read, or blind-delete).** Rejected:
   breaks the "readable by Julian alone" promise SC.4/ADR 0002 exist to keep.
 
@@ -161,3 +166,50 @@ that the tombstone (which snapshots only set-null dependents) could never
 recover; "no delete RPC for these notes today" is the accepted, deliberate
 posture (seal and disable, never erase). Implemented in
 `20260609000000_phase_sad7_confidential_block_care_notes.sql`.
+
+## Amendment - 2026-07-10 (#881/#882): complete account purge and review queue
+
+The original decision stopped at deleting `public.profiles`. That is insufficient
+for the self-service account-deletion promise introduced by
+`account_deletion_requests`: leaving the linked Auth identity behind means the
+person's sign-in account still exists after an approved permanent purge.
+
+**Decision:** every permanent **profile** deletion launched from the app now
+uses the `purge-profile-auth` Edge Function. Other curated entity types keep
+using `super_admin_permanent_delete` directly. The function is the only new
+service-role boundary and performs this ordered workflow:
+
+1. Re-verify the bearer token with `auth.getUser()`, resolve exactly one active
+   caller profile, and require `role = 'super_admin'`.
+2. Resolve the target profile and its `auth_user_id` server-side, then call the
+   existing transactional `super_admin_permanent_delete` RPC through the
+   caller-scoped client. The RPC still owns dependency checks, tombstone capture,
+   the profile delete, and its paired audit event.
+3. Delete the linked Auth user with `auth.admin.deleteUser`.
+4. Record a content-free `super_admin.auth_user_delete` audit event through the
+   service-role-only `service_record_profile_auth_purge` RPC.
+
+The service-role key remains confined to `supabase/functions/**`; it is never
+present in Next.js runtime or client code. The Edge Function accepts only the
+profile id. It never accepts an Auth user id from the caller, never logs email
+or request reason, and still forbids every Super-Admin target.
+
+The database and Auth service cannot share a transaction. If the database purge
+commits but Auth deletion or final audit recording fails, the response clearly
+reports a retryable partial failure. A retry resolves the trusted Auth id from
+the immutable profile tombstone, treats an already-missing Auth user as success,
+and records the final audit idempotently under a tombstone-scoped advisory lock.
+An already-issued Auth token may remain cryptographically valid until it
+expires, but the deleted profile makes the app's session/profile guards deny it.
+
+The danger zone also reads pending `account_deletion_requests` through its
+Super-Admin-only RLS policy and explicit named columns. The queue shows requester
+identity, reason, status, and requested date, then preloads the same permanent
+profile flow; it does not create a second write path or skip preflight and typed
+confirmation. The existing profile-delete trigger completes the retained
+request and wipes its free-text reason in the database transaction. Revalidating
+the Super-Admin routes removes that request from the queue on the fresh render.
+
+This amendment supersedes the original `auth.users` exclusion and the blanket
+rejection of Auth deletion. It accepts only the narrow Edge Function boundary
+above; archive/disable remains the normal account-management path.

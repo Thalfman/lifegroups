@@ -36,7 +36,8 @@ the system down. Page immediately.
 Degraded operation without a confidentiality breach. Respond same-day.
 
 - A broken admin workflow (a core Care/Plan/Multiply action failing).
-- Failed invites (Edge Function `invite-user` / `redeem-invite` erroring).
+- Failed invites (Edge Function `invite-user` / `redeem-invite` erroring) or
+  a `purge-profile-auth` partial failure requiring a tombstone-backed retry.
 - Degraded reads (a read bundle consistently failing, suppressing real data).
 - Delayed audit visibility (audit rows landing late or the audit surface lagging).
 

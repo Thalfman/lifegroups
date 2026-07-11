@@ -29,8 +29,9 @@ hosting platform's metrics:
 - **Read-bundle degradation** — rate of `read_bundle` lines with
   `outcome: "fail"` (reads degrade gracefully, so a silent rise here means
   surfaces are quietly suppressing real data).
-- **Edge Function failures** — `invite-user`, `redeem-invite`,
-  `manage-test-auth-users` error rates.
+- **Edge Function failures** — `invite-user`, `redeem-invite`, and
+  `purge-profile-auth` error rates; for profile purges, alert on the
+  `auth_user_delete` and `auth_delete_audit` partial-failure stages.
 - **Invite redemption failures** — `redeem-invite` failures excluding
   expired/invalid tokens (those are expected user error).
 - **Slow admin pages** — `latency_ms` tail (p95/p99) on `/admin/*` actions and

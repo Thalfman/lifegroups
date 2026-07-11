@@ -52,6 +52,10 @@ import {
   fetchPermanentDeletionTargets,
   fetchRecentTombstones,
 } from "@/lib/supabase/permanent-deletion-reads";
+import {
+  fetchPendingAccountDeletionRequests,
+  type PendingAccountDeletionRequest,
+} from "@/lib/supabase/account-deletion-request-reads";
 
 // Phase SAC.4 (#164) coverage editing read shapes.
 export type SuperAdminConsoleCoverageAssignment = {
@@ -72,6 +76,10 @@ export type SuperAdminConsoleCoverageLeader = {
   profile_id: string;
   full_name: string;
 };
+export type AccountDeletionRequestQueueState =
+  | { status: "failed" }
+  | { status: "empty" }
+  | { status: "loaded"; requests: PendingAccountDeletionRequest[] };
 
 export type SuperAdminConsoleData = {
   assignableProfiles: AssignableProfile[];
@@ -105,6 +113,8 @@ export type SuperAdminConsoleData = {
   // for the danger-zone Permanent Deletion card.
   permanentDeletionTargets: PermanentDeletionTargetGroup[];
   recentTombstones: RecentTombstone[];
+  // #882: never collapse a failed queue read into a false "nothing pending."
+  accountDeletionRequestQueue: AccountDeletionRequestQueueState;
   profilesById: Map<string, ProfilesRow>;
   membersById: Map<string, MembersRow>;
   groupsById: Map<string, GroupsRow>;
@@ -141,6 +151,7 @@ const SUPER_ADMIN_CONSOLE_FETCHERS = {
   fetchAttentionResetState,
   fetchPermanentDeletionTargets,
   fetchRecentTombstones,
+  fetchPendingAccountDeletionRequests,
   fetchRecentUsageEvents,
 };
 
@@ -339,6 +350,7 @@ export function buildNoClientConsoleData(): SuperAdminConsoleData {
     auditEventCount: null,
     permanentDeletionTargets: [],
     recentTombstones: [],
+    accountDeletionRequestQueue: { status: "failed" },
     profilesById: new Map(),
     membersById: new Map(),
     groupsById: new Map(),
@@ -393,6 +405,7 @@ export async function buildSuperAdminConsoleData(
     attentionResetResult,
     permanentDeletionTargets,
     recentTombstones,
+    pendingAccountDeletionRequestsResult,
     usageResult,
   ] = await Promise.all([
     reads.fetchProfilesForAdmin({ statuses: ["active", "inactive"] }),
@@ -414,6 +427,7 @@ export async function buildSuperAdminConsoleData(
     reads.fetchAttentionResetState(),
     reads.fetchPermanentDeletionTargets(),
     reads.fetchRecentTombstones(),
+    reads.fetchPendingAccountDeletionRequests(),
     reads.fetchRecentUsageEvents({ limit: 200 }),
   ]);
 
@@ -458,6 +472,17 @@ export async function buildSuperAdminConsoleData(
     activeGroupLeaders,
     errors,
   });
+  const pendingAccountDeletionRequests =
+    pendingAccountDeletionRequestsResult.data ?? [];
+  const accountDeletionRequestQueue: AccountDeletionRequestQueueState =
+    pendingAccountDeletionRequestsResult.error
+      ? { status: "failed" }
+      : pendingAccountDeletionRequests.length === 0
+        ? { status: "empty" }
+        : {
+            status: "loaded",
+            requests: pendingAccountDeletionRequests,
+          };
 
   return {
     assignableProfiles,
@@ -477,6 +502,7 @@ export async function buildSuperAdminConsoleData(
     auditEventCount: auditCountResult.data,
     permanentDeletionTargets,
     recentTombstones,
+    accountDeletionRequestQueue,
     profilesById,
     membersById,
     groupsById,

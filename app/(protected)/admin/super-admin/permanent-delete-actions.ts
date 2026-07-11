@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireSuperAdminSession } from "@/lib/auth/session";
 import {
@@ -18,6 +19,12 @@ import { isUuid } from "@/lib/shared/uuid";
 import { readFormPayloadStringified } from "@/lib/shared/form-data";
 import { adminJsonRpc, adminRpc } from "@/lib/admin/rpc";
 import {
+  buildErrorLines,
+  extractErrorBody,
+  makeMapFnError,
+  makeTokenForStatus,
+} from "@/lib/admin/edge-fn-error";
+import {
   PERMANENT_DELETE_CONFIRM_PHRASE,
   TOMBSTONE_RESTORE_CONFIRM_PHRASE,
   requireConfirmPhrase,
@@ -32,6 +39,11 @@ import {
 } from "@/lib/admin/permanent-deletion";
 
 const REVALIDATE_PATHS = ["/admin/super-admin", "/admin"] as const;
+const PROFILE_DELETE_REVALIDATE_PATHS = [
+  "/admin/super-admin",
+  "/admin/people",
+  "/admin",
+] as const;
 
 function readStr(raw: Record<string, unknown>, key: string): string {
   return typeof raw[key] === "string" ? (raw[key] as string).trim() : "";
@@ -193,11 +205,152 @@ const PERMANENT_DELETE_SPEC: AdminWriteActionSpec<
   noDataError: "The deletion did not complete. Please try again.",
 };
 
+type ProfilePurgeEdgeResponse = {
+  ok: boolean;
+  code?: string;
+  profileId?: string;
+  tombstoneId?: string;
+  authUserState?: "deleted" | "already_missing" | "not_linked";
+  warnings?: string[];
+  errors?: string[];
+  missing?: string[];
+};
+
+const PROFILE_PURGE_ERROR_MESSAGES: Record<string, string> = {
+  missing_authorization_header:
+    "Your session token didn't reach the purge function. Sign out, sign back in, and retry.",
+  invalid_or_expired_session:
+    "Your session is invalid or expired. Sign out, sign back in, and retry.",
+  profile_not_found:
+    "Your auth user has no linked app profile. Ask another super admin to repair it.",
+  profile_not_active:
+    "Your Super-Admin profile is inactive. Ask another super admin to reactivate it.",
+  super_admin_required: "Only a Super Admin can permanently delete an account.",
+  invalid_payload: "The selected profile is invalid. Refresh and try again.",
+  invalid_input: "The selected profile is invalid. Refresh and try again.",
+  profile_lookup_failed:
+    "The purge function could not verify your Super-Admin profile. Retry shortly.",
+  duplicate_profiles_for_auth_user:
+    "Your sign-in is linked to more than one profile. Repair that account link before retrying.",
+  forbidden_target: "Super-Admin profiles cannot be permanently deleted.",
+  has_confidential_records:
+    "This person has confidential records and cannot be permanently deleted; disable the account instead.",
+  has_blocking_dependents:
+    "This person still has dependent records that block permanent deletion.",
+  missing_entity:
+    "That profile no longer exists and has no retriable purge record.",
+  db_purge_failed:
+    "The profile purge did not complete. No Auth deletion was attempted.",
+  auth_delete_failed:
+    "The profile was purged, but its sign-in account was not removed. Retry this action with the same profile; the function will resume from the tombstone.",
+  audit_record_failed:
+    "The sign-in account was removed, but its audit record was not finalized. Retry this action to finish the audit step.",
+  missing_edge_function_env:
+    "The purge function is missing required Supabase secrets. Check its deployment configuration.",
+  function_not_deployed_or_wrong_name:
+    "The purge function is not deployed. Deploy purge-profile-auth and retry.",
+  invalid_json_body: "The purge function received an invalid request.",
+  method_not_allowed:
+    "The purge function received an unsupported request method.",
+};
+
+const mapProfilePurgeError = makeMapFnError(PROFILE_PURGE_ERROR_MESSAGES);
+const profilePurgeTokenForStatus = makeTokenForStatus({
+  unauthorized: "invalid_or_expired_session",
+  forbidden: "super_admin_required",
+  notFound: "function_not_deployed_or_wrong_name",
+  serverError: "db_purge_failed",
+  fallback: "db_purge_failed",
+});
+
+function profilePurgeErrorLines(
+  source: Partial<ProfilePurgeEdgeResponse>,
+  status: number | null
+): string[] {
+  const code =
+    source.code ?? source.errors?.[0] ?? profilePurgeTokenForStatus(status);
+  return buildErrorLines({
+    status,
+    code,
+    mapFnError: mapProfilePurgeError,
+    messages: PROFILE_PURGE_ERROR_MESSAGES,
+    missing: source.missing,
+    extras: source.errors,
+    warnings: source.warnings,
+  });
+}
+
+// Profile targets cross the approved service-role boundary, so they deliberately
+// stay outside the Write Action Runner (ADR 0035). The Edge Function re-checks
+// the caller and owns DB purge -> Auth delete -> audit/retry orchestration.
+async function runProfilePermanentDelete(
+  input: unknown,
+  options: {
+    requireTypedConfirmation: boolean;
+  }
+): Promise<ActionResult<PermanentDeleteSuccess>> {
+  const auth = await requireSuperAdminSession();
+  if (!auth.ok) return actionFail([auth.error]);
+
+  const raw = readFormPayloadStringified(input);
+  const target = readTarget(raw);
+  if (!target.ok) return actionFail([target.error]);
+  if (options.requireTypedConfirmation) {
+    const confirmError = requireConfirmPhrase(
+      raw.confirm,
+      PERMANENT_DELETE_CONFIRM_PHRASE,
+      `Type ${PERMANENT_DELETE_CONFIRM_PHRASE} exactly to confirm permanent deletion.`
+    );
+    if (confirmError) return actionFail([confirmError]);
+  } else if (!isInlineDeletableEntityType(target.entityType)) {
+    return actionFail(["That record type can't be deleted from here."]);
+  }
+
+  const client = await createSupabaseServerClient();
+  if (!client) return actionFail(["Database is not configured."]);
+
+  const { data, error } =
+    await client.functions.invoke<ProfilePurgeEdgeResponse>(
+      "purge-profile-auth",
+      { body: { profileId: target.id } }
+    );
+  if (error) {
+    const { status, body } =
+      await extractErrorBody<ProfilePurgeEdgeResponse>(error);
+    return actionFail(profilePurgeErrorLines(body ?? {}, status));
+  }
+  if (!data) return actionFail(["The purge function returned no response."]);
+  if (!data.ok) return actionFail(profilePurgeErrorLines(data, 200));
+  if (
+    data.profileId !== target.id ||
+    !data.tombstoneId ||
+    !isUuid(data.tombstoneId)
+  ) {
+    return actionFail([
+      "The purge function reported success but returned incomplete data. Retry is safe.",
+    ]);
+  }
+
+  for (const path of PROFILE_DELETE_REVALIDATE_PATHS) revalidatePath(path);
+  return actionOk(deleteSuccess(data.tombstoneId, target));
+}
+
 export async function superAdminPermanentDelete(
   prev: ActionResult<PermanentDeleteSuccess> | undefined,
   input: unknown
 ): Promise<ActionResult<PermanentDeleteSuccess>> {
-  return runAdminWriteAction(PERMANENT_DELETE_SPEC, prev, input);
+  const raw = readFormPayloadStringified(input);
+  if (readStr(raw, "entityType") === "profile") {
+    return runProfilePermanentDelete(raw, {
+      requireTypedConfirmation: true,
+    });
+  }
+  return runAdminWriteAction(PERMANENT_DELETE_SPEC, prev, raw);
+}
+
+function inlineDeleteRevalidatePaths(raw: Record<string, unknown>): string[] {
+  const path = readStr(raw, "path");
+  return path.startsWith("/admin") ? [path, "/admin"] : ["/admin"];
 }
 
 // ADR 0014 (SAD9): the lighter sibling of superAdminPermanentDelete that backs
@@ -246,10 +399,7 @@ const INLINE_DELETE_SPEC: AdminWriteActionSpec<
   // Targeted revalidation of the surface the control was rendered on. `path`
   // arrives from the client (usePathname); accept it only when it begins with
   // /admin so a forged value can't trigger arbitrary revalidation.
-  revalidate: (_value, raw) => {
-    const path = readStr(raw, "path");
-    return path.startsWith("/admin") ? [path, "/admin"] : ["/admin"];
-  },
+  revalidate: (_value, raw) => inlineDeleteRevalidatePaths(raw),
   noDataError: "The deletion did not complete. Please try again.",
 };
 
@@ -257,7 +407,13 @@ export async function superAdminInlineDelete(
   prev: ActionResult<PermanentDeleteSuccess> | undefined,
   input: unknown
 ): Promise<ActionResult<PermanentDeleteSuccess>> {
-  return runAdminWriteAction(INLINE_DELETE_SPEC, prev, input);
+  const raw = readFormPayloadStringified(input);
+  if (readStr(raw, "entityType") === "profile") {
+    return runProfilePermanentDelete(raw, {
+      requireTypedConfirmation: false,
+    });
+  }
+  return runAdminWriteAction(INLINE_DELETE_SPEC, prev, raw);
 }
 
 // ADR 0014 (#315): restore a tombstoned row from its snapshot. Gate

@@ -90,11 +90,11 @@ until Julian's explicit go-ahead.
 
 - [x] **Delete the `test-flag` Edge Function** from the project — deleted
       from production project `juvytverslrcqbkxgkvg` and verified
-      2026-06-10; production now has only `invite-user` and `redeem-invite`.
+      2026-06-10; production at that point had only `invite-user` and `redeem-invite`.
       _Eng_
 - [ ] **Remove `manage-test-auth-users` from production** (it exists for
-      local/test-user seeding; production should run only `invite-user` and
-      `redeem-invite`). It was deleted 2026-06-09, but the Supabase GitHub
+      local/test-user seeding; production should run only `invite-user`,
+      `redeem-invite`, and `purge-profile-auth`). It was deleted 2026-06-09, but the Supabase GitHub
       integration **redeployed it minutes later** — its deploy-to-production
       step pushes every function declared in `supabase/config.toml` on each
       push to `main` (see [`RELEASE.md`](./RELEASE.md) § Edge Functions).
@@ -104,7 +104,7 @@ until Julian's explicit go-ahead.
       (or Dashboard → Edge Functions → delete). _Tom_ 3. **Verify immediately** — before any other runbook step continues:
       the production function list (Dashboard → Edge Functions, or MCP
       `list_edge_functions` against `juvytverslrcqbkxgkvg`) shows exactly
-      `invite-user` + `redeem-invite`. Catches a missed, failed, or
+      `invite-user` + `redeem-invite` + `purge-profile-auth`. Catches a missed, failed, or
       wrong-project deletion on the spot. _Tom + Eng_ 4. After the **next** merge to `main`, re-check the same list to
       confirm the integration no longer redeploys it. _Eng_
 

@@ -71,10 +71,13 @@ supabase_migrations.schema_migrations order by version;` against
 Edge Functions deploy separately from both halves above:
 
 ```bash
-supabase functions deploy invite-user redeem-invite
+supabase functions deploy invite-user
+supabase functions deploy redeem-invite
+supabase functions deploy purge-profile-auth
 ```
 
-Production runs **exactly these two**: `invite-user` and `redeem-invite`.
+Production runs **exactly these three**: `invite-user`, `redeem-invite`, and
+`purge-profile-auth` (the service-role boundary for permanent profile deletion).
 `supabase/config.toml` also declares `manage-test-auth-users`, but that is
 local/test tooling — never deploy it to production (the launch runbook has
 it removed). Anything else found deployed in production (e.g. a scratch/test
@@ -82,7 +85,7 @@ function) should be deleted, not left "just in case".
 
 **Beware the implicit deploy path.** The Supabase GitHub integration's
 deploy-to-production step redeploys every Edge Function declared in
-`supabase/config.toml` on each push to `main` — it is not limited to the two
+`supabase/config.toml` on each push to `main` — it is not limited to the three
 named above. This is how `manage-test-auth-users` returned to production on
 2026-06-09 minutes after being manually deleted: the push that recorded the
 deletion triggered the integration, which redeployed it. The guard is
@@ -90,15 +93,15 @@ deletion triggered the integration, which redeployed it. The guard is
 CLI deploy and the integration skip disabled functions. If a new test-only
 function is ever added, give it `enabled = false` from the first commit.
 After any merge that touches `supabase/functions/` or `config.toml`, verify
-the production function list still shows exactly `invite-user` and
-`redeem-invite` (Dashboard → Edge Functions, or the MCP `list_edge_functions`
+the production function list still shows exactly `invite-user`, `redeem-invite`,
+and `purge-profile-auth` (Dashboard → Edge Functions, or the MCP `list_edge_functions`
 tool).
 
 A committed test enforces this allowlist in CI:
 `lib/security/__tests__/edge-functions-allowlist.test.ts` parses
 `supabase/config.toml` and fails if `manage-test-auth-users` is ever enabled, or
-if the set of non-disabled functions drifts from exactly `invite-user` +
-`redeem-invite`. Update that test's `PRODUCTION_FUNCTIONS` list deliberately if
+if the non-disabled set drifts from `invite-user` + `redeem-invite` +
+`purge-profile-auth`. Update that test's `PRODUCTION_FUNCTIONS` list deliberately if
 the production set is ever meant to change.
 
 ## When something goes wrong

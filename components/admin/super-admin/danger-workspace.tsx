@@ -110,6 +110,7 @@ export function DangerWorkspace({ data }: { data: SuperAdminConsoleData }) {
             <PermanentDeleteCard
               targets={data.permanentDeletionTargets}
               tombstones={data.recentTombstones}
+              accountDeletionRequestQueue={data.accountDeletionRequestQueue}
             />
           ),
         },

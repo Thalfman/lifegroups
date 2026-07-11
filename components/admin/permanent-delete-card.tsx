@@ -9,6 +9,8 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AccountDeletionRequestQueue } from "@/components/admin/account-deletion-request-queue";
+import type { AccountDeletionRequestQueueState } from "@/components/admin/super-admin/console-data";
 import { useValueChange } from "@/lib/hooks/use-value-change";
 import {
   superAdminPermanentDelete,
@@ -48,9 +50,11 @@ import { formatIsoDateTimeUtc } from "@/lib/shared/date";
 export function PermanentDeleteCard({
   targets,
   tombstones,
+  accountDeletionRequestQueue,
 }: {
   targets: PermanentDeletionTargetGroup[];
   tombstones: RecentTombstone[];
+  accountDeletionRequestQueue: AccountDeletionRequestQueueState;
 }) {
   const preflight = useActionForm<DeletionPreflight>(
     superAdminPermanentDeletePreflight
@@ -71,6 +75,26 @@ export function PermanentDeleteCard({
     () => targets.find((t) => t.entityType === entityType),
     [targets, entityType]
   );
+  const activeItems = useMemo(() => {
+    const items = activeGroup?.items ?? [];
+    if (
+      entityType !== "profile" ||
+      accountDeletionRequestQueue.status !== "loaded"
+    ) {
+      return items;
+    }
+
+    const itemsById = new Map(items.map((item) => [item.id, item]));
+    for (const request of accountDeletionRequestQueue.requests) {
+      if (!itemsById.has(request.profileId)) {
+        itemsById.set(request.profileId, {
+          id: request.profileId,
+          label: `${request.requesterName} <${request.requesterEmail}>`,
+        });
+      }
+    }
+    return [...itemsById.values()];
+  }, [activeGroup, accountDeletionRequestQueue, entityType]);
 
   // A new target selection invalidates the prior confirm phrase. Derived during
   // render rather than in an effect to avoid the cascading-render smell.
@@ -112,6 +136,14 @@ export function PermanentDeleteCard({
       title="Permanent deletion"
       intro="Physically removes a curated record. This is the bounded exception to archive-everywhere: a backup copy is captured first so it can be recovered, and the act is audited. Records that other records still depend on are refused until those are cleared; confidential records cannot be deleted (disable instead)."
     >
+      <AccountDeletionRequestQueue
+        queue={accountDeletionRequestQueue}
+        onReview={(request) => {
+          setEntityType("profile");
+          setSelectedId(request.profileId);
+          setConfirm("");
+        }}
+      />
       <DangerSection
         variant="destructive"
         label="Delete a record"
@@ -152,7 +184,7 @@ export function PermanentDeleteCard({
               <option value="">
                 Select a {activeGroup?.label ?? "record"}…
               </option>
-              {(activeGroup?.items ?? []).map((it) => (
+              {activeItems.map((it) => (
                 <option key={it.id} value={it.id}>
                   {it.label}
                 </option>
