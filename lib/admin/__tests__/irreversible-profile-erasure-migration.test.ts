@@ -66,6 +66,28 @@ describe("irreversible profile erasure migration", () => {
       /update public\.tombstones[\s\S]*?set_null_dependents = '\[\]'::jsonb[\s\S]*?cleanup_snapshot = '\[\]'::jsonb[\s\S]*?restorable = false[\s\S]*?where entity_type = 'profile'/
     );
   });
+
+  it("matches null-FK archived actors by normalized non-empty email, never name", () => {
+    const auditBackfill = sql.lower.indexOf("-- backfill audit erasure");
+    const archiveStart = sql.lower.indexOf(
+      "update public.audit_events_archive ae",
+      auditBackfill
+    );
+    const archiveEnd = sql.lower.indexOf(
+      "-- existing profile tombstones",
+      archiveStart
+    );
+    expect(auditBackfill).toBeGreaterThan(-1);
+    expect(archiveStart).toBeGreaterThan(auditBackfill);
+    expect(archiveEnd).toBeGreaterThan(archiveStart);
+
+    const archiveBackfill = sql.lower.slice(archiveStart, archiveEnd);
+    const nullActorEmailMatch =
+      /ae\.actor_profile_id is null\s+and\s+\(\s+\(\s+coalesce\(t\.row_snapshot->>'email', ''\) <> ''\s+and lower\(coalesce\(ae\.actor_email, ''\)\)\s*=\s*lower\(t\.row_snapshot->>'email'\)\s+\)\s+\)/g;
+    expect(archiveBackfill.match(nullActorEmailMatch)).toHaveLength(3);
+    expect(archiveBackfill).not.toContain("row_snapshot->>'full_name'");
+    expect(archiveBackfill).not.toMatch(/ae\.actor_name\s*=\s*t\.row_snapshot/);
+  });
   it("excludes tombstones with a current profile from every legacy purge or scrub", () => {
     const legacy = sql.lower.slice(
       sql.lower.indexOf("-- backfill only legacy profile purges"),

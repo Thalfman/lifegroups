@@ -65,7 +65,12 @@ suite("complete profile purge (#880/#881/#882)", () => {
   const mismatchAuthUserId = randomUUID();
   const targetMetadataAuditId = randomUUID();
   const targetActorAuditId = randomUUID();
+  const nullActorCurrentAuditId = randomUUID();
+  const sameNameCurrentAuditId = randomUUID();
   const targetArchiveAuditId = randomUUID();
+  const nullActorArchiveAuditId = randomUUID();
+  const sameNameArchiveAuditId = randomUUID();
+  const sameNameControlEmail = "same-name-control@example.test";
   const restoredCurrentAuditId = randomUUID();
   const restoredArchiveAuditId = randomUUID();
   const restoredTombstoneId = randomUUID();
@@ -165,6 +170,28 @@ suite("complete profile purge (#880/#881/#882)", () => {
           'integ.restored_actor_control', 'groups', '${groupId}',
           jsonb_build_object('group_id', '${groupId}', 'status', 'kept')
         );
+      -- Legacy current rows may lose the actor FK before erasure while
+      -- retaining the deleted profile's denormalized identifiers.
+      insert into public.audit_events
+        (id, actor_profile_id, actor_name, actor_email, action, entity_type,
+         entity_id, metadata)
+      values (
+        '${nullActorCurrentAuditId}', null,
+        'Integ Purge Target', '${targetEmail}',
+        'integ.null_actor_current_pii', 'groups', '${groupId}',
+        jsonb_build_object('group_id', '${groupId}', 'status', 'kept')
+      );
+      -- A shared display name is not a safe identity match; different-email
+      -- attribution must survive the target profile's erasure.
+      insert into public.audit_events
+        (id, actor_profile_id, actor_name, actor_email, action, entity_type,
+         entity_id, metadata)
+      values (
+        '${sameNameCurrentAuditId}', null,
+        'Integ Purge Target', '${sameNameControlEmail}',
+        'integ.same_name_current_control', 'groups', '${groupId}',
+        jsonb_build_object('group_id', '${groupId}', 'status', 'kept')
+      );
 
       insert into public.audit_events_archive
         (id, actor_profile_id, actor_name, actor_email, action, entity_type,
@@ -183,6 +210,24 @@ suite("complete profile purge (#880/#881/#882)", () => {
               'status', 'kept'
             )
           ),
+          now()
+        ),
+        -- Legacy archive rows may lose the actor FK before erasure while
+        -- retaining the deleted profile's denormalized identifiers.
+        (
+          '${nullActorArchiveAuditId}', null,
+          'Integ Purge Target', '${targetEmail}',
+          'integ.null_actor_archive_pii', 'groups', '${groupId}',
+          jsonb_build_object('group_id', '${groupId}', 'status', 'kept'),
+          now()
+        ),
+        -- The archive path must likewise preserve a same-name actor whose
+        -- normalized email differs from the erased profile.
+        (
+          '${sameNameArchiveAuditId}', null,
+          'Integ Purge Target', '${sameNameControlEmail}',
+          'integ.same_name_archive_control', 'groups', '${groupId}',
+          jsonb_build_object('group_id', '${groupId}', 'status', 'kept'),
           now()
         ),
         (
@@ -290,6 +335,8 @@ suite("complete profile purge (#880/#881/#882)", () => {
     await runSql(`
       delete from public.audit_events
        where id in ('${targetMetadataAuditId}', '${targetActorAuditId}',
+                    '${nullActorCurrentAuditId}',
+                    '${sameNameCurrentAuditId}',
                     '${restoredCurrentAuditId}')
           or entity_id in ('${targetProfileId}', '${careNoteId}',
                            '${subjectNoteId}', '${prayerRequestId}',
@@ -297,7 +344,9 @@ suite("complete profile purge (#880/#881/#882)", () => {
           or (action = 'super_admin.auth_user_delete'
               and metadata->>'profile_id' = '${targetProfileId}');
       delete from public.audit_events_archive
-       where id in ('${targetArchiveAuditId}', '${restoredArchiveAuditId}');
+       where id in ('${targetArchiveAuditId}', '${nullActorArchiveAuditId}',
+                    '${sameNameArchiveAuditId}',
+                    '${restoredArchiveAuditId}');
 
       delete from public.account_deletion_requests where id = '${accountDeletionRequestId}';
       delete from public.profile_auth_purge_jobs
@@ -580,7 +629,15 @@ suite("complete profile purge (#880/#881/#882)", () => {
       metadata: Record<string, unknown>;
     }>(
       "select id, actor_profile_id, actor_name, actor_email, metadata from public.audit_events where id = any($1::uuid[])",
-      [[targetMetadataAuditId, targetActorAuditId, restoredCurrentAuditId]]
+      [
+        [
+          targetMetadataAuditId,
+          targetActorAuditId,
+          nullActorCurrentAuditId,
+          sameNameCurrentAuditId,
+          restoredCurrentAuditId,
+        ],
+      ]
     );
     const currentById = new Map(current.map((row) => [row.id, row]));
 
@@ -605,6 +662,18 @@ suite("complete profile purge (#880/#881/#882)", () => {
       after: { status: "kept" },
     });
     expect(JSON.stringify(targetActor.metadata)).not.toContain(targetEmail);
+    expect(currentById.get(nullActorCurrentAuditId)).toMatchObject({
+      actor_profile_id: null,
+      actor_name: null,
+      actor_email: null,
+      metadata: { group_id: groupId, status: "kept" },
+    });
+    expect(currentById.get(sameNameCurrentAuditId)).toMatchObject({
+      actor_profile_id: null,
+      actor_name: "Integ Purge Target",
+      actor_email: sameNameControlEmail,
+      metadata: { group_id: groupId, status: "kept" },
+    });
 
     const archived = await queryRows<{
       id: string;
@@ -614,7 +683,14 @@ suite("complete profile purge (#880/#881/#882)", () => {
       metadata: Record<string, unknown>;
     }>(
       "select id, actor_profile_id, actor_name, actor_email, metadata from public.audit_events_archive where id = any($1::uuid[])",
-      [[targetArchiveAuditId, restoredArchiveAuditId]]
+      [
+        [
+          targetArchiveAuditId,
+          nullActorArchiveAuditId,
+          sameNameArchiveAuditId,
+          restoredArchiveAuditId,
+        ],
+      ]
     );
     const archiveById = new Map(archived.map((row) => [row.id, row]));
     expect(archiveById.get(targetArchiveAuditId)).toMatchObject({
@@ -626,7 +702,19 @@ suite("complete profile purge (#880/#881/#882)", () => {
         nested: { status: "kept" },
       },
     });
+    expect(archiveById.get(nullActorArchiveAuditId)).toMatchObject({
+      actor_profile_id: null,
+      actor_name: null,
+      actor_email: null,
+      metadata: { group_id: groupId, status: "kept" },
+    });
 
+    expect(archiveById.get(sameNameArchiveAuditId)).toMatchObject({
+      actor_profile_id: null,
+      actor_name: "Integ Purge Target",
+      actor_email: sameNameControlEmail,
+      metadata: { group_id: groupId, status: "kept" },
+    });
     expect(currentById.get(restoredCurrentAuditId)).toMatchObject({
       actor_profile_id: fx.leader.profileId,
       actor_name: "Integ Leader",

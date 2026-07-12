@@ -11,7 +11,10 @@ vi.mock("@/app/(protected)/admin/super-admin/permanent-delete-actions", () => ({
 }));
 
 import { CareItemList } from "@/components/admin/care/care-item-list";
-import { DeletePreview } from "@/components/admin/super-admin/inline-delete";
+import {
+  DeletePreview,
+  DeleteSuccessNotice,
+} from "@/components/admin/super-admin/inline-delete";
 import type { CareItem } from "@/lib/admin/care-area";
 import type { DeletionPreflight } from "@/lib/admin/danger-zone";
 
@@ -102,6 +105,26 @@ describe("SuperAdminOnlyMark on the inline delete", () => {
       />
     );
     expect(html).not.toContain('data-testid="super-admin-only-mark"');
+  });
+});
+
+describe("inline delete success notice", () => {
+  it("does not describe an irreversible profile erasure as recoverable", () => {
+    const html = renderToStaticMarkup(
+      <DeleteSuccessNotice entityType="profile" />
+    );
+
+    expect(html).toContain("Profile erased");
+    expect(html).toContain("no recovery copy");
+    expect(html).not.toContain("Recoverable from a backup");
+  });
+
+  it("keeps the recovery notice for non-profile deletions", () => {
+    const html = renderToStaticMarkup(
+      <DeleteSuccessNotice entityType="group" />
+    );
+
+    expect(html).toContain("Deleted. Recoverable from a backup.");
   });
 });
 

@@ -11,7 +11,7 @@ import {
   type ReadClient,
   type ReadResult,
 } from "./read-core";
-import { callPinnedRpc } from "@/lib/shared/rpc";
+import { callPinnedRpcRange } from "@/lib/shared/rpc";
 
 // Column allowlist for the attendance-session fetcher (#495); every
 // AttendanceSessionsRow column (the admin review surfaces render both the
@@ -139,8 +139,15 @@ function decodeGroupAttendanceWeekRows(
   return rows;
 }
 
-// Request count is constant as active-group count grows, while the per-group
-// window remains exact.
+const GROUP_ATTENDANCE_RPC_PAGE_SIZE = 1_000;
+
+function boundedGroupAttendanceWeeks(limitWeeks: number): number {
+  const wholeWeeks = Number.isFinite(limitWeeks) ? Math.trunc(limitWeeks) : 8;
+  return Math.max(1, Math.min(wholeWeeks, 52));
+}
+
+// PostgREST caps each response page, so page the deterministic RPC result up to
+// its known maximum (requested groups x the SQL-clamped per-group window).
 export async function fetchGroupAttendanceWeeksForGroups(
   client: ReadClient,
   groupIds: string[],
@@ -148,31 +155,47 @@ export async function fetchGroupAttendanceWeeksForGroups(
 ): Promise<ReadResult<GroupAttendanceWeekRow[]>> {
   if (groupIds.length === 0) return { data: [], error: null };
 
-  const { data, error } = await callPinnedRpc(
-    client,
-    "admin_group_health_attendance_weeks",
-    {
-      p_group_ids: groupIds,
-      p_limit_weeks: limitWeeks,
-    }
-  );
-  if (error)
-    return {
-      data: null,
-      error: wrapError("fetchGroupAttendanceWeeksForGroups", error),
-    };
-
-  const rows = decodeGroupAttendanceWeekRows(data);
-  if (!rows) {
-    return {
-      data: null,
-      error: new Error(
-        "fetchGroupAttendanceWeeksForGroups: invalid RPC response"
-      ),
-    };
-  }
-  return {
-    data: rows,
-    error: null,
+  const rpcArgs = {
+    p_group_ids: groupIds,
+    p_limit_weeks: limitWeeks,
   };
+  const maximumRows = groupIds.length * boundedGroupAttendanceWeeks(limitWeeks);
+  const rows: GroupAttendanceWeekRow[] = [];
+
+  for (
+    let from = 0;
+    from < maximumRows;
+    from += GROUP_ATTENDANCE_RPC_PAGE_SIZE
+  ) {
+    const to = Math.min(
+      from + GROUP_ATTENDANCE_RPC_PAGE_SIZE - 1,
+      maximumRows - 1
+    );
+    const { data, error } = await callPinnedRpcRange(
+      client,
+      "admin_group_health_attendance_weeks",
+      rpcArgs,
+      from,
+      to
+    );
+    if (error)
+      return {
+        data: null,
+        error: wrapError("fetchGroupAttendanceWeeksForGroups", error),
+      };
+
+    const page = decodeGroupAttendanceWeekRows(data);
+    if (!page) {
+      return {
+        data: null,
+        error: new Error(
+          "fetchGroupAttendanceWeeksForGroups: invalid RPC response"
+        ),
+      };
+    }
+    rows.push(...page);
+    if (page.length < to - from + 1) break;
+  }
+
+  return { data: rows, error: null };
 }

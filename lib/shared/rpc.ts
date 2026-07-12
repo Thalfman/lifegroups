@@ -31,10 +31,11 @@ export type RawRpcResult = {
   error: RpcBoundaryError | null;
 };
 
-type RpcBoundaryMethod = (
-  name: string,
-  args: unknown
-) => PromiseLike<RawRpcResult>;
+type RpcRangeBuilder = PromiseLike<RawRpcResult> & {
+  range(from: number, to: number): PromiseLike<RawRpcResult>;
+};
+
+type RpcBoundaryMethod = (name: string, args: unknown) => RpcRangeBuilder;
 
 function rpcMethod(client: AppSupabaseClient): RpcBoundaryMethod {
   // Keep the receiver bound: supabase-js reads client state through `this`.
@@ -51,12 +52,32 @@ async function invokeRpc(
   return rpcMethod(client)(name, args);
 }
 
+function invokeRpcRange(
+  client: AppSupabaseClient,
+  name: string,
+  args: unknown,
+  from: number,
+  to: number
+): PromiseLike<RawRpcResult> {
+  return rpcMethod(client)(name, args).range(from, to);
+}
+
 export function callPinnedRpc<Name extends PinnedRpcName>(
   client: AppSupabaseClient,
   name: Name,
   args: PinnedRpcArgsFor<Name>
 ): Promise<RawRpcResult> {
   return invokeRpc(client, name, args);
+}
+
+export function callPinnedRpcRange<Name extends PinnedRpcName>(
+  client: AppSupabaseClient,
+  name: Name,
+  args: PinnedRpcArgsFor<Name>,
+  from: number,
+  to: number
+): PromiseLike<RawRpcResult> {
+  return invokeRpcRange(client, name, args, from, to);
 }
 
 export type UuidRpcResult = {

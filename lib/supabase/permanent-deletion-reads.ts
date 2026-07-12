@@ -59,6 +59,17 @@ export type RecentTombstonesState =
   | { status: "failed"; tombstones: [] }
   | { status: "empty"; tombstones: [] }
   | { status: "loaded"; tombstones: RecentTombstone[] };
+type TombstoneReadRow = Pick<
+  TombstonesRow,
+  | "id"
+  | "entity_type"
+  | "table_name"
+  | "entity_id"
+  | "row_snapshot"
+  | "deleted_at"
+  | "restored_at"
+  | "restorable"
+>;
 
 // This initial catalog is metadata only. Individual target rows are loaded by
 // superAdminLoadPermanentDeletionTargets after the operator chooses one type.
@@ -78,27 +89,36 @@ export async function fetchRecentTombstones(
   client: ReadClient,
   limit = 20
 ): Promise<RecentTombstonesState> {
-  const { data, error } = await client
-    .from("tombstones")
-    .select(SUPER_ADMIN_TOMBSTONE_COLUMNS.select)
-    .order("deleted_at", { ascending: false })
-    .limit(limit);
+  // Give active backups and status/history independent bounded pages. A run of
+  // irreversible profile erasures can then remain visible without consuming
+  // any of the recovery slots reserved for restorable records.
+  const [recoveryPage, statusPage] = await Promise.all([
+    client
+      .from("tombstones")
+      .select(SUPER_ADMIN_TOMBSTONE_COLUMNS.select)
+      .eq("restorable", true)
+      .is("restored_at", null)
+      .order("deleted_at", { ascending: false })
+      .limit(limit),
+    client
+      .from("tombstones")
+      .select(SUPER_ADMIN_TOMBSTONE_COLUMNS.select)
+      .or("restorable.eq.false,restored_at.not.is.null")
+      .order("deleted_at", { ascending: false })
+      .limit(limit),
+  ]);
 
-  if (error) return { status: "failed", tombstones: [] };
+  if (recoveryPage.error || statusPage.error) {
+    return { status: "failed", tombstones: [] };
+  }
 
-  const rows = (data ?? []) as Array<
-    Pick<
-      TombstonesRow,
-      | "id"
-      | "entity_type"
-      | "table_name"
-      | "entity_id"
-      | "row_snapshot"
-      | "deleted_at"
-      | "restored_at"
-      | "restorable"
-    >
-  >;
+  const rows = [
+    ...((recoveryPage.data ?? []) as TombstoneReadRow[]),
+    ...((statusPage.data ?? []) as TombstoneReadRow[]),
+  ].sort(
+    (a, b) =>
+      b.deleted_at.localeCompare(a.deleted_at) || a.id.localeCompare(b.id)
+  );
 
   const tombstones = rows.map((r) => {
     const entity = findPermanentDeletionEntity(r.entity_type);

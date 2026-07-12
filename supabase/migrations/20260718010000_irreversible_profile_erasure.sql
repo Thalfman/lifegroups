@@ -234,10 +234,6 @@ update public.audit_events ae
                     and lower(coalesce(ae.actor_email, '')) =
                         lower(t.row_snapshot->>'email')
                   )
-                  or (
-                    coalesce(t.row_snapshot->>'full_name', '') <> ''
-                    and ae.actor_name = t.row_snapshot->>'full_name'
-                  )
                 )
               )
          then null
@@ -252,10 +248,6 @@ update public.audit_events ae
                     coalesce(t.row_snapshot->>'email', '') <> ''
                     and lower(coalesce(ae.actor_email, '')) =
                         lower(t.row_snapshot->>'email')
-                  )
-                  or (
-                    coalesce(t.row_snapshot->>'full_name', '') <> ''
-                    and ae.actor_name = t.row_snapshot->>'full_name'
                   )
                 )
               )
@@ -280,10 +272,6 @@ update public.audit_events ae
            and lower(coalesce(ae.actor_email, '')) =
                lower(t.row_snapshot->>'email')
          )
-         or (
-           coalesce(t.row_snapshot->>'full_name', '') <> ''
-           and ae.actor_name = t.row_snapshot->>'full_name'
-         )
        )
      )
      or (
@@ -302,11 +290,33 @@ update public.audit_events_archive ae
          else ae.actor_profile_id
        end,
        actor_name = case
-         when ae.actor_profile_id = t.entity_id then null
+         when ae.actor_profile_id = t.entity_id
+              or (
+                ae.actor_profile_id is null
+                and (
+                  (
+                    coalesce(t.row_snapshot->>'email', '') <> ''
+                    and lower(coalesce(ae.actor_email, '')) =
+                        lower(t.row_snapshot->>'email')
+                  )
+                )
+              )
+         then null
          else ae.actor_name
        end,
        actor_email = case
-         when ae.actor_profile_id = t.entity_id then null
+         when ae.actor_profile_id = t.entity_id
+              or (
+                ae.actor_profile_id is null
+                and (
+                  (
+                    coalesce(t.row_snapshot->>'email', '') <> ''
+                    and lower(coalesce(ae.actor_email, '')) =
+                        lower(t.row_snapshot->>'email')
+                  )
+                )
+              )
+         then null
          else ae.actor_email
        end
   from public.tombstones t
@@ -319,6 +329,16 @@ update public.audit_events_archive ae
    )
    and (
      ae.actor_profile_id = t.entity_id
+     or (
+       ae.actor_profile_id is null
+       and (
+         (
+           coalesce(t.row_snapshot->>'email', '') <> ''
+           and lower(coalesce(ae.actor_email, '')) =
+               lower(t.row_snapshot->>'email')
+         )
+       )
+     )
      or (
        lower(ae.entity_type) in ('profile', 'profiles')
        and ae.entity_id = t.entity_id
@@ -374,10 +394,6 @@ update public.audit_events
             and lower(coalesce(audit_events.actor_email, '')) =
                 lower(t.row_snapshot->>'email')
           )
-          or (
-            coalesce(t.row_snapshot->>'full_name', '') <> ''
-            and audit_events.actor_name = t.row_snapshot->>'full_name'
-          )
         )
    );
 
@@ -411,7 +427,8 @@ update public.audit_events_archive
    and coalesce(metadata->>'profile_id', '') ~*
      '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
 
--- Future profile deletes scrub the exact actor rows before the FK link nulls.
+-- Future profile deletes scrub FK-linked and legacy descriptor-matched actor
+-- rows before the profile FK link nulls.
 create or replace function public.scrub_deleted_profile_audit_attribution()
 returns trigger
 language plpgsql
@@ -422,14 +439,43 @@ begin
   update public.audit_events
      set metadata = public.scrub_profile_pii_jsonb(metadata),
          actor_name = case
-           when actor_profile_id = old.id then null
+           when actor_profile_id = old.id
+                or (
+                  actor_profile_id is null
+                  and (
+                    (
+                      coalesce(old.email, '') <> ''
+                      and lower(coalesce(actor_email, '')) = lower(old.email)
+                    )
+                  )
+                )
+           then null
            else actor_name
          end,
          actor_email = case
-           when actor_profile_id = old.id then null
+           when actor_profile_id = old.id
+                or (
+                  actor_profile_id is null
+                  and (
+                    (
+                      coalesce(old.email, '') <> ''
+                      and lower(coalesce(actor_email, '')) = lower(old.email)
+                    )
+                  )
+                )
+           then null
            else actor_email
          end
    where actor_profile_id = old.id
+      or (
+        actor_profile_id is null
+        and (
+          (
+            coalesce(old.email, '') <> ''
+            and lower(coalesce(actor_email, '')) = lower(old.email)
+          )
+        )
+      )
       or (
         lower(entity_type) in ('profile', 'profiles')
         and entity_id = old.id
@@ -445,14 +491,43 @@ begin
            else actor_profile_id
          end,
          actor_name = case
-           when actor_profile_id = old.id then null
+           when actor_profile_id = old.id
+                or (
+                  actor_profile_id is null
+                  and (
+                    (
+                      coalesce(old.email, '') <> ''
+                      and lower(coalesce(actor_email, '')) = lower(old.email)
+                    )
+                  )
+                )
+           then null
            else actor_name
          end,
          actor_email = case
-           when actor_profile_id = old.id then null
+           when actor_profile_id = old.id
+                or (
+                  actor_profile_id is null
+                  and (
+                    (
+                      coalesce(old.email, '') <> ''
+                      and lower(coalesce(actor_email, '')) = lower(old.email)
+                    )
+                  )
+                )
+           then null
            else actor_email
          end
    where actor_profile_id = old.id
+      or (
+        actor_profile_id is null
+        and (
+          (
+            coalesce(old.email, '') <> ''
+            and lower(coalesce(actor_email, '')) = lower(old.email)
+          )
+        )
+      )
       or (
         lower(entity_type) in ('profile', 'profiles')
         and entity_id = old.id

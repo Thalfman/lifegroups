@@ -62,17 +62,23 @@ function fail(code: string, status: number): Response {
 // A failed rollback leaves an auth user with no linked profile, and the
 // emailHasAuthUser pre-check then rejects every later redeem for that email
 // with email_unavailable — permanently, with no self-service recovery. Leave
-// an operator-actionable trail (ids only — never the email or token, per this
-// function's enumeration/log discipline) so the orphan can be found and
-// deleted by hand. Reconciliation stays manual; no in-request retry (the
-// timing-floor discipline in _shared/timing.ts caps request work).
-function logOrphanedAuthUser(invitationId: string): void {
+// an operator-actionable trail (opaque handles only — never the raw Auth id,
+// email, or token, per this function's enumeration/log discipline). Operators
+// can page Auth users and hash `redeem-invite-auth-user:v1:${user.id}` until a
+// handle matches, then confirm the candidate has no profile before deleting it.
+// Reconciliation stays manual; no in-request retry (the timing-floor discipline
+// in _shared/timing.ts caps request work).
+function logOrphanedAuthUser(
+  invitationId: string,
+  authUserRecoveryHandle: string
+): void {
   console.error(
     JSON.stringify({
       ts: new Date().toISOString(),
       level: "error",
       event: "invite_redeem_orphaned_auth_user",
       invitation_id: invitationId,
+      auth_user_recovery_handle: authUserRecoveryHandle,
       error_code: "auth_cleanup_failed",
     })
   );
@@ -85,6 +91,10 @@ async function sha256Hex(input: string): Promise<string> {
   let hex = "";
   for (const b of bytes) hex += b.toString(16).padStart(2, "0");
   return hex;
+}
+
+function createAuthUserRecoveryHandle(authUserId: string): Promise<string> {
+  return sha256Hex(`redeem-invite-auth-user:v1:${authUserId}`);
 }
 
 // Paginated case-insensitive lookup; supabase-js v2.45 exposes no direct
@@ -301,6 +311,7 @@ Deno.serve(async (req: Request) => {
     return padded(fail("email_unavailable", 409));
   }
   const authUserId = created.user.id;
+  const authUserRecoveryHandle = await createAuthUserRecoveryHandle(authUserId);
 
   // 4. Atomically consume the link + write the profile/group/audit.
   const { data: rpcData, error: rpcErr } = await service.rpc(
@@ -322,9 +333,9 @@ Deno.serve(async (req: Request) => {
     try {
       const { error: cleanupErr } =
         await service.auth.admin.deleteUser(authUserId);
-      if (cleanupErr) logOrphanedAuthUser(inv.id);
+      if (cleanupErr) logOrphanedAuthUser(inv.id, authUserRecoveryHandle);
     } catch {
-      logOrphanedAuthUser(inv.id);
+      logOrphanedAuthUser(inv.id, authUserRecoveryHandle);
     }
     const mapped = mapRpcToken(rpcErr.message ?? "");
     return padded(fail(mapped.code, mapped.status));
@@ -337,9 +348,9 @@ Deno.serve(async (req: Request) => {
     try {
       const { error: cleanupErr } =
         await service.auth.admin.deleteUser(authUserId);
-      if (cleanupErr) logOrphanedAuthUser(inv.id);
+      if (cleanupErr) logOrphanedAuthUser(inv.id, authUserRecoveryHandle);
     } catch {
-      logOrphanedAuthUser(inv.id);
+      logOrphanedAuthUser(inv.id, authUserRecoveryHandle);
     }
     return padded(fail("db_error", 500));
   }

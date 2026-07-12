@@ -161,14 +161,20 @@ export function SuperAdminInlineDelete({
           </Button>
         </form>
 
-        {deleted ? (
-          <span className={successTextClassName}>
-            Deleted. Recoverable from a backup.
-          </span>
-        ) : null}
+        {deleted ? <DeleteSuccessNotice entityType={entityType} /> : null}
         <FormStatus state={del.state} />
       </PopoverContent>
     </Popover>
+  );
+}
+
+export function DeleteSuccessNotice({ entityType }: { entityType: string }) {
+  return (
+    <span className={successTextClassName}>
+      {entityType === "profile"
+        ? "Profile erased. Identifying data was permanently removed; there is no recovery copy."
+        : "Deleted. Recoverable from a backup."}
+    </span>
   );
 }
 
