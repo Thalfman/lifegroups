@@ -44,11 +44,6 @@ import {
 } from "@/lib/admin/permanent-deletion";
 
 const REVALIDATE_PATHS = ["/admin/super-admin", "/admin"] as const;
-const PROFILE_DELETE_REVALIDATE_PATHS = [
-  "/admin/super-admin",
-  "/admin/people",
-  "/admin",
-] as const;
 
 // redirect(), notFound(), and related Next control-flow APIs throw an object
 // whose digest the framework must receive. Keep this local instead of importing
@@ -64,24 +59,37 @@ function isNextNavigationError(error: unknown): boolean {
   );
 }
 
-function revalidateProfileDeletePaths(): void {
-  for (const path of PROFILE_DELETE_REVALIDATE_PATHS) {
-    try {
-      revalidatePath(path);
-    } catch (error) {
-      if (isNextNavigationError(error)) throw error;
-      // The DB/Auth deletion has committed. Cache refresh is post-commit work,
-      // so report only stable, non-sensitive fields and keep refreshing the
-      // remaining surfaces without turning success into a misleading failure.
-      log.warn({
-        event: "action_revalidation_failed",
-        route_or_action: "super_admin.permanent_delete_profile",
-        outcome: "fail",
-        error_code: "revalidation_failed",
-        revalidate_path: path,
-      });
-    }
+function revalidateProfileDeletePath(
+  path: string,
+  refreshPath: () => void
+): void {
+  try {
+    refreshPath();
+  } catch (error) {
+    if (isNextNavigationError(error)) throw error;
+    // The DB/Auth deletion has committed. Cache refresh is post-commit work,
+    // so report only stable, non-sensitive fields and keep refreshing the
+    // remaining surfaces without turning success into a misleading failure.
+    log.warn({
+      event: "action_revalidation_failed",
+      route_or_action: "super_admin.permanent_delete_profile",
+      outcome: "fail",
+      error_code: "revalidation_failed",
+      revalidate_path: path,
+    });
   }
+}
+
+function revalidateProfileDeletePaths(): void {
+  revalidateProfileDeletePath("/admin/super-admin", () => {
+    revalidatePath("/admin/super-admin");
+  });
+  revalidateProfileDeletePath("/admin/people", () => {
+    revalidatePath("/admin/people");
+  });
+  revalidateProfileDeletePath("/admin", () => {
+    revalidatePath("/admin");
+  });
 }
 
 function readStr(raw: Record<string, unknown>, key: string): string {

@@ -20,15 +20,19 @@ describe("Care directory business date", () => {
           email: "jordan@example.test",
           role: "leader",
           status: "active",
-        } as never,
+        },
       ],
       [
         {
+          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
           shepherd_profile_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
           current_status: "doing_well",
           last_contact_at: "2026-07-07",
           next_touchpoint_due: "2026-07-07",
-        } as never,
+          archived_at: null,
+          created_at: "2026-07-01T12:00:00.000Z",
+          updated_at: "2026-07-07T12:00:00.000Z",
+        },
       ]
     );
 
