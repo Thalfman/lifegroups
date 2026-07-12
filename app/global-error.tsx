@@ -25,7 +25,6 @@ export default function GlobalError({
     try {
       const body = JSON.stringify({
         name: error.name,
-        message: String(error.message ?? "").slice(0, 300),
         digest: error.digest,
         pathname: window.location.pathname,
       });

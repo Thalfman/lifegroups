@@ -44,11 +44,30 @@ describe("normalizeVitalRoute", () => {
       "/admin/settings/people-import-template"
     );
   });
+  it("returns only a fixed template for recognized dynamic routes", () => {
+    const callerSupplied = "private-words-that-must-not-reach-logs";
+    expect(normalizeVitalRoute(`/admin/groups/${callerSupplied}`)).toBe(
+      "/admin/groups/:id"
+    );
+    expect(normalizeVitalRoute(callerSupplied)).not.toContain(callerSupplied);
+  });
 
   it("strips query/hash and falls back to 'unknown' on bad input", () => {
     expect(normalizeVitalRoute("/admin?x=1#frag")).toBe("/admin");
     expect(normalizeVitalRoute(undefined)).toBe("unknown");
     expect(normalizeVitalRoute("")).toBe("unknown");
+  });
+
+  it("returns unknown for unrecognized or unbounded routes", () => {
+    expect(normalizeVitalRoute("/attacker/controlled/value")).toBe("unknown");
+    expect(normalizeVitalRoute(`/admin/${"a".repeat(100)}`)).toBe("unknown");
+    expect(normalizeVitalRoute("/admin/private-words/not-a-real-route")).toBe(
+      "unknown"
+    );
+    expect(normalizeVitalRoute("/admin/settings/not-a-real-route")).toBe(
+      "unknown"
+    );
+    expect(normalizeVitalRoute(`/admin/${"x/".repeat(20)}`)).toBe("unknown");
   });
 });
 
@@ -124,6 +143,21 @@ describe("parseWebVitalReport", () => {
     );
 
     expect(report?.route).toBe("/invite/:id");
+  });
+  it("drops unknown metric names and extreme values", () => {
+    expect(
+      parseWebVitalReport(
+        JSON.stringify({ name: "attacker_metric", value: 10 })
+      )
+    ).toBeNull();
+    expect(
+      parseWebVitalReport(JSON.stringify({ name: "LCP", value: -1 }))
+    ).toBeNull();
+    expect(
+      parseWebVitalReport(
+        JSON.stringify({ name: "LCP", value: Number.MAX_VALUE })
+      )
+    ).toBeNull();
   });
 });
 

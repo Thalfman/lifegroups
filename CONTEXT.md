@@ -97,17 +97,28 @@ user-facing label).
 
 **Permanent deletion**:
 The Super-Admin-only escape hatch that physically removes a row — distinct from
-Archive. Lives in the Super Admin Console danger zone behind a type-to-confirm,
-routed through an audited `super_admin_*` RPC (never `admin_*`, which is
-Ministry-Admin-callable). Refuses (and reports) when any dependent row blocks it
-rather than cascading; never reaches Private Care Notes, audit logs, any Super
-Admin profile, or `auth.users` identities (only `public.profiles`).
+Archive. It lives in the Super Admin Console danger zone behind a
+type-to-confirm and routes through an audited `super_admin_*` RPC (never
+`admin_*`, which is Ministry-Admin-callable). It refuses and reports blocking
+dependents rather than silently cascading; it never targets Private Care Notes,
+audit logs, or a Super Admin profile.
+
+Deleting a **profile** is the irreversible account-erasure exception. The
+database deletion and linked Supabase Auth deletion form one resumable workflow:
+access is already revoked by the account request, the profile and personal
+fields are removed, authored Care Notes and Prayer Requests remain with
+anonymized authorship, and no recoverable profile snapshot is kept. Other
+supported entity types retain the audited tombstone-restore path.
 _Avoid_: Hard delete (in user-facing copy), wipe (that is Clean Slate), purge.
 
 **Tombstone**:
-The full JSON snapshot of a row captured before Permanent deletion, so the act
-is recoverable by re-import. Captured alongside (not instead of) the deletion's
-paired `audit_events` row; itself never deletable.
+The structural record captured alongside (not instead of) a Permanent
+deletion's paired `audit_events` row; itself never deletable. For non-profile
+entities it carries the deleted row and set-null links needed by the audited
+Restore action. A profile tombstone is deliberately different: it is marked
+non-restorable and retains only structural facts such as role, status, creation
+time, and the irreversible-deletion policy — never name, email, phone, Auth
+identifier, dependent-row snapshots, or re-linkable authorship.
 _Avoid_: Backup, archive (that is the soft-delete), trash.
 
 ### Group concepts

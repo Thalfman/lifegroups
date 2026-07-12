@@ -32,20 +32,38 @@ data and exercise sign-in.
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` is still honored as a fallback when no
 publishable key is set, but is not required.
 
-**Forgot-password throttle** (optional but recommended in production):
+**Public endpoint throttles**:
 
-```
+```text
 UPSTASH_REDIS_REST_URL=...
 UPSTASH_REDIS_REST_TOKEN=...
+RATE_LIMIT_HMAC_SECRET=...
+TRUSTED_PROXY=vercel
 ```
 
-When unset, `lib/security/rate-limit.ts` falls back to a permissive
-in-memory limiter that does not protect against distributed abuse.
+`RATE_LIMIT_HMAC_SECRET` is required in production and must be a strong,
+server-only value. It HMACs IP identifiers before rate-limit persistence for
+the Next.js forgot-password, invite-redemption, and public-telemetry paths.
+Set the same value for the `redeem-invite` Edge Function:
+
+```shell
+supabase secrets set RATE_LIMIT_HMAC_SECRET=...
+```
+
+The Edge Function fails closed if that secret is absent. Rotating it is safe
+but intentionally resets active rate-limit buckets in both runtimes. Never use
+a `NEXT_PUBLIC_` name or put the value in logs.
+
+Upstash supplies the distributed Next.js limits and is strongly recommended
+in production. If Upstash is absent or errors, public telemetry stays bounded
+by a memory-limited per-process fallback; the password-reset and Next invite
+layers log the configuration/backend gap. The `redeem-invite` Edge Function
+also enforces its service-only database throttle with the same HMAC identifier.
 
 **Do not** set a service role key in any Next runtime environment. The
 app never reads one. Service role is confined to Supabase Edge
-Functions (`invite-user`, `manage-test-auth-users`) and lives in their
-function secrets.
+Functions (`invite-user`, `redeem-invite`, and `purge-profile-auth`) and
+lives in their function secrets. `manage-test-auth-users` is local/test-only.
 
 ## Supabase project setup
 

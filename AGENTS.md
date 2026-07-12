@@ -30,9 +30,9 @@ routes through the run-action adapter (or a documented exemption). As of the
 check-in (`no-hard-delete.test.ts`), **no broad RLS** read policy
 (`using (true)` / `auth.uid() is not null`, `no-broad-rls.test.ts`), and the
 **Care Note TS↔SQL visibility** resolver agreeing with a pinned TS mirror of
-the RLS `USING` clause over a shared 270-row input matrix — behavioral, both
+the RLS `USING` clause over a shared exhaustive input matrix — behavioral, both
 note types, both policies (`care-note-visibility-divergence.test.ts`, ADR
-0037). Since then the suite has grown to 21 checks — including
+0037). The suite also checks
 **audit-pairing on every write RPC** (`write-rpc-audit-pairing.test.ts`),
 no-sensitive-data-in-logs / audit plaintext, pinned `SECURITY DEFINER`
 `search_path`, RLS coverage completeness, and every write action's

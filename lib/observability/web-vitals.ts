@@ -14,40 +14,94 @@
 // is sent AND again here as defense-in-depth against a hand-crafted POST.
 
 import { log } from "./logger";
+import { ADMIN_ROUTE_REGISTRY } from "@/lib/nav/route-registry";
 
 // The browser's web-vitals rating buckets. Next's own custom metrics
+const KNOWN_METRICS = new Set([
+  "CLS",
+  "FCP",
+  "INP",
+  "LCP",
+  "TTFB",
+  "Next.js-hydration",
+  "Next.js-route-change-to-render",
+  "Next.js-render",
+]);
+const NON_ADMIN_ROUTE_PATTERNS = [
+  "/",
+  "/account",
+  "/account-deletion",
+  "/forgot-password",
+  "/invite/[token]",
+  "/leader",
+  "/leader/[groupId]/calendar",
+  "/leader/[groupId]/care",
+  "/leader/[groupId]/checkin",
+  "/login",
+  "/over-shepherd",
+  "/over-shepherd/[profileId]",
+  "/privacy",
+  "/reset-password",
+  "/support",
+  "/unauthorized",
+  "/welcome",
+] as const;
+const KNOWN_ROUTE_PATTERNS = [
+  ...NON_ADMIN_ROUTE_PATTERNS,
+  ...ADMIN_ROUTE_REGISTRY.map((entry) => entry.path),
+].map((pattern) => pattern.split("/").filter(Boolean));
+const MAX_METRIC_VALUE = 300_000;
+const MAX_ROUTE_LENGTH = 256;
+const MAX_ROUTE_SEGMENTS = 10;
+const MAX_ROUTE_SEGMENT_LENGTH = 64;
 // (`Next.js-hydration`, `Next.js-route-change-to-render`, `Next.js-render`)
 // carry no rating, so an absent/unknown rating normalizes to null.
 const KNOWN_RATINGS = new Set(["good", "needs-improvement", "poor"]);
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// A path segment is an opaque dynamic value (id / uuid / bearer token) — not a
-// static route name — when it is a UUID, all digits, or a long high-entropy
-// string. The length gate plus an uppercase/digit/underscore character class
-// catches base64url invite tokens and hex ids while sparing multi-word static
-// slugs (e.g. `people-import-template`, `over-shepherds`), which are lowercase
-// kebab-case and so never trip the character class.
-function isOpaqueSegment(segment: string): boolean {
-  if (UUID_RE.test(segment)) return true;
-  if (/^\d+$/.test(segment)) return true;
-  if (segment.length >= 16 && /[A-Z0-9_]/.test(segment)) return true;
-  return false;
-}
-
-// Collapse opaque dynamic segments to `:id` so route attribution aggregates
-// per-route pattern and never carries a secret-bearing segment. Defensive about
-// its input: strips any query/hash (usePathname omits them, a forged POST may
-// not) and falls back to "unknown".
+// Match only current route templates and return the fixed template, replacing
+// every Next dynamic segment with `:id`. No caller-supplied segment is ever
+// emitted. Input bounds and query/hash stripping apply before matching because
+// a forged POST need not resemble the value returned by usePathname. Unknown
+// route shapes collapse to "unknown".
 export function normalizeVitalRoute(pathname: unknown): string {
   if (typeof pathname !== "string" || pathname.length === 0) return "unknown";
   const path = pathname.split(/[?#]/)[0];
-  const normalized = path
-    .split("/")
-    .map((segment) => (isOpaqueSegment(segment) ? ":id" : segment))
-    .join("/");
-  return normalized || "unknown";
+  if (
+    !path.startsWith("/") ||
+    path.length > MAX_ROUTE_LENGTH ||
+    /[\\\u0000-\u001f\u007f]/.test(path)
+  ) {
+    return "unknown";
+  }
+  if (path === "/") return "/";
+
+  const segments = path.split("/").filter(Boolean);
+  if (
+    segments.length === 0 ||
+    segments.length > MAX_ROUTE_SEGMENTS ||
+    segments.some((segment) => segment.length > MAX_ROUTE_SEGMENT_LENGTH)
+  ) {
+    return "unknown";
+  }
+
+  for (const patternSegments of KNOWN_ROUTE_PATTERNS) {
+    if (patternSegments.length !== segments.length) continue;
+    const matches = patternSegments.every(
+      (patternSegment, index) =>
+        /^\[[^\]]+\]$/.test(patternSegment) ||
+        patternSegment === segments[index]
+    );
+    if (!matches) continue;
+
+    return (
+      "/" +
+      patternSegments
+        .map((segment) => (/^\[[^\]]+\]$/.test(segment) ? ":id" : segment))
+        .join("/")
+    );
+  }
+
+  return "unknown";
 }
 
 export type WebVitalReport = {
@@ -75,7 +129,15 @@ export function parseWebVitalReport(raw: string): WebVitalReport | null {
     typeof body.value === "number" && Number.isFinite(body.value)
       ? body.value
       : null;
-  if (!name || value === null) return null;
+  if (
+    !name ||
+    !KNOWN_METRICS.has(name) ||
+    value === null ||
+    value < 0 ||
+    value > MAX_METRIC_VALUE
+  ) {
+    return null;
+  }
 
   const rating =
     typeof body.rating === "string" && KNOWN_RATINGS.has(body.rating)

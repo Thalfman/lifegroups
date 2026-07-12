@@ -18,10 +18,11 @@ import { queryRows, runSql } from "./support/sql";
 //   * the purge SUCCEEDS (no has_blocking_dependents / has_confidential_records);
 //   * authored notes/prayers SURVIVE with author_profile_id nulled and the
 //     anonymized 'Former Shepherd' descriptor stamped (no personal identifiers);
-//   * the operational assignment rows are GONE, captured on the tombstone's
-//     cleanup_snapshot for the record — including the two children the
-//     care-profile delete CASCADES (admin note + follow-up), so no care
-//     history leaves without a tombstone record;
+//   * the operational assignment rows are GONE, while every recoverable
+//     tombstone snapshot is scrubbed at the erasure boundary;
+//   * the profile tombstone is structural-only and cannot be restored;
+//   * a service-only retry job survives a partial Auth/audit failure, then
+//     clears its transient Auth UUID when completion is recorded;
 //   * a care profile with a RESTRICT-linked interaction still REFUSES with
 //     has_blocking_dependents (no partial purge);
 //   * the tombstone + the paired audit_events row exist (same transaction);
@@ -59,6 +60,15 @@ suite("complete profile purge (#880/#881/#882)", () => {
   // interaction — the refusal control.
   const blockedProfileId = randomUUID();
   const blockedCareProfileId = randomUUID();
+  const mismatchProfileId = randomUUID();
+  const mismatchTombstoneId = randomUUID();
+  const mismatchAuthUserId = randomUUID();
+  const targetMetadataAuditId = randomUUID();
+  const targetActorAuditId = randomUUID();
+  const targetArchiveAuditId = randomUUID();
+  const restoredCurrentAuditId = randomUUID();
+  const restoredArchiveAuditId = randomUUID();
+  const restoredTombstoneId = randomUUID();
   let tombstoneId: string;
   let service: SupabaseClient;
   let targetAuthUserId = "";
@@ -117,6 +127,86 @@ suite("complete profile purge (#880/#881/#882)", () => {
       values ('${accountDeletionRequestId}', '${targetProfileId}',
               'Personal reason that must be wiped when the purge completes.');
 
+
+      -- PII-bearing audit controls. The target rows must be recursively
+      -- scrubbed; the restored/live profile controls must remain attributed.
+      insert into public.audit_events
+        (id, actor_profile_id, action, entity_type, entity_id, metadata)
+      values
+        (
+          '${targetMetadataAuditId}', '${fx.superAdmin.profileId}',
+          'integ.profile_target_pii', 'profile', '${targetProfileId}',
+          jsonb_build_object(
+            'profile_id', '${targetProfileId}',
+            'group_id', '${groupId}',
+            'before', jsonb_build_object(
+              'full_name', 'Integ Purge Target',
+              'email', '${targetEmail}',
+              'phoneNumber', '555-0100',
+              'status', 'active'
+            )
+          )
+        ),
+        (
+          '${targetActorAuditId}', '${targetProfileId}',
+          'integ.profile_actor_pii', 'groups', '${groupId}',
+          jsonb_build_object(
+            'group_id', '${groupId}',
+            'after', jsonb_build_object(
+              'displayName', 'Integ Purge Target',
+              'email_address', '${targetEmail}',
+              'mobile_phone', '555-0101',
+              'status', 'kept'
+            )
+          )
+        ),
+        (
+          '${restoredCurrentAuditId}', '${fx.leader.profileId}',
+          'integ.restored_actor_control', 'groups', '${groupId}',
+          jsonb_build_object('group_id', '${groupId}', 'status', 'kept')
+        );
+
+      insert into public.audit_events_archive
+        (id, actor_profile_id, actor_name, actor_email, action, entity_type,
+         entity_id, metadata, created_at)
+      values
+        (
+          '${targetArchiveAuditId}', '${targetProfileId}',
+          'Integ Purge Target', '${targetEmail}',
+          'integ.profile_actor_archive_pii', 'groups', '${groupId}',
+          jsonb_build_object(
+            'profile_id', '${targetProfileId}',
+            'nested', jsonb_build_object(
+              'fullName', 'Integ Purge Target',
+              'emailAddress', '${targetEmail}',
+              'phone', '555-0102',
+              'status', 'kept'
+            )
+          ),
+          now()
+        ),
+        (
+          '${restoredArchiveAuditId}', '${fx.leader.profileId}',
+          'Integ Leader', '${fx.leader.email}',
+          'integ.restored_actor_archive_control', 'groups', '${groupId}',
+          jsonb_build_object('group_id', '${groupId}', 'status', 'kept'),
+          now()
+        );
+
+      insert into public.tombstones
+        (id, entity_type, table_name, entity_id, row_snapshot, restored_at)
+      values (
+        '${restoredTombstoneId}', 'profile', 'profiles',
+        '${fx.leader.profileId}',
+        jsonb_build_object(
+          'full_name', 'Integ Leader',
+          'email', '${fx.leader.email}',
+          'role', 'leader',
+          'status', 'active'
+        ),
+        now()
+      );
+
       insert into public.groups (id, name)
       values ('${groupId}', 'Integ Purge Group ${fx.runId}');
 
@@ -172,6 +262,25 @@ suite("complete profile purge (#880/#881/#882)", () => {
         (care_profile_id, interaction_at, interaction_type, created_by_profile_id)
       values ('${blockedCareProfileId}', current_date, 'call',
               '${fx.superAdmin.profileId}');
+
+
+      -- A pending service-only job used to prove outcome/UUID shape
+      -- mismatches roll back without an audit row.
+      insert into public.tombstones
+        (id, entity_type, table_name, entity_id, row_snapshot)
+      values (
+        '${mismatchTombstoneId}',
+        'profile',
+        'profiles',
+        '${mismatchProfileId}',
+        jsonb_build_object(
+          'auth_user_id', '${mismatchAuthUserId}',
+          'full_name', 'Mismatch Control',
+          'email', 'mismatch-control@example.test',
+          'role', 'leader',
+          'status', 'inactive'
+        )
+      );
     `);
   });
 
@@ -180,13 +289,22 @@ suite("complete profile purge (#880/#881/#882)", () => {
     // Disposable local scaffolding only; FK-safe order.
     await runSql(`
       delete from public.audit_events
-       where entity_id in ('${targetProfileId}', '${careNoteId}',
+       where id in ('${targetMetadataAuditId}', '${targetActorAuditId}',
+                    '${restoredCurrentAuditId}')
+          or entity_id in ('${targetProfileId}', '${careNoteId}',
                            '${subjectNoteId}', '${prayerRequestId}',
-                            '${blockedProfileId}')
+                            '${blockedProfileId}', '${mismatchProfileId}')
           or (action = 'super_admin.auth_user_delete'
               and metadata->>'profile_id' = '${targetProfileId}');
+      delete from public.audit_events_archive
+       where id in ('${targetArchiveAuditId}', '${restoredArchiveAuditId}');
+
       delete from public.account_deletion_requests where id = '${accountDeletionRequestId}';
-      delete from public.tombstones where entity_id = '${targetProfileId}';
+      delete from public.profile_auth_purge_jobs
+       where profile_id in ('${targetProfileId}', '${mismatchProfileId}');
+      delete from public.tombstones
+       where id = '${restoredTombstoneId}'
+          or entity_id in ('${targetProfileId}', '${mismatchProfileId}');
       delete from public.care_notes
        where id in ('${careNoteId}', '${subjectNoteId}');
       delete from public.prayer_requests where id = '${prayerRequestId}';
@@ -283,29 +401,141 @@ suite("complete profile purge (#880/#881/#882)", () => {
     expect(setNullTables).toContain("prayer_requests.author_profile_id");
   });
 
-  it("purges through the Edge Function and frees the Auth email", async () => {
-    const response = await invokeProfilePurge(
-      fx.superAdmin.client,
-      targetProfileId
+  it("rejects a purge outcome that contradicts the pending Auth UUID", async () => {
+    const mismatch = await service.rpc("service_record_profile_auth_purge", {
+      p_actor_profile_id: fx.superAdmin.profileId,
+      p_profile_id: mismatchProfileId,
+      p_auth_user_id: mismatchAuthUserId,
+      p_tombstone_id: mismatchTombstoneId,
+      p_outcome: "not_linked",
+    });
+    expect(mismatch.data).toBeNull();
+    expect(mismatch.error?.message).toContain("invalid_outcome");
+
+    const jobs = await queryRows<{
+      auth_user_id: string | null;
+      outcome: string | null;
+      completed_at: string | null;
+    }>(
+      "select auth_user_id, outcome, completed_at from public.profile_auth_purge_jobs where tombstone_id = $1",
+      [mismatchTombstoneId]
     );
-    expect(response.status).toBe(200);
-    const result = (await response.json()) as {
+    expect(jobs).toEqual([
+      {
+        auth_user_id: mismatchAuthUserId,
+        outcome: null,
+        completed_at: null,
+      },
+    ]);
+    const audits = await queryRows<{ id: string }>(
+      "select id from public.audit_events where action = 'super_admin.auth_user_delete' and metadata->>'tombstone_id' = $1",
+      [mismatchTombstoneId]
+    );
+    expect(audits).toEqual([]);
+  });
+  it("resumes an Auth/audit partial failure and clears the retry identifier", async () => {
+    await runSql(`
+      drop trigger if exists trg_integ_fail_profile_auth_audit
+        on public.audit_events;
+      create or replace function public.integ_fail_profile_auth_audit()
+      returns trigger
+      language plpgsql
+      set search_path = public, pg_temp
+      as $$
+      begin
+        if new.action = 'super_admin.auth_user_delete'
+           and new.metadata->>'profile_id' = '${targetProfileId}' then
+          raise exception 'integ_forced_auth_audit_failure';
+        end if;
+        return new;
+      end;
+      $$;
+      create trigger trg_integ_fail_profile_auth_audit
+        before insert on public.audit_events
+        for each row
+        execute function public.integ_fail_profile_auth_audit();
+    `);
+
+    let firstResponse: Response;
+    try {
+      firstResponse = await invokeProfilePurge(
+        fx.superAdmin.client,
+        targetProfileId
+      );
+    } finally {
+      await runSql(`
+        drop trigger if exists trg_integ_fail_profile_auth_audit
+          on public.audit_events;
+        drop function if exists public.integ_fail_profile_auth_audit();
+      `);
+    }
+
+    expect(firstResponse.status).toBe(500);
+    const partial = (await firstResponse.json()) as {
       ok: boolean;
       code: string;
       tombstoneId?: string;
-      authUserState?: string;
+      warnings: string[];
     };
-    expect(result).toMatchObject({
-      ok: true,
-      code: "ok",
-      authUserState: "deleted",
+    expect(partial).toMatchObject({
+      ok: false,
+      code: "audit_record_failed",
+      warnings: ["auth_user_delete_completed"],
     });
-    tombstoneId = result.tombstoneId ?? "";
+    tombstoneId = partial.tombstoneId ?? "";
     expect(tombstoneId).toBeTruthy();
+
+    const pendingJobs = await queryRows<{
+      tombstone_id: string;
+      auth_user_id: string | null;
+      outcome: string | null;
+      completed_at: string | null;
+    }>(
+      "select tombstone_id, auth_user_id, outcome, completed_at from public.profile_auth_purge_jobs where profile_id = $1",
+      [targetProfileId]
+    );
+    expect(pendingJobs).toEqual([
+      {
+        tombstone_id: tombstoneId,
+        auth_user_id: targetAuthUserId,
+        outcome: null,
+        completed_at: null,
+      },
+    ]);
 
     const deletedAuth = await service.auth.admin.getUserById(targetAuthUserId);
     expect(deletedAuth.data.user).toBeNull();
     expect(deletedAuth.error).not.toBeNull();
+
+    const retryResponse = await invokeProfilePurge(
+      fx.superAdmin.client,
+      targetProfileId
+    );
+    expect(retryResponse.status).toBe(200);
+    expect(await retryResponse.json()).toMatchObject({
+      ok: true,
+      code: "ok",
+      tombstoneId,
+      authUserState: "already_missing",
+      resumed: true,
+    });
+
+    const completedJobs = await queryRows<{
+      tombstone_id: string;
+      auth_user_id: string | null;
+      outcome: string | null;
+      completed_at: string | null;
+    }>(
+      "select tombstone_id, auth_user_id, outcome, completed_at from public.profile_auth_purge_jobs where profile_id = $1",
+      [targetProfileId]
+    );
+    expect(completedJobs).toHaveLength(1);
+    expect(completedJobs[0]).toMatchObject({
+      tombstone_id: tombstoneId,
+      auth_user_id: null,
+      outcome: "already_missing",
+    });
+    expect(completedJobs[0].completed_at).toBeTruthy();
 
     const { data: replacement, error: replacementError } =
       await service.auth.admin.createUser({
@@ -341,6 +571,73 @@ suite("complete profile purge (#880/#881/#882)", () => {
     expect(requests[0].processed_at).toBeTruthy();
   });
 
+  it("scrubs target audit PII while preserving restored/live attribution", async () => {
+    const current = await queryRows<{
+      id: string;
+      actor_profile_id: string | null;
+      actor_name: string | null;
+      actor_email: string | null;
+      metadata: Record<string, unknown>;
+    }>(
+      "select id, actor_profile_id, actor_name, actor_email, metadata from public.audit_events where id = any($1::uuid[])",
+      [[targetMetadataAuditId, targetActorAuditId, restoredCurrentAuditId]]
+    );
+    const currentById = new Map(current.map((row) => [row.id, row]));
+
+    const targetMetadata = currentById.get(targetMetadataAuditId)!;
+    expect(targetMetadata.actor_profile_id).toBe(fx.superAdmin.profileId);
+    expect(targetMetadata.metadata).toMatchObject({
+      profile_id: targetProfileId,
+      group_id: groupId,
+      before: { status: "active" },
+    });
+    expect(JSON.stringify(targetMetadata.metadata)).not.toContain(targetEmail);
+    expect(JSON.stringify(targetMetadata.metadata)).not.toContain("555-0100");
+
+    const targetActor = currentById.get(targetActorAuditId)!;
+    expect(targetActor).toMatchObject({
+      actor_profile_id: null,
+      actor_name: null,
+      actor_email: null,
+    });
+    expect(targetActor.metadata).toMatchObject({
+      group_id: groupId,
+      after: { status: "kept" },
+    });
+    expect(JSON.stringify(targetActor.metadata)).not.toContain(targetEmail);
+
+    const archived = await queryRows<{
+      id: string;
+      actor_profile_id: string | null;
+      actor_name: string | null;
+      actor_email: string | null;
+      metadata: Record<string, unknown>;
+    }>(
+      "select id, actor_profile_id, actor_name, actor_email, metadata from public.audit_events_archive where id = any($1::uuid[])",
+      [[targetArchiveAuditId, restoredArchiveAuditId]]
+    );
+    const archiveById = new Map(archived.map((row) => [row.id, row]));
+    expect(archiveById.get(targetArchiveAuditId)).toMatchObject({
+      actor_profile_id: null,
+      actor_name: null,
+      actor_email: null,
+      metadata: {
+        profile_id: targetProfileId,
+        nested: { status: "kept" },
+      },
+    });
+
+    expect(currentById.get(restoredCurrentAuditId)).toMatchObject({
+      actor_profile_id: fx.leader.profileId,
+      actor_name: "Integ Leader",
+      actor_email: fx.leader.email,
+    });
+    expect(archiveById.get(restoredArchiveAuditId)).toMatchObject({
+      actor_profile_id: fx.leader.profileId,
+      actor_name: "Integ Leader",
+      actor_email: fx.leader.email,
+    });
+  });
   it("retains the authored note + prayer with anonymized authorship", async () => {
     const notes = await queryRows<{
       author_profile_id: string | null;
@@ -398,66 +695,48 @@ suite("complete profile purge (#880/#881/#882)", () => {
     }
   });
 
-  it("captures the cleanup on the tombstone and re-links the notes as set-null dependents", async () => {
+  it("keeps only a non-restorable structural tombstone", async () => {
     const tombstones = await queryRows<{
       id: string;
       entity_type: string;
       table_name: string;
-      cleanup_snapshot: Array<{
-        table: string;
-        column: string;
-        rows: Array<Record<string, unknown>>;
-      }>;
-      set_null_dependents: Array<{
-        table: string;
-        column: string;
-        ids: string[];
-      }>;
+      row_snapshot: Record<string, unknown>;
+      cleanup_snapshot: unknown[];
+      set_null_dependents: unknown[];
+      restorable: boolean;
+      restored_at: string | null;
     }>(
-      "select id, entity_type, table_name, cleanup_snapshot, set_null_dependents from public.tombstones where entity_id = $1",
+      "select id, entity_type, table_name, row_snapshot, cleanup_snapshot, set_null_dependents, restorable, restored_at from public.tombstones where entity_id = $1",
       [targetProfileId]
     );
     expect(tombstones).toHaveLength(1);
     const tomb = tombstones[0];
-    expect(tomb.id).toBe(tombstoneId);
-    expect(tomb.entity_type).toBe("profile");
-    expect(tomb.table_name).toBe("profiles");
+    expect(tomb).toMatchObject({
+      id: tombstoneId,
+      entity_type: "profile",
+      table_name: "profiles",
+      row_snapshot: {
+        record_type: "profile",
+        role: "leader",
+        status: "active",
+        deletion_policy: "irreversible",
+      },
+      cleanup_snapshot: [],
+      set_null_dependents: [],
+      restorable: false,
+      restored_at: null,
+    });
+    expect(tomb.row_snapshot).not.toHaveProperty("auth_user_id");
+    expect(tomb.row_snapshot).not.toHaveProperty("full_name");
+    expect(tomb.row_snapshot).not.toHaveProperty("email");
+    expect(tomb.row_snapshot).not.toHaveProperty("phone");
 
-    // The three deleted operational rows AND the two cascade children are on
-    // the record, full snapshots.
-    const cleanupByTable = new Map(
-      tomb.cleanup_snapshot.map((c) => [c.table, c])
+    const restore = await fx.superAdmin.client.rpc(
+      "super_admin_restore_tombstone",
+      { p_tombstone_id: tombstoneId }
     );
-    for (const table of [
-      "group_leaders",
-      "shepherd_coverage_assignments",
-      "shepherd_care_profiles",
-      "shepherd_care_admin_notes",
-      "shepherd_care_follow_ups",
-    ]) {
-      const entry = cleanupByTable.get(table);
-      expect(entry, `${table} should be captured`).toBeDefined();
-      expect(entry!.rows).toHaveLength(1);
-    }
-    // The cascade capture carries the actual content — the admin summary
-    // reached the tombstone before the cascade removed the live row.
-    const adminNoteRow = cleanupByTable.get("shepherd_care_admin_notes")!
-      .rows[0];
-    expect(adminNoteRow.admin_summary).toBe(
-      "Admin summary that must reach the tombstone."
-    );
-
-    // The retained notes are captured as set-null dependents, so a tombstone
-    // restore re-links their authorship automatically.
-    const setNullByTable = new Map(
-      tomb.set_null_dependents.map((d) => [`${d.table}.${d.column}`, d])
-    );
-    expect(setNullByTable.get("care_notes.author_profile_id")?.ids).toContain(
-      careNoteId
-    );
-    expect(
-      setNullByTable.get("prayer_requests.author_profile_id")?.ids
-    ).toContain(prayerRequestId);
+    expect(restore.data).toBeNull();
+    expect(restore.error?.message).toContain("irreversible_deletion");
   });
 
   it("writes the database and Auth-side audit events", async () => {
@@ -490,20 +769,20 @@ suite("complete profile purge (#880/#881/#882)", () => {
       actor_profile_id: string | null;
       metadata: Record<string, unknown>;
     }>(
-      "select actor_profile_id, metadata from public.audit_events where entity_type = 'auth_user' and entity_id = $1 and action = 'super_admin.auth_user_delete'",
-      [targetAuthUserId]
+      "select actor_profile_id, metadata from public.audit_events where entity_type = 'profile' and entity_id = $1 and action = 'super_admin.auth_user_delete'",
+      [targetProfileId]
     );
     expect(authAudits).toHaveLength(1);
     expect(authAudits[0].actor_profile_id).toBe(fx.superAdmin.profileId);
     expect(authAudits[0].metadata).toMatchObject({
       profile_id: targetProfileId,
       tombstone_id: tombstoneId,
-      outcome: "deleted",
+      outcome: "already_missing",
     });
-    expect(JSON.stringify(authAudits[0].metadata)).not.toContain(targetEmail);
-    expect(JSON.stringify(authAudits[0].metadata)).not.toContain(
-      "Personal reason"
-    );
+    const authAuditMetadata = JSON.stringify(authAudits[0].metadata);
+    expect(authAuditMetadata).not.toContain(targetEmail);
+    expect(authAuditMetadata).not.toContain("Personal reason");
+    expect(authAuditMetadata).not.toContain(targetAuthUserId);
   });
 
   it("still counts the retained null-author note in the sealed presence counts", async () => {

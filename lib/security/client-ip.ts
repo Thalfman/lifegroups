@@ -14,9 +14,13 @@ import { headers } from "next/headers";
 //                     this when the deployment terminates at a proxy that
 //                     overwrites these headers.
 //   - unset/other  -> no per-IP throttle (per-email throttle still applies)
-export async function extractClientIp(): Promise<string | null> {
-  const h = await headers();
-  const trusted = process.env.TRUSTED_PROXY?.trim().toLowerCase();
+type HeaderReader = Pick<Headers, "get">;
+
+export function extractClientIpFromHeaders(
+  h: HeaderReader,
+  trustedProxy = process.env.TRUSTED_PROXY
+): string | null {
+  const trusted = trustedProxy?.trim().toLowerCase();
   if (trusted === "vercel") {
     return h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || null;
   }
@@ -29,4 +33,9 @@ export async function extractClientIp(): Promise<string | null> {
     return h.get("x-real-ip")?.trim() || null;
   }
   return null;
+}
+
+export async function extractClientIp(): Promise<string | null> {
+  const h = await headers();
+  return extractClientIpFromHeaders(h);
 }

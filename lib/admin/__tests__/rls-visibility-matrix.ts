@@ -73,6 +73,7 @@ const M = {
   accountDeletion: "20260704000000_account_deletion_requests.sql",
   firstRunOrientation: "20260705000000_first_run_orientation.sql",
   collapseCells: "20260708000000_collapse_cells_to_group_type_list.sql",
+  irreversibleProfileErasure: "20260718010000_irreversible_profile_erasure.sql",
   // #860: recreated every in-force SELECT policy that called a no-arg helper
   // bare, adding only the `(select …)` InitPlan wrapping — so it is now the
   // last writer for those policies. Entries below point here so the sweep
@@ -535,5 +536,12 @@ export const MATRIX: readonly RlsExpectation[] = [
     table: "first_run_orientations",
     cls: "NO_READ",
     authoritativeMigration: M.firstRunOrientation,
+  },
+  // Cross-system Auth purge retry seam: service-role only, with no user
+  // SELECT policy. The pending Auth UUID is cleared when completion is audited.
+  {
+    table: "profile_auth_purge_jobs",
+    cls: "NO_READ",
+    authoritativeMigration: M.irreversibleProfileErasure,
   },
 ];

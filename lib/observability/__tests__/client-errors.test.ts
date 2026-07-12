@@ -26,7 +26,6 @@ describe("parseClientErrorReport", () => {
     );
     expect(report).toEqual({
       error_name: "TypeError",
-      error_message: "Cannot read properties of undefined",
       digest: "1234567890",
       route: "/admin/care",
     });
@@ -40,14 +39,22 @@ describe("parseClientErrorReport", () => {
     expect(report?.route).toBe("/invite/:id");
   });
 
-  it("truncates an oversized message and tolerates a missing one", () => {
-    const long = parseClientErrorReport(
-      JSON.stringify({ name: "Error", message: "x".repeat(1000) })
+  it("ignores raw messages and normalizes unrecognized classes and digests", () => {
+    const report = parseClientErrorReport(
+      JSON.stringify({
+        name: "AttackerChosenClass",
+        message: "password=do-not-log",
+        digest: "unsafe digest with spaces",
+      })
     );
-    expect(long?.error_message).toHaveLength(300);
+    expect(report).toEqual({
+      error_name: "Error",
+      digest: null,
+      route: "unknown",
+    });
+    expect(report).not.toHaveProperty("error_message");
 
     const missing = parseClientErrorReport(JSON.stringify({ name: "Error" }));
-    expect(missing?.error_message).toBe("");
     expect(missing?.digest).toBeNull();
     expect(missing?.route).toBe("unknown");
   });
@@ -82,10 +89,13 @@ describe("logClientError", () => {
       event: "client_error",
       outcome: "fail",
       error_name: "ChunkLoadError",
-      error_message: "Loading chunk 42 failed",
       digest: "abc123",
       route: "/admin/groups/:id",
     });
+
+    expect(JSON.stringify(mockError.mock.calls)).not.toContain(
+      "Loading chunk 42 failed"
+    );
   });
 
   it("no-ops on a malformed body", () => {

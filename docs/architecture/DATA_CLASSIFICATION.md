@@ -13,18 +13,18 @@ carry an RLS visibility assertion.
 
 ## Taxonomy
 
-| Classification         | Examples (this schema)                                                                                                                                               | Storage                      | Access                                          | Logging / audit                         | Retention                   |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------- | --------------------------------------- | --------------------------- |
-| `operational_metadata` | group names, meeting day, category/cell config, rubric definitions, nav/route config                                                                                 | Plaintext                    | Role-scoped                                     | Safe in structured logs if non-personal | Long-lived                  |
-| `pii`                  | `profiles`/`members` names, emails, phones; `guests`/`prospects`/`over_shepherds` contact; `household_name`                                                          | Plaintext / normalized       | Role-scoped by ladder + assignment              | Do not log raw values                   | Active + policy window      |
-| `sensitive_care`       | `care_notes.body`, `shepherd_care_interactions.notes`, `attendance_sessions.leader_note`, `group_health_assessments.spiritual_growth_note`, `care_sensitivity_flag`  | Restricted rows              | Author / assigned role / grant-gated            | Never log raw text                      | Explicit                    |
-| `prayer_request`       | `prayer_requests.body` (+ subject, status, updates)                                                                                                                  | Restricted rows              | Author-private unless grant                     | Never log raw text                      | Explicit                    |
-| `admin_private`        | `shepherd_care_admin_notes.admin_summary`, `follow_ups.admin_private_note`, `groups.admin_notes`, `group_metric_settings.admin_metric_notes`, `over_shepherds.notes` | Restricted                   | Creator / Ministry-Admin only                   | Never log raw / decrypted               | Shorter preferred (TBD)     |
-| `encrypted_private`    | `shepherd_care_private_notes.{ciphertext,iv}`, `shepherd_care_note_key_slots.*` (wrapped DEK, salts)                                                                 | Encrypted payload + metadata | Creator only — **hidden even from Super Admin** | Logs may include record IDs only        | Explicit                    |
-| `audit`                | `audit_events.*`, `audit_events_archive.*`, `group_status_history`                                                                                                   | Append-only                  | Admin / super_admin only                        | No sensitive plaintext                  | Long retention              |
-| `invite_auth`          | `invitations.token_hash`, `invite_redeem_throttle.throttle_key`                                                                                                      | Tokenized / hashed           | Narrow admin / Edge Function                    | Never log raw tokens                    | Expire tokens, retain audit |
-| `danger_zone_snapshot` | `tombstones.{row_snapshot,set_null_dependents}`, `clean_slate_snapshots.payload`, history/attention reset snapshots                                                  | Restricted                   | Super admin / explicit policy                   | No sensitive plaintext unless approved  | Expire / archive by policy  |
-| `policy_tbd`           | unresolved cases (e.g. `account_deletion_requests.reason`)                                                                                                           | Treat as sensitive           | Most restrictive that fits                      | Keep out of logs / audit metadata       | Conservative                |
+| Classification         | Examples (this schema)                                                                                                                                               | Storage                        | Access                                          | Logging / audit                         | Retention                                      |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ----------------------------------------------- | --------------------------------------- | ---------------------------------------------- |
+| `operational_metadata` | group names, meeting day, group-type config, rubric definitions, nav/route config                                                                                    | Plaintext                      | Role-scoped                                     | Safe in structured logs if non-personal | Long-lived                                     |
+| `pii`                  | `profiles`/`members` names, emails, phones; `guests`/`prospects`/`over_shepherds` contact; `household_name`                                                          | Plaintext / normalized         | Role-scoped by ladder + assignment              | Do not log raw values                   | Active + policy window                         |
+| `sensitive_care`       | `care_notes.body`, `shepherd_care_interactions.notes`, `attendance_sessions.leader_note`, `group_health_assessments.spiritual_growth_note`, `care_sensitivity_flag`  | Restricted rows                | Author / assigned role / grant-gated            | Never log raw text                      | Explicit                                       |
+| `prayer_request`       | `prayer_requests.body` (+ subject, status, updates)                                                                                                                  | Restricted rows                | Author-private unless grant                     | Never log raw text                      | Explicit                                       |
+| `admin_private`        | `shepherd_care_admin_notes.admin_summary`, `follow_ups.admin_private_note`, `groups.admin_notes`, `group_metric_settings.admin_metric_notes`, `over_shepherds.notes` | Restricted                     | Creator / Ministry-Admin only                   | Never log raw / decrypted               | Shorter preferred (TBD)                        |
+| `encrypted_private`    | `shepherd_care_private_notes.{ciphertext,iv}`, `shepherd_care_note_key_slots.*` (wrapped DEK, salts)                                                                 | Encrypted payload + metadata   | Creator only — **hidden even from Super Admin** | Logs may include record IDs only        | Explicit                                       |
+| `audit`                | `audit_events.*`, `audit_events_archive.*`, `group_status_history`                                                                                                   | Append-only                    | Admin / super_admin only                        | No sensitive plaintext                  | Long retention                                 |
+| `invite_auth`          | `invitations.token_hash`, throttle keys, pending `profile_auth_purge_jobs.auth_user_id`                                                                              | Tokenized / hashed / transient | Narrow RPC / service runtime                    | Never log raw tokens or Auth UUIDs      | Expire tokens; clear purge UUID at completion  |
+| `danger_zone_snapshot` | `tombstones.{row_snapshot,set_null_dependents,cleanup_snapshot}`, `clean_slate_snapshots.payload`, history/attention reset snapshots                                 | Restricted                     | Super admin / explicit policy                   | No sensitive plaintext unless approved  | Profile snapshots erased; others follow policy |
+| `policy_tbd`           | unresolved cases (e.g. `account_deletion_requests.reason`)                                                                                                           | Treat as sensitive             | Most restrictive that fits                      | Keep out of logs / audit metadata       | Conservative                                   |
 
 ## Default rule — sensitive until proven otherwise
 
@@ -46,6 +46,19 @@ Unknown policy decisions do **not** block. Mark the table/column `policy_tbd` in
 the manifest; it is treated as sensitive (kept out of logs/audit metadata) until
 classified more narrowly. `policyTbdTables()` surfaces them so the gap is
 visible rather than hidden.
+
+## Profile-erasure exception
+
+Profile deletion is immediately irreversible. Its tombstone keeps only
+non-personal structural metadata (`record_type`, role/status when present,
+creation time, and the irreversible policy marker); `row_snapshot`,
+`set_null_dependents`, and `cleanup_snapshot` never retain recoverable profile
+or dependent data. Non-profile tombstones keep the existing audited restore
+behavior.
+
+A service-only `profile_auth_purge_jobs` row may temporarily hold the linked
+Auth UUID so a cross-system partial failure can resume. Completion clears that
+UUID atomically with the audit event; no authenticated role has a read policy.
 
 ## Visibility exceptions (do not regress)
 

@@ -6,8 +6,8 @@
 -- and contains NO real ministry / pastoral content — every name is invented and
 -- every email is @reviewerdemo.example.
 --
--- Scope split with #564: THIS seed creates the records (Cells, Groups, People,
--- Leaders, Over-Shepherds, Care Notes, Prayer Requests). #564 stands up the
+-- Scope split with #564: THIS seed creates the records (Group Types, Groups,
+-- People, Leaders, Over-Shepherds, Care Notes, Prayer Requests). #564 stands up the
 -- review environment and provisions the reviewer AUTH users; those Auth users
 -- link to the profiles below BY EMAIL (the over-shepherd bridge and the leader
 -- assignments key off these emails), so the reviewer logins land on populated

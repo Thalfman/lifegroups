@@ -1,4 +1,5 @@
 import { test, expect, e2eCreds, signIn, uniqueBody } from "./helpers";
+import { assertLiveThenPersist } from "./live-refresh-contract";
 
 // Happy-path Interest Funnel advance, end to end (#826; funnel from PRD #371 /
 // ADR 0016). Nothing here is stubbed: the spec signs in as the seeded Ministry
@@ -109,25 +110,19 @@ test.describe("Interest Funnel advance pipeline", () => {
     const matchedColumn = main
       .locator("section")
       .filter({ has: page.locator("header", { hasText: "Matched" }) });
-    // Tolerate the #839 stall class here like the create/archive steps: the
-    // transition RPC commits before the response stream stalls, so on the
-    // stall path the reload below is what proves the move — the no-reload
-    // re-partition stays asserted on the live path.
-    const liveMove = await matchedColumn
-      .getByText(name)
-      .waitFor({ state: "visible", timeout: 15_000 })
-      .then(() => true)
-      .catch(() => false);
-    if (!liveMove) {
-      console.log("[e2e] prospect move: no live signal in 15s, reloading");
-      await page.reload();
-    }
-    await expect(matchedColumn.getByText(name)).toBeVisible();
-
-    // Round-trip: a full reload re-runs the page's server reads
-    // (force-dynamic), so the card below only renders from persisted state.
-    await page.reload();
-    await expect(matchedColumn.getByText(name)).toBeVisible();
+    // The board must re-partition before navigation. Only after that live
+    // contract passes may a full reload prove persisted state.
+    await assertLiveThenPersist({
+      assertLive: async () => {
+        await expect(matchedColumn.getByText(name)).toBeVisible();
+      },
+      reload: async () => {
+        await page.reload();
+      },
+      assertPersisted: async () => {
+        await expect(matchedColumn.getByText(name)).toBeVisible();
+      },
+    });
 
     // Cleanup through the real audited UI: soft-archive the run's Prospect
     // (paired audit row; the record stays in history) so the board doesn't

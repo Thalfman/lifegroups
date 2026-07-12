@@ -3,7 +3,7 @@ import { runSql } from "./sql";
 // Fixture-provisioning grants for the RLS / action-pipeline harness (issue #707).
 //
 // WHY THIS EXISTS
-//   The harness seeds its four-tier fixture set by writing the operational tables
+//   The harness seeds its full oversight-role fixture set by writing the tables
 //   DIRECTLY through the service-role PostgREST client (support/fixtures.ts) —
 //   setup, not assertion. But this repo's narrow-grants posture (5A.2 hardening)
 //   deliberately withholds table-level INSERT/UPDATE/DELETE from `service_role`:
@@ -38,6 +38,16 @@ const FIXTURE_TABLES = [
   "shepherd_care_private_notes",
   "shepherd_care_note_key_slots",
   "audit_events",
+  "groups",
+  "group_leaders",
+  "members",
+  "group_memberships",
+  "account_deletion_requests",
+  "invitations",
+  "tombstones",
+  "clean_slate_snapshots",
+  "history_reset_snapshots",
+  "attention_reset_snapshots",
 ] as const;
 
 /**

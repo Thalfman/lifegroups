@@ -1,5 +1,5 @@
 import type { ReadClient } from "@/lib/supabase/read-core";
-import { currentUtcDateIso } from "@/lib/supabase/read-core";
+import { churchTodayIso } from "@/lib/shared/church-time";
 import { fetchActiveGroupCount } from "@/lib/supabase/group-reads";
 import { fetchActiveMemberships } from "@/lib/supabase/membership-reads";
 import { fetchOpenFollowUpsDueCount } from "@/lib/supabase/overview-reads";
@@ -19,7 +19,7 @@ export interface HubStat {
 // the rest of these surfaces. Reuses the cheap, already-RLS-scoped read models
 // the admin dashboard relies on, so no new query shapes are introduced.
 export async function loadHubStats(client: ReadClient): Promise<HubStat[]> {
-  const todayIso = currentUtcDateIso();
+  const todayIso = churchTodayIso();
   const [groups, memberships, dueFollowUps] = await Promise.allSettled([
     fetchActiveGroupCount(client),
     fetchActiveMemberships(client),

@@ -119,7 +119,7 @@ flag may re-enable them only after a verify-before-flip).
 | `/admin/groups/[groupId]/calendar`                     | Per-group calendar                                   | admins            | via Groups                        |
 | `/admin/people`, `/admin/people/[kind]/[personId]`     | People directory + person detail                     | admins            | flag `nav_show_people`, seeded on |
 | `/admin/settings`                                      | Julian's configuration (5 tabs, §4.7)                | admins            | visible                           |
-| `/admin/super-admin`                                   | Super Admin Console (6 workspaces, §4.8)             | Super Admin       | hub tile                          |
+| `/admin/super-admin`                                   | Super Admin Console (7 workspaces, §4.8)             | Super Admin       | hub tile                          |
 | `/admin/shepherd-care`, `…/[profileId]`                | Leader-care detail host                              | admins            | alias → Care                      |
 | `/admin/shepherd-care/over-shepherds`, `…/[id]`        | Over-Shepherd roster + coverage                      | admins            | alias → Care                      |
 | `/admin/follow-ups`                                    | Follow-up queue host                                 | admins            | alias → Care                      |
@@ -305,7 +305,7 @@ defined in Julian's own words (placeholder labels shipped first per ADR
 
 ### 4.8 Super Admin Console — `/admin/super-admin`
 
-**Tom's platform console** — app administration, never pastoral content. Six
+**Tom's platform console** — app administration, never pastoral content. Seven
 workspaces (`components/admin/super-admin-console-shell.tsx`), hash-deep-linkable:
 
 1. **Readiness** — is the platform ready; the one next thing to do.
@@ -315,9 +315,11 @@ workspaces (`components/admin/super-admin-console-shell.tsx`), hash-deep-linkabl
    frozen surfaces.
 4. **Diagnostics** — health checks and test tooling.
 5. **Audit** — the `audit_events` trail of every mutation.
-6. **Danger Zone** — the only place permanent deletion exists: type-to-
-   confirm, impact preview, a tombstone (full JSON snapshot) written
-   alongside the audit row, never cascading.
+6. **Usage** — bounded product-usage metrics when `usage_tracking` is enabled.
+7. **Danger Zone** — the only place permanent deletion exists: type-to-
+   confirm, impact preview, and an audited tombstone, never cascading. Non-
+   profile tombstones retain a recovery snapshot; profile-erasure tombstones
+   retain only structural/status metadata and are irreversible.
 
 ### 4.9 Over-Shepherd surface — `/over-shepherd`
 

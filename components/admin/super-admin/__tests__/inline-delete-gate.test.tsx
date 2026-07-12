@@ -151,10 +151,10 @@ describe("DeletePreview cleanup announcement (#880)", () => {
         ],
       })
     );
-    expect(html).toContain("Will remove and back up 3 assignment records");
-    expect(html).toContain("not re-created on restore");
+    expect(html).toContain("Will permanently remove 3 assignment records");
+    expect(html).toContain("No recovery copy will be retained");
     // Still safe to delete — the cleanup informs, it never blocks.
-    expect(html).toContain("Safe to delete.");
+    expect(html).toContain("Ready for irreversible profile erasure.");
   });
 
   it("singularizes a one-record cleanup", () => {
@@ -163,12 +163,13 @@ describe("DeletePreview cleanup announcement (#880)", () => {
         cleanup: [{ table: "group_leaders", column: "profile_id", count: 1 }],
       })
     );
-    expect(html).toContain("Will remove and back up 1 assignment record (");
+    expect(html).toContain("Will permanently remove 1 assignment record.");
   });
 
-  it("renders the plain safe-to-delete line when there is no cleanup", () => {
-    const html = render(report());
+  it("keeps recovery copy for a non-profile deletion", () => {
+    const html = render(report({ entityType: "group" }));
     expect(html).toContain("Safe to delete.");
+    expect(html).toContain("A backup copy is captured first");
     expect(html).not.toContain("Will remove and back up");
   });
 
@@ -182,6 +183,8 @@ describe("DeletePreview cleanup announcement (#880)", () => {
             column: "group_id",
             action: "c",
             count: 2,
+            ids: [],
+            entityType: "group_membership",
           },
         ],
         cleanup: [{ table: "group_leaders", column: "profile_id", count: 1 }],

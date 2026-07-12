@@ -18,12 +18,12 @@ import {
 } from "@/lib/admin/attention-reset";
 import {
   columns,
-  currentUtcDateIso,
   fetchByIds,
   wrapError,
   type ReadClient,
   type ReadResult,
 } from "./read-core";
+import { churchTodayIso } from "@/lib/shared/church-time";
 
 // ---------------------------------------------------------------------------
 // Phase 5D.0 — Shepherd care tracker (admin-only) directory read models.
@@ -155,7 +155,7 @@ export function buildCareDirectoryEntries(
   for (const row of careRows)
     careByShepherdId.set(row.shepherd_profile_id, row);
 
-  const today = options.todayIso ?? currentUtcDateIso();
+  const today = options.todayIso ?? churchTodayIso();
   const windows = options.windows ?? BUILT_IN_CARE_CADENCE_WINDOWS;
   const delegatedShepherdIds = options.delegatedShepherdIds;
   const baselines = options.baselines;

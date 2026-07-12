@@ -4,7 +4,7 @@ import type {
 } from "@/components/admin/group-management-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type BoundReads } from "@/lib/supabase/reads-seam";
-import { currentUtcDateIso } from "@/lib/supabase/read-core";
+import { churchTodayIso } from "@/lib/shared/church-time";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { fetchActiveShepherdCoverageAssignmentsForAdmin } from "@/lib/supabase/shepherd-coverage-reads";
 import {
@@ -103,7 +103,7 @@ export async function buildGroupManagementData(
   options: { period?: string; todayIso?: string } = {}
 ): Promise<GroupManagementData> {
   const period = options.period ?? currentPeriodMonthIso();
-  const todayIso = options.todayIso ?? currentUtcDateIso();
+  const todayIso = options.todayIso ?? churchTodayIso();
 
   // The Health zone reflects the Group-Health Grade (Q12 computed grade), not
   // the groups.health_status enum. We read the same live overview the Group
@@ -254,5 +254,7 @@ export async function buildGroupManagementData(
 export async function loadGroupManagementData(): Promise<GroupManagementData> {
   const client = await createSupabaseServerClient();
   if (!client) return EMPTY_GROUP_MANAGEMENT_DATA;
-  return buildGroupManagementData(supabaseGroupManagementReads(client));
+  return buildGroupManagementData(supabaseGroupManagementReads(client), {
+    todayIso: churchTodayIso(),
+  });
 }

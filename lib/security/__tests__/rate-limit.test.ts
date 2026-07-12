@@ -8,8 +8,9 @@ type FakeSlidingWindow = {
   window: string;
 };
 
-const { fakeLimiterBuckets } = vi.hoisted(() => ({
+const { fakeLimiterBuckets, failingLimiterPrefixes } = vi.hoisted(() => ({
   fakeLimiterBuckets: new Map<string, number>(),
+  failingLimiterPrefixes: new Set<string>(),
 }));
 
 vi.mock("@upstash/redis", () => ({
@@ -34,6 +35,9 @@ vi.mock("@upstash/ratelimit", () => ({
     }
 
     async limit(key: string): Promise<{ success: boolean }> {
+      if (failingLimiterPrefixes.has(this.prefix)) {
+        throw new Error("fake Redis outage");
+      }
       const bucketKey = `${this.prefix}:${key}`;
       const attempts = (fakeLimiterBuckets.get(bucketKey) ?? 0) + 1;
       fakeLimiterBuckets.set(bucketKey, attempts);
@@ -50,7 +54,7 @@ async function freshModule() {
   vi.resetModules();
   const mod = await import("@/lib/security/rate-limit");
   const { log } = await import("@/lib/observability/logger");
-  return { mod, warn: vi.mocked(log.warn) };
+  return { mod, warn: vi.mocked(log.warn), error: vi.mocked(log.error) };
 }
 
 describe("rate_limit_disabled warning dedupe (#856)", () => {
@@ -120,6 +124,7 @@ describe("invite-redeem null-IP fallback throttle (#858)", () => {
     fakeLimiterBuckets.clear();
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://redis.example.test");
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "test-token");
+    vi.stubEnv("RATE_LIMIT_HMAC_SECRET", "test-rate-limit-hmac-secret");
   });
 
   it("allows a generous null-IP burst but denies attempts beyond the fallback cap", async () => {
@@ -173,5 +178,205 @@ describe("invite-redeem null-IP fallback throttle (#858)", () => {
       request_id: "req-fallback",
       dimension: "global_fallback",
     });
+  });
+
+  it("sends only a versioned HMAC identifier to the resolved-IP bucket", async () => {
+    const { mod } = await freshModule();
+    const rawIp = "203.0.113.42";
+
+    await mod.checkInviteRedeemLimit({ ip: rawIp });
+
+    const keys = [...fakeLimiterBuckets.keys()];
+    expect(keys).toHaveLength(1);
+
+    expect(keys[0]).toMatch(/^rl:invredeem:ip:ip:v1:[a-f0-9]{64}$/);
+    expect(keys[0]).not.toContain(rawIp);
+  });
+
+  it("uses the shared fallback when an IP is present but the HMAC secret is missing", async () => {
+    vi.stubEnv("RATE_LIMIT_HMAC_SECRET", "");
+    const { mod } = await freshModule();
+
+    await mod.checkInviteRedeemLimit({ ip: "203.0.113.42" });
+
+    expect([...fakeLimiterBuckets.keys()]).toEqual([
+      "rl:invredeem:fallback:global",
+    ]);
+  });
+});
+
+describe("forgot-password IP hashing", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fakeLimiterBuckets.clear();
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://redis.example.test");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "test-token");
+    vi.stubEnv("RATE_LIMIT_HMAC_SECRET", "test-rate-limit-hmac-secret");
+  });
+
+  it("never sends the raw IP to Upstash", async () => {
+    const { mod } = await freshModule();
+    const rawIp = "203.0.113.9";
+
+    await mod.checkForgotPasswordLimit({ ip: rawIp, emailHash: "email-hash" });
+
+    const keys = [...fakeLimiterBuckets.keys()];
+    expect(keys).toContain("rl:fp:em:email-hash");
+    expect(keys.some((key) => /^rl:fp:ip:ip:v1:[a-f0-9]{64}$/.test(key))).toBe(
+      true
+    );
+    expect(keys.every((key) => !key.includes(rawIp))).toBe(true);
+  });
+});
+
+describe("public telemetry throttling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fakeLimiterBuckets.clear();
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://redis.example.test");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "test-token");
+    failingLimiterPrefixes.clear();
+    vi.stubEnv("RATE_LIMIT_HMAC_SECRET", "test-rate-limit-hmac-secret");
+  });
+
+  it("uses only a versioned HMAC in the endpoint-specific IP bucket", async () => {
+    const { mod } = await freshModule();
+    const rawIp = "198.51.100.8";
+
+    await mod.checkPublicTelemetryLimit({
+      endpoint: "vitals",
+      ip: rawIp,
+    });
+
+    const keys = [...fakeLimiterBuckets.keys()];
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toMatch(/^rl:telemetry:vitals:ip:ip:v1:[a-f0-9]{64}$/);
+    expect(keys[0]).not.toContain(rawIp);
+  });
+
+  it("uses isolated 60-per-minute limits for each telemetry endpoint", async () => {
+    const { mod } = await freshModule();
+    const input = { ip: "198.51.100.8" };
+
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await expect(
+        mod.checkPublicTelemetryLimit({ endpoint: "vitals", ...input })
+      ).resolves.toEqual({ configured: true, allowed: true });
+    }
+    await expect(
+      mod.checkPublicTelemetryLimit({ endpoint: "vitals", ...input })
+    ).resolves.toEqual({ configured: true, allowed: false });
+
+    await expect(
+      mod.checkPublicTelemetryLimit({ endpoint: "client-error", ...input })
+    ).resolves.toEqual({ configured: true, allowed: true });
+  });
+
+  it("uses the bounded global fallback when no trusted IP is available", async () => {
+    const { mod } = await freshModule();
+
+    await mod.checkPublicTelemetryLimit({ endpoint: "client-error", ip: null });
+
+    expect([...fakeLimiterBuckets.keys()]).toEqual([
+      "rl:telemetry:client-error:fallback:global",
+    ]);
+  });
+
+  it("does not put a raw IP in Redis when the HMAC secret is absent", async () => {
+    vi.stubEnv("RATE_LIMIT_HMAC_SECRET", "");
+    const { mod } = await freshModule();
+    const rawIp = "198.51.100.8";
+
+    await mod.checkPublicTelemetryLimit({
+      endpoint: "client-error",
+      ip: rawIp,
+    });
+
+    const keys = [...fakeLimiterBuckets.keys()];
+    expect(keys).toEqual(["rl:telemetry:client-error:fallback:global"]);
+    expect(keys.every((key) => !key.includes(rawIp))).toBe(true);
+  });
+
+  it("enforces a per-process IP limit when Upstash is unconfigured", async () => {
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+    const { mod } = await freshModule();
+    const input = { endpoint: "vitals" as const, ip: "198.51.100.18" };
+
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await expect(mod.checkPublicTelemetryLimit(input)).resolves.toEqual({
+        configured: true,
+        allowed: true,
+      });
+    }
+    await expect(mod.checkPublicTelemetryLimit(input)).resolves.toEqual({
+      configured: true,
+      allowed: false,
+    });
+    expect(fakeLimiterBuckets).toHaveLength(0);
+  });
+
+  it("enforces the shared local cap when no trusted IP is available", async () => {
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+    const { mod } = await freshModule();
+    const input = { endpoint: "client-error" as const, ip: null };
+
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      await expect(mod.checkPublicTelemetryLimit(input)).resolves.toMatchObject(
+        {
+          allowed: true,
+        }
+      );
+    }
+    await expect(mod.checkPublicTelemetryLimit(input)).resolves.toMatchObject({
+      allowed: false,
+    });
+  });
+
+  it("falls back to the bounded process limiter when Redis throws", async () => {
+    failingLimiterPrefixes.add("rl:telemetry:vitals:ip");
+    const { mod, error } = await freshModule();
+    const input = { endpoint: "vitals" as const, ip: "198.51.100.28" };
+
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await expect(mod.checkPublicTelemetryLimit(input)).resolves.toMatchObject(
+        {
+          allowed: true,
+        }
+      );
+    }
+    await expect(mod.checkPublicTelemetryLimit(input)).resolves.toMatchObject({
+      allowed: false,
+    });
+    expect(error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "rate_limit_backend_error",
+        route_or_action: "telemetry-vitals",
+      })
+    );
+  });
+
+  it("bounds and resets the per-process bucket store", async () => {
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+    const { mod } = await freshModule();
+
+    for (
+      let index = 0;
+      index < mod.PUBLIC_TELEMETRY_LOCAL_MAX_BUCKETS + 10;
+      index += 1
+    ) {
+      await mod.checkPublicTelemetryLimit({
+        endpoint: "vitals",
+        ip: `198.51.${Math.floor(index / 256)}.${index % 256}`,
+      });
+    }
+    expect(mod.publicTelemetryLocalBucketCountForTests()).toBe(
+      mod.PUBLIC_TELEMETRY_LOCAL_MAX_BUCKETS
+    );
+
+    mod.resetPublicTelemetryLocalLimitForTests();
+    expect(mod.publicTelemetryLocalBucketCountForTests()).toBe(0);
   });
 });

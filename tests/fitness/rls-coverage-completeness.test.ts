@@ -49,8 +49,14 @@ describe("fitness: RLS coverage manifest is complete", () => {
     expect(undocumented).toEqual([]);
   });
 
-  it("asserts a meaningful live core; asserted + deferred covers the whole map", () => {
-    expect(report.asserted.length).toBeGreaterThanOrEqual(8);
+  it("ratchets the maximum deferred live-RLS table count", () => {
+    // Lower this ceiling whenever another table gains positive and negative
+    // live-stack assertions. Never raise it to accommodate a regression.
+    const maximumDeferredTables = 18;
+    expect(report.deferred.length).toBeLessThanOrEqual(maximumDeferredTables);
+  });
+
+  it("accounts for the whole coverage map", () => {
     expect(report.asserted.length + report.deferred.length).toBe(
       Object.keys(RLS_COVERAGE).length
     );

@@ -27,6 +27,13 @@ command -v supabase >/dev/null 2>&1 || {
   exit 1
 }
 
+# redeem-invite fails closed without its IP-HMAC key. Prepare the ignored local
+# Edge env before a possible `supabase start`, and export the exact same value
+# so the Next E2E process uses one consistent local-only identifier key.
+# shellcheck source=scripts/ensure-local-edge-env.sh
+. "$ROOT_DIR/scripts/ensure-local-edge-env.sh"
+
+
 # One-command local run: start the local stack when none is up. `supabase
 # status` exits non-zero when the stack isn't running.
 if ! supabase status >/dev/null 2>&1; then

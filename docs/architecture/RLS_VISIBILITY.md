@@ -39,7 +39,7 @@ Read access is enforced in Postgres by RLS `USING` predicates, gating on
 | **PRIVATE_NOTE_EXCEPTION** | Creator-only Ministry Admin — **Super Admin excluded**          | `auth_role() = 'ministry_admin' and created_by = self` |
 | **NO_READ**                | Nobody via SQL — reachable only through `SECURITY DEFINER` RPCs | _(no SELECT policy)_                                   |
 
-## The matrix (56 RLS-enabled tables)
+## The matrix (57 RLS-enabled tables)
 
 The count matches the sweep test's coverage guard, which classifies every table
 that ever had RLS enabled in migration history — including the four retired
@@ -112,9 +112,10 @@ it beyond self would leak the directory.
 
 ### NO_READ — RPC-only
 
-`invite_redeem_throttle`, `first_run_orientations` (`20260705000000` — RLS on,
-deliberately no SELECT policy; orientation state is read and written only
-through its `SECURITY DEFINER` RPCs).
+`invite_redeem_throttle`, `first_run_orientations`, and
+`profile_auth_purge_jobs` (`20260718010000` — service-only retry state) have
+RLS on and deliberately no SELECT policy; state is read and written only
+through narrow `SECURITY DEFINER` RPCs or the service-role runtime.
 
 ## The two deliberate exceptions
 
@@ -147,8 +148,9 @@ auth_profile_id()`. The **Super Admin cannot read it** (the policy never
   account-deletion request queue (`account_deletion_requests`) are Tom-only.
   The ladder puts Super Admin above Ministry Admin, so these being invisible
   to Julian is consistent with the ladder, not a gap.
-- **`NO_READ` (`invite_redeem_throttle`, `first_run_orientations`)** — RLS on,
-  no SELECT policy; touched only inside `SECURITY DEFINER` RPCs.
+- **`NO_READ` (`invite_redeem_throttle`, `first_run_orientations`,
+  `profile_auth_purge_jobs`)** — RLS on, no SELECT policy; touched only inside
+  narrow `SECURITY DEFINER` RPCs or the service-role profile-erasure runtime.
 - **`profiles` self-read arm** — see the OVER_SHEPHERD_SCOPED section above:
   own-row SELECT with no status filter, required by session bootstrap and
   fenced by the app guards.

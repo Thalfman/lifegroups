@@ -1,7 +1,18 @@
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { resolveIntegrationEnv } from "./support/env";
-import { provisionFixtures, type Fixtures } from "./support/fixtures";
+import {
+  provisionFixtures,
+  type Fixtures,
+  type Tier,
+} from "./support/fixtures";
+import {
+  PRIORITY_SUPER_ADMIN_TABLES,
+  provisionPriorityRlsFixtures,
+  type PriorityRlsFixtures,
+} from "./support/priority-rls-fixtures";
+import { queryRows, runSql } from "./support/sql";
 
 // (a) Per-tier RLS visibility across the oversight ladder, INCLUDING the two
 // visibility exceptions. Every assertion runs through a per-tier authenticated
@@ -31,13 +42,15 @@ if (probe.kind === "skip") {
 
 suite("RLS per-tier visibility (local Supabase stack)", () => {
   let fx: Fixtures;
+  let priorityFx: PriorityRlsFixtures;
 
   beforeAll(async () => {
     if (probe.kind !== "ready") return;
     fx = await provisionFixtures(probe.env);
+    priorityFx = await provisionPriorityRlsFixtures(probe.env, fx);
   });
-
   afterAll(async () => {
+    if (priorityFx) await priorityFx.teardown();
     if (fx) await fx.teardown();
   });
 
@@ -376,6 +389,123 @@ suite("RLS per-tier visibility (local Supabase stack)", () => {
     });
   });
 
+  describe("purged-author Care Notes and Prayer Requests", () => {
+    const groupId = randomUUID();
+    const profileCareNoteId = randomUUID();
+    const groupCareNoteId = randomUUID();
+    const profilePrayerId = randomUUID();
+    const groupPrayerId = randomUUID();
+
+    const tiers = (): readonly Tier[] => [
+      fx.superAdmin,
+      fx.ministryAdmin,
+      fx.overShepherd,
+      fx.leader,
+      fx.coLeader,
+    ];
+
+    async function expectVisibleCount(
+      tier: Tier,
+      table: "care_notes" | "prayer_requests",
+      id: string,
+      expected: number
+    ): Promise<void> {
+      const { data, error } = await tier.client
+        .from(table)
+        .select("id, author_profile_id")
+        .eq("id", id);
+      expect(error, `${tier.key} ${table} read`).toBeNull();
+      expect(data ?? [], `${tier.key} ${table} visibility`).toHaveLength(
+        expected
+      );
+      if (expected === 1) {
+        expect(data![0].author_profile_id).toBeNull();
+      }
+    }
+
+    beforeAll(async () => {
+      if (probe.kind !== "ready") return;
+      // Disposable local-stack fixtures represent the state after profile purge:
+      // the subject survives, while ON DELETE SET NULL removed the author.
+      await runSql(`
+        insert into public.groups (id, name)
+        values ('${groupId}', 'Purged author visibility fixture');
+
+        insert into public.care_notes
+          (id, author_profile_id, subject_profile_id, body, author_descriptor)
+        values
+          ('${profileCareNoteId}', null, '${fx.leader.profileId}',
+           'Integration: purged-author profile Care Note.', 'Former Shepherd');
+
+        insert into public.care_notes
+          (id, author_profile_id, subject_group_id, body, author_descriptor)
+        values
+          ('${groupCareNoteId}', null, '${groupId}',
+           'Integration: purged-author group Care Note.', 'Former Shepherd');
+
+        insert into public.prayer_requests
+          (id, author_profile_id, subject_profile_id, body, author_descriptor)
+        values
+          ('${profilePrayerId}', null, '${fx.leader.profileId}',
+           'Integration: purged-author profile Prayer Request.', 'Former Shepherd');
+
+        insert into public.prayer_requests
+          (id, author_profile_id, subject_group_id, body, author_descriptor)
+        values
+          ('${groupPrayerId}', null, '${groupId}',
+           'Integration: purged-author group Prayer Request.', 'Former Shepherd');
+      `);
+    });
+
+    afterAll(async () => {
+      if (probe.kind !== "ready") return;
+      // Local disposable fixtures only; product deletion still uses RPCs.
+      await runSql(`
+        delete from public.care_notes
+         where id in ('${profileCareNoteId}', '${groupCareNoteId}');
+        delete from public.prayer_requests
+         where id in ('${profilePrayerId}', '${groupPrayerId}');
+        delete from public.groups where id = '${groupId}';
+      `);
+    });
+
+    it("keeps both profile-subject rows sealed from every role while the grant is OFF", async () => {
+      const grant = await fx.ministryAdmin.client.rpc(
+        "set_note_transparency_grant",
+        { p_subject_profile_id: fx.leader.profileId, p_granted: false }
+      );
+      expect(grant.error, grant.error?.message).toBeNull();
+
+      for (const tier of tiers()) {
+        await expectVisibleCount(tier, "care_notes", profileCareNoteId, 0);
+        await expectVisibleCount(tier, "prayer_requests", profilePrayerId, 0);
+      }
+    });
+
+    it("opens profile-subject rows only to both admin roles when the subject grant is ON", async () => {
+      const grant = await fx.ministryAdmin.client.rpc(
+        "set_note_transparency_grant",
+        { p_subject_profile_id: fx.leader.profileId, p_granted: true }
+      );
+      expect(grant.error, grant.error?.message).toBeNull();
+
+      for (const tier of [fx.ministryAdmin, fx.superAdmin]) {
+        await expectVisibleCount(tier, "care_notes", profileCareNoteId, 1);
+        await expectVisibleCount(tier, "prayer_requests", profilePrayerId, 1);
+      }
+      for (const tier of [fx.overShepherd, fx.leader, fx.coLeader]) {
+        await expectVisibleCount(tier, "care_notes", profileCareNoteId, 0);
+        await expectVisibleCount(tier, "prayer_requests", profilePrayerId, 0);
+      }
+    });
+
+    it("keeps authorless group-subject rows sealed from every role", async () => {
+      for (const tier of tiers()) {
+        await expectVisibleCount(tier, "care_notes", groupCareNoteId, 0);
+        await expectVisibleCount(tier, "prayer_requests", groupPrayerId, 0);
+      }
+    });
+  });
   describe("OVER_SHEPHERD_SCOPED — shepherd_care_profiles", () => {
     // Admins read every care profile; the Over-Shepherd reads the profiles of
     // the Leaders they cover; the Leader themselves does not read their own
@@ -442,6 +572,186 @@ suite("RLS per-tier visibility (local Supabase stack)", () => {
           .eq("email", fx.overShepherd.email);
         expect(error).toBeNull();
         expect((data ?? []).length).toBe(0);
+      }
+    });
+  });
+
+  describe("SUPER_ADMIN_ONLY - deletion, invitation, and recovery records", () => {
+    it.each(PRIORITY_SUPER_ADMIN_TABLES)(
+      "allows only the Super Admin to read %s",
+      async (table) => {
+        const rowId = priorityFx.superAdminOnlyRowIds[table];
+        const superAdminRead = await fx.superAdmin.client
+          .from(table)
+          .select("id")
+          .eq("id", rowId);
+        expect(superAdminRead.error).toBeNull();
+        expect(superAdminRead.data ?? []).toHaveLength(1);
+
+        for (const tier of [
+          fx.ministryAdmin,
+          fx.overShepherd,
+          fx.leader,
+          fx.coLeader,
+        ]) {
+          const { data, error } = await tier.client
+            .from(table)
+            .select("id")
+            .eq("id", rowId);
+          expect(error, `${tier.key} ${table} read`).toBeNull();
+          expect(data ?? [], `${tier.key} must not read ${table}`).toHaveLength(
+            0
+          );
+        }
+      }
+    );
+  });
+
+  describe("NO_READ - service-only profile Auth purge jobs", () => {
+    const pendingTombstoneId = randomUUID();
+    const pendingProfileId = randomUUID();
+    const pendingAuthUserId = randomUUID();
+    const restoredTombstoneId = randomUUID();
+    const restoredProfileId = randomUUID();
+
+    beforeAll(async () => {
+      if (probe.kind !== "ready") return;
+      await runSql(`
+        insert into public.tombstones
+          (id, entity_type, table_name, entity_id, row_snapshot, restored_at)
+        values
+          (
+            '${pendingTombstoneId}', 'profile', 'profiles',
+            '${pendingProfileId}',
+            jsonb_build_object(
+              'auth_user_id', '${pendingAuthUserId}',
+              'full_name', 'Must Be Scrubbed',
+              'email', 'must-be-scrubbed@example.test',
+              'role', 'leader',
+              'status', 'inactive'
+            ),
+            null
+          ),
+          (
+            '${restoredTombstoneId}', 'profile', 'profiles',
+            '${restoredProfileId}',
+            jsonb_build_object(
+              'auth_user_id', '${randomUUID()}',
+              'full_name', 'Restored Legacy Person',
+              'role', 'leader'
+            ),
+            now()
+          );
+      `);
+
+      const pending = await queryRows<{
+        auth_user_id: string | null;
+        completed_at: string | null;
+      }>(
+        "select auth_user_id, completed_at from public.profile_auth_purge_jobs where tombstone_id = $1",
+        [pendingTombstoneId]
+      );
+      expect(pending).toEqual([
+        { auth_user_id: pendingAuthUserId, completed_at: null },
+      ]);
+
+      const restoredJobs = await queryRows<{ tombstone_id: string }>(
+        "select tombstone_id from public.profile_auth_purge_jobs where tombstone_id = $1",
+        [restoredTombstoneId]
+      );
+      expect(restoredJobs).toEqual([]);
+
+      const restored = await queryRows<{
+        restorable: boolean;
+        restored_at: string | null;
+        row_snapshot: Record<string, unknown>;
+      }>(
+        "select restorable, restored_at, row_snapshot from public.tombstones where id = $1",
+        [restoredTombstoneId]
+      );
+      expect(restored).toHaveLength(1);
+      expect(restored[0].restorable).toBe(false);
+      expect(restored[0].restored_at).not.toBeNull();
+      expect(restored[0].row_snapshot).toMatchObject({
+        record_type: "profile",
+        deletion_policy: "irreversible",
+      });
+      expect(restored[0].row_snapshot).not.toHaveProperty("auth_user_id");
+      expect(restored[0].row_snapshot).not.toHaveProperty("full_name");
+    });
+
+    afterAll(async () => {
+      if (probe.kind !== "ready") return;
+      await runSql(`
+        delete from public.profile_auth_purge_jobs
+         where tombstone_id = '${pendingTombstoneId}';
+        delete from public.tombstones
+         where id in ('${pendingTombstoneId}', '${restoredTombstoneId}');
+      `);
+    });
+
+    it("denies every authenticated tier direct SELECT access", async () => {
+      for (const tier of [
+        fx.superAdmin,
+        fx.ministryAdmin,
+        fx.overShepherd,
+        fx.leader,
+        fx.coLeader,
+      ]) {
+        const { data, error } = await tier.client
+          .from("profile_auth_purge_jobs")
+          .select("tombstone_id")
+          .eq("tombstone_id", pendingTombstoneId);
+        expect(
+          error,
+          `${tier.key} must receive a denied job read`
+        ).not.toBeNull();
+        expect(data).toBeNull();
+      }
+    });
+  });
+
+  describe("LEADER_SCOPED - groups and members", () => {
+    async function visibleIds(
+      tier: Tier,
+      table: "groups" | "members",
+      ids: readonly string[]
+    ): Promise<Set<string>> {
+      const { data, error } = await tier.client
+        .from(table)
+        .select("id")
+        .in("id", [...ids]);
+      expect(error, `${tier.key} ${table} read`).toBeNull();
+      return new Set((data ?? []).map((row) => row.id as string));
+    }
+
+    it("lets both admins and the assigned Leader read groups, without leaking an unrelated group", async () => {
+      const { assignedGroupId, unrelatedGroupId } = priorityFx.leaderScoped;
+      const ids = [assignedGroupId, unrelatedGroupId];
+
+      for (const admin of [fx.superAdmin, fx.ministryAdmin]) {
+        expect(await visibleIds(admin, "groups", ids)).toEqual(new Set(ids));
+      }
+      expect(await visibleIds(fx.leader, "groups", ids)).toEqual(
+        new Set([assignedGroupId])
+      );
+      for (const tier of [fx.overShepherd, fx.coLeader]) {
+        expect(await visibleIds(tier, "groups", ids)).toEqual(new Set());
+      }
+    });
+
+    it("lets both admins and the assigned Leader read members, without leaking an unrelated member", async () => {
+      const { assignedMemberId, unrelatedMemberId } = priorityFx.leaderScoped;
+      const ids = [assignedMemberId, unrelatedMemberId];
+
+      for (const admin of [fx.superAdmin, fx.ministryAdmin]) {
+        expect(await visibleIds(admin, "members", ids)).toEqual(new Set(ids));
+      }
+      expect(await visibleIds(fx.leader, "members", ids)).toEqual(
+        new Set([assignedMemberId])
+      );
+      for (const tier of [fx.overShepherd, fx.coLeader]) {
+        expect(await visibleIds(tier, "members", ids)).toEqual(new Set());
       }
     });
   });

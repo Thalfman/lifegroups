@@ -1,9 +1,10 @@
 import type { AssignableProfile } from "@/components/admin/forms/role-change-form";
+import type { SuperAdminWorkspaceId } from "@/lib/admin/super-admin-console-model";
 import type { ChecklistRow } from "@/components/admin/system-status-checklist";
 import type { AppConfig } from "@/lib/admin/app-config-decode";
 import type {
   PermanentDeletionTargetGroup,
-  RecentTombstone,
+  RecentTombstonesState,
 } from "@/lib/supabase/permanent-deletion-reads";
 import type {
   CleanSlateImpact,
@@ -49,7 +50,7 @@ import {
   fetchAttentionResetState,
 } from "@/lib/supabase/maintenance-reads";
 import {
-  fetchPermanentDeletionTargets,
+  fetchPermanentDeletionTargetCatalog,
   fetchRecentTombstones,
 } from "@/lib/supabase/permanent-deletion-reads";
 import {
@@ -112,7 +113,7 @@ export type SuperAdminConsoleData = {
   // ADR 0014 (#312–#316): curated permanent-deletion targets + recent tombstones
   // for the danger-zone Permanent Deletion card.
   permanentDeletionTargets: PermanentDeletionTargetGroup[];
-  recentTombstones: RecentTombstone[];
+  recentTombstones: RecentTombstonesState;
   // #882: never collapse a failed queue read into a false "nothing pending."
   accountDeletionRequestQueue: AccountDeletionRequestQueueState;
   profilesById: Map<string, ProfilesRow>;
@@ -149,7 +150,7 @@ const SUPER_ADMIN_CONSOLE_FETCHERS = {
   fetchLatestCleanSlateSnapshot,
   fetchHistoryResetState,
   fetchAttentionResetState,
-  fetchPermanentDeletionTargets,
+  fetchPermanentDeletionTargetCatalog,
   fetchRecentTombstones,
   fetchPendingAccountDeletionRequests,
   fetchRecentUsageEvents,
@@ -349,7 +350,7 @@ export function buildNoClientConsoleData(): SuperAdminConsoleData {
     attentionResetState: null,
     auditEventCount: null,
     permanentDeletionTargets: [],
-    recentTombstones: [],
+    recentTombstones: { status: "failed", tombstones: [] },
     accountDeletionRequestQueue: { status: "failed" },
     profilesById: new Map(),
     membersById: new Map(),
@@ -386,8 +387,9 @@ export function buildNoClientConsoleData(): SuperAdminConsoleData {
 // adapter by tests.
 export async function buildSuperAdminConsoleData(
   reads: SuperAdminConsoleReads,
-  options: { currentActorProfileId: string }
+  options: { currentActorProfileId: string; workspace?: SuperAdminWorkspaceId }
 ): Promise<SuperAdminConsoleData> {
+  const workspace = options.workspace ?? "readiness";
   const [
     profilesResult,
     groupsResult,
@@ -395,18 +397,6 @@ export async function buildSuperAdminConsoleData(
     leadersResult,
     auditResult,
     platformConfigResult,
-    overShepherds,
-    coverageLeaders,
-    coverageAssignments,
-    cleanSlateResult,
-    auditCountResult,
-    latestSnapshotResult,
-    historyResetResult,
-    attentionResetResult,
-    permanentDeletionTargets,
-    recentTombstones,
-    pendingAccountDeletionRequestsResult,
-    usageResult,
   ] = await Promise.all([
     reads.fetchProfilesForAdmin({ statuses: ["active", "inactive"] }),
     reads.fetchAllGroups(),
@@ -417,19 +407,73 @@ export async function buildSuperAdminConsoleData(
       actionsLike: ["admin.%", "leader.%", "super_admin.%"],
     }),
     reads.fetchPlatformConfig(),
-    reads.fetchActiveOverShepherds(),
-    reads.fetchCoverageAssignableLeaders(),
-    reads.fetchCurrentCoverageAssignments(),
-    reads.fetchCleanSlateImpact(),
-    reads.fetchAuditEventCount(),
-    reads.fetchLatestCleanSlateSnapshot(),
-    reads.fetchHistoryResetState(),
-    reads.fetchAttentionResetState(),
-    reads.fetchPermanentDeletionTargets(),
-    reads.fetchRecentTombstones(),
-    reads.fetchPendingAccountDeletionRequests(),
-    reads.fetchRecentUsageEvents({ limit: 200 }),
   ]);
+
+  let overShepherds: SuperAdminConsoleOverShepherd[] = [];
+  let coverageLeaders: SuperAdminConsoleCoverageLeader[] = [];
+  let coverageAssignments: SuperAdminConsoleCoverageAssignment[] = [];
+  if (workspace === "access") {
+    [overShepherds, coverageLeaders, coverageAssignments] = await Promise.all([
+      reads.fetchActiveOverShepherds(),
+      reads.fetchCoverageAssignableLeaders(),
+      reads.fetchCurrentCoverageAssignments(),
+    ]);
+  }
+
+  let usageEvents: UsageEventsRow[] = [];
+  if (workspace === "usage") {
+    const usageResult = await reads.fetchRecentUsageEvents({ limit: 200 });
+    usageEvents = usageResult.data ?? [];
+  }
+
+  let cleanSlateImpact: CleanSlateImpact | null = null;
+  let latestCleanSlateSnapshot: CleanSlateLatestSnapshot | null = null;
+  let historyResetState: HistoryResetState | null = null;
+  let attentionResetState: AttentionResetState | null = null;
+  let auditEventCount: number | null = null;
+  let permanentDeletionTargets: PermanentDeletionTargetGroup[] = [];
+  let recentTombstones: RecentTombstonesState = {
+    status: "failed",
+    tombstones: [],
+  };
+  let accountDeletionRequestQueue: AccountDeletionRequestQueueState = {
+    status: "failed",
+  };
+  if (workspace === "danger") {
+    const [
+      cleanSlateResult,
+      auditCountResult,
+      latestSnapshotResult,
+      historyResetResult,
+      attentionResetResult,
+      loadedDeletionTargets,
+      loadedTombstones,
+      pendingAccountDeletionRequestsResult,
+    ] = await Promise.all([
+      reads.fetchCleanSlateImpact(),
+      reads.fetchAuditEventCount(),
+      reads.fetchLatestCleanSlateSnapshot(),
+      reads.fetchHistoryResetState(),
+      reads.fetchAttentionResetState(),
+      reads.fetchPermanentDeletionTargetCatalog(),
+      reads.fetchRecentTombstones(),
+      reads.fetchPendingAccountDeletionRequests(),
+    ]);
+
+    cleanSlateImpact = cleanSlateResult.data;
+    auditEventCount = auditCountResult.data;
+    latestCleanSlateSnapshot = latestSnapshotResult.data;
+    historyResetState = historyResetResult.data;
+    attentionResetState = attentionResetResult.data;
+    permanentDeletionTargets = loadedDeletionTargets;
+    recentTombstones = loadedTombstones;
+    const pendingRequests = pendingAccountDeletionRequestsResult.data ?? [];
+    accountDeletionRequestQueue = pendingAccountDeletionRequestsResult.error
+      ? { status: "failed" }
+      : pendingRequests.length === 0
+        ? { status: "empty" }
+        : { status: "loaded", requests: pendingRequests };
+  }
 
   const profiles = profilesResult.data ?? [];
   const groups = groupsResult.data ?? [];
@@ -472,18 +516,6 @@ export async function buildSuperAdminConsoleData(
     activeGroupLeaders,
     errors,
   });
-  const pendingAccountDeletionRequests =
-    pendingAccountDeletionRequestsResult.data ?? [];
-  const accountDeletionRequestQueue: AccountDeletionRequestQueueState =
-    pendingAccountDeletionRequestsResult.error
-      ? { status: "failed" }
-      : pendingAccountDeletionRequests.length === 0
-        ? { status: "empty" }
-        : {
-            status: "loaded",
-            requests: pendingAccountDeletionRequests,
-          };
-
   return {
     assignableProfiles,
     inviteUserGroups,
@@ -494,12 +526,12 @@ export async function buildSuperAdminConsoleData(
     auditEvents: auditEvents as AuditEventsRow[],
     // Usage telemetry is a soft signal: on a read failure show an empty panel
     // rather than alarming with a banner — it's optional, off-by-default data.
-    usageEvents: usageResult.data ?? [],
-    cleanSlateImpact: cleanSlateResult.data,
-    latestCleanSlateSnapshot: latestSnapshotResult.data,
-    historyResetState: historyResetResult.data,
-    attentionResetState: attentionResetResult.data,
-    auditEventCount: auditCountResult.data,
+    usageEvents,
+    cleanSlateImpact,
+    latestCleanSlateSnapshot,
+    historyResetState,
+    attentionResetState,
+    auditEventCount,
     permanentDeletionTargets,
     recentTombstones,
     accountDeletionRequestQueue,
@@ -515,11 +547,13 @@ export async function buildSuperAdminConsoleData(
 // it's absent, else assemble through the production reads adapter. The page is a
 // thin async Server Component that calls this and hands the shape to the shell.
 export async function loadSuperAdminConsoleData(
-  currentActorProfileId: string
+  currentActorProfileId: string,
+  workspace: SuperAdminWorkspaceId = "readiness"
 ): Promise<SuperAdminConsoleData> {
   const client = await createSupabaseServerClient();
   if (!client) return buildNoClientConsoleData();
   return buildSuperAdminConsoleData(supabaseSuperAdminConsoleReads(client), {
     currentActorProfileId,
+    workspace,
   });
 }

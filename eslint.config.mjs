@@ -10,6 +10,7 @@ const eslintConfig = [
       "graphify-out/**",
       "node_modules/**",
       "playwright-report/**",
+      "scripts/**/*.d.mts",
       "supabase/functions/**",
       "test-results/**",
     ],

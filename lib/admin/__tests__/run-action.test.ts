@@ -364,7 +364,7 @@ describe("runAdminWriteAction", () => {
     }
   );
 
-  it("catches a throw from revalidatePath after the write and still finishes the log once", async () => {
+  it("keeps a committed write successful when post-commit revalidation fails", async () => {
     // Once-only so the throwing implementation can't leak into later tests
     // (vi.clearAllMocks resets call history, not implementations).
     mockRevalidatePath.mockImplementationOnce(() => {
@@ -375,16 +375,44 @@ describe("runAdminWriteAction", () => {
       name: "x",
     });
 
-    expect(result).toEqual({ ok: false, errors: [GENERIC_ERROR] });
-    expect(lastLog().ctx).toMatchObject({
-      outcome: "fail",
-      error_code: "unhandled_exception",
+    expect(result).toEqual({ ok: true, value: { id: NEW_ID } });
+    expect(logCalls[0].ctx).toMatchObject({ outcome: "ok" });
+    expect(lastLog()).toMatchObject({
+      level: "warn",
+      ctx: {
+        event: "action_revalidation_failed",
+        route_or_action: "admin.test.action",
+        outcome: "fail",
+        error_code: "revalidation_failed",
+      },
     });
-    // The terminal line is emitted exactly once (idempotent finish).
-    const finals = logCalls.filter(
-      (c) => c.ctx.error_code === "unhandled_exception"
-    );
-    expect(finals).toHaveLength(1);
+    expect(lastLog().ctx).not.toHaveProperty("error_message");
+    expect(logCalls).toHaveLength(2);
+  });
+
+  it("continues revalidating later targets after an ordinary target failure", async () => {
+    mockRevalidatePath.mockImplementationOnce(() => {
+      throw new Error("first target failed");
+    });
+    const spec = baseSpec({
+      revalidate: () => ["/admin/first", "/admin/second"],
+    });
+
+    const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+    expect(result).toEqual({ ok: true, value: { id: NEW_ID } });
+    expect(mockRevalidatePath).toHaveBeenNthCalledWith(1, "/admin/first");
+    expect(mockRevalidatePath).toHaveBeenNthCalledWith(2, "/admin/second");
+    expect(
+      logCalls.filter(
+        (entry) => entry.ctx.event === "action_revalidation_failed"
+      )
+    ).toHaveLength(1);
+    expect(logCalls[0].ctx).toMatchObject({ outcome: "ok" });
+    expect(lastLog().ctx).toMatchObject({
+      event: "action_revalidation_failed",
+      error_code: "revalidation_failed",
+    });
   });
 
   it("does not let the safety-net finally overwrite a normal success log", async () => {

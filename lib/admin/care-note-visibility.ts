@@ -71,8 +71,8 @@ export type NoteViewer = {
 // person it is about. Only the author identity is load-bearing for visibility;
 // the subject id is carried so callers can correlate to the right grant.
 export type NoteMeta = {
-  authorProfileId: string;
-  subjectProfileId: string;
+  authorProfileId: string | null;
+  subjectProfileId: string | null;
 };
 
 // The subject person's transparency grant. `granted` ON lets the Ministry Admin
@@ -87,7 +87,7 @@ export type TransparencyGrant = {
 // subjectProfileId / subjectGroupId is set (the `care_notes_one_subject` /
 // `prayer_requests_one_subject` XOR checks enforce it).
 export type NoteSubjectMeta = {
-  authorProfileId: string;
+  authorProfileId: string | null;
   subjectProfileId: string | null;
   subjectGroupId: string | null;
 };
@@ -98,7 +98,7 @@ export type NoteSubjectMeta = {
 // note about a leader), the AUTHOR of a group note (the leader wrote it about
 // their group). Mirrors the two not-null-guarded arms of the RLS USING clause;
 // the differential fitness test runs both sides over every matrix row.
-export function applicableGrantProfileId(note: NoteSubjectMeta): string {
+export function applicableGrantProfileId(note: NoteSubjectMeta): string | null {
   return note.subjectProfileId ?? note.authorProfileId;
 }
 
@@ -131,6 +131,12 @@ export function canReadNote(
   if (viewer.profileId === note.authorProfileId) {
     return true;
   }
+
+  // A purged-author group note has neither a profile subject nor an author
+  // whose transparency grant could apply. It remains sealed even if a caller
+  // accidentally supplies an unrelated enabled grant.
+  if (note.subjectProfileId === null && note.authorProfileId === null)
+    return false;
 
   // 2. Oversight ladder reads only when the subject's toggle is ON. Super Admin
   //    is gated on the identical grant as Ministry Admin — no broader bypass.

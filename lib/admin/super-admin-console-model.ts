@@ -25,6 +25,15 @@ export const SUPER_ADMIN_WORKSPACE_IDS = [
 
 export type SuperAdminWorkspaceId = (typeof SUPER_ADMIN_WORKSPACE_IDS)[number];
 
+export function resolveSuperAdminWorkspaceId(
+  raw: string | string[] | undefined
+): SuperAdminWorkspaceId {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return SUPER_ADMIN_WORKSPACE_IDS.includes(value as SuperAdminWorkspaceId)
+    ? (value as SuperAdminWorkspaceId)
+    : "readiness";
+}
+
 // Section-id hash → the workspace that hosts it, so a deep link (e.g. Settings'
 // "Open import" → /admin/super-admin#people-import, or a copied section-nav
 // link) opens the right workspace before scrolling — only the active workspace

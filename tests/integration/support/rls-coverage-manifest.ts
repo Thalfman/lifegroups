@@ -124,15 +124,9 @@ export const RLS_COVERAGE: Readonly<Record<string, CoverageEntry>> = {
     `needs a seeded attendance snapshot row; ${STATIC_SWEEP}`
   ),
 
-  // --- Deferred: LEADER_SCOPED tables needing a group + leader-of fixture --
-  groups: deferred(
-    "LEADER_SCOPED",
-    `needs a group with the fixture Leader assigned; ${STATIC_SWEEP}`
-  ),
-  members: deferred(
-    "LEADER_SCOPED",
-    `needs a group + membership fixture; ${STATIC_SWEEP}`
-  ),
+  // --- LEADER_SCOPED: groups/members live; remaining fixtures deferred -----
+  groups: asserted("LEADER_SCOPED"),
+  members: asserted("LEADER_SCOPED"),
   guests: deferred(
     "LEADER_SCOPED",
     `needs a group + guest fixture; ${STATIC_SWEEP}`
@@ -154,43 +148,24 @@ export const RLS_COVERAGE: Readonly<Record<string, CoverageEntry>> = {
     `needs a group with a status-change fixture; ${STATIC_SWEEP}`
   ),
 
-  // --- Deferred: SUPER_ADMIN_ONLY tables needing a seeded row -------------
+  // --- SUPER_ADMIN_ONLY: priority rows live; archive fixture deferred ------
   audit_events_archive: deferred(
     "SUPER_ADMIN_ONLY",
     `needs an archived audit row (history reset); ${STATIC_SWEEP}`
   ),
-  invitations: deferred(
-    "SUPER_ADMIN_ONLY",
-    `needs a seeded invitation row; ${STATIC_SWEEP}`
-  ),
-  tombstones: deferred(
-    "SUPER_ADMIN_ONLY",
-    `needs a permanent-delete tombstone fixture; ${STATIC_SWEEP}`
-  ),
-  clean_slate_snapshots: deferred(
-    "SUPER_ADMIN_ONLY",
-    `needs a clean-slate snapshot fixture; ${STATIC_SWEEP}`
-  ),
-  history_reset_snapshots: deferred(
-    "SUPER_ADMIN_ONLY",
-    `needs a history-reset snapshot fixture; ${STATIC_SWEEP}`
-  ),
-  attention_reset_snapshots: deferred(
-    "SUPER_ADMIN_ONLY",
-    `needs an attention-reset snapshot fixture; ${STATIC_SWEEP}`
-  ),
+  invitations: asserted("SUPER_ADMIN_ONLY"),
+  tombstones: asserted("SUPER_ADMIN_ONLY"),
+  clean_slate_snapshots: asserted("SUPER_ADMIN_ONLY"),
+  history_reset_snapshots: asserted("SUPER_ADMIN_ONLY"),
+  attention_reset_snapshots: asserted("SUPER_ADMIN_ONLY"),
+  account_deletion_requests: asserted("SUPER_ADMIN_ONLY"),
 
+  profile_auth_purge_jobs: asserted("NO_READ"),
   // --- Deferred: special cases --------------------------------------------
   invite_redeem_throttle: deferred(
     "NO_READ",
     `RLS-on with no SELECT policy — unreadable by every tier; touched only ` +
       `inside SECURITY DEFINER RPCs. ${STATIC_SWEEP}`
-  ),
-  account_deletion_requests: deferred(
-    "SUPER_ADMIN_ONLY",
-    `Super-Admin-only SELECT (account_deletion_requests_super_admin_read); ` +
-      `policy_tbd in the classification manifest; needs a seeded request row. ` +
-      STATIC_SWEEP
   ),
 };
 

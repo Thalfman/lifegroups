@@ -50,10 +50,12 @@ export type {
 
 export function SuperAdminConsoleShell({
   data,
+  activeWorkspaceId,
   testAccountsPanel,
   testAccountsSummary,
 }: {
   data: SuperAdminConsoleData;
+  activeWorkspaceId: SuperAdminWorkspaceId;
   testAccountsPanel: ReactNode;
   testAccountsSummary: SuperAdminTestAccountsSummary;
 }) {
@@ -84,49 +86,58 @@ export function SuperAdminConsoleShell({
     {
       id: "readiness",
       label: "Readiness",
-      node: (
-        <ReadinessWorkspace
-          data={data}
-          status={status}
-          testAccountsSummary={testAccountsSummary}
-        />
-      ),
+      node:
+        activeWorkspaceId === "readiness" ? (
+          <ReadinessWorkspace
+            data={data}
+            status={status}
+            testAccountsSummary={testAccountsSummary}
+          />
+        ) : null,
     },
     {
       id: "access",
       label: "Access",
-      node: <AccessWorkspace data={data} />,
+      node:
+        activeWorkspaceId === "access" ? <AccessWorkspace data={data} /> : null,
     },
     {
       id: "config",
       label: "Config",
-      node: <ConfigWorkspace data={data} />,
+      node:
+        activeWorkspaceId === "config" ? <ConfigWorkspace data={data} /> : null,
     },
     {
       id: "diagnostics",
       label: "Diagnostics",
-      node: (
-        <DiagnosticsWorkspace
-          data={data}
-          testAccountsPanel={testAccountsPanel}
-        />
-      ),
+      node:
+        activeWorkspaceId === "diagnostics" ? (
+          <DiagnosticsWorkspace
+            data={data}
+            testAccountsPanel={testAccountsPanel}
+          />
+        ) : null,
     },
     {
       id: "audit",
       label: "Audit",
-      node: <AuditWorkspacePanel data={data} />,
+      node:
+        activeWorkspaceId === "audit" ? (
+          <AuditWorkspacePanel data={data} />
+        ) : null,
     },
     {
       id: "usage",
       label: "Usage",
-      node: <UsageWorkspace data={data} />,
+      node:
+        activeWorkspaceId === "usage" ? <UsageWorkspace data={data} /> : null,
     },
     {
       id: "danger",
       label: "Danger Zone",
       danger: true,
-      node: <DangerWorkspace data={data} />,
+      node:
+        activeWorkspaceId === "danger" ? <DangerWorkspace data={data} /> : null,
     },
   ];
 
@@ -137,7 +148,7 @@ export function SuperAdminConsoleShell({
       // which workspace is open (only the active panel mounts).
       banner={status.errorCount > 0 ? <ErrorBanner /> : null}
       workspaces={workspaces}
-      defaultWorkspaceId="readiness"
+      activeWorkspaceId={activeWorkspaceId}
       hashAliases={LEGACY_HASH_ALIASES}
     />
   );

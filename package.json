@@ -16,6 +16,7 @@
     "test": "vitest",
     "test:run": "npm run verify:toolchain && vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "postinstall": "node scripts/patch-next-react-dom-36134.mjs",
     "test:coverage": "npm run verify:toolchain && vitest run --coverage",
     "test:a11y": "npm run verify:toolchain && playwright test",
     "test:e2e": "bash scripts/e2e.sh",

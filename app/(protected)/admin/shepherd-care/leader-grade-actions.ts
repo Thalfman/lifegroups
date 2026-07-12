@@ -43,8 +43,9 @@ const SET_LEADER_GRADE_SPEC: AdminWriteActionSpec<
   }),
   rpc: (client, value) => writeRubricGrade(client, "leader", value),
   revalidate: (value) => [
-    `/admin/shepherd-care/${value.profile_id}`,
     "/admin/care",
+    "/admin/shepherd-care",
+    `/admin/shepherd-care/${value.profile_id}`,
   ],
   noDataError: "The Shepherd-Health Grade wasn't saved. Please try again.",
 };

@@ -190,4 +190,20 @@ describe("data-classification manifest", () => {
       expect(entry?.policyTbd).toBe(true);
     }
   });
+
+  it("keeps the human profile-erasure classification aligned with the manifest", () => {
+    const doc = readFileSync(
+      resolve(process.cwd(), "docs/architecture/DATA_CLASSIFICATION.md"),
+      "utf8"
+    );
+    expect(doc).toContain(
+      "`tombstones.{row_snapshot,set_null_dependents,cleanup_snapshot}`"
+    );
+    expect(doc).toContain("`profile_auth_purge_jobs.auth_user_id`");
+    expect(doc).toContain("Profile deletion is immediately irreversible");
+    expect(doc).toContain(
+      "`set_null_dependents`, and `cleanup_snapshot` never retain recoverable profile"
+    );
+    expect(doc).toContain("no authenticated role has a read policy");
+  });
 });

@@ -21,7 +21,7 @@ import {
   startActionLog,
   type FinishFields,
 } from "@/lib/observability/instrument";
-import type { LogOutcome } from "@/lib/observability/logger";
+import { log, type LogOutcome } from "@/lib/observability/logger";
 import type { ActionResult } from "@/lib/shared/action-result";
 import type { ValidationResult } from "@/lib/shared/validation-primitives";
 
@@ -336,12 +336,39 @@ async function runWriteActionPipeline<Actor, V, T, D, C>(
     fields = { ...fields, ...(minted.fields ?? {}) };
   }
 
-  // Success tail shared by the normal ok path and a treat-as-ok token match.
-  const runRevalidate = () => {
-    const targets = core.revalidate(v.value, raw);
+  // Cache invalidation is post-commit work. Once the RPC has committed, an
+  // ordinary cache failure must never tell the caller the mutation failed (and
+  // invite a duplicate retry). Emit a separate, sanitized diagnostic instead;
+  // Next navigation/control-flow throws still propagate to the framework.
+  const runPostCommitRevalidate = () => {
+    const logFailure = (error: unknown) => {
+      log.warn({
+        event: "action_revalidation_failed",
+        route_or_action: core.name,
+        outcome: "fail",
+        request_id: ctx.requestId,
+        error_code: "revalidation_failed",
+        error_name: error instanceof Error ? error.name : "UnknownError",
+      });
+    };
+
+    let targets: RevalidateTarget | readonly RevalidateTarget[];
+    try {
+      targets = core.revalidate(v.value, raw);
+    } catch (error) {
+      if (isNextNavigationError(error)) throw error;
+      logFailure(error);
+      return;
+    }
+
     for (const target of Array.isArray(targets) ? targets : [targets]) {
-      if (typeof target === "string") revalidatePath(target);
-      else revalidatePath(target.path, target.type);
+      try {
+        if (typeof target === "string") revalidatePath(target);
+        else revalidatePath(target.path, target.type);
+      } catch (error) {
+        if (isNextNavigationError(error)) throw error;
+        logFailure(error);
+      }
     }
   };
 
@@ -353,13 +380,13 @@ async function runWriteActionPipeline<Actor, V, T, D, C>(
       error.message.includes(t.token)
     );
     if (alreadyDone) {
-      runRevalidate();
       ctx.finish("ok", {
         ...baseFields,
         ...rawFields,
         ...fields,
         ...(alreadyDone.fields ?? {}),
       });
+      runPostCommitRevalidate();
       return { ok: true, value: alreadyDone.result };
     }
     ctx.finish("fail", {
@@ -387,8 +414,6 @@ async function runWriteActionPipeline<Actor, V, T, D, C>(
     return { ok: false, errors: [core.noDataError] };
   }
 
-  runRevalidate();
-
   const okFields = core.okFields ? core.okFields(v.value, data, raw) : {};
   ctx.finish("ok", { ...baseFields, ...rawFields, ...fields, ...okFields });
 
@@ -397,5 +422,6 @@ async function runWriteActionPipeline<Actor, V, T, D, C>(
   const value = core.result
     ? core.result(data, v.value, contextValue)
     : ({ id: data } as T);
+  runPostCommitRevalidate();
   return { ok: true, value };
 }

@@ -8,11 +8,11 @@ is not recoverable from the repo: migrations rebuild the **schema**, never the
 
 ## What protects us
 
-| Layer                      | What it covers                                                                                              | Where                                                                                                        |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Supabase Pro daily backups | Full-database snapshot, 7-day retention                                                                     | Dashboard → Database → Backups                                                                               |
-| In-app snapshots           | Danger-Zone wipes (Clean Slate, history resets) capture a recoverable snapshot + tombstones before deleting | `clean_slate_snapshots`, `history_reset_snapshots`, `tombstones` tables; restore via the Super-Admin console |
-| Manual `pg_dump`           | Point-in-time copy you take yourself before risky work                                                      | Your machine (see below)                                                                                     |
+| Layer                      | What it covers                                                                                                                 | Where                                                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| Supabase Pro daily backups | Full-database snapshot, 7-day retention                                                                                        | Dashboard → Database → Backups                                                                                             |
+| In-app snapshots           | Danger-Zone wipes and non-profile permanent deletions capture recoverable snapshots; profile erasure keeps no recovery payload | `clean_slate_snapshots`, `history_reset_snapshots`, `tombstones`; restore only eligible records in the Super-Admin console |
+| Manual `pg_dump`           | Point-in-time copy you take yourself before risky work                                                                         | Your machine (see below)                                                                                                   |
 
 The org is on the **Pro plan** — that is a launch requirement, not a
 nice-to-have. Free-tier projects have **no** automated backups and pause
@@ -36,14 +36,20 @@ as a P0.
   Keep it somewhere private (it contains care data) and delete it once the
   operation is verified — these dumps are a safety window, not an archive.
 
+  **Profile erasure is the exception:** the app retains no recovery payload and
+  the routine restore workflow must never reconstitute an erased profile.
+  Provider backups and temporary manual dumps age out under their own retention
+  controls; they are disaster-recovery media, not a profile-restore feature.
+
 ## Restoring
 
 Work down this ladder; stop at the first rung that fits:
 
 1. **A user deleted/archived something in-app** → Archive is soft by design.
-   Un-archive from the surface, or for permanent deletions use the
-   Super-Admin console's tombstone **Restore** (audited,
-   `super_admin_restore_tombstone`).
+   Un-archive from the surface, or for eligible non-profile permanent deletions
+   use the Super-Admin console's tombstone **Restore** (audited,
+   `super_admin_restore_tombstone`). Profile erasure is irreversible and has no
+   tombstone restore path.
 2. **A Danger-Zone wipe needs undoing** → the Super-Admin console's revert
    for the matching snapshot (`clean_slate_snapshots` /
    `history_reset_snapshots` keep one recoverable snapshot each).

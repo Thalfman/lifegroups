@@ -7,6 +7,7 @@ import { loadSuperAdminConsoleData } from "@/components/admin/super-admin/consol
 import { TestAccountsPanel } from "@/components/admin/test-accounts-panel";
 import { requireSuperAdmin } from "@/lib/auth/session";
 import { testAccountsStatus } from "./test-accounts-actions";
+import { resolveSuperAdminWorkspaceId } from "@/lib/admin/super-admin-console-model";
 
 export const dynamic = "force-dynamic";
 
@@ -55,11 +56,35 @@ function buildTestAccountsSummary(
   };
 }
 
-export default async function AdminSuperAdminPage() {
+export default async function AdminSuperAdminPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ workspace?: string | string[] }>;
+}) {
   const session = await requireSuperAdmin();
-  const data = await loadSuperAdminConsoleData(session.profile.id);
-  const initialTestAccounts = await testAccountsStatus();
-  const testAccountsSummary = buildTestAccountsSummary(initialTestAccounts);
+  const activeWorkspaceId = resolveSuperAdminWorkspaceId(
+    (await searchParams)?.workspace
+  );
+  const loadTestAccounts =
+    activeWorkspaceId === "readiness" || activeWorkspaceId === "diagnostics";
+  const [data, initialTestAccounts] = await Promise.all([
+    loadSuperAdminConsoleData(session.profile.id, activeWorkspaceId),
+    loadTestAccounts ? testAccountsStatus() : Promise.resolve(null),
+  ]);
+  const testAccountsSummary = initialTestAccounts
+    ? buildTestAccountsSummary(initialTestAccounts)
+    : {
+        label: "Not loaded",
+        tone: "planned" as const,
+        description:
+          "Test-account status loads only in Readiness and Diagnostics.",
+      };
+  const testAccountsPanel = initialTestAccounts ? (
+    <TestAccountsPanel
+      initialStatus={initialTestAccounts.ok ? initialTestAccounts.value : null}
+      initialErrors={initialTestAccounts.ok ? [] : initialTestAccounts.errors}
+    />
+  ) : null;
 
   return (
     <>
@@ -76,17 +101,9 @@ export default async function AdminSuperAdminPage() {
       <PageBody maxWidth={CONSOLE_MAX_WIDTH}>
         <SuperAdminConsoleShell
           data={data}
+          activeWorkspaceId={activeWorkspaceId}
           testAccountsSummary={testAccountsSummary}
-          testAccountsPanel={
-            <TestAccountsPanel
-              initialStatus={
-                initialTestAccounts.ok ? initialTestAccounts.value : null
-              }
-              initialErrors={
-                initialTestAccounts.ok ? [] : initialTestAccounts.errors
-              }
-            />
-          }
+          testAccountsPanel={testAccountsPanel}
         />
       </PageBody>
     </>

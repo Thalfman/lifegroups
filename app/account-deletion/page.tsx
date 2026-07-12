@@ -32,7 +32,8 @@ export default async function AccountDeletionPage({
             className="mb-8 rounded-sm border border-sageSoft bg-sageSoft px-4 py-3 font-sans text-base text-sageDeep"
           >
             Your deletion request was received and you&apos;ve been signed out.
-            An administrator will complete the permanent removal.
+            Your access is revoked; a Super Admin will complete the irreversible
+            profile and sign-in removal.
           </p>
         ) : null}
 
@@ -73,14 +74,22 @@ export default async function AccountDeletionPage({
           <ul className="m-0 grid list-disc gap-2 pl-5 font-sans text-base text-ink2">
             <li>
               <strong>Removed:</strong> your sign-in account and personal
-              profile data (name, email, phone). On request, your access is
-              revoked immediately and your profile is archived; an administrator
-              then permanently removes it.
+              profile data (name, email, phone). The request revokes access
+              immediately and archives the profile while a Super Admin completes
+              the irreversible profile and authentication removal. No
+              recoverable copy of the deleted profile is kept.
             </li>
             <li>
               <strong>Kept:</strong> Care Notes and Prayer Requests you wrote
               stay as part of the ministry&apos;s ongoing care history. Deletion
-              targets your account, not the group&apos;s care record.
+              targets your account, not the group&apos;s care record, and your
+              authorship is anonymized.
+            </li>
+            <li>
+              <strong>Kept without personal details:</strong> a structural,
+              non-restorable deletion record and the required audit event. The
+              completed request&apos;s free-text reason and your name or email
+              as historical audit attribution are removed.
             </li>
           </ul>
         </section>

@@ -6,9 +6,9 @@
 // reaches access logs, and strictly best-effort — a dropped beacon is never a
 // user-facing error.
 //
-// Only non-private fields leave the page: error name, a truncated message,
-// Next's opaque digest, and the pathname (normalized again server-side before
-// logging). Never the stack.
+// Only non-private fields leave the page: error class, Next's opaque digest,
+// and the pathname (normalized again server-side before logging). Error
+// messages and stacks never cross the boundary.
 
 export function reportClientError(
   error: Error & { digest?: string },
@@ -17,7 +17,6 @@ export function reportClientError(
   try {
     const body = JSON.stringify({
       name: error.name,
-      message: String(error.message ?? "").slice(0, 300),
       digest: error.digest,
       pathname,
     });

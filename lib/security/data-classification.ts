@@ -359,6 +359,19 @@ export const DATA_CLASSIFICATION: readonly TableClassification[] = [
     note: "Internal rate-limit ledger.",
   },
 
+  {
+    table: "profile_auth_purge_jobs",
+    classification: "invite_auth",
+    columns: [
+      {
+        column: "auth_user_id",
+        classification: "invite_auth",
+        note: "Transient retry identifier; atomically cleared at purge completion.",
+      },
+    ],
+    note: "Service-only profile-erasure retry seam; no authenticated read policy.",
+  },
+
   // --- Danger-zone snapshots ----------------------------------------------
   {
     table: "tombstones",
@@ -366,12 +379,12 @@ export const DATA_CLASSIFICATION: readonly TableClassification[] = [
     columns: [
       { column: "row_snapshot", classification: "danger_zone_snapshot" },
       { column: "set_null_dependents", classification: "danger_zone_snapshot" },
-      // #880: full row snapshots of the operational records a profile purge
-      // removed in-transaction (incl. shepherd_care_admin_notes.admin_summary)
-      // — the same before-image class as row_snapshot.
+      // Potential full before-images for restorable non-profile/legacy records.
+      // Irreversible profile tombstones scrub all three fields to a structural
+      // row_snapshot plus empty dependent arrays.
       { column: "cleanup_snapshot", classification: "danger_zone_snapshot" },
     ],
-    note: "Permanent-deletion before-image; super_admin-only.",
+    note: "Permanent-deletion before-image class; super_admin-only. Profile erasure retains structural metadata only.",
   },
   {
     table: "clean_slate_snapshots",

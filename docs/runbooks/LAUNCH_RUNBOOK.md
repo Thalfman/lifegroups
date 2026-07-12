@@ -78,13 +78,22 @@ until Julian's explicit go-ahead.
 - [ ] **Vercel env vars present** (Project → Settings → Environment
       Variables, Production): `NEXT_PUBLIC_SUPABASE_URL`,
       `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`,
-      `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (forgot-password + invite-redeem throttles are permissive without them),
-      `LOG_HASH_SALT`, `TRUSTED_PROXY=vercel`. **Never** a service-role key.
+      `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`,
+      `RATE_LIMIT_HMAC_SECRET`, `LOG_HASH_SALT`,
+      `TRUSTED_PROXY=vercel`. **Never** a service-role key. Upstash supplies
+      distributed forgot-password/invite throttling; public telemetry retains a
+      bounded per-process fallback during an Upstash gap. _Tom + Eng_
       Production service-role key removed from Vercel env settings 2026-06-10;
       Vercel reported a new deployment is needed for the change to affect the
       deployed runtime. Still missing in Production: `NEXT_PUBLIC_SITE_URL`,
-      `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `LOG_HASH_SALT`,
-      `TRUSTED_PROXY=vercel`. _Tom + Eng_
+      `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`,
+      `RATE_LIMIT_HMAC_SECRET`, `LOG_HASH_SALT`, `TRUSTED_PROXY=vercel`.
+      _Tom + Eng_
+- [ ] **Shared rate-limit HMAC secret present in Supabase**:
+      `redeem-invite` has `RATE_LIMIT_HMAC_SECRET` set as an Edge Function
+      secret, with the same value as Vercel. It fails closed without it. The
+      secret never uses a `NEXT_PUBLIC_` name and never appears in logs.
+      Rotation is an intentional rate-limit-bucket reset. _Eng_
 
 ## 4. Production surface hygiene
 
@@ -129,8 +138,8 @@ until Julian's explicit go-ahead.
       import accepts CSV: `full_name`, email, phone, groups). Today: 21
       groups but 1 member row — rosters are not loaded. _Julian_
 - [ ] **Configure Settings**: Group + Leader health rubrics, care cadence,
-      multiplication trigger (global → per-type → per-cell as Julian
-      wants it). _Julian_
+      multiplication trigger (global default → per-group-type override as
+      Julian wants it). _Julian_
 - [ ] **Run "Prepare for launch"** from the Super-Admin console
       (`super_admin_launch_prep`): wipes accumulated test history
       (recoverable snapshot first) and mutes the needs-attention queues so

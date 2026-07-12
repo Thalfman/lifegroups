@@ -18,6 +18,7 @@ import {
   careCadenceWindowsFromDefaults,
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
+import { churchTodayIso } from "@/lib/shared/church-time";
 
 // The subset of the surface's seam this page needs (ADR 0015: per-surface
 // interfaces, not one god-interface — and per-page subsets of those).
@@ -96,15 +97,17 @@ export async function buildOverShepherdData(
 
 // Production wrapper: bind the live client (or degrade to the same
 // `unavailable` arm a failed coverage read produces today when Supabase env
-// is absent) and time the bundle. `todayIso` is deliberately not passed here
-// so the directory assembly keeps its currentUtcDateIso() fallback; tests pin
-// a fixed ISO through buildOverShepherdData directly.
+// is absent) and time the bundle. Resolve one church-local business date per
+// request and thread it through the directory assembly.
 export async function loadOverShepherdData(): Promise<OverShepherdData> {
   const client = await createSupabaseServerClient();
   if (!client) return { kind: "unavailable" };
   return measureReadBundle(
     "over_shepherd_landing",
-    () => buildOverShepherdData(bindOverShepherdReads(client)),
+    () =>
+      buildOverShepherdData(bindOverShepherdReads(client), {
+        todayIso: churchTodayIso(),
+      }),
     (result) => ({ result_kind: result.kind })
   );
 }

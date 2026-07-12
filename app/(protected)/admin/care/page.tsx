@@ -19,7 +19,7 @@ import {
   currentMinistryYear,
   currentPeriodMonthIso,
 } from "@/lib/admin/ministry-year";
-import { currentUtcDateIso } from "@/lib/supabase/read-core";
+import { churchTodayIso } from "@/lib/shared/church-time";
 
 // Care area (ADR 0013, #301; re-keyed in #334; consolidated to the PRD Care
 // shell in #477). The route owns admin guarding and date resolution; read
@@ -43,7 +43,7 @@ export async function loadCarePageData({
   // SAD9: the inline permanent-delete control is super-admin-only. Gate at
   // render here; the server action + RPC re-gate authoritatively.
   const isSuperAdmin = isSuperAdminRole(session.profile.role);
-  const today = currentUtcDateIso();
+  const today = churchTodayIso();
   // Health grades are keyed to the current Ministry Year (Aug-May); the Jun/Jul
   // off-season has none, so the enrichment loader skips the grade reads then.
   const ministryYear = currentMinistryYear();

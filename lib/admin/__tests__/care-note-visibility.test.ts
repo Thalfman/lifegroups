@@ -150,6 +150,77 @@ describe("care-note-visibility — canReadNote truth table", () => {
     });
   });
 
+  describe("purged-author grant selection", () => {
+    it("keeps a profile-subject note gated by the SUBJECT's toggle", () => {
+      expect(
+        applicableGrantProfileId({
+          authorProfileId: null,
+          subjectProfileId: SUBJECT_ID,
+          subjectGroupId: null,
+        })
+      ).toBe(SUBJECT_ID);
+    });
+
+    it("returns no applicable grant for an authorless group-subject note", () => {
+      expect(
+        applicableGrantProfileId({
+          authorProfileId: null,
+          subjectProfileId: null,
+          subjectGroupId: "44444444-4444-4444-8444-444444444444",
+        })
+      ).toBeNull();
+    });
+  });
+
+  describe("purged authors", () => {
+    const profileSubjectNote: NoteMeta = {
+      authorProfileId: null,
+      subjectProfileId: SUBJECT_ID,
+    };
+    const groupSubjectNote: NoteMeta = {
+      authorProfileId: null,
+      subjectProfileId: null,
+    };
+
+    it("never grants an author-self read when the author is null", () => {
+      expect(
+        canReadNote(
+          viewer("over_shepherd", AUTHOR_ID),
+          profileSubjectNote,
+          GRANT_ON
+        )
+      ).toBe(false);
+    });
+
+    it("lets the oversight ladder read a profile-subject row only through the subject grant", () => {
+      for (const role of [
+        "ministry_admin",
+        "super_admin",
+      ] as const satisfies readonly UserRole[]) {
+        expect(
+          canReadNote(viewer(role, OTHER_ID), profileSubjectNote, GRANT_ON)
+        ).toBe(true);
+        expect(
+          canReadNote(viewer(role, OTHER_ID), profileSubjectNote, GRANT_OFF)
+        ).toBe(false);
+      }
+    });
+
+    it("keeps an authorless group-subject row sealed from every role", () => {
+      for (const role of [
+        "super_admin",
+        "ministry_admin",
+        "over_shepherd",
+        "leader",
+        "co_leader",
+      ] as const satisfies readonly UserRole[]) {
+        expect(
+          canReadNote(viewer(role, OTHER_ID), groupSubjectNote, GRANT_ON)
+        ).toBe(false);
+      }
+    });
+  });
+
   describe("default sealed", () => {
     it("denies a non-author, non-ladder viewer by default", () => {
       expect(canReadNote(viewer("leader", OTHER_ID), NOTE, null)).toBe(false);

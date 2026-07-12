@@ -36,11 +36,16 @@ const WRITE_CARE_NOTE_KEYS = ["subject_profile_id", "body"] as const;
 const WRITE_PRAYER_REQUEST_KEYS = ["subject_profile_id", "body"] as const;
 const SET_GRANT_KEYS = ["subject_profile_id", "granted"] as const;
 
-// The Care surface revalidates the subject's leader-detail page + the care list
-// after any of these writes. The subject id is the leader's profile id, which is
-// also the [profileId] route segment.
+// These forms are shared by the canonical Care surface, its legacy alias, the
+// admin leader-detail page, and the Over-Shepherd detail page. Refresh every
+// host after a write so no route can keep stale server-provided note state.
 function careSubjectPaths(subjectProfileId: string): string[] {
-  return ["/admin/care", `/admin/shepherd-care/${subjectProfileId}`];
+  return [
+    "/admin/care",
+    "/admin/shepherd-care",
+    `/admin/shepherd-care/${subjectProfileId}`,
+    `/over-shepherd/${subjectProfileId}`,
+  ];
 }
 
 // ----- adminWriteCareNote --------------------------------------------------

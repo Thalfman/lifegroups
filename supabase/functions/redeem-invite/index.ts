@@ -31,6 +31,7 @@ import {
 // RPC. padToFloor levels every business-logic return to the same floor + jitter
 // so a link-holder can't time the difference. Shared with invite-user (SEC-3).
 import { INVITE_TIMING_FLOOR_MS, padToFloor } from "../_shared/timing.ts";
+import { createIpRateLimitIdentifier } from "../_shared/rate-limit-identifier.ts";
 
 type ResponseBody = {
   ok: boolean;
@@ -65,22 +66,14 @@ function fail(code: string, status: number): Response {
 // function's enumeration/log discipline) so the orphan can be found and
 // deleted by hand. Reconciliation stays manual; no in-request retry (the
 // timing-floor discipline in _shared/timing.ts caps request work).
-function logOrphanedAuthUser(
-  authUserId: string,
-  invitationId: string,
-  cleanupError: unknown
-): void {
+function logOrphanedAuthUser(invitationId: string): void {
   console.error(
     JSON.stringify({
       ts: new Date().toISOString(),
       level: "error",
       event: "invite_redeem_orphaned_auth_user",
-      auth_user_id: authUserId,
       invitation_id: invitationId,
-      error_message:
-        cleanupError instanceof Error
-          ? cleanupError.message
-          : String(cleanupError),
+      error_code: "auth_cleanup_failed",
     })
   );
 }
@@ -188,6 +181,11 @@ Deno.serve(async (req: Request) => {
   if (!supabaseUrl || !serviceRoleKey) {
     return fail("missing_edge_function_env", 500);
   }
+  const rateLimitHmacSecret =
+    Deno.env.get("RATE_LIMIT_HMAC_SECRET")?.trim() ?? "";
+  if (!rateLimitHmacSecret) {
+    return fail("missing_rate_limit_hmac_secret", 500);
+  }
 
   let parsed: any;
   try {
@@ -232,9 +230,13 @@ Deno.serve(async (req: Request) => {
       ? hops[hops.length - 1]
       : req.headers.get("x-real-ip")?.trim() || "";
   if (peerIp) {
+    const rateLimitIdentifier = await createIpRateLimitIdentifier(
+      peerIp,
+      rateLimitHmacSecret
+    );
     const { data: allowed, error: rateErr } = await service.rpc(
       "check_invite_redeem_rate",
-      { p_key: peerIp, p_limit: 100, p_window_seconds: 900 }
+      { p_key: rateLimitIdentifier, p_limit: 100, p_window_seconds: 900 }
     );
     if (!rateErr && allowed === false) {
       return fail("rate_limited", 429);
@@ -320,9 +322,9 @@ Deno.serve(async (req: Request) => {
     try {
       const { error: cleanupErr } =
         await service.auth.admin.deleteUser(authUserId);
-      if (cleanupErr) logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
-    } catch (cleanupErr) {
-      logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
+      if (cleanupErr) logOrphanedAuthUser(inv.id);
+    } catch {
+      logOrphanedAuthUser(inv.id);
     }
     const mapped = mapRpcToken(rpcErr.message ?? "");
     return padded(fail(mapped.code, mapped.status));
@@ -335,9 +337,9 @@ Deno.serve(async (req: Request) => {
     try {
       const { error: cleanupErr } =
         await service.auth.admin.deleteUser(authUserId);
-      if (cleanupErr) logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
-    } catch (cleanupErr) {
-      logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
+      if (cleanupErr) logOrphanedAuthUser(inv.id);
+    } catch {
+      logOrphanedAuthUser(inv.id);
     }
     return padded(fail("db_error", 500));
   }

@@ -4,10 +4,10 @@
 // shell and the logic is unit-testable without a request — the same split as
 // `web-vitals.ts`, whose route normalizer it reuses.
 //
-// PRIVACY: the emitted `client_error` line carries ONLY the error's name, a
-// truncated message, Next's opaque digest, and a NORMALIZED route. No stack
-// trace and no form/user data ever reach the drain: the boundary sends only
-// these fields, and a hand-crafted POST is re-validated and truncated here.
+// PRIVACY: the emitted `client_error` line carries ONLY an allowlisted error
+// class, Next's bounded opaque digest, and a NORMALIZED route. Messages and
+// stacks are discarded even when a hand-crafted POST includes them because
+// either may contain user-entered or otherwise private data.
 
 import { log } from "./logger";
 import { normalizeVitalRoute } from "./web-vitals";
@@ -15,13 +15,22 @@ import { normalizeVitalRoute } from "./web-vitals";
 // Bounds for a fire-and-forget diagnostic beacon: enough to identify the
 // failure class, small enough that a hostile POST can't stuff the drain.
 const MAX_RAW_LENGTH = 2048;
-const MAX_NAME_LENGTH = 100;
-const MAX_MESSAGE_LENGTH = 300;
 const MAX_DIGEST_LENGTH = 100;
+const KNOWN_ERROR_NAMES = new Set([
+  "AggregateError",
+  "ChunkLoadError",
+  "Error",
+  "NotFoundError",
+  "RangeError",
+  "ReferenceError",
+  "SyntaxError",
+  "TypeError",
+  "URIError",
+]);
+const OPAQUE_DIGEST_RE = /^[A-Za-z0-9_-]+$/;
 
 export type ClientErrorReport = {
   error_name: string;
-  error_message: string;
   digest: string | null;
   route: string;
 };
@@ -43,15 +52,17 @@ export function parseClientErrorReport(raw: string): ClientErrorReport | null {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return null;
 
-  const message = typeof body.message === "string" ? body.message : "";
+  const errorName = KNOWN_ERROR_NAMES.has(name) ? name : "Error";
   const digest =
-    typeof body.digest === "string" && body.digest.length > 0
-      ? body.digest.slice(0, MAX_DIGEST_LENGTH)
+    typeof body.digest === "string" &&
+    body.digest.length > 0 &&
+    body.digest.length <= MAX_DIGEST_LENGTH &&
+    OPAQUE_DIGEST_RE.test(body.digest)
+      ? body.digest
       : null;
 
   return {
-    error_name: name.slice(0, MAX_NAME_LENGTH),
-    error_message: message.slice(0, MAX_MESSAGE_LENGTH),
+    error_name: errorName,
     digest,
     route: normalizeVitalRoute(body.pathname),
   };
@@ -66,7 +77,6 @@ export function logClientError(raw: string): void {
     event: "client_error",
     outcome: "fail",
     error_name: report.error_name,
-    error_message: report.error_message,
     digest: report.digest,
     route: report.route,
   });

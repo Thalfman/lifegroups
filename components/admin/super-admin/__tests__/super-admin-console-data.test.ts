@@ -104,12 +104,28 @@ function emptyReads(
     fetchLatestCleanSlateSnapshot: async () => ok(null),
     fetchHistoryResetState: async () => fail("not provided"),
     fetchAttentionResetState: async () => fail("not provided"),
-    fetchPermanentDeletionTargets: async () => [],
-    fetchRecentTombstones: async () => [],
+    fetchPermanentDeletionTargetCatalog: async () => [],
+    fetchRecentTombstones: async () =>
+      ({ status: "empty", tombstones: [] }) as const,
     fetchPendingAccountDeletionRequests: async () => ok([]),
     fetchRecentUsageEvents: async () => ok([]),
     ...overrides,
   };
+}
+function trackedReads(
+  calls: string[],
+  overrides: Partial<SuperAdminConsoleReads> = {}
+): SuperAdminConsoleReads {
+  const base = emptyReads(overrides);
+  return Object.fromEntries(
+    Object.entries(base).map(([name, read]) => [
+      name,
+      (...args: unknown[]) => {
+        calls.push(name);
+        return (read as (...values: unknown[]) => unknown)(...args);
+      },
+    ])
+  ) as SuperAdminConsoleReads;
 }
 
 function rowTone(checklist: ChecklistRow[], key: string): ChecklistTone {
@@ -119,6 +135,51 @@ function rowTone(checklist: ChecklistRow[], key: string): ChecklistTone {
 }
 
 describe("buildSuperAdminConsoleData", () => {
+  it.each([
+    ["readiness", []],
+    [
+      "access",
+      [
+        "fetchActiveOverShepherds",
+        "fetchCoverageAssignableLeaders",
+        "fetchCurrentCoverageAssignments",
+      ],
+    ],
+    ["usage", ["fetchRecentUsageEvents"]],
+    [
+      "danger",
+      [
+        "fetchCleanSlateImpact",
+        "fetchAuditEventCount",
+        "fetchLatestCleanSlateSnapshot",
+        "fetchHistoryResetState",
+        "fetchAttentionResetState",
+        "fetchPermanentDeletionTargetCatalog",
+        "fetchRecentTombstones",
+        "fetchPendingAccountDeletionRequests",
+      ],
+    ],
+  ] as const)(
+    "loads only the shared summary plus the %s workspace reads",
+    async (workspace, workspaceReads) => {
+      const calls: string[] = [];
+      await buildSuperAdminConsoleData(trackedReads(calls), {
+        currentActorProfileId: ACTOR_ID,
+        workspace,
+      });
+
+      expect(calls).toEqual([
+        "fetchProfilesForAdmin",
+        "fetchAllGroups",
+        "fetchAllMembers",
+        "fetchAllGroupLeaders",
+        "fetchRecentAuditEvents",
+        "fetchPlatformConfig",
+        ...workspaceReads,
+      ]);
+    }
+  );
+
   it("assembles the console with no errors and ok checklist rows when reads succeed", async () => {
     const data = await buildSuperAdminConsoleData(
       emptyReads({
@@ -146,7 +207,7 @@ describe("buildSuperAdminConsoleData", () => {
     expect(rowTone(data.checklist, "audit_access")).toBe("ok");
     // The leader (not the current actor) is offered for role reassignment.
     expect(data.assignableProfiles.map((p) => p.id)).toEqual(["p-leader"]);
-    expect(data.accountDeletionRequestQueue).toEqual({ status: "empty" });
+    expect(data.accountDeletionRequestQueue).toEqual({ status: "failed" });
   });
 
   it("surfaces a single failed read and flips only that checklist row", async () => {
@@ -184,7 +245,7 @@ describe("buildSuperAdminConsoleData", () => {
       emptyReads({
         fetchPendingAccountDeletionRequests: async () => ok([request]),
       }),
-      { currentActorProfileId: ACTOR_ID }
+      { currentActorProfileId: ACTOR_ID, workspace: "danger" }
     );
 
     expect(data.accountDeletionRequestQueue).toEqual({
@@ -199,7 +260,7 @@ describe("buildSuperAdminConsoleData", () => {
         fetchPendingAccountDeletionRequests: async () =>
           fail("request queue unavailable"),
       }),
-      { currentActorProfileId: ACTOR_ID }
+      { currentActorProfileId: ACTOR_ID, workspace: "danger" }
     );
 
     expect(data.accountDeletionRequestQueue).toEqual({ status: "failed" });

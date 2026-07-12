@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRequireSuperAdminSession, mockCreateClient, mockRevalidatePath } =
-  vi.hoisted(() => ({
-    mockRequireSuperAdminSession: vi.fn(),
-    mockCreateClient: vi.fn(),
-    mockRevalidatePath: vi.fn(),
-  }));
+const {
+  mockRequireSuperAdminSession,
+  mockCreateClient,
+  mockRevalidatePath,
+  mockLogWarn,
+} = vi.hoisted(() => ({
+  mockRequireSuperAdminSession: vi.fn(),
+  mockCreateClient: vi.fn(),
+  mockRevalidatePath: vi.fn(),
+  mockLogWarn: vi.fn(),
+}));
 
 vi.mock("@/lib/auth/session", () => ({
   requireSuperAdminSession: mockRequireSuperAdminSession,
@@ -15,25 +20,51 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mockRevalidatePath }));
 vi.mock("@/lib/observability/logger", () => ({
-  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  log: { info: vi.fn(), warn: mockLogWarn, error: vi.fn() },
 }));
 
 import {
   superAdminPermanentDelete,
+  superAdminLoadPermanentDeletionTargets,
   superAdminPermanentDeletePreflight,
   superAdminRestoreTombstone,
 } from "@/app/(protected)/admin/super-admin/permanent-delete-actions";
 
 const SCENARIO = "22222222-2222-2222-2222-222222222222";
 const TOMBSTONE = "33333333-3333-3333-3333-333333333333";
+const BLOCKER_ID = "44444444-4444-4444-8444-444444444444";
 
 let rpc: ReturnType<typeof vi.fn>;
+let from: ReturnType<typeof vi.fn>;
+let blockerReadResponse: { data: unknown[] | null; error: unknown };
+let blockerReadCalls: Array<[string, ...unknown[]]>;
 let invoke: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
   rpc = vi.fn();
   invoke = vi.fn();
+  blockerReadResponse = { data: [], error: null };
+  blockerReadCalls = [];
+  let blockerBuilder: Record<string, unknown>;
+  blockerBuilder = new Proxy(
+    {
+      then: (
+        onFulfilled: (value: unknown) => unknown,
+        onRejected: (error: unknown) => unknown
+      ) => Promise.resolve(blockerReadResponse).then(onFulfilled, onRejected),
+    },
+    {
+      get(target, property) {
+        if (property in target) return target[property as keyof typeof target];
+        return (...args: unknown[]) => {
+          blockerReadCalls.push([String(property), ...args]);
+          return blockerBuilder;
+        };
+      },
+    }
+  );
+  from = vi.fn().mockReturnValue(blockerBuilder);
   mockRequireSuperAdminSession.mockResolvedValue({
     ok: true,
     session: {
@@ -43,7 +74,47 @@ beforeEach(() => {
       },
     },
   });
-  mockCreateClient.mockResolvedValue({ rpc, functions: { invoke } });
+  mockCreateClient.mockResolvedValue({ rpc, from, functions: { invoke } });
+});
+
+describe("superAdminLoadPermanentDeletionTargets", () => {
+  it("loads only the chosen entity page and exposes stable pagination", async () => {
+    const rows = Array.from({ length: 51 }, (_, index) => ({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      name: `Scenario ${index}`,
+      is_current: false,
+      archived_at: null,
+    }));
+    const range = vi.fn().mockResolvedValue({ data: rows, error: null });
+    const query = {
+      select: vi.fn(),
+      order: vi.fn(),
+      range,
+    };
+    query.select.mockReturnValue(query);
+    query.order.mockReturnValue(query);
+    const from = vi.fn().mockReturnValue(query);
+    mockCreateClient.mockResolvedValueOnce({ from });
+
+    const result = await superAdminLoadPermanentDeletionTargets(undefined, {
+      entityType: "launch_scenario",
+      page: "2",
+    });
+
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(from).toHaveBeenCalledWith("launch_planning_scenarios");
+    expect(range).toHaveBeenCalledWith(100, 150);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toMatchObject({
+        entityType: "launch_scenario",
+        page: 2,
+        hasPrevious: true,
+        hasNext: true,
+      });
+      expect(result.value.items).toHaveLength(50);
+    }
+  });
 });
 
 describe("superAdminPermanentDelete", () => {
@@ -135,6 +206,79 @@ describe("superAdminPermanentDelete", () => {
       });
     }
   });
+
+  it("keeps a committed profile deletion successful when one cache refresh fails", async () => {
+    invoke.mockResolvedValue({
+      data: {
+        ok: true,
+        code: "ok",
+        profileId: SCENARIO,
+        tombstoneId: TOMBSTONE,
+        authUserState: "deleted",
+        warnings: [],
+        errors: [],
+      },
+      error: null,
+    });
+    mockRevalidatePath.mockImplementationOnce(() => {
+      throw new Error("private cache backend detail");
+    });
+
+    const result = await superAdminPermanentDelete(undefined, {
+      entityType: "profile",
+      id: SCENARIO,
+      confirm: "PERMANENTLY DELETE",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(mockRevalidatePath.mock.calls).toEqual([
+      ["/admin/super-admin"],
+      ["/admin/people"],
+      ["/admin"],
+    ]);
+    expect(mockLogWarn).toHaveBeenCalledWith({
+      event: "action_revalidation_failed",
+      route_or_action: "super_admin.permanent_delete_profile",
+      outcome: "fail",
+      error_code: "revalidation_failed",
+      revalidate_path: "/admin/super-admin",
+    });
+    expect(JSON.stringify(mockLogWarn.mock.calls)).not.toContain(
+      "private cache backend detail"
+    );
+  });
+
+  it("rethrows Next control-flow errors from profile deletion revalidation", async () => {
+    const navigation = Object.assign(new Error("NEXT_REDIRECT"), {
+      digest: "NEXT_REDIRECT;replace;/admin;303;",
+    });
+    invoke.mockResolvedValue({
+      data: {
+        ok: true,
+        code: "ok",
+        profileId: SCENARIO,
+        tombstoneId: TOMBSTONE,
+        authUserState: "deleted",
+        warnings: [],
+        errors: [],
+      },
+      error: null,
+    });
+    mockRevalidatePath.mockImplementationOnce(() => {
+      throw navigation;
+    });
+
+    await expect(
+      superAdminPermanentDelete(undefined, {
+        entityType: "profile",
+        id: SCENARIO,
+        confirm: "PERMANENTLY DELETE",
+      })
+    ).rejects.toBe(navigation);
+    expect(mockRevalidatePath).toHaveBeenCalledTimes(1);
+    expect(mockLogWarn).not.toHaveBeenCalled();
+  });
+
   it("surfaces a retriable partial failure without revalidating the queue", async () => {
     invoke.mockResolvedValue({
       data: null,
@@ -217,6 +361,43 @@ describe("superAdminPermanentDeletePreflight", () => {
     }
   });
 
+  it("enriches registered blockers with RLS-protected target IDs", async () => {
+    blockerReadResponse = { data: [{ id: BLOCKER_ID }], error: null };
+    rpc.mockResolvedValue({
+      data: {
+        deletable: false,
+        forbidden: false,
+        confidential: false,
+        blockers: [
+          {
+            table: "group_memberships",
+            column: "group_id",
+            action: "c",
+            count: 12,
+          },
+        ],
+        set_null: [],
+      },
+      error: null,
+    });
+
+    const result = await superAdminPermanentDeletePreflight(undefined, {
+      entityType: "group",
+      id: SCENARIO,
+    });
+
+    expect(from).toHaveBeenCalledWith("group_memberships");
+    expect(blockerReadCalls).toContainEqual(["select", "id"]);
+    expect(blockerReadCalls).toContainEqual(["eq", "group_id", SCENARIO]);
+    expect(blockerReadCalls).toContainEqual(["limit", 10]);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.blockers[0]).toMatchObject({
+        entityType: "group_membership",
+        ids: [BLOCKER_ID],
+      });
+    }
+  });
   it("parses the #880 cleanup bucket without letting it gate deletable", async () => {
     // An encumbered profile: the engine cleans these up in-transaction, so the
     // preflight reports them as cleanup — announced work, not blockers.

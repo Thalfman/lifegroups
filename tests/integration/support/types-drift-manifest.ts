@@ -28,6 +28,7 @@ import type {
   LeaderPipelineRow,
   LeaderRubricGradesRow,
   MembersRow,
+  ProfileAuthPurgeJobsRow,
   MultiplicationCandidatesRow,
   MultiplicationReadinessRuleRow,
   NoteTransparencyGrantsRow,
@@ -701,6 +702,18 @@ export const TABLE_ROW_KEYS: Readonly<Record<string, TableManifestEntry>> = {
       deleted_at: true,
       restored_at: true,
       restored_by: true,
+      restorable: true,
+    }),
+  },
+  profile_auth_purge_jobs: {
+    rowType: "ProfileAuthPurgeJobsRow",
+    keys: rowKeys<ProfileAuthPurgeJobsRow>()({
+      tombstone_id: true,
+      profile_id: true,
+      auth_user_id: true,
+      outcome: true,
+      created_at: true,
+      completed_at: true,
     }),
   },
   clean_slate_snapshots: {

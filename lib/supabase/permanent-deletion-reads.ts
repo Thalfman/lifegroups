@@ -1,10 +1,10 @@
 import "server-only";
 
 // ADR 0014 (#312–#316): server reads for the danger-zone permanent-deletion
-// panel — the curated targets a Super Admin can pick from, and the recent
-// tombstones they can recover. Both are RLS-gated (tombstones is super-admin
-// read only); a failed read degrades to an empty list rather than throwing, so
-// the rest of the console still renders.
+// panel. The initial target catalog is metadata-only; a guarded server action
+// loads one bounded target page after a Super Admin chooses its type. Recent
+// tombstones are super-admin RLS-gated and retain explicit failed/empty/loaded
+// state so an unavailable read is never presented as a healthy empty history.
 
 import {
   PERMANENT_DELETION_ENTITIES,
@@ -24,6 +24,7 @@ const SUPER_ADMIN_TOMBSTONE_COLUMNS = columns<
     | "row_snapshot"
     | "deleted_at"
     | "restored_at"
+    | "restorable"
   >
 >()(
   "id",
@@ -32,7 +33,8 @@ const SUPER_ADMIN_TOMBSTONE_COLUMNS = columns<
   "entity_id",
   "row_snapshot",
   "deleted_at",
-  "restored_at"
+  "restored_at",
+  "restorable"
 );
 
 export type PermanentDeletionTargetGroup = {
@@ -40,6 +42,7 @@ export type PermanentDeletionTargetGroup = {
   label: string;
   pluralLabel: string;
   items: PermanentDeletionItem[];
+  status: "idle" | "failed" | "empty" | "loaded";
 };
 
 export type RecentTombstone = {
@@ -50,39 +53,38 @@ export type RecentTombstone = {
   label: string;
   deletedAt: string;
   restoredAt: string | null;
+  restorable: boolean;
 };
+export type RecentTombstonesState =
+  | { status: "failed"; tombstones: [] }
+  | { status: "empty"; tombstones: [] }
+  | { status: "loaded"; tombstones: RecentTombstone[] };
 
-export async function fetchPermanentDeletionTargets(
-  client: ReadClient
+// This initial catalog is metadata only. Individual target rows are loaded by
+// superAdminLoadPermanentDeletionTargets after the operator chooses one type.
+export async function fetchPermanentDeletionTargetCatalog(
+  _client: ReadClient
 ): Promise<PermanentDeletionTargetGroup[]> {
-  const groups = await Promise.all(
-    PERMANENT_DELETION_ENTITIES.map(async (entity) => {
-      let items: PermanentDeletionItem[] = [];
-      try {
-        items = await entity.fetchItems(client);
-      } catch {
-        items = [];
-      }
-      return {
-        entityType: entity.entityType,
-        label: entity.label,
-        pluralLabel: entity.pluralLabel,
-        items,
-      };
-    })
-  );
-  return groups;
+  return PERMANENT_DELETION_ENTITIES.map((entity) => ({
+    entityType: entity.entityType,
+    label: entity.label,
+    pluralLabel: entity.pluralLabel,
+    status: "idle" as const,
+    items: [],
+  }));
 }
 
 export async function fetchRecentTombstones(
   client: ReadClient,
   limit = 20
-): Promise<RecentTombstone[]> {
-  const { data } = await client
+): Promise<RecentTombstonesState> {
+  const { data, error } = await client
     .from("tombstones")
     .select(SUPER_ADMIN_TOMBSTONE_COLUMNS.select)
     .order("deleted_at", { ascending: false })
     .limit(limit);
+
+  if (error) return { status: "failed", tombstones: [] };
 
   const rows = (data ?? []) as Array<
     Pick<
@@ -94,10 +96,11 @@ export async function fetchRecentTombstones(
       | "row_snapshot"
       | "deleted_at"
       | "restored_at"
+      | "restorable"
     >
   >;
 
-  return rows.map((r) => {
+  const tombstones = rows.map((r) => {
     const entity = findPermanentDeletionEntity(r.entity_type);
     const label =
       entity?.labelFromSnapshot(r.row_snapshot ?? {}) ??
@@ -110,6 +113,11 @@ export async function fetchRecentTombstones(
       label,
       deletedAt: r.deleted_at,
       restoredAt: r.restored_at,
+      restorable: r.restorable,
     };
   });
+
+  return tombstones.length === 0
+    ? { status: "empty", tombstones: [] }
+    : { status: "loaded", tombstones };
 }

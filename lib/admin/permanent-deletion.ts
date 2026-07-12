@@ -16,15 +16,59 @@ export type PermanentDeletionItem = {
   label: string;
 };
 
+export const PERMANENT_DELETION_PAGE_SIZE = 50;
+
+export type PermanentDeletionPageOptions = {
+  offset: number;
+  limit: number;
+};
+
+export type PermanentDeletionTargetPage = {
+  entityType: string;
+  page: number;
+  items: PermanentDeletionItem[];
+  hasPrevious: boolean;
+  hasNext: boolean;
+};
+
+export type PermanentDeletionTableName =
+  | "launch_planning_scenarios"
+  | "groups"
+  | "profiles"
+  | "group_calendar_events"
+  | "multiplication_candidates"
+  | "leader_pipeline"
+  | "over_shepherds"
+  | "clean_slate_snapshots"
+  | "members"
+  | "group_memberships"
+  | "group_leaders"
+  | "attendance_sessions"
+  | "attendance_records"
+  | "guests"
+  | "follow_ups"
+  | "group_health_updates"
+  | "group_health_assessments"
+  | "invitations"
+  | "shepherd_coverage_assignments"
+  | "church_attendance_snapshots"
+  | "shepherd_care_follow_ups"
+  | "shepherd_care_interactions";
+
 export type PermanentDeletionEntity = {
   /** The entity_type token passed to super_admin_permanent_delete. */
   entityType: string;
   /** Singular human label, e.g. "Launch scenario". */
   label: string;
+  /** The public table resolved for this entity type. */
+  tableName: PermanentDeletionTableName;
   /** Plural human label, e.g. "Launch scenarios". */
   pluralLabel: string;
   /** Load the rows that can be targeted, newest/most-relevant first. */
-  fetchItems: (client: AppSupabaseClient) => Promise<PermanentDeletionItem[]>;
+  fetchItems: (
+    client: AppSupabaseClient,
+    options: PermanentDeletionPageOptions
+  ) => Promise<PermanentDeletionItem[]>;
   /** Derive a readable label from a tombstone's row_snapshot. */
   labelFromSnapshot: (snapshot: Record<string, unknown>) => string;
 };
@@ -47,12 +91,15 @@ const LAUNCH_SCENARIO: PermanentDeletionEntity = {
   entityType: "launch_scenario",
   label: "Launch scenario",
   pluralLabel: "Launch scenarios",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "launch_planning_scenarios",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("launch_planning_scenarios")
       .select("id, name, is_current, archived_at")
       .order("name", { ascending: true })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -79,12 +126,15 @@ const GROUP: PermanentDeletionEntity = {
   entityType: "group",
   label: "Group",
   pluralLabel: "Groups",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "groups",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("groups")
       .select("id, name, lifecycle_status")
       .order("name", { ascending: true })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: { id: string; name: string; lifecycle_status: string | null }) => ({
@@ -108,13 +158,16 @@ const PROFILE: PermanentDeletionEntity = {
   entityType: "profile",
   label: "Person",
   pluralLabel: "People",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "profiles",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("profiles")
       .select("id, full_name, email, role, status")
       .neq("role", "super_admin")
       .order("full_name", { ascending: true })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -145,12 +198,15 @@ const CALENDAR_EVENT: PermanentDeletionEntity = {
   entityType: "calendar_event",
   label: "Calendar event",
   pluralLabel: "Calendar events",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "group_calendar_events",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("group_calendar_events")
       .select("id, title, event_date, event_type")
       .order("event_date", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -177,12 +233,15 @@ const MULTIPLICATION_CANDIDATE: PermanentDeletionEntity = {
   entityType: "multiplication_candidate",
   label: "Multiplication candidate",
   pluralLabel: "Multiplication candidates",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "multiplication_candidates",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("multiplication_candidates")
       .select("id, status, target_year")
       .order("target_year", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: { id: string; status: string; target_year: number | null }) => ({
@@ -201,12 +260,15 @@ const APPRENTICE: PermanentDeletionEntity = {
   entityType: "apprentice",
   label: "Apprentice",
   pluralLabel: "Apprentices",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "leader_pipeline",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("leader_pipeline")
       .select("id, display_name, readiness_stage")
       .order("display_name", { ascending: true })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: { id: string; display_name: string; readiness_stage: string }) => ({
@@ -224,12 +286,15 @@ const OVER_SHEPHERD: PermanentDeletionEntity = {
   entityType: "over_shepherd",
   label: "Over-Shepherd",
   pluralLabel: "Over-Shepherds",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "over_shepherds",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("over_shepherds")
       .select("id, full_name, active")
       .order("full_name", { ascending: true })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: { id: string; full_name: string; active: boolean }) => ({
@@ -247,12 +312,15 @@ const CLEAN_SLATE_SNAPSHOT: PermanentDeletionEntity = {
   entityType: "clean_slate_snapshot",
   label: "Clean Slate snapshot",
   pluralLabel: "Clean Slate snapshots",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "clean_slate_snapshots",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("clean_slate_snapshots")
       .select("id, kind, total_rows, created_at")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -276,19 +344,22 @@ const CLEAN_SLATE_SNAPSHOT: PermanentDeletionEntity = {
 // tables alongside the leaf ones is deliberate: with the "refuse + list"
 // dependency rule (no cascade), a Super Admin clears blockers bottom-up, so every
 // blocker a preflight names must itself be a deletable target. Each loader is
-// bounded with .limit() — fetchPermanentDeletionTargets loads all types in
-// parallel on every Super Admin page load.
+// bounded and runs only after the Super Admin selects that entity type; the
+// console's initial render never fans out across every registered table.
 
 const MEMBER: PermanentDeletionEntity = {
   entityType: "member",
   label: "Member",
   pluralLabel: "Members",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "members",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("members")
       .select("id, full_name, email, status")
       .order("full_name", { ascending: true })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -314,11 +385,14 @@ const GROUP_MEMBERSHIP: PermanentDeletionEntity = {
   entityType: "group_membership",
   label: "Group membership",
   pluralLabel: "Group memberships",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "group_memberships",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("group_memberships")
       .select("id, role, groups(name), members(full_name)")
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -344,11 +418,14 @@ const GROUP_LEADER: PermanentDeletionEntity = {
   entityType: "group_leader",
   label: "Group shepherd assignment",
   pluralLabel: "Group shepherd assignments",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "group_leaders",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("group_leaders")
       .select("id, role, active, groups(name), profiles(full_name)")
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -375,12 +452,15 @@ const ATTENDANCE_SESSION: PermanentDeletionEntity = {
   entityType: "attendance_session",
   label: "Attendance session",
   pluralLabel: "Attendance sessions",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "attendance_sessions",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("attendance_sessions")
       .select("id, meeting_week, meeting_date, status, groups(name)")
       .order("meeting_week", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -407,14 +487,17 @@ const ATTENDANCE_RECORD: PermanentDeletionEntity = {
   entityType: "attendance_record",
   label: "Attendance record",
   pluralLabel: "Attendance records",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "attendance_records",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("attendance_records")
       .select(
         "id, attendance_status, members(full_name), attendance_sessions(meeting_week)"
       )
       .order("created_at", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -444,12 +527,15 @@ const GUEST: PermanentDeletionEntity = {
   entityType: "guest",
   label: "Guest",
   pluralLabel: "Guests",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "guests",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("guests")
       .select("id, full_name, email, pipeline_stage")
       .order("full_name", { ascending: true })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -475,12 +561,15 @@ const FOLLOW_UP: PermanentDeletionEntity = {
   entityType: "follow_up",
   label: "Follow-up",
   pluralLabel: "Follow-ups",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "follow_ups",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("follow_ups")
       .select("id, type, title, status")
       .order("created_at", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -505,12 +594,15 @@ const GROUP_HEALTH_UPDATE: PermanentDeletionEntity = {
   entityType: "group_health_update",
   label: "Group health update",
   pluralLabel: "Group health updates",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "group_health_updates",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("group_health_updates")
       .select("id, update_week, pulse, groups(name)")
       .order("update_week", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -536,14 +628,17 @@ const GROUP_HEALTH_ASSESSMENT: PermanentDeletionEntity = {
   entityType: "group_health_assessment",
   label: "Group health assessment",
   pluralLabel: "Group health assessments",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "group_health_assessments",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("group_health_assessments")
       .select(
         "id, period_month, computed_letter, override_letter, groups(name)"
       )
       .order("period_month", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -579,12 +674,15 @@ const INVITATION: PermanentDeletionEntity = {
   entityType: "invitation",
   label: "Invitation",
   pluralLabel: "Invitations",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "invitations",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("invitations")
       .select("id, role, expires_at, revoked_at, used_count, groups(name)")
       .order("created_at", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -618,12 +716,15 @@ const SHEPHERD_COVERAGE_ASSIGNMENT: PermanentDeletionEntity = {
   entityType: "shepherd_coverage_assignment",
   label: "Coverage assignment",
   pluralLabel: "Coverage assignments",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "shepherd_coverage_assignments",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("shepherd_coverage_assignments")
       .select("id, active, profiles(full_name), over_shepherds(full_name)")
       .order("created_at", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: {
@@ -648,12 +749,15 @@ const CHURCH_ATTENDANCE_SNAPSHOT: PermanentDeletionEntity = {
   entityType: "church_attendance_snapshot",
   label: "Church attendance snapshot",
   pluralLabel: "Church attendance snapshots",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "church_attendance_snapshots",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("church_attendance_snapshots")
       .select("id, snapshot_date, attendance_count")
       .order("snapshot_date", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (r: { id: string; snapshot_date: string; attendance_count: number }) => ({
@@ -691,14 +795,17 @@ const SHEPHERD_CARE_FOLLOW_UP: PermanentDeletionEntity = {
   entityType: "shepherd_care_follow_up",
   label: "Care follow-up",
   pluralLabel: "Care follow-ups",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "shepherd_care_follow_ups",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("shepherd_care_follow_ups")
       .select(
         "id, title, status, due_date, shepherd_care_profiles(profiles(full_name))"
       )
       .order("created_at", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (
@@ -728,14 +835,17 @@ const SHEPHERD_CARE_INTERACTION: PermanentDeletionEntity = {
   entityType: "shepherd_care_interaction",
   label: "Care interaction",
   pluralLabel: "Care interactions",
-  async fetchItems(client) {
-    const { data } = await client
+  tableName: "shepherd_care_interactions",
+  async fetchItems(client, options) {
+    const { data, error } = await client
       .from("shepherd_care_interactions")
       .select(
         "id, interaction_type, interaction_at, shepherd_care_profiles(profiles(full_name))"
       )
       .order("interaction_at", { ascending: false })
-      .limit(200);
+      .order("id", { ascending: true })
+      .range(options.offset, options.offset + options.limit - 1);
+    if (error) throw error;
     return mapRows(
       data,
       (
@@ -792,6 +902,12 @@ export function findPermanentDeletionEntity(
   entityType: string
 ): PermanentDeletionEntity | undefined {
   return PERMANENT_DELETION_ENTITIES.find((e) => e.entityType === entityType);
+}
+
+export function findPermanentDeletionEntityByTable(
+  tableName: string
+): PermanentDeletionEntity | undefined {
+  return PERMANENT_DELETION_ENTITIES.find((e) => e.tableName === tableName);
 }
 
 // SAD9: the subset of registered entity types the super-admin INLINE Delete
