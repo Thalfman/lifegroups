@@ -54,20 +54,21 @@ Notes:
 
 ## 2. Processors / sub-processors
 
-| Processor                                                                         | What it receives                                                                             | Purpose                                                                        |
-| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| **Supabase** (Postgres + Auth + Edge Functions, EU/US region per project)         | All database categories above; authentication credentials; transactional auth email delivery | Primary data store, authentication, Row Level Security, server-side write RPCs |
-| **Vercel** (hosting)                                                              | HTTP request metadata to serve the app                                                       | Application hosting / runtime                                                  |
-| **Vercel Analytics** (`@vercel/analytics`)                                        | Aggregate, anonymous page-view / web-vitals signals                                          | Product analytics (no advertising, no cross-site tracking)                     |
-| **Vercel Speed Insights** (`@vercel/speed-insights`)                              | Aggregate, anonymous performance metrics                                                     | Real-user performance monitoring                                               |
-| **Upstash Redis** (`@upstash/ratelimit`)                                          | Versioned HMAC IP identifiers; a separate salted email digest for forgot-password            | Distributed forgot-password, invite-redemption, and public-telemetry limits    |
-| **Email delivery** (Supabase Auth, plus any SMTP provider configured in Supabase) | Recipient email address for invite / password-reset messages                                 | Transactional auth email only                                                  |
+| Processor                                                                         | What it receives                                                                             | Purpose                                                                            |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Supabase** (Postgres + Auth + Edge Functions, EU/US region per project)         | All database categories above; authentication credentials; transactional auth email delivery | Primary data store, authentication, Row Level Security, server-side write RPCs     |
+| **Vercel** (hosting)                                                              | HTTP request metadata to serve the app                                                       | Application hosting / runtime                                                      |
+| **Vercel Analytics** (`@vercel/analytics`)                                        | Aggregate, anonymous page-view / web-vitals signals                                          | Product analytics (no advertising, no cross-site tracking)                         |
+| **Vercel Speed Insights** (`@vercel/speed-insights`)                              | Aggregate, anonymous performance metrics                                                     | Real-user performance monitoring                                                   |
+| **Upstash Redis** (`@upstash/ratelimit`)                                          | Versioned HMAC IP identifiers; a separate salted email digest for login and forgot-password  | Distributed login, forgot-password, invite-redemption, and public-telemetry limits |
+| **Email delivery** (Supabase Auth, plus any SMTP provider configured in Supabase) | Recipient email address for invite / password-reset messages                                 | Transactional auth email only                                                      |
 
 `RATE_LIMIT_HMAC_SECRET` is the shared server-side HMAC key for IP rate-limit
-identifiers in the Next.js forgot-password, invite-redemption, and public
-telemetry paths and the `redeem-invite` Supabase Edge Function. Configure the
-same value in the Next runtime and the Edge Function environment. The
-forgot-password email bucket is a separate salted digest controlled by
+identifiers in the Next.js login, forgot-password, invite-redemption, and
+public telemetry paths and the `redeem-invite` Supabase Edge Function.
+Configure the same value in the Next runtime and the Edge Function
+environment. The login and forgot-password email buckets are a separate
+salted digest controlled by
 `LOG_HASH_SALT`; neither processor persists a raw IP or email address as its
 rate-limit key. Rotating `RATE_LIMIT_HMAC_SECRET` intentionally changes every
 derived IP key and therefore resets the active IP buckets, so coordinate

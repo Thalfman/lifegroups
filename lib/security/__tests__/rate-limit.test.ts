@@ -229,6 +229,153 @@ describe("forgot-password IP hashing", () => {
   });
 });
 
+describe("login throttle (S-1, #895)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fakeLimiterBuckets.clear();
+    failingLimiterPrefixes.clear();
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://redis.example.test");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "test-token");
+    vi.stubEnv("RATE_LIMIT_HMAC_SECRET", "test-rate-limit-hmac-secret");
+  });
+
+  it("reports unconfigured with a once-per-route warn when Upstash env is absent", async () => {
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+    const { mod, warn } = await freshModule();
+
+    await expect(
+      mod.checkLoginLimit({ ip: "203.0.113.1", emailHash: "h" })
+    ).resolves.toEqual({ configured: false });
+    await expect(
+      mod.checkLoginLimit({ ip: "203.0.113.2", emailHash: "h" })
+    ).resolves.toEqual({ configured: false });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "rate_limit_disabled",
+        route_or_action: "login",
+      })
+    );
+  });
+
+  it("allows attempts under both buckets", async () => {
+    const { mod } = await freshModule();
+
+    await expect(
+      mod.checkLoginLimit({ ip: "203.0.113.5", emailHash: "email-hash" })
+    ).resolves.toEqual({ configured: true, allowed: true });
+  });
+
+  it("denies on the per-IP bucket after 20 attempts and reports which", async () => {
+    const { mod } = await freshModule();
+
+    // Distinct email hashes keep the email bucket clear so the 21st attempt
+    // trips the IP window specifically.
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await expect(
+        mod.checkLoginLimit({
+          ip: "203.0.113.5",
+          emailHash: `email-hash-${attempt}`,
+        })
+      ).resolves.toEqual({ configured: true, allowed: true });
+    }
+
+    await expect(
+      mod.checkLoginLimit({ ip: "203.0.113.5", emailHash: "email-hash-final" })
+    ).resolves.toEqual({ configured: true, allowed: false, which: "ip" });
+  });
+
+  it("denies on the per-email bucket after 8 attempts across distinct IPs", async () => {
+    const { mod } = await freshModule();
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await expect(
+        mod.checkLoginLimit({
+          ip: `203.0.113.${attempt + 1}`,
+          emailHash: "email-hash",
+        })
+      ).resolves.toEqual({ configured: true, allowed: true });
+    }
+
+    await expect(
+      mod.checkLoginLimit({ ip: "203.0.113.99", emailHash: "email-hash" })
+    ).resolves.toEqual({ configured: true, allowed: false, which: "email" });
+  });
+
+  it("never sends the raw IP to Upstash", async () => {
+    const { mod } = await freshModule();
+    const rawIp = "203.0.113.77";
+
+    await mod.checkLoginLimit({ ip: rawIp, emailHash: "email-hash" });
+
+    const keys = [...fakeLimiterBuckets.keys()];
+    expect(keys).toContain("rl:login:em:email-hash");
+    expect(
+      keys.some((key) => /^rl:login:ip:ip:v1:[a-f0-9]{64}$/.test(key))
+    ).toBe(true);
+    expect(keys.every((key) => !key.includes(rawIp))).toBe(true);
+  });
+
+  it("skips the IP bucket but keeps email enforcement when the HMAC secret is missing", async () => {
+    vi.stubEnv("RATE_LIMIT_HMAC_SECRET", "");
+    const { mod, warn } = await freshModule();
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await expect(
+        mod.checkLoginLimit({ ip: "203.0.113.5", emailHash: "email-hash" })
+      ).resolves.toEqual({ configured: true, allowed: true });
+    }
+    await expect(
+      mod.checkLoginLimit({ ip: "203.0.113.5", emailHash: "email-hash" })
+    ).resolves.toEqual({ configured: true, allowed: false, which: "email" });
+
+    expect([...fakeLimiterBuckets.keys()]).toEqual(["rl:login:em:email-hash"]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "rate_limit_disabled",
+        route_or_action: "login-ip-hmac",
+      })
+    );
+  });
+
+  it("enforces the email bucket for null-IP callers", async () => {
+    const { mod } = await freshModule();
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await expect(
+        mod.checkLoginLimit({ ip: null, emailHash: "email-hash" })
+      ).resolves.toEqual({ configured: true, allowed: true });
+    }
+    await expect(
+      mod.checkLoginLimit({ ip: null, emailHash: "email-hash" })
+    ).resolves.toEqual({ configured: true, allowed: false, which: "email" });
+  });
+
+  it("fails open and logs a backend error when Redis throws", async () => {
+    failingLimiterPrefixes.add("rl:login:ip");
+    const { mod, error } = await freshModule();
+
+    await expect(
+      mod.checkLoginLimit({
+        ip: "203.0.113.5",
+        emailHash: "email-hash",
+        requestId: "req-login-outage",
+      })
+    ).resolves.toEqual({ configured: true, allowed: true });
+
+    expect(error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "rate_limit_backend_error",
+        outcome: "fail",
+        route_or_action: "login",
+        request_id: "req-login-outage",
+      })
+    );
+  });
+});
+
 describe("public telemetry throttling", () => {
   beforeEach(() => {
     vi.clearAllMocks();

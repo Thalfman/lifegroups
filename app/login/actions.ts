@@ -18,6 +18,8 @@ import {
 } from "@/lib/auth/landing-hint";
 import { IDLE_COOKIE, idleCookieSetOptions } from "@/lib/auth/idle-timeout";
 import { rpcLogUsageEvent } from "@/lib/usage/rpc";
+import { extractClientIp } from "@/lib/security/client-ip";
+import { checkLoginLimit } from "@/lib/security/rate-limit";
 import { isSafeNextPath } from "./next-path";
 import type { ProfileStatus } from "@/types/enums";
 
@@ -42,13 +44,33 @@ export async function loginAction(
     return { error: "Email and password are required." };
   }
 
-  const emailHash = await hashEmail(email);
+  const [emailHash, ip] = await Promise.all([
+    hashEmail(email),
+    extractClientIp(),
+  ]);
   log.info({
     event: "login_attempt",
     route_or_action: ROUTE,
     request_id: requestId,
     email_hash: emailHash,
   });
+
+  // App-level throttle (S-1): slow repeated attempts before they reach
+  // GoTrue. The throttled copy is identical to a failed login so the form
+  // never reveals whether a throttle or bad credentials fired.
+  const limit = await checkLoginLimit({ ip, emailHash, requestId });
+  if (limit.configured && !limit.allowed) {
+    log.warn({
+      event: "login_throttled",
+      outcome: "throttled",
+      route_or_action: ROUTE,
+      request_id: requestId,
+      email_hash: emailHash,
+      ip_present: ip !== null,
+      which: limit.which,
+    });
+    return { error: "Invalid email or password." };
+  }
 
   const client = await createSupabaseServerClient();
   if (!client) {

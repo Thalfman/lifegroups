@@ -18,6 +18,15 @@ import { createIpRateLimitIdentifier } from "@/lib/security/rate-limit-identifie
 // its email bucket still provides enforcement. Invite-redeem has no secondary
 // identity dimension, so null-IP calls use a generous shared fallback bucket
 // instead of bypassing throttling entirely.
+//
+// Login rate limits (S-1, #895) mirror the forgot-password shape — two
+// sliding windows per attempt:
+//   - per-IP:    20 requests / 15 min (headroom for a shared church NAT while
+//                bounding credential stuffing; the window counts all attempts,
+//                successful ones included)
+//   - per-email: 8 requests / 15 min (caps stuffing against a single account
+//                without instantly locking out a fumbling legitimate user)
+// Same fail-open posture and null-IP semantics as forgot-password.
 
 type LimiterPair = {
   ip: Ratelimit;
@@ -414,6 +423,90 @@ export async function checkForgotPasswordLimit(
       event: "rate_limit_backend_error",
       outcome: "fail",
       route_or_action: "forgot-password",
+      request_id: input.requestId,
+      error_message: err instanceof Error ? err.message : String(err),
+    });
+    return { configured: true, allowed: true };
+  }
+}
+
+// Login limiters (S-1, #895). Same two-bucket shape as forgot-password so
+// repeated sign-in attempts are slowed at the app layer before they reach
+// GoTrue. Lazily built and cached; shares the Upstash credentials and the
+// fail-open posture.
+let cachedLogin: LimiterPair | null | undefined;
+
+function buildLoginLimiters(): LimiterPair | null {
+  const redis = getRedis();
+  if (!redis) return null;
+  return {
+    ip: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(20, "15 m"),
+      prefix: "rl:login:ip",
+      analytics: false,
+    }),
+    email: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(8, "15 m"),
+      prefix: "rl:login:em",
+      analytics: false,
+    }),
+  };
+}
+
+export type LoginLimitInput = {
+  ip: string | null;
+  emailHash: string;
+  requestId?: string;
+};
+
+export type LoginLimitResult =
+  | { configured: false }
+  | { configured: true; allowed: true }
+  | { configured: true; allowed: false; which: "ip" | "email" };
+
+export async function checkLoginLimit(
+  input: LoginLimitInput
+): Promise<LoginLimitResult> {
+  if (cachedLogin === undefined) cachedLogin = buildLoginLimiters();
+  const limiters = cachedLogin;
+  if (!limiters) {
+    warnDisabledOnce("login", input.requestId);
+    return { configured: false };
+  }
+
+  try {
+    const hmacSecret = getHmacSecret();
+    const hashedIp =
+      input.ip !== null && hmacSecret !== null
+        ? ipIdentifier(input.ip, hmacSecret)
+        : null;
+    if (input.ip !== null && hmacSecret === null) {
+      warnDisabledOnce("login-ip-hmac", input.requestId);
+    }
+    const ipPromise = hashedIp
+      ? limiters.ip.limit(hashedIp)
+      : Promise.resolve({ success: true });
+    const [ipRes, emailRes] = await Promise.all([
+      ipPromise,
+      limiters.email.limit(input.emailHash),
+    ]);
+
+    if (hashedIp && !ipRes.success) {
+      return { configured: true, allowed: false, which: "ip" };
+    }
+    if (!emailRes.success) {
+      return { configured: true, allowed: false, which: "email" };
+    }
+    return { configured: true, allowed: true };
+  } catch (err) {
+    // Fail open: a Redis outage must not take down sign-in. Emit a
+    // structured event so ops can react.
+    log.error({
+      event: "rate_limit_backend_error",
+      outcome: "fail",
+      route_or_action: "login",
       request_id: input.requestId,
       error_message: err instanceof Error ? err.message : String(err),
     });

@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCreateClient, mockCookieSet, mockLogUsage } = vi.hoisted(() => ({
+const {
+  mockCreateClient,
+  mockCookieSet,
+  mockLogUsage,
+  mockCheckLoginLimit,
+  mockExtractClientIp,
+} = vi.hoisted(() => ({
   mockCreateClient: vi.fn(),
   mockCookieSet: vi.fn(),
   mockLogUsage: vi.fn(),
+  mockCheckLoginLimit: vi.fn(),
+  mockExtractClientIp: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -28,7 +36,16 @@ vi.mock("@/lib/observability/logger", () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock("@/lib/security/client-ip", () => ({
+  extractClientIp: mockExtractClientIp,
+}));
+
+vi.mock("@/lib/security/rate-limit", () => ({
+  checkLoginLimit: mockCheckLoginLimit,
+}));
+
 import { loginAction } from "../actions";
+import { log } from "@/lib/observability/logger";
 
 const AUTH_ID = "55555555-5555-5555-5555-555555555555";
 
@@ -76,6 +93,8 @@ function makeClient(opts: {
 beforeEach(() => {
   vi.clearAllMocks();
   mockLogUsage.mockResolvedValue(undefined);
+  mockExtractClientIp.mockResolvedValue("203.0.113.7");
+  mockCheckLoginLimit.mockResolvedValue({ configured: true, allowed: true });
 });
 
 describe("loginAction", () => {
@@ -102,6 +121,52 @@ describe("loginAction", () => {
 
     expect(state.error).toMatch(/invalid email or password/i);
     expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("returns the same generic copy and skips GoTrue when the throttle denies", async () => {
+    const { client, signInWithPassword } = makeClient({});
+    mockCreateClient.mockResolvedValue(client);
+    mockCheckLoginLimit.mockResolvedValue({
+      configured: true,
+      allowed: false,
+      which: "ip",
+    });
+
+    const state = await loginAction(
+      {},
+      form({ email: "person@example.com", password: "secretpass" })
+    );
+
+    // Enumeration-safe: identical to the bad-credentials copy, so the form
+    // never reveals whether a throttle or bad credentials fired.
+    expect(state.error).toMatch(/invalid email or password/i);
+    expect(signInWithPassword).not.toHaveBeenCalled();
+    expect(vi.mocked(log.warn)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "login_throttled",
+        outcome: "throttled",
+        route_or_action: "login",
+        ip_present: true,
+        which: "ip",
+        email_hash: expect.any(String),
+      })
+    );
+  });
+
+  it("proceeds with sign-in when the throttle is unconfigured", async () => {
+    const { client, signInWithPassword } = makeClient({
+      signInError: { code: "invalid_credentials", status: 400 },
+    });
+    mockCreateClient.mockResolvedValue(client);
+    mockCheckLoginLimit.mockResolvedValue({ configured: false });
+
+    const state = await loginAction(
+      {},
+      form({ email: "person@example.com", password: "wrong" })
+    );
+
+    expect(signInWithPassword).toHaveBeenCalled();
+    expect(state.error).toMatch(/invalid email or password/i);
   });
 
   it("clears the setup-gate cookie and redirects an active profile", async () => {
