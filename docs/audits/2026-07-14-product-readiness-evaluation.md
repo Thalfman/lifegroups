@@ -73,7 +73,7 @@ in [`PRODUCT_DEFINITION.md`](../PRODUCT_DEFINITION.md):
 | Super-Admin console (7 workspaces incl. Danger Zone) | `/admin/super-admin`                                                                                | Complete                                                            |
 | Over-Shepherd surface                                | `/over-shepherd`                                                                                    | Complete, coverage-scoped (ADR 0017)                                |
 | Shepherd (leader) surface                            | `/leader`                                                                                           | Complete, live by default (ADR 0024)                                |
-| Auth/onboarding                                      | `/login`, `/invite/[token]`, `/welcome`, `/forgot-password`, `/reset-password`, `/account-deletion` | Complete, with first-run orientation                                |
+| Auth/onboarding                                      | `/login`, `/invite/[token]`, `/welcome`, `/forgot-password`, `/reset-password`, `/account-deletion` | Complete; orientation is minimal (see §2.3)                         |
 
 Supporting evidence of maturity:
 
@@ -102,6 +102,13 @@ None are launch-gating for the core team:
 
 - Frozen pre-pivot surfaces still answer old bookmarks with old vocabulary
   ("Guests", "check-in"); a "this moved" redirect would be a nice touch.
+- **New-user orientation is thin.** The `FirstRunCard`
+  (`components/orientation/first-run-card.tsx`) is a one-sentence dismissible
+  welcome; a new Shepherd or Over-Shepherd still gets no explanation of what
+  a Care Note is, what transparency means, or what "Needs follow-up" implies
+  (PRODUCT_DEFINITION §8 lists this as an open end-state gap). Acceptable
+  for the hand-held core-team launch; plan real concept onboarding before
+  widening to Shepherds who won't have Julian walking them through it.
 - Care follow-up due dates compute against UTC, not church-local time, so
   work can read as due a day early in the evening (prior audit ARCH-2, P2).
 - Documented design debt: ~2,000 inline styles and two coexisting
@@ -186,7 +193,7 @@ None are launch-gating for the core team:
 | S-2 | **Privacy-copy truthfulness — verified consistent at the evaluated ref.** The deletion/privacy copy (`app/account-deletion/page.tsx`, `app/privacy/page.tsx`) and the canonical glossary (`CONTEXT.md` permanent-deletion definition) were checked against shipped erasure behavior and match: no recoverable profile copy, a structural non-restorable deletion record, audit attribution removed. This closes prior-audit DOC-1. Remaining ask is only a one-time production spot-check of the deletion flow (folded into §5 item 4). | Resolved      |
 | S-3 | **RLS semantics beyond Care Notes are review-dependent.** Only care_notes/prayer_requests have the behavioral differential; other tables rely on the static sweep + review. 18 sensitive tables are deferred to the static sweep with no live per-tier fixture. Reasonable for a trusted team; promote the live RLS lane before broadening the user base.                                                                                                                                                                               | Pre-scale     |
 | S-4 | **Admin-private columns on mixed tables are guarded by read-layer allowlists, not RLS** (`groups.admin_notes` etc.) — enforced by the no-`select("*")` and leader-allowlist fitness tests, but it is a column boundary held by static checks + review rather than the database.                                                                                                                                                                                                                                                         | Pre-scale     |
-| S-5 | Public telemetry endpoints (`/api/vitals`, `/api/client-error`) are session-exempt and log caller-supplied content with truncation, not redaction (prior audit P2).                                                                                                                                                                                                                                                                                                                                                                     | Polish        |
+| S-5 | **Public-telemetry exposure — resolved at the evaluated ref.** The prior audit's P2 no longer applies: `app/api/client-error/route.ts` and `app/api/vitals/route.ts` now require same-origin Fetch Metadata (failing closed), enforce declared/streamed body caps and the public-telemetry limiter before logging, and the reporters log only allowlisted fields (`lib/observability/client-errors.ts` discards messages/stacks; `web-vitals.ts` allowlists metric/rating and normalizes routes).                                       | Resolved      |
 
 ### 4.3 Status of the 2026-07-11 P1s at the evaluated ref
 
@@ -203,12 +210,18 @@ None are launch-gating for the core team:
 then Over-Shepherds and Shepherds — after completing this checklist.** Every
 item is verification or wiring; none requires building new product.
 
-1. **Verify production environment wiring (O-2).** Confirm in the live Vercel
-   project: custom SMTP is configured and a real invite email arrives;
-   `UPSTASH_REDIS_REST_URL`/`TOKEN` and `RATE_LIMIT_HMAC_SECRET` are set (and
-   no `rate_limit_disabled` lines appear in logs); `TRUSTED_PROXY` matches
-   the host. On the Supabase side: `RATE_LIMIT_HMAC_SECRET` is **also** set
-   as an Edge Function secret — `redeem-invite` hard-fails with
+1. **Verify production environment wiring (O-2).** Confirm the full Vercel
+   env-var list from
+   [`LAUNCH_RUNBOOK.md`](../runbooks/LAUNCH_RUNBOOK.md) §4 — the runbook's
+   own dated note records several of these as **still missing in
+   Production**. The highest-risk ones and their silent failure modes:
+   custom SMTP (a real invite email must arrive);
+   `UPSTASH_REDIS_REST_URL`/`TOKEN` and `RATE_LIMIT_HMAC_SECRET` (rate
+   limiting fails open with only a `rate_limit_disabled` log line);
+   `LOG_HASH_SALT` (`lib/observability/identifiers.ts` falls back to
+   salt-less email hashes in login/people logs); `NEXT_PUBLIC_SITE_URL`; and
+   `TRUSTED_PROXY=vercel`. On the Supabase side: `RATE_LIMIT_HMAC_SECRET` is
+   **also** set as an Edge Function secret — `redeem-invite` hard-fails with
    `missing_rate_limit_hmac_secret` without it, so a Vercel-only check can
    pass while invite redemption is broken; and `manage-test-auth-users` is
    absent from the production project's Edge Functions (test tooling the
@@ -223,9 +236,14 @@ item is verification or wiring; none requires building new product.
    `lib/security/rate-limit.ts` machinery, or explicitly confirm and record
    that GoTrue's configured limits are acceptable.
 4. **Run the existing [`LAUNCH_RUNBOOK.md`](../runbooks/LAUNCH_RUNBOOK.md)**
-   as written, including a one-time spot-check that the production deletion
-   flow behaves exactly as `/account-deletion` describes (the copy was
-   verified truthful at the evaluated ref — S-2).
+   as written — its leader-account audit (archiving the 3 `leader` + 1
+   `co_leader` accounts still active in production) is what makes the
+   "admins first, Shepherds later" rollout order real, since
+   `leader_surface` is on by default and `requireLeader()` admits any active
+   leader profile today. **Additionally** (the runbook's auth loop does not
+   include this step): one-time spot-check that the production deletion flow
+   behaves exactly as `/account-deletion` describes (the copy was verified
+   truthful at the evaluated ref — S-2).
 
 Rationale: the audience is a small, trusted, known team using a purpose-built
 tool; there is no cross-tier exposure, no missing feature on the critical
@@ -270,10 +288,17 @@ protection against risks the core team doesn't yet face. They are the right
 
 ### 6.3 Staged rollout: admins first, Shepherds later — viable middle path
 
-Because the Shepherd surface sits behind the verified `leader_surface` flag,
-a two-stage launch is one toggle: complete the checklist, launch to the
-Ministry Admin and Super Admin, run for a week or two, then re-enable the
-flag for Shepherds once the alerting channel has proven quiet. There is a
+A caution first: "admins only" is **not** the current default state.
+`leader_surface` is **on** by default (ADR 0024), and per the
+[launch runbook](../runbooks/LAUNCH_RUNBOOK.md) production still holds 3
+`leader` + 1 `co_leader` accounts that `requireLeader()` admits while the
+flag is live — so an admins-only phase exists only after the runbook's
+leader-account audit archives those accounts (checklist item 4), or after
+the Super-Admin console turns the flag off. With that done, a two-stage
+launch is one toggle: complete the checklist, launch to the Ministry Admin
+and Super Admin, run for a week or two, then issue Shepherd invites (or
+re-enable the flag, if it was frozen) once the alerting channel has proven
+quiet. There is a
 real evidence asymmetry supporting this path: the Shepherd surface is
 guarded by the same fitness invariants and RLS posture, but its E2E presence
 is route/visibility handshakes (the assigned Shepherd sees the group on
