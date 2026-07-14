@@ -39,6 +39,10 @@ export type ReadOnlyRpcArgs = {
   read_frozen_surface_flag: { p_key: string };
   over_shepherd_caller_coverage: Record<string, never>;
   admin_sealed_note_counts: Record<string, never>;
+  admin_group_health_attendance_weeks: {
+    p_group_ids: string[];
+    p_limit_weeks: number;
+  };
   admin_read_feature_flags: Record<string, never>;
 };
 
@@ -71,6 +75,10 @@ type ReadOnlyRpcRegistry = {
   over_shepherd_caller_coverage: RpcDefinition<Record<string, never>, unknown>;
   admin_sealed_note_counts: RpcDefinition<Record<string, never>, unknown>;
   admin_read_feature_flags: RpcDefinition<Record<string, never>, unknown>;
+  admin_group_health_attendance_weeks: RpcDefinition<
+    ReadOnlyRpcArgs["admin_group_health_attendance_weeks"],
+    unknown
+  >;
 };
 
 export type PinnedRpcRegistry = RpcDefinitions<PinnedUuidRpcArgs, string> &

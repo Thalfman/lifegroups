@@ -23,7 +23,7 @@ import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail
 import { GroupRubricGradeEntry } from "@/components/admin/care/group-rubric-grade-entry";
 import { loadShepherdCareDetailData } from "@/components/admin/shepherd-care/shepherd-care-detail-data";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
-import { currentUtcDateIso } from "@/lib/supabase/read-core";
+import { churchTodayIso } from "@/lib/shared/church-time";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { LeaderHealthGradeEditor } from "@/components/admin/shepherd-care/leader-health-grade";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
@@ -74,7 +74,7 @@ export async function ShepherdCareDetailBody({
 
   const roleLabel =
     detail.profileRole === "leader" ? "Shepherd" : "Co-shepherd";
-  const today = currentUtcDateIso();
+  const today = churchTodayIso();
 
   // Resolve the stored leader override against the current period BEFORE seeding
   // the editor: a "this_month" override set in an earlier month has expired, so

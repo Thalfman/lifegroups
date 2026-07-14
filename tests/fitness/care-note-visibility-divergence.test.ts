@@ -244,8 +244,8 @@ function grantRows(row: VisibilityMatrixRow): ReadonlyMap<string, boolean> {
 describe("fitness: TS resolver and SQL mirror agree on every matrix row (SEC-1 layer 3)", () => {
   const matrix = enumerateVisibilityMatrix();
 
-  it("enumerates the full matrix (2 note shapes × 15 viewers × 9 grant states)", () => {
-    expect(matrix).toHaveLength(270);
+  it("enumerates the full matrix (4 note shapes × 15 viewers × 9 grant states)", () => {
+    expect(matrix).toHaveLength(540);
   });
 
   it("decides every read attempt identically on both sides", () => {
@@ -256,7 +256,7 @@ describe("fitness: TS resolver and SQL mirror agree on every matrix row (SEC-1 l
       // The resolver takes the already-selected applicable grant; the
       // selection rule (whose toggle gates this note) is the exported helper.
       const gatingId = applicableGrantProfileId(row.note);
-      const gatingState = grants.get(gatingId);
+      const gatingState = gatingId === null ? undefined : grants.get(gatingId);
       const grant: TransparencyGrant =
         gatingState === undefined ? null : { granted: gatingState };
       const resolver = canReadNote(

@@ -2,7 +2,7 @@
 
 Status: Living document — keep accurate to the code and schema
 Owner: Tom
-Last updated: 2026-06-14
+Last updated: 2026-07-11
 Phase: Mobile store roadmap Phase 3 (see [`docs/MOBILE_STORE_ROADMAP.md`](../MOBILE_STORE_ROADMAP.md))
 
 This document enumerates the data categories LifeGroups collects and the
@@ -21,23 +21,23 @@ behalf. There is no public sign-up and no public member-facing browsing.
 Each category maps to where it lives in the schema (`types/database.ts` +
 `supabase/migrations/`). "Subjects" names whose data it is.
 
-| Category                        | Fields                                                                                                        | Subjects                                               | Where it lives                                                                                                  |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| **Account identity**            | full name, email, phone (optional), role, status                                                              | App users (staff, Over-Shepherds, Leaders, Co-Leaders) | `profiles`                                                                                                      |
-| **Authentication**              | email, password (hashed), session cookies, auth user id                                                       | App users                                              | Supabase Auth (`auth.users`); `profiles.auth_user_id` links to it                                               |
-| **Member records**              | full name, email (optional), phone (optional), household name, care-sensitivity flag                          | Group members (non-auth)                               | `members`                                                                                                       |
-| **Group data**                  | group name, meeting day/time/location, capacity, lifecycle & health status, audience × category (cell), notes | Groups                                                 | `groups`, `group_leaders`, `group_memberships`, `group_categories`, `category_type_targets`                     |
-| **Attendance**                  | per-meeting attendance status, session notes                                                                  | Members in a group                                     | `attendance_sessions`, `attendance_records`                                                                     |
-| **Group health**                | pulse/health updates, rubric grades, assessments                                                              | Groups & Leaders                                       | `group_health_updates`, `group_health_assessments`, `group_rubric_grades`, `leader_rubric_grades`               |
-| **Interest Funnel (Prospects)** | name, email (optional), phone (optional), funnel state, notes, desired cell                                   | Prospective members                                    | `prospects` (supersedes the frozen `guests`)                                                                    |
-| **Care Notes**                  | free-text pastoral observations                                                                               | Leaders / groups (subjects)                            | `care_notes` (author-private until a per-subject transparency grant)                                            |
-| **Prayer Requests**             | free-text prayer items, status                                                                                | Leaders / groups (subjects)                            | `prayer_requests`                                                                                               |
-| **Shepherd care**               | care status, contact cadence, interaction logs, admin summaries                                               | Leaders being shepherded                               | `shepherd_care_profiles`, `shepherd_care_interactions`, `shepherd_care_follow_ups`, `shepherd_care_admin_notes` |
-| **Private care notes**          | AES-256-GCM ciphertext (zero-knowledge; the server never holds plaintext or the key)                          | Leaders being shepherded                               | `shepherd_care_private_notes`, `shepherd_care_note_key_slots`                                                   |
-| **Coverage**                    | which Over-Shepherd covers which Leader                                                                       | Over-Shepherds ↔ Leaders                               | `over_shepherds`, `shepherd_coverage_assignments`                                                               |
-| **Audit trail**                 | actor, action, entity type/id, structured metadata (no free-text bodies), denormalized actor name/email       | App users (as actors)                                  | `audit_events`, `audit_events_archive`                                                                          |
-| **Usage telemetry**             | coarse event type (`login` / `area_view`) and area slug                                                       | App users                                              | `usage_events` (Super-Admin only; written **only** while the `usage_tracking` flag is on)                       |
-| **Account-deletion requests**   | requesting profile id, optional reason, status                                                                | App users                                              | `account_deletion_requests` (self-service request → admin-reviewed purge)                                       |
+| Category                        | Fields                                                                                                  | Subjects                                               | Where it lives                                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| **Account identity**            | full name, email, phone (optional), role, status                                                        | App users (staff, Over-Shepherds, Leaders, Co-Leaders) | `profiles`                                                                                                      |
+| **Authentication**              | email, password (hashed), session cookies, auth user id                                                 | App users                                              | Supabase Auth (`auth.users`); `profiles.auth_user_id` links to it                                               |
+| **Member records**              | full name, email (optional), phone (optional), household name, care-sensitivity flag                    | Group members (non-auth)                               | `members`                                                                                                       |
+| **Group data**                  | group name, meeting day/time/location, capacity, lifecycle & health status, free-text group type, notes | Groups                                                 | `groups.group_type`, `group_leaders`, `group_memberships`; `app_settings` (`group_types` key)                   |
+| **Attendance**                  | per-meeting attendance status, session notes                                                            | Members in a group                                     | `attendance_sessions`, `attendance_records`                                                                     |
+| **Group health**                | pulse/health updates, rubric grades, assessments                                                        | Groups & Leaders                                       | `group_health_updates`, `group_health_assessments`, `group_rubric_grades`, `leader_rubric_grades`               |
+| **Interest Funnel (Prospects)** | name, email (optional), phone (optional), funnel state, notes, desired group and desired group type     | Prospective members                                    | `prospects.desired_group_type` (`prospects` supersedes the frozen `guests`)                                     |
+| **Care Notes**                  | free-text pastoral observations                                                                         | Leaders / groups (subjects)                            | `care_notes` (author-private until a per-subject transparency grant)                                            |
+| **Prayer Requests**             | free-text prayer items, status                                                                          | Leaders / groups (subjects)                            | `prayer_requests`                                                                                               |
+| **Shepherd care**               | care status, contact cadence, interaction logs, admin summaries                                         | Leaders being shepherded                               | `shepherd_care_profiles`, `shepherd_care_interactions`, `shepherd_care_follow_ups`, `shepherd_care_admin_notes` |
+| **Private care notes**          | AES-256-GCM ciphertext (zero-knowledge; the server never holds plaintext or the key)                    | Leaders being shepherded                               | `shepherd_care_private_notes`, `shepherd_care_note_key_slots`                                                   |
+| **Coverage**                    | which Over-Shepherd covers which Leader                                                                 | Over-Shepherds ↔ Leaders                               | `over_shepherds`, `shepherd_coverage_assignments`                                                               |
+| **Audit trail**                 | actor, action, entity type/id, structured metadata (no free-text bodies), denormalized actor name/email | App users (as actors)                                  | `audit_events`, `audit_events_archive`                                                                          |
+| **Usage telemetry**             | coarse event type (`login` / `area_view`) and area slug                                                 | App users                                              | `usage_events` (Super-Admin only; written **only** while the `usage_tracking` flag is on)                       |
+| **Account-deletion requests**   | requesting profile id, optional reason, status                                                          | App users                                              | `account_deletion_requests` (self-service request → admin-reviewed purge)                                       |
 
 Notes:
 
@@ -54,14 +54,26 @@ Notes:
 
 ## 2. Processors / sub-processors
 
-| Processor                                                                         | What it receives                                                                                        | Purpose                                                                        |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| **Supabase** (Postgres + Auth + Edge Functions, EU/US region per project)         | All database categories above; authentication credentials; transactional auth email delivery            | Primary data store, authentication, Row Level Security, server-side write RPCs |
-| **Vercel** (hosting)                                                              | HTTP request metadata to serve the app                                                                  | Application hosting / runtime                                                  |
-| **Vercel Analytics** (`@vercel/analytics`)                                        | Aggregate, anonymous page-view / web-vitals signals                                                     | Product analytics (no advertising, no cross-site tracking)                     |
-| **Vercel Speed Insights** (`@vercel/speed-insights`)                              | Aggregate, anonymous performance metrics                                                                | Real-user performance monitoring                                               |
-| **Upstash Redis** (`@upstash/ratelimit`)                                          | A hashed rate-limit key derived from request IP and the submitted email on the forgot-password endpoint | Abuse / enumeration rate limiting (fails open; disabled when unconfigured)     |
-| **Email delivery** (Supabase Auth, plus any SMTP provider configured in Supabase) | Recipient email address for invite / password-reset messages                                            | Transactional auth email only                                                  |
+| Processor                                                                         | What it receives                                                                             | Purpose                                                                        |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Supabase** (Postgres + Auth + Edge Functions, EU/US region per project)         | All database categories above; authentication credentials; transactional auth email delivery | Primary data store, authentication, Row Level Security, server-side write RPCs |
+| **Vercel** (hosting)                                                              | HTTP request metadata to serve the app                                                       | Application hosting / runtime                                                  |
+| **Vercel Analytics** (`@vercel/analytics`)                                        | Aggregate, anonymous page-view / web-vitals signals                                          | Product analytics (no advertising, no cross-site tracking)                     |
+| **Vercel Speed Insights** (`@vercel/speed-insights`)                              | Aggregate, anonymous performance metrics                                                     | Real-user performance monitoring                                               |
+| **Upstash Redis** (`@upstash/ratelimit`)                                          | Versioned HMAC IP identifiers; a separate salted email digest for forgot-password            | Distributed forgot-password, invite-redemption, and public-telemetry limits    |
+| **Email delivery** (Supabase Auth, plus any SMTP provider configured in Supabase) | Recipient email address for invite / password-reset messages                                 | Transactional auth email only                                                  |
+
+`RATE_LIMIT_HMAC_SECRET` is the shared server-side HMAC key for IP rate-limit
+identifiers in the Next.js forgot-password, invite-redemption, and public
+telemetry paths and the `redeem-invite` Supabase Edge Function. Configure the
+same value in the Next runtime and the Edge Function environment. The
+forgot-password email bucket is a separate salted digest controlled by
+`LOG_HASH_SALT`; neither processor persists a raw IP or email address as its
+rate-limit key. Rotating `RATE_LIMIT_HMAC_SECRET` intentionally changes every
+derived IP key and therefore resets the active IP buckets, so coordinate
+rotation as a throttle reset. Public telemetry uses a bounded per-process
+fallback if Upstash is absent or fails; the Edge invite processor keeps its
+service-only database throttle and fails closed if the HMAC secret is absent.
 
 The service-role key that can bypass RLS is confined to Supabase Edge Functions
 (`invite-user`, `purge-profile-auth`, `redeem-invite`, `manage-test-auth-users`) — it is **never**

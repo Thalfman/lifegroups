@@ -131,8 +131,9 @@ typed shape to a stateful client **shell**. There are two paths:
 
 These are hard rules. Violating one is a P0 (see `AGENTS.md` and the README
 "Security posture"). Treat them as non-negotiable. Most are now
-**machine-checked** by the fitness suite (`tests/fitness/**` — currently 21
-checks) in the gating CI lane (`npm run test:run`), so a regression fails the
+**machine-checked** by the fitness suite; the top-level
+`tests/fitness/*.test.ts` files are its executable inventory. They run in the
+gating CI lane (`npm run test:run`), so a regression fails the
 build. Highlights: no service-role key, no `select("*")`, no direct table
 writes, no hardcoded identity, run-action routing, no hard deletes, no broad
 RLS read policies, audit-pairing on every write RPC, no sensitive columns in
@@ -150,7 +151,7 @@ RLS `USING`-clause meaning beyond the pinned care-note resolver.
 
 - **No service-role key in Next runtime code.** The service role is confined to
   Supabase Edge Functions (`invite-user`, `manage-test-auth-users`,
-  `redeem-invite`).
+  `redeem-invite`, `purge-profile-auth`).
 - **All writes go through the narrow `SECURITY DEFINER` RPCs above.** Never write
   tables directly from app code, and never add broad write RLS policies or
   migrations that grant wider access than intended.
@@ -213,9 +214,10 @@ result-returning guards (`requireAdminSession`, …) in server actions.
   (`playwright.e2e.config.ts`), driving the **real** app — local seeded
   Supabase stack, real sign-in, real Server Actions/RPCs/RLS, no harness or
   stubs. One command: `npm run test:e2e` (`scripts/e2e.sh`; needs Docker + the
-  Supabase CLI — it starts the stack, seeds, serves, and runs). Opt-in lane:
-  CI runs it advisory-only via `.github/workflows/e2e.yml` (dispatch + weekly
-  cron + path-filtered PRs), never as a required check.
+  Supabase CLI — it starts the stack, seeds, serves, and runs). The workflow
+  reports on every PR and gates its expensive local-stack steps internally; it
+  also supports manual dispatch and a weekly drift run. Requiring its exact job
+  context in branch protection is a separate rollout step after a green report.
 - Add or update tests alongside behavior changes; CI gates on both suites.
 
 ## Git / PR / CI
@@ -227,11 +229,11 @@ result-returning guards (`requireAdminSession`, …) in server actions.
   job runs `lint` → `typecheck` → `build` → `test:run`, plus an **embedded,
   path-gated RLS integration harness** (#811) that boots a local Supabase
   stack on Node 22 and runs `test:integration` when migrations / RLS-relevant
-  modules change; a second job runs the Playwright a11y suite. Advisory lanes
-  live in their own workflows: `rls-integration.yml` (full RLS harness),
-  `seeded-auth-route-smoke.yml`, and `e2e.yml` (dispatch + weekly cron +
-  path-filtered PRs — never a required check). The **Codex review loop is
-  advisory only** — it never auto-merges, enables auto-merge, or deletes
+  modules change; a second job runs the Playwright a11y suite. The E2E
+  workflow is an always-reporting PR context with internally path-gated
+  local-stack work, plus dispatch and weekly drift runs. The full RLS harness
+  and seeded-auth route smoke remain scheduled/manual lanes. The **Codex review
+  loop is advisory only** — it never auto-merges, enables auto-merge, or deletes
   branches.
 - Issue tracker and triage-label conventions live in
   [`docs/agents/`](./docs/agents/).

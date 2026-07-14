@@ -7,9 +7,9 @@ import { grantFixtureProvisioning } from "./local-grants";
 // Fixture provisioning for the RLS / action-pipeline harness (issue #607).
 //
 // Builds one Auth user per oversight tier — Super Admin ▸ Ministry Admin ▸
-// Over-Shepherd ▸ Leader — plus the relational scaffolding the visibility
-// exceptions need: an over_shepherds roster row bridged to the OS profile by
-// email, a coverage assignment covering the subject Leader, and a
+// Over-Shepherd ▸ Leader ▸ Co-Leader — plus the relational scaffolding needed
+// by the visibility exceptions: an over_shepherds roster row bridged to the OS
+// profile by email, a coverage assignment covering the subject Leader, and a
 // shepherd_care_profiles row for the Leader (the SC.4 private-note anchor).
 //
 // All provisioning runs through the SERVICE client, which bypasses RLS. That is
@@ -32,7 +32,8 @@ export type TierKey =
   | "super_admin"
   | "ministry_admin"
   | "over_shepherd"
-  | "leader";
+  | "leader"
+  | "co_leader";
 
 export interface Tier {
   readonly key: TierKey;
@@ -50,6 +51,8 @@ export interface Fixtures {
   readonly overShepherd: Tier;
   /** The subject Leader the Over-Shepherd covers and the admins author notes about. */
   readonly leader: Tier;
+  /** A lower-tier peer used to exercise the complete role union. */
+  readonly coLeader: Tier;
   /** The Leader's care profile id (anchor for the SC.4 private care note). */
   readonly leaderCareProfileId: string;
   /**
@@ -74,7 +77,7 @@ export interface Fixtures {
 
 const ROLE_PLAN: ReadonlyArray<{
   key: TierKey;
-  role: "super_admin" | "ministry_admin" | "over_shepherd" | "leader";
+  role: TierKey;
   fullName: string;
 }> = [
   { key: "super_admin", role: "super_admin", fullName: "Integ Super Admin" },
@@ -89,6 +92,7 @@ const ROLE_PLAN: ReadonlyArray<{
     fullName: "Integ Over-Shepherd",
   },
   { key: "leader", role: "leader", fullName: "Integ Leader" },
+  { key: "co_leader", role: "co_leader", fullName: "Integ Co-Leader" },
 ];
 
 async function createAuthUser(
@@ -131,9 +135,10 @@ async function insertProfile(
 }
 
 /**
- * Provision the four-tier fixture set against the LOCAL stack and return the
- * authenticated per-tier clients plus a teardown closure. Throws on any setup
- * failure so the spec surfaces a clear cause rather than a misleading assertion.
+ * Provision the complete oversight-role fixture set against the LOCAL stack.
+ * Returns authenticated per-tier clients plus a teardown closure. Throws on
+ * any setup failure so the spec surfaces a clear cause rather than a misleading
+ * assertion.
  */
 export async function provisionFixtures(
   env: IntegrationEnv
@@ -298,6 +303,7 @@ export async function provisionFixtures(
     ministryAdmin: tiers.ministry_admin!,
     overShepherd,
     leader,
+    coLeader: tiers.co_leader!,
     leaderCareProfileId,
     rollbackSubjectProfileId,
     unrelatedLeaderProfileId: rollbackSubjectProfileId,

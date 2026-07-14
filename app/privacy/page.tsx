@@ -79,8 +79,9 @@ export default function PrivacyPolicyPage() {
             </li>
             <li>
               <strong>Group information.</strong> Group name, meeting day, time
-              and location, capacity, lifecycle and health status, audience and
-              category, and group notes, plus per-meeting attendance.
+              and location, capacity, lifecycle and health status, a free-text
+              group type chosen from the ministry-managed list, and group notes,
+              plus per-meeting attendance.
             </li>
             <li>
               <strong>Care information.</strong> Pastoral{" "}
@@ -91,7 +92,7 @@ export default function PrivacyPolicyPage() {
             <li>
               <strong>Interest Funnel.</strong> For people interested in joining
               a group: name, optional email and phone, the funnel state, the
-              group they would like to join, and notes.
+              desired group and desired group type, and notes.
             </li>
             <li>
               <strong>Operational records.</strong> An audit trail of who did
@@ -99,6 +100,14 @@ export default function PrivacyPolicyPage() {
               Over-Shepherd covers which Shepherd, and (only when the ministry
               turns it on) coarse usage signals (such as a sign-in or which area
               was viewed).
+            </li>
+            <li>
+              <strong>Safety telemetry.</strong> Performance reports contain
+              only an allowlisted metric and a fixed route template. Error
+              reports contain an allowlisted error class, an optional opaque
+              digest, and a fixed route template. Raw error messages, arbitrary
+              path text, and IP addresses are not written to these application
+              logs.
             </li>
           </ul>
           <p className="mt-3 font-sans text-base text-ink2">
@@ -160,13 +169,15 @@ export default function PrivacyPolicyPage() {
               transactional email (invites and password resets).
             </li>
             <li>
-              <strong>Vercel</strong>: application hosting, with aggregate,
-              anonymous analytics and performance metrics (no advertising and no
-              cross-site tracking).
+              <strong>Vercel</strong>: application hosting and delivery of the
+              bounded performance and error telemetry described above (no
+              advertising and no cross-site tracking).
             </li>
             <li>
-              <strong>Upstash</strong>: abuse and enumeration rate limiting on
-              the password-reset endpoint, using a hashed key.
+              <strong>Upstash</strong>: abuse and enumeration rate limiting for
+              password reset, invite redemption, and public telemetry. It
+              receives one-way identifiers rather than raw IP or email
+              addresses.
             </li>
           </ul>
         </section>
@@ -178,19 +189,28 @@ export default function PrivacyPolicyPage() {
           >
             Keeping and deleting data
           </h2>
-          <p className="m-0 font-sans text-base text-ink2">
+          <p className="m-0 mb-3 font-sans text-base text-ink2">
             The default way anything leaves a surface is a reversible archive (a
             soft delete), not a permanent erase. You can request deletion of
-            your sign-in account at any time. See the{" "}
+            your sign-in account at any time. The request signs you out and
+            revokes access immediately; a Super Admin then completes the
+            irreversible removal of your personal profile and linked sign-in
+            identity. See the{" "}
             <Link
               href="/account-deletion"
               className="font-medium text-sageDeep no-underline"
             >
               account deletion
             </Link>{" "}
-            page for how it works and what is removed versus retained. Care
-            Notes and Prayer Requests you wrote are kept as part of the
-            ministry&apos;s ongoing care history.
+            page for how it works and what is removed versus retained.
+          </p>
+          <p className="m-0 font-sans text-base text-ink2">
+            Profile deletion does not keep a recoverable copy of your profile:
+            the remaining deletion record is structural and cannot be restored.
+            Care Notes and Prayer Requests you wrote remain as part of the
+            ministry&apos;s ongoing care history, but their authorship is
+            anonymized. The completed request&apos;s free-text reason and your
+            name or email as historical audit attribution are also removed.
           </p>
         </section>
 

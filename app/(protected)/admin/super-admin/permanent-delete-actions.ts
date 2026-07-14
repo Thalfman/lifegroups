@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireSuperAdminSession } from "@/lib/auth/session";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   type ActionResult,
   actionFail,
@@ -17,6 +18,7 @@ import {
 import { isRecord } from "@/lib/admin/validation";
 import { isUuid } from "@/lib/shared/uuid";
 import { readFormPayloadStringified } from "@/lib/shared/form-data";
+import { log } from "@/lib/observability/logger";
 import { adminJsonRpc, adminRpc } from "@/lib/admin/rpc";
 import {
   buildErrorLines,
@@ -35,15 +37,60 @@ import {
 } from "@/lib/admin/danger-zone";
 import {
   findPermanentDeletionEntity,
+  findPermanentDeletionEntityByTable,
   isInlineDeletableEntityType,
+  PERMANENT_DELETION_PAGE_SIZE,
+  type PermanentDeletionTargetPage,
 } from "@/lib/admin/permanent-deletion";
 
 const REVALIDATE_PATHS = ["/admin/super-admin", "/admin"] as const;
-const PROFILE_DELETE_REVALIDATE_PATHS = [
-  "/admin/super-admin",
-  "/admin/people",
-  "/admin",
-] as const;
+
+// redirect(), notFound(), and related Next control-flow APIs throw an object
+// whose digest the framework must receive. Keep this local instead of importing
+// Next's private `next/dist` predicate.
+function isNextNavigationError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const digest = (error as { digest?: unknown }).digest;
+  return (
+    typeof digest === "string" &&
+    (digest.startsWith("NEXT_REDIRECT") ||
+      digest === "NEXT_NOT_FOUND" ||
+      digest.startsWith("NEXT_HTTP_ERROR_FALLBACK"))
+  );
+}
+
+function revalidateProfileDeletePath(
+  path: string,
+  refreshPath: () => void
+): void {
+  try {
+    refreshPath();
+  } catch (error) {
+    if (isNextNavigationError(error)) throw error;
+    // The DB/Auth deletion has committed. Cache refresh is post-commit work,
+    // so report only stable, non-sensitive fields and keep refreshing the
+    // remaining surfaces without turning success into a misleading failure.
+    log.warn({
+      event: "action_revalidation_failed",
+      route_or_action: "super_admin.permanent_delete_profile",
+      outcome: "fail",
+      error_code: "revalidation_failed",
+      revalidate_path: path,
+    });
+  }
+}
+
+function revalidateProfileDeletePaths(): void {
+  revalidateProfileDeletePath("/admin/super-admin", () => {
+    revalidatePath("/admin/super-admin");
+  });
+  revalidateProfileDeletePath("/admin/people", () => {
+    revalidatePath("/admin/people");
+  });
+  revalidateProfileDeletePath("/admin", () => {
+    revalidatePath("/admin");
+  });
+}
 
 function readStr(raw: Record<string, unknown>, key: string): string {
   return typeof raw[key] === "string" ? (raw[key] as string).trim() : "";
@@ -69,6 +116,50 @@ function readTarget(
   return { ok: true, entityType, id };
 }
 
+// Target rows are intentionally loaded only after the operator chooses an
+// entity type. One extra row determines whether a next page exists without a
+// count query; the stable per-entity ordering lives in the curated registry.
+export async function superAdminLoadPermanentDeletionTargets(
+  _prev: ActionResult<PermanentDeletionTargetPage> | undefined,
+  input: unknown
+): Promise<ActionResult<PermanentDeletionTargetPage>> {
+  const auth = await requireSuperAdminSession();
+  if (!auth.ok) return actionFail([auth.error]);
+
+  const raw = readFormPayloadStringified(input);
+  const entityType = readStr(raw, "entityType");
+  const entity = findPermanentDeletionEntity(entityType);
+  if (!entity) return actionFail(["That isn't a deletable record type."]);
+
+  const page = Number(readStr(raw, "page"));
+  if (!Number.isSafeInteger(page) || page < 0) {
+    return actionFail(["That target page isn't valid. Refresh and try again."]);
+  }
+
+  const client = await createSupabaseServerClient();
+  if (!client) return actionFail(["Database is not configured."]);
+
+  const offset = page * PERMANENT_DELETION_PAGE_SIZE;
+  try {
+    const rows = await entity.fetchItems(client, {
+      offset,
+      limit: PERMANENT_DELETION_PAGE_SIZE + 1,
+    });
+    const hasNext = rows.length > PERMANENT_DELETION_PAGE_SIZE;
+    return actionOk({
+      entityType,
+      page,
+      items: rows.slice(0, PERMANENT_DELETION_PAGE_SIZE),
+      hasPrevious: page > 0,
+      hasNext,
+    });
+  } catch {
+    return actionFail([
+      `${entity.pluralLabel} could not be loaded. Try again in a moment.`,
+    ]);
+  }
+}
+
 function asNumber(v: unknown): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -81,12 +172,19 @@ function parsePreflight(
 ): Omit<DeletionPreflight, "entityType" | "entityId"> {
   const doc = isRecord(data) ? data : {};
   const blockers: DeletionBlocker[] = Array.isArray(doc.blockers)
-    ? doc.blockers.filter(isRecord).map((b) => ({
-        table: typeof b.table === "string" ? b.table : "",
-        column: typeof b.column === "string" ? b.column : "",
-        action: typeof b.action === "string" ? b.action : "",
-        count: asNumber(b.count),
-      }))
+    ? doc.blockers.filter(isRecord).map((b) => {
+        const table = typeof b.table === "string" ? b.table : "";
+        const entity = findPermanentDeletionEntityByTable(table);
+        const ids: string[] = [];
+        return {
+          table,
+          column: typeof b.column === "string" ? b.column : "",
+          action: typeof b.action === "string" ? b.action : "",
+          count: asNumber(b.count),
+          ids,
+          entityType: entity?.entityType ?? null,
+        };
+      })
     : [];
   const setNull = Array.isArray(doc.set_null)
     ? doc.set_null.filter(isRecord).map((s) => ({
@@ -112,6 +210,36 @@ function parsePreflight(
     setNull,
     cleanup,
   };
+}
+// The preflight RPC owns the authoritative blocker count. For blocker tables
+// that are also curated deletion targets, add up to ten stable IDs through the
+// caller's normal RLS-protected session. A denied/failed detail read never
+// changes the count or deletability decision; it only withholds shortcuts.
+async function enrichBlockerIds(
+  client: AppSupabaseClient,
+  blockers: DeletionBlocker[],
+  targetId: string
+): Promise<DeletionBlocker[]> {
+  return Promise.all(
+    blockers.map(async (blocker) => {
+      const entity = findPermanentDeletionEntityByTable(blocker.table);
+      if (!entity || !blocker.column) return blocker;
+
+      const { data, error } = await client
+        .from(entity.tableName)
+        .select("id")
+        .eq(blocker.column, targetId)
+        .order("id", { ascending: true })
+        .limit(10);
+      if (error) return blocker;
+
+      const rows = (data ?? []) as unknown as Array<{ id: unknown }>;
+      const ids = rows
+        .map((row) => row.id)
+        .filter((id): id is string => typeof id === "string" && isUuid(id));
+      return { ...blocker, ids };
+    })
+  );
 }
 
 // ADR 0014 (#313): preflight a permanent deletion. Reports what blocks it
@@ -148,8 +276,11 @@ export async function superAdminPermanentDeletePreflight(
 
   // Stamp the target onto the report so the card can discard it the moment the
   // operator selects a different row.
+  const parsed = parsePreflight(data);
+  const blockers = await enrichBlockerIds(client, parsed.blockers, target.id);
   return actionOk({
-    ...parsePreflight(data),
+    ...parsed,
+    blockers,
     entityType: target.entityType,
     entityId: target.id,
   });
@@ -331,7 +462,7 @@ async function runProfilePermanentDelete(
     ]);
   }
 
-  for (const path of PROFILE_DELETE_REVALIDATE_PATHS) revalidatePath(path);
+  revalidateProfileDeletePaths();
   return actionOk(deleteSuccess(data.tombstoneId, target));
 }
 

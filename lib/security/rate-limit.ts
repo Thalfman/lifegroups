@@ -1,6 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { log } from "@/lib/observability/logger";
+import { createIpRateLimitIdentifier } from "@/lib/security/rate-limit-identifier";
 
 // Forgot-password rate limits. Two sliding windows enforced per request:
 //   - per-IP:    5 requests / 15 min (protects against bulk enumeration)
@@ -47,6 +48,14 @@ function getRedis(): Redis | null {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   if (!url || !token) return null;
   return new Redis({ url, token });
+}
+
+function getHmacSecret(): string | null {
+  return process.env.RATE_LIMIT_HMAC_SECRET?.trim() || null;
+}
+
+function ipIdentifier(ip: string, secret: string): string {
+  return createIpRateLimitIdentifier(ip, secret);
 }
 
 function build(): LimiterPair | null {
@@ -127,9 +136,17 @@ export async function checkInviteRedeemLimit(
     return { configured: false };
   }
 
-  const usesFallback = input.ip === null;
+  const hmacSecret = getHmacSecret();
+  const hashedIp =
+    input.ip !== null && hmacSecret !== null
+      ? ipIdentifier(input.ip, hmacSecret)
+      : null;
+  if (input.ip !== null && hmacSecret === null) {
+    warnDisabledOnce("invite-redeem-ip-hmac", input.requestId);
+  }
+  const usesFallback = hashedIp === null;
   const limiter = usesFallback ? limiters.fallback : limiters.ip;
-  const key = input.ip ?? INVITE_REDEEM_FALLBACK_KEY;
+  const key = hashedIp ?? INVITE_REDEEM_FALLBACK_KEY;
   try {
     const res = await limiter.limit(key);
     if (usesFallback && !res.success) {
@@ -154,6 +171,198 @@ export async function checkInviteRedeemLimit(
   }
 }
 
+export type PublicTelemetryEndpoint = "client-error" | "vitals";
+
+type PublicTelemetryLimiterPair = {
+  ip: Ratelimit;
+  fallback: Ratelimit;
+};
+
+type PublicTelemetryLimiters = Record<
+  PublicTelemetryEndpoint,
+  PublicTelemetryLimiterPair
+>;
+
+let cachedPublicTelemetry: PublicTelemetryLimiters | null | undefined;
+const PUBLIC_TELEMETRY_WINDOW_MS = 60_000;
+const PUBLIC_TELEMETRY_IP_LIMIT = 60;
+const PUBLIC_TELEMETRY_GLOBAL_LIMIT = 200;
+export const PUBLIC_TELEMETRY_LOCAL_MAX_BUCKETS = 2_048;
+
+type PublicTelemetryLocalBucket = {
+  count: number;
+  resetAt: number;
+};
+
+const publicTelemetryLocalBuckets = new Map<
+  string,
+  PublicTelemetryLocalBucket
+>();
+
+function checkPublicTelemetryLocalLimit(
+  endpoint: PublicTelemetryEndpoint,
+  identifier: string | null,
+  now = Date.now()
+): boolean {
+  const dimension = identifier === null ? "global" : "ip";
+  const key = `${endpoint}:${dimension}:${identifier ?? "global"}`;
+  const limit =
+    identifier === null
+      ? PUBLIC_TELEMETRY_GLOBAL_LIMIT
+      : PUBLIC_TELEMETRY_IP_LIMIT;
+  const current = publicTelemetryLocalBuckets.get(key);
+  const bucket =
+    current && current.resetAt > now
+      ? { count: current.count + 1, resetAt: current.resetAt }
+      : { count: 1, resetAt: now + PUBLIC_TELEMETRY_WINDOW_MS };
+
+  if (
+    !current &&
+    publicTelemetryLocalBuckets.size >= PUBLIC_TELEMETRY_LOCAL_MAX_BUCKETS
+  ) {
+    for (const [candidateKey, candidate] of publicTelemetryLocalBuckets) {
+      if (candidate.resetAt <= now) {
+        publicTelemetryLocalBuckets.delete(candidateKey);
+      }
+    }
+    while (
+      publicTelemetryLocalBuckets.size >= PUBLIC_TELEMETRY_LOCAL_MAX_BUCKETS
+    ) {
+      const oldestKey = publicTelemetryLocalBuckets.keys().next().value;
+      if (oldestKey === undefined) break;
+      publicTelemetryLocalBuckets.delete(oldestKey);
+    }
+  }
+
+  // Refresh insertion order for bounded least-recently-used eviction.
+  publicTelemetryLocalBuckets.delete(key);
+  publicTelemetryLocalBuckets.set(key, bucket);
+  return bucket.count <= limit;
+}
+
+export function resetPublicTelemetryLocalLimitForTests(): void {
+  publicTelemetryLocalBuckets.clear();
+  cachedPublicTelemetry = undefined;
+}
+
+export function publicTelemetryLocalBucketCountForTests(): number {
+  return publicTelemetryLocalBuckets.size;
+}
+
+function buildPublicTelemetryLimiters(): PublicTelemetryLimiters | null {
+  const redis = getRedis();
+  if (!redis) return null;
+
+  const pair = (prefix: string): PublicTelemetryLimiterPair => ({
+    ip: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(60, "1 m"),
+      prefix: `${prefix}:ip`,
+      analytics: false,
+    }),
+    fallback: new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(200, "1 m"),
+      prefix: `${prefix}:fallback`,
+      analytics: false,
+    }),
+  });
+
+  return {
+    "client-error": pair("rl:telemetry:client-error"),
+    vitals: pair("rl:telemetry:vitals"),
+  };
+}
+
+export type PublicTelemetryLimitInput = {
+  endpoint: PublicTelemetryEndpoint;
+  ip: string | null;
+  requestId?: string;
+};
+
+export type PublicTelemetryLimitResult = { configured: true; allowed: boolean };
+
+// The public telemetry routes have no authenticated identity. Redis provides
+// the distributed limiter when available; a bounded per-process fixed window
+// keeps both routes limited when Redis is absent or fails. Both paths use only
+// a versioned HMAC of a trusted IP, or the shared no-IP bucket. Raw IPs never
+// enter limiter keys or logs.
+export async function checkPublicTelemetryLimit(
+  input: PublicTelemetryLimitInput
+): Promise<PublicTelemetryLimitResult> {
+  if (cachedPublicTelemetry === undefined) {
+    cachedPublicTelemetry = buildPublicTelemetryLimiters();
+  }
+  const hmacSecret = getHmacSecret();
+  const hashedIp =
+    input.ip !== null && hmacSecret !== null
+      ? ipIdentifier(input.ip, hmacSecret)
+      : null;
+  const limiters = cachedPublicTelemetry;
+  const routeOrAction = `telemetry-${input.endpoint}`;
+  const dimension = hashedIp === null ? "global_fallback" : "ip_hmac";
+  const checkLocal = (): PublicTelemetryLimitResult => ({
+    configured: true,
+    allowed: checkPublicTelemetryLocalLimit(input.endpoint, hashedIp),
+  });
+  const usesFallback = hashedIp === null;
+
+  if (input.ip !== null && hmacSecret === null) {
+    warnDisabledOnce(`${routeOrAction}-ip-hmac`, input.requestId);
+  }
+
+  if (!limiters) {
+    warnDisabledOnce(routeOrAction, input.requestId);
+    const localResult = checkLocal();
+    if (!localResult.allowed) {
+      log.warn({
+        event: "public_telemetry_throttled",
+        outcome: "throttled",
+        route_or_action: routeOrAction,
+        request_id: input.requestId,
+        dimension,
+      });
+    }
+    return localResult;
+  }
+
+  const limiterPair = limiters[input.endpoint];
+  const limiter = usesFallback ? limiterPair.fallback : limiterPair.ip;
+
+  try {
+    const result = await limiter.limit(hashedIp ?? "global");
+    if (!result.success) {
+      log.warn({
+        event: "public_telemetry_throttled",
+        outcome: "throttled",
+        route_or_action: routeOrAction,
+        request_id: input.requestId,
+        dimension,
+      });
+    }
+    return { configured: true, allowed: result.success };
+  } catch (err) {
+    log.error({
+      event: "rate_limit_backend_error",
+      outcome: "fail",
+      route_or_action: routeOrAction,
+      request_id: input.requestId,
+      error_message: err instanceof Error ? err.message : String(err),
+    });
+    const localResult = checkLocal();
+    if (!localResult.allowed) {
+      log.warn({
+        event: "public_telemetry_throttled",
+        outcome: "throttled",
+        route_or_action: routeOrAction,
+        request_id: input.requestId,
+        dimension,
+      });
+    }
+    return localResult;
+  }
+}
+
 export type ForgotPasswordLimitInput = {
   ip: string | null;
   emailHash: string;
@@ -175,15 +384,23 @@ export async function checkForgotPasswordLimit(
   }
 
   try {
-    const ipPromise = input.ip
-      ? limiters.ip.limit(input.ip)
+    const hmacSecret = getHmacSecret();
+    const hashedIp =
+      input.ip !== null && hmacSecret !== null
+        ? ipIdentifier(input.ip, hmacSecret)
+        : null;
+    if (input.ip !== null && hmacSecret === null) {
+      warnDisabledOnce("forgot-password-ip-hmac", input.requestId);
+    }
+    const ipPromise = hashedIp
+      ? limiters.ip.limit(hashedIp)
       : Promise.resolve({ success: true });
     const [ipRes, emailRes] = await Promise.all([
       ipPromise,
       limiters.email.limit(input.emailHash),
     ]);
 
-    if (input.ip && !ipRes.success) {
+    if (hashedIp && !ipRes.success) {
       return { configured: true, allowed: false, which: "ip" };
     }
     if (!emailRes.success) {

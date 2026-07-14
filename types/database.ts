@@ -316,12 +316,12 @@ export interface AttentionResetSnapshotsRow {
 }
 
 // ADR 0014 (#312): permanent-deletion tombstone. Super-admin-only SELECT RLS;
-// never itself a delete target. Writes only via the super_admin_* SECURITY
-// DEFINER RPCs. row_snapshot is the full deleted row; set_null_dependents is the
-// array of {table, column, ids} the delete nulled, so restore (#315) can re-link.
-// Issue #880: cleanup_snapshot captures the operational assignment rows a
-// profile purge deleted pre-flight ({table, column, rows}); restore
-// deliberately does NOT resurrect them.
+// never itself a delete target. Writes only via SECURITY DEFINER RPCs.
+// Non-profile rows retain their deleted snapshot and set-null links for restore.
+// Profile erasure is the exception: its snapshot is structural-only, both
+// dependent arrays are empty, and restorable is false. cleanup_snapshot
+// describes deleted operational dependents only on restorable legacy/non-profile
+// records; it never retains recoverable profile data.
 export interface TombstonesRow {
   id: UUID;
   entity_type: string;
@@ -343,6 +343,17 @@ export interface TombstonesRow {
   deleted_at: Timestamp;
   restored_at: Timestamp | null;
   restored_by: UUID | null;
+  restorable: boolean;
+}
+// Service-only cross-system profile-erasure retry seam. The Auth UUID exists
+// only while a purge is incomplete and is cleared atomically with completion.
+export interface ProfileAuthPurgeJobsRow {
+  tombstone_id: UUID;
+  profile_id: UUID;
+  auth_user_id: UUID | null;
+  outcome: "deleted" | "already_missing" | "not_linked" | null;
+  created_at: Timestamp;
+  completed_at: Timestamp | null;
 }
 
 // Self-service account-deletion requests (#563): one pending row per profile;
@@ -959,8 +970,19 @@ export interface Database {
           | "deleted_at"
           | "restored_at"
           | "restored_by"
+          | "restorable"
         >;
         Update: Partial<TombstonesRow>;
+        Relationships: [];
+      };
+      profile_auth_purge_jobs: {
+        Row: ProfileAuthPurgeJobsRow;
+        Insert: InsertOf<
+          ProfileAuthPurgeJobsRow,
+          "created_at",
+          "auth_user_id" | "outcome" | "completed_at"
+        >;
+        Update: Partial<ProfileAuthPurgeJobsRow>;
         Relationships: [];
       };
       platform_config: {
@@ -1260,6 +1282,20 @@ export interface Database {
       };
     };
     Functions: {
+      admin_group_health_attendance_weeks: {
+        Args: {
+          p_group_ids: UUID[];
+          p_limit_weeks: number;
+        };
+        Returns: Array<{
+          group_id: UUID;
+          session_id: UUID;
+          meeting_week: DateString;
+          present: number;
+          absent: number;
+          excused: number;
+        }>;
+      };
       admin_create_leader_profile: {
         Args: { p_full_name: string; p_email: string; p_phone: string | null };
         Returns: UUID;

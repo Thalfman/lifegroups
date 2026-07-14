@@ -189,6 +189,41 @@ describe("runWriteAction treatAsOk seam", () => {
     });
   });
 
+  it("keeps a treat-as-ok result successful when revalidation fails", async () => {
+    mockRevalidatePath.mockImplementationOnce(() => {
+      throw new Error("private cache detail");
+    });
+    const core = baseCore({
+      rpc: vi.fn(async () => ({
+        data: null,
+        error: { message: "P0001: deletion_already_requested" },
+      })),
+      treatAsOk: [
+        {
+          token: "deletion_already_requested",
+          result: { id: "already" },
+          fields: { error_code: "already_requested" },
+        },
+      ],
+    });
+
+    const result = await runWriteAction(core, { name: "x" });
+
+    expect(result).toEqual({ ok: true, value: { id: "already" } });
+    expect(logCalls[0].ctx).toMatchObject({
+      outcome: "ok",
+      error_code: "already_requested",
+    });
+    expect(lastLog()).toMatchObject({
+      level: "warn",
+      ctx: {
+        event: "action_revalidation_failed",
+        error_code: "revalidation_failed",
+      },
+    });
+    expect(lastLog().ctx).not.toHaveProperty("error_message");
+  });
+
   it("falls through to rpc_error when no token matches", async () => {
     const core = baseCore({
       rpc: vi.fn(async () => ({

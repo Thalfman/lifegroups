@@ -72,7 +72,7 @@ describe("reviewer demo seed — respects the write guardrails", () => {
 });
 
 describe("reviewer demo seed — covers every role surface", () => {
-  it("populates the Cell, Group, People, Leader, Over-Shepherd, and care tables", () => {
+  it("populates the Group Type, Group, People, Leader, Over-Shepherd, and care tables", () => {
     for (const table of [
       "public.group_type_configs",
       "public.groups",

@@ -80,6 +80,10 @@ export type DeletionBlocker = {
   column: string;
   action: string;
   count: number;
+  /** First dependent UUIDs returned by preflight, capped server-side. */
+  ids: string[];
+  /** Curated target type for the child table, when one exists. */
+  entityType: string | null;
 };
 
 // The #313 preflight report. `confidential` is the opaque private-care-note

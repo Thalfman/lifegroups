@@ -66,9 +66,15 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
   ],
   "admin.care.set_leader_rubric_grade": [
     "/admin/care",
+    "/admin/shepherd-care",
     "/admin/shepherd-care/${*}",
   ],
-  "admin.care_note.write": ["/admin/care", "/admin/shepherd-care/${*}"],
+  "admin.care_note.write": [
+    "/admin/care",
+    "/admin/shepherd-care",
+    "/admin/shepherd-care/${*}",
+    "/over-shepherd/${*}",
+  ],
   "admin.follow_ups.create": [
     "/admin",
     "/admin/care",
@@ -190,7 +196,9 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
   "admin.multiply.set_group_type_in_pipeline": ["/admin/multiply"],
   "admin.note_transparency_grant.set": [
     "/admin/care",
+    "/admin/shepherd-care",
     "/admin/shepherd-care/${*}",
+    "/over-shepherd/${*}",
   ],
   "admin.over_shepherd.create": [
     "/admin/shepherd-care",
@@ -249,7 +257,12 @@ export const EXPECTED_REVALIDATE_PATHS: Readonly<
     "/admin/plan",
   ],
   "admin.plan.update_prospect": ["/admin", "/admin/multiply", "/admin/plan"],
-  "admin.prayer_request.write": ["/admin/care", "/admin/shepherd-care/${*}"],
+  "admin.prayer_request.write": [
+    "/admin/care",
+    "/admin/shepherd-care",
+    "/admin/shepherd-care/${*}",
+    "/over-shepherd/${*}",
+  ],
   "admin.settings.reset_metric_defaults": [
     "/admin",
     "/admin/group-health",

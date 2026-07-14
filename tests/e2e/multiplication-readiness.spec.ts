@@ -1,4 +1,5 @@
 import { test, expect, e2eCreds, signIn } from "./helpers";
+import { assertLiveThenPersist } from "./live-refresh-contract";
 
 // Happy-path Multiplication-readiness assessment, end to end (#827; model from
 // ADR 0019/0021/0029/0030). Nothing here is stubbed: the spec signs in as the
@@ -17,12 +18,9 @@ import { test, expect, e2eCreds, signIn } from "./helpers";
 //   3. persistence: full reloads re-run the force-dynamic server reads and
 //      the assessment renders from persisted rows (no stale initial data).
 //
-// The live (no-reload) re-partition after the save is PROBED and logged, not
-// asserted: the action revalidates /admin/multiply, but the 2026-07-03 lane
-// run showed the panel still on the stale payload 15s after an ok save (the
-// probe's breadcrumb tracks that investigation). The no-reload revalidation
-// contract is pinned E2E by the Care Note and Interest Funnel specs on their
-// surfaces.
+// The current page must show the complete assessment before any reload; a
+// separate reload then proves persistence. This ordering guards the React
+// Action-queue stall captured by #839 instead of letting a fresh read hide it.
 //
 // Fixtures: the E2E stack (phase2_seed.sql) seeds NO group types, NO pipelined
 // types, and NO multiplication_candidates — so the spec establishes its own
@@ -214,18 +212,6 @@ test.describe("Multiplication-readiness assessment pipeline", () => {
     // role="alert" message instead.
     await expect(statusSelect).toHaveCount(0);
 
-    // Probe (don't assert) the live re-partition. The action revalidates
-    // /admin/multiply, so the refreshed payload SHOULD land the group in
-    // Locked-in candidates without a reload — but the 2026-07-03 lane run
-    // showed the panel still on the stale payload 15s after an ok save, so
-    // the AC assertions below go through reloads and this probe just leaves
-    // a breadcrumb in the run log for the staleness investigation.
-    const livePaint = await removeButton
-      .waitFor({ state: "visible", timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false);
-    console.log(`[e2e] lock-in live re-partition without reload: ${livePaint}`);
-
     // The #827 acceptance state: the locked-in row carrying the exact
     // recorded assessment. The five checkboxes are the locked-in row's inline
     // (optimistic) criterion toggles — the lock-in form is gone.
@@ -247,20 +233,17 @@ test.describe("Multiplication-readiness assessment pipeline", () => {
       }
     };
 
-    // "The grid reflects the assessment": a reload re-runs the force-dynamic
-    // server reads (the URL still carries ?tab=pipeline, so the Pipeline
-    // panel mounts active), so everything asserted below is persisted rows —
-    // form → action → RPC → RLS read round-tripped.
-    await page.reload();
-    await expect(main.getByRole("tab", { name: "Pipeline" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    );
-    await assertAssessment();
-
-    // "…and it survives a full page reload" (no stale initial data): a second
-    // reload must render the identical assessment again.
-    await page.reload();
-    await assertAssessment();
+    // Assert the Action-applied tree before navigation, then reload once and
+    // assert the identical assessment from persisted rows.
+    await assertLiveThenPersist({
+      assertLive: assertAssessment,
+      reload: async () => {
+        await page.reload();
+        await expect(
+          main.getByRole("tab", { name: "Pipeline" })
+        ).toHaveAttribute("aria-selected", "true");
+      },
+      assertPersisted: assertAssessment,
+    });
   });
 });

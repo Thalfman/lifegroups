@@ -23,6 +23,7 @@ import { fetchAllGroups, fetchGroupsByIds } from "@/lib/supabase/group-reads";
 import {
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
+  fetchGroupAttendanceWeeksForGroups,
 } from "@/lib/supabase/attendance-reads";
 import { fetchGroupHealthRubricSetting } from "@/lib/supabase/settings-reads";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
@@ -213,6 +214,7 @@ const GROUP_HEALTH_READ_FETCHERS = {
   fetchGroupsByIds,
   fetchAttendanceSessions,
   fetchAttendanceRecordsForSessions,
+  fetchGroupAttendanceWeeksForGroups,
   fetchGroupHealthRubricSetting,
   fetchMetricDefaultsCached,
   fetchGroupHealthAssessment,
@@ -406,9 +408,7 @@ export async function buildGroupHealthOverview(
   // so run them concurrently.
   const latestFollowUpPromise = reads.fetchLatestFollowUpFlags();
 
-  // Each group's attendance read is independent (2 round-trips: sessions then
-  // records), so fan them out concurrently rather than serializing one group at
-  // a time — the overview otherwise blocks on 2*N sequential queries. Fetch at
+  // The normal path loads every group's attendance in one bulk RPC. Fetch at
   // least the trend's 8-week span even when the rubric window is smaller, or the
   // declining leg can never fill its prior half-window; attendanceConsistency
   // re-slices to the rubric window, so the grade is unaffected.
@@ -416,14 +416,16 @@ export async function buildGroupHealthOverview(
     rubric.attendance_window_weeks,
     ATTENDANCE_TREND_WINDOW_WEEKS
   );
-  const weeksByGroup = await Promise.all(
-    groups.map((group) =>
-      buildGroupAttendanceWeeks(reads, group.id, weeksToFetch)
-    )
+  const attendancePromise = reads.fetchGroupAttendanceWeeksForGroups(
+    groups.map((group) => group.id),
+    weeksToFetch
   );
 
-  const { data: followUpRows, error: followUpError } =
-    await latestFollowUpPromise;
+  const [attendanceResult, followUpResult] = await Promise.all([
+    attendancePromise,
+    latestFollowUpPromise,
+  ]);
+  const { data: followUpRows, error: followUpError } = followUpResult;
   if (followUpError) {
     return {
       data: null,
@@ -436,12 +438,53 @@ export async function buildGroupHealthOverview(
     latestFollowUp.set(row.group_id, row.needs_follow_up);
   }
 
+  // Keep the one-request normal path. If the bulk request fails, fall back to
+  // the prior per-group seam so independent failures remain independent.
+  const fallbackWeeksByGroup = new Map<
+    string,
+    ReadResult<AttendanceWeekTally[]>
+  >();
+  if (attendanceResult.error) {
+    const fallbackResults = await Promise.all(
+      groups.map(
+        async (group) =>
+          [
+            group.id,
+            await buildGroupAttendanceWeeks(reads, group.id, weeksToFetch),
+          ] as const
+      )
+    );
+    for (const [groupId, result] of fallbackResults) {
+      fallbackWeeksByGroup.set(groupId, result);
+    }
+  }
+
+  const weeksByGroup = new Map<string, AttendanceWeekTally[]>();
+  if (!attendanceResult.error) {
+    for (const week of attendanceResult.data) {
+      const weeks = weeksByGroup.get(week.group_id) ?? [];
+      weeks.push({
+        meeting_week: week.meeting_week,
+        present: week.present,
+        absent: week.absent,
+        excused: week.excused,
+      });
+      weeksByGroup.set(week.group_id, weeks);
+    }
+  }
+
   const rows: GroupHealthOverviewRow[] = [];
-  for (const [i, group] of groups.entries()) {
+  for (const group of groups) {
+    const weeksRes: ReadResult<AttendanceWeekTally[]> = attendanceResult.error
+      ? (fallbackWeeksByGroup.get(group.id) ?? {
+          data: null,
+          error: attendanceResult.error,
+        })
+      : { data: weeksByGroup.get(group.id) ?? [], error: null };
     rows.push(
       buildOverviewRow({
         group,
-        weeksRes: weeksByGroup[i],
+        weeksRes,
         prior: persisted.get(group.id),
         needsFollowUp: latestFollowUp.get(group.id) ?? false,
         rubric,

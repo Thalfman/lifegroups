@@ -11,6 +11,7 @@ import {
   type ReadClient,
   type ReadResult,
 } from "./read-core";
+import { callPinnedRpcRange } from "@/lib/shared/rpc";
 
 // Column allowlist for the attendance-session fetcher (#495); every
 // AttendanceSessionsRow column (the admin review surfaces render both the
@@ -92,4 +93,109 @@ export async function fetchAttendanceRecordsForSessions(
       error: wrapError("fetchAttendanceRecordsForSessions", error),
     };
   return { data: data ?? [], error: null };
+}
+
+export type GroupAttendanceWeekRow = {
+  group_id: string;
+  session_id: string;
+  meeting_week: string;
+  present: number;
+  absent: number;
+  excused: number;
+};
+
+// Group Health overview bulk read (ARCH-6): the database ranks the latest
+// sessions within each group, then aggregates their records in one request.
+function decodeGroupAttendanceWeekRows(
+  value: unknown
+): GroupAttendanceWeekRow[] | null {
+  if (!Array.isArray(value)) return null;
+  const rows: GroupAttendanceWeekRow[] = [];
+  for (const raw of value) {
+    if (typeof raw !== "object" || raw === null) return null;
+    const row = raw as Record<string, unknown>;
+    const present = Number(row.present);
+    const absent = Number(row.absent);
+    const excused = Number(row.excused);
+    if (
+      typeof row.group_id !== "string" ||
+      typeof row.session_id !== "string" ||
+      typeof row.meeting_week !== "string" ||
+      !Number.isFinite(present) ||
+      !Number.isFinite(absent) ||
+      !Number.isFinite(excused)
+    ) {
+      return null;
+    }
+    rows.push({
+      group_id: row.group_id,
+      session_id: row.session_id,
+      meeting_week: row.meeting_week,
+      present,
+      absent,
+      excused,
+    });
+  }
+  return rows;
+}
+
+const GROUP_ATTENDANCE_RPC_PAGE_SIZE = 1_000;
+
+function boundedGroupAttendanceWeeks(limitWeeks: number): number {
+  const wholeWeeks = Number.isFinite(limitWeeks) ? Math.trunc(limitWeeks) : 8;
+  return Math.max(1, Math.min(wholeWeeks, 52));
+}
+
+// PostgREST caps each response page, so page the deterministic RPC result up to
+// its known maximum (requested groups x the SQL-clamped per-group window).
+export async function fetchGroupAttendanceWeeksForGroups(
+  client: ReadClient,
+  groupIds: string[],
+  limitWeeks: number
+): Promise<ReadResult<GroupAttendanceWeekRow[]>> {
+  if (groupIds.length === 0) return { data: [], error: null };
+
+  const rpcArgs = {
+    p_group_ids: groupIds,
+    p_limit_weeks: limitWeeks,
+  };
+  const maximumRows = groupIds.length * boundedGroupAttendanceWeeks(limitWeeks);
+  const rows: GroupAttendanceWeekRow[] = [];
+
+  for (
+    let from = 0;
+    from < maximumRows;
+    from += GROUP_ATTENDANCE_RPC_PAGE_SIZE
+  ) {
+    const to = Math.min(
+      from + GROUP_ATTENDANCE_RPC_PAGE_SIZE - 1,
+      maximumRows - 1
+    );
+    const { data, error } = await callPinnedRpcRange(
+      client,
+      "admin_group_health_attendance_weeks",
+      rpcArgs,
+      from,
+      to
+    );
+    if (error)
+      return {
+        data: null,
+        error: wrapError("fetchGroupAttendanceWeeksForGroups", error),
+      };
+
+    const page = decodeGroupAttendanceWeekRows(data);
+    if (!page) {
+      return {
+        data: null,
+        error: new Error(
+          "fetchGroupAttendanceWeeksForGroups: invalid RPC response"
+        ),
+      };
+    }
+    rows.push(...page);
+    if (page.length < to - from + 1) break;
+  }
+
+  return { data: rows, error: null };
 }

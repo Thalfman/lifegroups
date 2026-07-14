@@ -161,14 +161,20 @@ export function SuperAdminInlineDelete({
           </Button>
         </form>
 
-        {deleted ? (
-          <span className={successTextClassName}>
-            Deleted. Recoverable from a backup.
-          </span>
-        ) : null}
+        {deleted ? <DeleteSuccessNotice entityType={entityType} /> : null}
         <FormStatus state={del.state} />
       </PopoverContent>
     </Popover>
+  );
+}
+
+export function DeleteSuccessNotice({ entityType }: { entityType: string }) {
+  return (
+    <span className={successTextClassName}>
+      {entityType === "profile"
+        ? "Profile erased. Identifying data was permanently removed; there is no recovery copy."
+        : "Deleted. Recoverable from a backup."}
+    </span>
   );
 }
 
@@ -228,17 +234,20 @@ export function DeletePreview({
   // — inform the delete, don't block it. Mirrors the danger-zone
   // PreflightReport copy.
   const cleanupTotal = report.cleanup.reduce((n, c) => n + c.count, 0);
+  const profileErasure = report.entityType === "profile";
   return (
     <div className="grid gap-1.5">
       {cleanupTotal > 0 ? (
         <p className={NOTE_CLASS}>
-          Will remove and back up {cleanupTotal} assignment record
-          {cleanupTotal === 1 ? "" : "s"} (kept in the backup copy; not
-          re-created on restore).
+          {profileErasure
+            ? `Will permanently remove ${cleanupTotal} assignment record${cleanupTotal === 1 ? "" : "s"}. No recovery copy will be retained.`
+            : `Will remove and back up ${cleanupTotal} assignment record${cleanupTotal === 1 ? "" : "s"} (kept in the backup copy; not re-created on restore).`}
         </p>
       ) : null}
       <p className={NOTE_CLASS}>
-        Safe to delete. A backup copy is captured first so it can be recovered.
+        {profileErasure
+          ? "Ready for irreversible profile erasure. No recovery copy will be retained."
+          : "Safe to delete. A backup copy is captured first so it can be recovered."}
       </p>
     </div>
   );

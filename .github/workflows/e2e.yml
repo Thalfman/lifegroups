@@ -6,15 +6,12 @@ name: E2E happy-path lane
 # drives the happy-path write specs in tests/e2e/ through the real
 # form → server action → SECURITY DEFINER RPC pipeline under real RLS.
 #
-# GATING STATUS: ADVISORY (not a required check / not in branch protection)
-# while the lane accrues flake signal — the default PR lane
-# (.github/workflows/ci.yml) stays deterministic and needs no Supabase.
-# Promotion path once the lane has ~4 consecutive green scheduled/PR runs with
-# zero flakes: either add this job to branch protection, or fold the steps
-# into the required `ci` job behind a step-level paths gate the way the RLS
-# harness landed (#811). Because it is NOT required, the pull_request paths
-# filter below is safe (the "skipped required check counts as passing"
-# branch-protection trap only bites required checks).
+# PR STATUS: ALWAYS REPORTING. Every pull request gets this job context; an
+# internal changed-paths gate skips the expensive local stack for unrelated
+# changes while runtime, schema, Edge Function, harness, dependency, and
+# toolchain changes run the real-stack specs. Branch-protection promotion is
+# an external rollout step after this workflow reports green; never require a
+# workflow-level path-filtered job.
 #
 # Coordinates with .github/workflows/seeded-auth-route-smoke.yml (#597): both
 # source scripts/seeded-local-stack.sh for the stack/seed plumbing; this lane
@@ -27,22 +24,6 @@ on:
     # check, not a merge gate.
     - cron: "0 8 * * 1"
   pull_request:
-    # Advisory signal only on PRs that change the lane itself: the specs, the
-    # runner/stack/seed tooling, and the schema+seed the stack is built from.
-    # App-code paths were deliberately dropped while the lane accrues flake
-    # signal (#839) — they made nearly every PR carry an advisory red X. The
-    # weekly cron below covers app-code drift; re-widen the filter (or fold
-    # the lane into the required job) once the lane is stable enough to gate.
-    paths:
-      - "tests/e2e/**"
-      - "playwright.e2e.config.ts"
-      - "scripts/e2e.sh"
-      - "scripts/seeded-local-stack.sh"
-      - "scripts/seed-test-auth-users.ts"
-      - "scripts/test-auth-shared.ts"
-      - ".github/workflows/e2e.yml"
-      - "supabase/migrations/**"
-      - "supabase/seed/**"
 
 # Never run more than one E2E lane per ref at a time; a newer run supersedes.
 concurrency:
@@ -53,6 +34,7 @@ concurrency:
 # own dev keys, and the throwaway test users are local-only.
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   e2e:
@@ -62,29 +44,74 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect E2E-relevant changes
+        id: e2e-paths
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            e2e:
+              - "app/**"
+              - "components/**"
+              - "lib/**"
+              - "proxy.ts"
+              - "types/**"
+              - "supabase/migrations/**"
+              - "supabase/seed/**"
+              - "supabase/functions/**"
+              - "tests/e2e/**"
+              - "scripts/patch-next-react-dom-36134.mjs"
+              - "supabase/config.toml"
+              - "playwright.e2e.config.ts"
+              - "scripts/e2e.sh"
+              - "scripts/ensure-local-edge-env.sh"
+              - "scripts/seeded-local-stack.sh"
+              - "scripts/seed-test-auth-users.ts"
+              - "scripts/test-auth-shared.ts"
+              - "package.json"
+              - "package-lock.json"
+              - ".nvmrc"
+              - "next.config.ts"
+              - "tsconfig.json"
+              - ".github/workflows/e2e.yml"
+
+      - name: Report E2E skip for unrelated changes
+        if: github.event_name == 'pull_request' && steps.e2e-paths.outputs.e2e != 'true'
+        run: echo "E2E context reported; expensive local-stack steps are not needed for these paths."
+
       - uses: actions/setup-node@v4
+        if: github.event_name != 'pull_request' || steps.e2e-paths.outputs.e2e == 'true'
         with:
           node-version-file: ".nvmrc"
           cache: npm
 
       - name: Install dependencies
         run: npm ci
+        if: github.event_name != 'pull_request' || steps.e2e-paths.outputs.e2e == 'true'
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
+        if: github.event_name != 'pull_request' || steps.e2e-paths.outputs.e2e == 'true'
 
       - name: Install Supabase CLI
+        if: github.event_name != 'pull_request' || steps.e2e-paths.outputs.e2e == 'true'
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.109.1
 
       - name: Start local Supabase stack
         # Applies every migration under supabase/migrations/ to a throwaway
+        id: supabase-start
+        if: github.event_name != 'pull_request' || steps.e2e-paths.outputs.e2e == 'true'
         # local Postgres + Auth. No remote project is linked.
-        run: supabase start
+        run: |
+          . ./scripts/ensure-local-edge-env.sh
+          supabase start
+          echo "started=true" >> "$GITHUB_OUTPUT"
 
       - name: Run E2E lane
         # The runner reads the local stack's URL/keys from `supabase status`,
+        if: github.event_name != 'pull_request' || steps.e2e-paths.outputs.e2e == 'true'
         # applies the operational seed, seeds throwaway Auth users, then serves
         # the real app and runs the tests/e2e/ Playwright specs.
         run: ./scripts/e2e.sh
@@ -94,11 +121,11 @@ jobs:
         # error-context.md (Playwright's ARIA snapshot of the page at failure,
         # which includes any role="alert" action-error text) straight in the
         # job log, so a diagnosis doesn't require downloading the artifact.
-        if: failure()
+        if: failure() && (github.event_name != 'pull_request' || steps.e2e-paths.outputs.e2e == 'true')
         run: find test-results -name 'error-context.md' -print -exec cat {} \; || true
 
       - name: Upload Playwright report on failure
-        if: failure()
+        if: failure() && (github.event_name != 'pull_request' || steps.e2e-paths.outputs.e2e == 'true')
         uses: actions/upload-artifact@v4
         with:
           name: e2e-playwright-report
@@ -106,5 +133,5 @@ jobs:
           retention-days: 7
 
       - name: Stop local Supabase stack
-        if: always()
+        if: always() && steps.supabase-start.outputs.started == 'true'
         run: supabase stop --no-backup || true

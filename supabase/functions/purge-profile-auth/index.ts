@@ -3,8 +3,8 @@
 // Issue #881. A verified active Super Admin drives the existing transactional
 // profile purge with the caller-scoped client, then this trusted runtime removes
 // the linked Auth identity with the service-role client. The two systems cannot
-// share a transaction: a retry therefore resumes from the profile tombstone and
-// finishes the Auth deletion plus its idempotent audit envelope.
+// share a transaction: a service-only purge job resumes partial failures and
+// clears its Auth UUID when the idempotent audit envelope records completion.
 
 import {
   createClient,
@@ -31,17 +31,19 @@ type CallerProfile = {
 };
 type TargetProfile = {
   id: string;
-  auth_user_id: string | null;
   role: string;
 };
-type TombstoneRow = {
-  id: string;
-  row_snapshot: { auth_user_id?: unknown } | null;
+type ProfileAuthPurgeJob = {
+  tombstone_id: string;
+  auth_user_id: string | null;
+  outcome: AuthUserState | null;
+  completed_at: string | null;
 };
 type TargetResolution = {
   authUserId: string | null;
   tombstoneId: string;
   resumed: boolean;
+  completedOutcome: AuthUserState | null;
 };
 
 const UUID_RE =
@@ -85,11 +87,6 @@ function readProfileId(parsed: unknown): string | null {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
     return null;
   const value = (parsed as Record<string, unknown>).profileId;
-  return typeof value === "string" && UUID_RE.test(value) ? value : null;
-}
-
-function snapshotAuthUserId(row: TombstoneRow): string | null {
-  const value = row.row_snapshot?.auth_user_id;
   return typeof value === "string" && UUID_RE.test(value) ? value : null;
 }
 
@@ -159,7 +156,7 @@ async function resolveTarget(
 > {
   const { data: profileData, error: profileError } = await service
     .from("profiles")
-    .select("id, auth_user_id, role")
+    .select("id, role")
     .eq("id", profileId)
     .limit(1);
 
@@ -214,34 +211,64 @@ async function resolveTarget(
       };
     }
 
+    // The permanent-delete transaction captures the linked Auth UUID in the
+    // service-only job while it still holds the locked profile row. Never use
+    // a pre-RPC profile read for Auth deletion: that value could have changed
+    // before the delete transaction acquired its lock.
+    const { data: jobData, error: jobError } = await service
+      .from("profile_auth_purge_jobs")
+      .select("tombstone_id, auth_user_id, outcome, completed_at")
+      .eq("tombstone_id", data)
+      .eq("profile_id", profileId)
+      .limit(1);
+    const job = ((jobData ?? []) as ProfileAuthPurgeJob[])[0] ?? null;
+    if (jobError || !job) {
+      logJson("error", {
+        event: "profile_purge.partial_failure",
+        request_id: requestId,
+        outcome: "fail",
+        stage: "post_commit_purge_job_lookup",
+        error_code: "purge_job_lookup_failed",
+        actor_profile_id: actorProfileId,
+        target_profile_id: profileId,
+        tombstone_id: data,
+        latency_ms: elapsedSince(startMs),
+      });
+      const body = emptyResponse("purge_job_lookup_failed");
+      body.profileId = profileId;
+      body.tombstoneId = data;
+      body.warnings.push("database_profile_purge_completed");
+      return { ok: false, response: jsonResponse(body, 500) };
+    }
+
     return {
       ok: true,
       value: {
-        authUserId: target.auth_user_id,
-        tombstoneId: data,
+        authUserId: job.auth_user_id,
+        tombstoneId: job.tombstone_id,
         resumed: false,
+        completedOutcome: job.completed_at ? job.outcome : null,
       },
     };
   }
 
   // A previous attempt may have committed the DB purge before Auth deletion or
-  // audit recording failed. Recover the trusted Auth id from the immutable
-  // profile tombstone; never accept it from the caller.
-  const { data: tombstoneData, error: tombstoneError } = await service
-    .from("tombstones")
-    .select("id, row_snapshot")
-    .eq("entity_type", "profile")
-    .eq("entity_id", profileId)
-    .order("deleted_at", { ascending: false })
+  // audit recording failed. Resume only from the service-only job; the profile
+  // tombstone is intentionally non-PII and non-restorable.
+  const { data: jobData, error: jobError } = await service
+    .from("profile_auth_purge_jobs")
+    .select("tombstone_id, auth_user_id, outcome, completed_at")
+    .eq("profile_id", profileId)
+    .order("created_at", { ascending: false })
     .limit(1);
-  if (tombstoneError) {
+  if (jobError) {
     return {
       ok: false,
       response: jsonResponse(emptyResponse("db_purge_failed"), 500),
     };
   }
-  const tombstone = ((tombstoneData ?? []) as TombstoneRow[])[0] ?? null;
-  if (!tombstone) {
+  const job = ((jobData ?? []) as ProfileAuthPurgeJob[])[0] ?? null;
+  if (!job) {
     return {
       ok: false,
       response: jsonResponse(emptyResponse("missing_entity"), 404),
@@ -251,9 +278,10 @@ async function resolveTarget(
   return {
     ok: true,
     value: {
-      authUserId: snapshotAuthUserId(tombstone),
-      tombstoneId: tombstone.id,
+      authUserId: job.auth_user_id,
+      tombstoneId: job.tombstone_id,
       resumed: true,
+      completedOutcome: job.completed_at ? job.outcome : null,
     },
   };
 }
@@ -344,7 +372,35 @@ Deno.serve(async (req: Request) => {
   );
   if (!targetResult.ok) return targetResult.response;
 
-  const { authUserId, tombstoneId, resumed } = targetResult.value;
+  const { authUserId, tombstoneId, resumed, completedOutcome } =
+    targetResult.value;
+  if (completedOutcome) {
+    logJson("info", {
+      event: "profile_purge.success",
+      request_id: requestId,
+      outcome: "ok",
+      stage: "already_complete",
+      actor_profile_id: callerProfile.id,
+      target_profile_id: profileId,
+      tombstone_id: tombstoneId,
+      auth_user_state: completedOutcome,
+      resumed: true,
+      latency_ms: elapsedSince(startMs),
+    });
+    return jsonResponse(
+      {
+        ok: true,
+        code: "ok",
+        profileId,
+        tombstoneId,
+        authUserState: completedOutcome,
+        resumed: true,
+        warnings: [],
+        errors: [],
+      },
+      200
+    );
+  }
   let authUserState: AuthUserState = "not_linked";
   if (authUserId) {
     const { error: deleteError } = await service.auth.admin.deleteUser(
@@ -360,7 +416,6 @@ Deno.serve(async (req: Request) => {
         error_code: "auth_delete_failed",
         actor_profile_id: callerProfile.id,
         target_profile_id: profileId,
-        target_auth_user_id: authUserId,
         tombstone_id: tombstoneId,
         latency_ms: elapsedSince(startMs),
       });
@@ -392,7 +447,6 @@ Deno.serve(async (req: Request) => {
       error_code: "audit_record_failed",
       actor_profile_id: callerProfile.id,
       target_profile_id: profileId,
-      target_auth_user_id: authUserId,
       tombstone_id: tombstoneId,
       latency_ms: elapsedSince(startMs),
     });
@@ -410,7 +464,6 @@ Deno.serve(async (req: Request) => {
     stage: "complete",
     actor_profile_id: callerProfile.id,
     target_profile_id: profileId,
-    target_auth_user_id: authUserId,
     tombstone_id: tombstoneId,
     auth_user_state: authUserState,
     resumed,

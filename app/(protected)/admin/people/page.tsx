@@ -2,7 +2,7 @@ import { PageBody } from "@/components/lg/PageHeader";
 import { PeopleManagementShell } from "@/components/admin/people-management-shell";
 import { adminPage } from "@/lib/admin/admin-page";
 import { isSuperAdminRole } from "@/lib/auth/roles";
-import { currentUtcDateIso } from "@/lib/supabase/read-core";
+import { churchTodayIso } from "@/lib/shared/church-time";
 import { loadPeoplePageData } from "@/components/admin/people/people-data";
 import {
   BackToSetupLink,
@@ -18,7 +18,7 @@ export default adminPage({
     const { data, pipeline, needsContactProfileIds } = await loadPeoplePageData(
       {
         currentActorProfileId: session.profile.id,
-        todayIso: currentUtcDateIso(),
+        todayIso: churchTodayIso(),
       }
     );
     return {

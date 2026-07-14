@@ -88,6 +88,7 @@ function emptyReads(
     fetchGroupsByIds: async () => ok([]),
     fetchAttendanceSessions: async () => ok([]),
     fetchAttendanceRecordsForSessions: async () => ok([]),
+    fetchGroupAttendanceWeeksForGroups: async () => ok([]),
     fetchGroupHealthRubricSetting: async () => ok(null),
     fetchMetricDefaultsCached: async () => ok(null),
     fetchGroupHealthAssessment: async () => ok(null),
@@ -330,15 +331,60 @@ describe("buildGroupHealthOverview", () => {
     expect(res.error?.message).toBe("listGroupHealthOverview/followUp: boom");
   });
 
-  it("falls back to the persisted assessment (flagged stale) when one group's attendance read fails, while other groups grade live", async () => {
+  it("uses one bulk attendance read for every active group", async () => {
+    const attendance = vi.fn(async () =>
+      ok([
+        {
+          group_id: "g1",
+          session_id: "s1",
+          meeting_week: "2026-06-08",
+          present: 1,
+          absent: 1,
+          excused: 0,
+        },
+        {
+          group_id: "g2",
+          session_id: "s2",
+          meeting_week: "2026-06-08",
+          present: 2,
+          absent: 0,
+          excused: 0,
+        },
+      ])
+    );
+    const sessions = vi.fn(async () => ok([]));
+    const records = vi.fn(async () => ok([]));
     const res = await buildGroupHealthOverview(
       emptyReads({
         fetchAllGroups: async () =>
           ok([group("g1", "Alpha"), group("g2", "Beta")]),
-        fetchAttendanceSessions: async (options) => {
-          if (options?.groupId === "g1") return fail("attendance boom");
-          return ok([session("s2", "2026-06-08")]);
-        },
+        fetchGroupAttendanceWeeksForGroups: attendance,
+        fetchAttendanceSessions: sessions,
+        fetchAttendanceRecordsForSessions: records,
+      }),
+      PERIOD
+    );
+
+    expect(attendance).toHaveBeenCalledTimes(1);
+    expect(attendance).toHaveBeenCalledWith(
+      ["g1", "g2"],
+      ATTENDANCE_TREND_WINDOW_WEEKS
+    );
+    expect(res.data?.map((row) => row.attendance_pct)).toEqual([50, 100]);
+    expect(sessions).not.toHaveBeenCalled();
+    expect(records).not.toHaveBeenCalled();
+  });
+
+  it("falls back per group when the bulk read fails, preserving partial success", async () => {
+    const res = await buildGroupHealthOverview(
+      emptyReads({
+        fetchAllGroups: async () =>
+          ok([group("g1", "Alpha"), group("g2", "Beta")]),
+        fetchGroupAttendanceWeeksForGroups: async () => fail("attendance boom"),
+        fetchAttendanceSessions: async (options) =>
+          options?.groupId === "g1"
+            ? fail("g1 attendance boom")
+            : ok([session("s2", "2026-06-08")]),
         fetchAttendanceRecordsForSessions: async () =>
           ok([record("s2", "present"), record("s2", "present")]),
         fetchGroupHealthAssessmentsForPeriod: async () =>
@@ -368,11 +414,11 @@ describe("buildGroupHealthOverview", () => {
     expect(g1.last_check_in_week).toBeNull();
     expect(g1.attendance_declining).toBe(false);
 
-    // g2 still grades live: 100% attendance is an A under the built-in
-    // cut-lines, with the check-in week taken from the fetched sessions.
+    // g2's independent fallback succeeds, so the bulk failure does not erase
+    // a live grade that the prior per-group behavior could still compute.
     expect(g2.stale).toBe(false);
+    expect(g2.unassessed).toBe(false);
     expect(g2.attendance_pct).toBe(100);
-    expect(g2.computed_letter).toBe("A");
     expect(g2.last_check_in_week).toBe("2026-06-08");
   });
 
@@ -380,7 +426,8 @@ describe("buildGroupHealthOverview", () => {
     const res = await buildGroupHealthOverview(
       emptyReads({
         fetchAllGroups: async () => ok([group("g1", "Alpha")]),
-        fetchAttendanceSessions: async () => fail("attendance boom"),
+        fetchGroupAttendanceWeeksForGroups: async () => fail("attendance boom"),
+        fetchAttendanceSessions: async () => fail("fallback boom"),
       }),
       PERIOD
     );
@@ -409,7 +456,7 @@ describe("buildGroupHealthOverview", () => {
     expect(g2.needs_follow_up).toBe(false);
   });
 
-  it("fans out attendance reads at max(rubric window, trend window) weeks", async () => {
+  it("bulk-reads attendance at max(rubric window, trend window) weeks", async () => {
     const limitsFor = async (attendanceWindowWeeks: number) => {
       const limits: Array<number | undefined> = [];
       await buildGroupHealthOverview(
@@ -417,8 +464,8 @@ describe("buildGroupHealthOverview", () => {
           fetchAllGroups: async () => ok([group("g1", "Alpha")]),
           fetchGroupHealthRubricSetting: async () =>
             ok(setting({ attendance_window_weeks: attendanceWindowWeeks })),
-          fetchAttendanceSessions: async (options) => {
-            limits.push(options?.limit);
+          fetchGroupAttendanceWeeksForGroups: async (_groupIds, limit) => {
+            limits.push(limit);
             return ok([]);
           },
         }),

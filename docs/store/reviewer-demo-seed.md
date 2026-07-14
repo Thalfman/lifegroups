@@ -15,9 +15,9 @@ non-empty workflows — with no real ministry or pastoral content.
 
 ## What it creates
 
-- **Cells** — a small category catalog (`20s-30s`, `Young families`, `50s+`) and
-  active `audience × category` cells.
-- **Groups** — five demo groups across those cells, with varied health.
+- **Group types** — four free-text types (`Men's`, `Women's`, `Young families`,
+  `50s+`) with per-type target group counts.
+- **Groups** — five demo groups across those group types, with varied health.
 - **People** — eighteen demo members spread across the groups.
 - **Leaders** — leader profiles, each assigned to a group.
 - **Over-Shepherd** — an over-shepherd directory row plus its login profile

@@ -31,6 +31,7 @@ import {
 // RPC. padToFloor levels every business-logic return to the same floor + jitter
 // so a link-holder can't time the difference. Shared with invite-user (SEC-3).
 import { INVITE_TIMING_FLOOR_MS, padToFloor } from "../_shared/timing.ts";
+import { createIpRateLimitIdentifier } from "../_shared/rate-limit-identifier.ts";
 
 type ResponseBody = {
   ok: boolean;
@@ -61,26 +62,24 @@ function fail(code: string, status: number): Response {
 // A failed rollback leaves an auth user with no linked profile, and the
 // emailHasAuthUser pre-check then rejects every later redeem for that email
 // with email_unavailable — permanently, with no self-service recovery. Leave
-// an operator-actionable trail (ids only — never the email or token, per this
-// function's enumeration/log discipline) so the orphan can be found and
-// deleted by hand. Reconciliation stays manual; no in-request retry (the
-// timing-floor discipline in _shared/timing.ts caps request work).
+// an operator-actionable trail (opaque handles only — never the raw Auth id,
+// email, or token, per this function's enumeration/log discipline). Operators
+// can page Auth users and hash `redeem-invite-auth-user:v1:${user.id}` until a
+// handle matches, then confirm the candidate has no profile before deleting it.
+// Reconciliation stays manual; no in-request retry (the timing-floor discipline
+// in _shared/timing.ts caps request work).
 function logOrphanedAuthUser(
-  authUserId: string,
   invitationId: string,
-  cleanupError: unknown
+  authUserRecoveryHandle: string
 ): void {
   console.error(
     JSON.stringify({
       ts: new Date().toISOString(),
       level: "error",
       event: "invite_redeem_orphaned_auth_user",
-      auth_user_id: authUserId,
       invitation_id: invitationId,
-      error_message:
-        cleanupError instanceof Error
-          ? cleanupError.message
-          : String(cleanupError),
+      auth_user_recovery_handle: authUserRecoveryHandle,
+      error_code: "auth_cleanup_failed",
     })
   );
 }
@@ -92,6 +91,10 @@ async function sha256Hex(input: string): Promise<string> {
   let hex = "";
   for (const b of bytes) hex += b.toString(16).padStart(2, "0");
   return hex;
+}
+
+function createAuthUserRecoveryHandle(authUserId: string): Promise<string> {
+  return sha256Hex(`redeem-invite-auth-user:v1:${authUserId}`);
 }
 
 // Paginated case-insensitive lookup; supabase-js v2.45 exposes no direct
@@ -188,6 +191,11 @@ Deno.serve(async (req: Request) => {
   if (!supabaseUrl || !serviceRoleKey) {
     return fail("missing_edge_function_env", 500);
   }
+  const rateLimitHmacSecret =
+    Deno.env.get("RATE_LIMIT_HMAC_SECRET")?.trim() ?? "";
+  if (!rateLimitHmacSecret) {
+    return fail("missing_rate_limit_hmac_secret", 500);
+  }
 
   let parsed: any;
   try {
@@ -232,9 +240,13 @@ Deno.serve(async (req: Request) => {
       ? hops[hops.length - 1]
       : req.headers.get("x-real-ip")?.trim() || "";
   if (peerIp) {
+    const rateLimitIdentifier = await createIpRateLimitIdentifier(
+      peerIp,
+      rateLimitHmacSecret
+    );
     const { data: allowed, error: rateErr } = await service.rpc(
       "check_invite_redeem_rate",
-      { p_key: peerIp, p_limit: 100, p_window_seconds: 900 }
+      { p_key: rateLimitIdentifier, p_limit: 100, p_window_seconds: 900 }
     );
     if (!rateErr && allowed === false) {
       return fail("rate_limited", 429);
@@ -299,6 +311,7 @@ Deno.serve(async (req: Request) => {
     return padded(fail("email_unavailable", 409));
   }
   const authUserId = created.user.id;
+  const authUserRecoveryHandle = await createAuthUserRecoveryHandle(authUserId);
 
   // 4. Atomically consume the link + write the profile/group/audit.
   const { data: rpcData, error: rpcErr } = await service.rpc(
@@ -320,9 +333,9 @@ Deno.serve(async (req: Request) => {
     try {
       const { error: cleanupErr } =
         await service.auth.admin.deleteUser(authUserId);
-      if (cleanupErr) logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
-    } catch (cleanupErr) {
-      logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
+      if (cleanupErr) logOrphanedAuthUser(inv.id, authUserRecoveryHandle);
+    } catch {
+      logOrphanedAuthUser(inv.id, authUserRecoveryHandle);
     }
     const mapped = mapRpcToken(rpcErr.message ?? "");
     return padded(fail(mapped.code, mapped.status));
@@ -335,9 +348,9 @@ Deno.serve(async (req: Request) => {
     try {
       const { error: cleanupErr } =
         await service.auth.admin.deleteUser(authUserId);
-      if (cleanupErr) logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
-    } catch (cleanupErr) {
-      logOrphanedAuthUser(authUserId, inv.id, cleanupErr);
+      if (cleanupErr) logOrphanedAuthUser(inv.id, authUserRecoveryHandle);
+    } catch {
+      logOrphanedAuthUser(inv.id, authUserRecoveryHandle);
     }
     return padded(fail("db_error", 500));
   }

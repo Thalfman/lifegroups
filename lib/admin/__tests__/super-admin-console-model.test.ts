@@ -5,6 +5,7 @@ import {
   formatStatusTime,
   LEGACY_HASH_ALIASES,
   listAccountStatusProfiles,
+  resolveSuperAdminWorkspaceId,
   SUPER_ADMIN_WORKSPACE_IDS,
   type SuperAdminTestAccountsSummary,
 } from "@/lib/admin/super-admin-console-model";
@@ -277,6 +278,12 @@ describe("workspace deep-link aliases", () => {
     expect(LEGACY_HASH_ALIASES["test-tools"]).toBe("diagnostics");
     expect(LEGACY_HASH_ALIASES["danger-zone"]).toBe("danger");
     expect(LEGACY_HASH_ALIASES["overview"]).toBe("readiness");
+  });
+  it("accepts only declared server-visible workspace query values", () => {
+    expect(resolveSuperAdminWorkspaceId("danger")).toBe("danger");
+    expect(resolveSuperAdminWorkspaceId(["usage", "danger"])).toBe("usage");
+    expect(resolveSuperAdminWorkspaceId("unknown")).toBe("readiness");
+    expect(resolveSuperAdminWorkspaceId(undefined)).toBe("readiness");
   });
 
   it("hosts usage as its own workspace, with #activity aliased to it", () => {

@@ -11,7 +11,10 @@ vi.mock("@/app/(protected)/admin/super-admin/permanent-delete-actions", () => ({
 }));
 
 import { CareItemList } from "@/components/admin/care/care-item-list";
-import { DeletePreview } from "@/components/admin/super-admin/inline-delete";
+import {
+  DeletePreview,
+  DeleteSuccessNotice,
+} from "@/components/admin/super-admin/inline-delete";
 import type { CareItem } from "@/lib/admin/care-area";
 import type { DeletionPreflight } from "@/lib/admin/danger-zone";
 
@@ -105,6 +108,26 @@ describe("SuperAdminOnlyMark on the inline delete", () => {
   });
 });
 
+describe("inline delete success notice", () => {
+  it("does not describe an irreversible profile erasure as recoverable", () => {
+    const html = renderToStaticMarkup(
+      <DeleteSuccessNotice entityType="profile" />
+    );
+
+    expect(html).toContain("Profile erased");
+    expect(html).toContain("no recovery copy");
+    expect(html).not.toContain("Recoverable from a backup");
+  });
+
+  it("keeps the recovery notice for non-profile deletions", () => {
+    const html = renderToStaticMarkup(
+      <DeleteSuccessNotice entityType="group" />
+    );
+
+    expect(html).toContain("Deleted. Recoverable from a backup.");
+  });
+});
+
 // The popover's preview states. The panel only mounts when Radix opens it, so
 // these render DeletePreview (exported for exactly this) directly. #880: a
 // deletable report with a non-empty cleanup bucket must ANNOUNCE the
@@ -151,10 +174,10 @@ describe("DeletePreview cleanup announcement (#880)", () => {
         ],
       })
     );
-    expect(html).toContain("Will remove and back up 3 assignment records");
-    expect(html).toContain("not re-created on restore");
+    expect(html).toContain("Will permanently remove 3 assignment records");
+    expect(html).toContain("No recovery copy will be retained");
     // Still safe to delete — the cleanup informs, it never blocks.
-    expect(html).toContain("Safe to delete.");
+    expect(html).toContain("Ready for irreversible profile erasure.");
   });
 
   it("singularizes a one-record cleanup", () => {
@@ -163,12 +186,13 @@ describe("DeletePreview cleanup announcement (#880)", () => {
         cleanup: [{ table: "group_leaders", column: "profile_id", count: 1 }],
       })
     );
-    expect(html).toContain("Will remove and back up 1 assignment record (");
+    expect(html).toContain("Will permanently remove 1 assignment record.");
   });
 
-  it("renders the plain safe-to-delete line when there is no cleanup", () => {
-    const html = render(report());
+  it("keeps recovery copy for a non-profile deletion", () => {
+    const html = render(report({ entityType: "group" }));
     expect(html).toContain("Safe to delete.");
+    expect(html).toContain("A backup copy is captured first");
     expect(html).not.toContain("Will remove and back up");
   });
 
@@ -182,6 +206,8 @@ describe("DeletePreview cleanup announcement (#880)", () => {
             column: "group_id",
             action: "c",
             count: 2,
+            ids: [],
+            entityType: "group_membership",
           },
         ],
         cleanup: [{ table: "group_leaders", column: "profile_id", count: 1 }],

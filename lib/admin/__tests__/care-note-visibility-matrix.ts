@@ -28,9 +28,10 @@ export const SUBJECT_ID = "22222222-2222-4222-8222-222222222222";
 export const OTHER_ID = "33333333-3333-4333-8333-333333333333";
 export const GROUP_ID = "44444444-4444-4444-8444-444444444444";
 
-// The two note shapes the XOR check (`*_one_subject`) admits: an Over-Shepherd
+// Four effective note shapes cover each XOR-admitted subject with a live or
+// permanently purged author. An Over-Shepherd
 // note about a leader (profile subject) and a leader's group note (group
-// subject). There is no third shape.
+// subject); purge retains the subject while setting the author foreign key null.
 export const CARE_NOTE_ROWS: readonly NoteSubjectMeta[] = [
   {
     authorProfileId: AUTHOR_ID,
@@ -39,6 +40,16 @@ export const CARE_NOTE_ROWS: readonly NoteSubjectMeta[] = [
   },
   {
     authorProfileId: AUTHOR_ID,
+    subjectProfileId: null,
+    subjectGroupId: GROUP_ID,
+  },
+  {
+    authorProfileId: null,
+    subjectProfileId: SUBJECT_ID,
+    subjectGroupId: null,
+  },
+  {
+    authorProfileId: null,
     subjectProfileId: null,
     subjectGroupId: GROUP_ID,
   },
@@ -71,8 +82,8 @@ export type VisibilityMatrixRow = {
   };
 };
 
-// Every combination: 2 note shapes × (5 roles × 3 identities) × (3 × 3 grant
-// environments) = 270 rows. Generated, not hand-written, so nothing is skipped.
+// Every combination: 4 note shapes × (5 roles × 3 identities) × (3 × 3 grant
+// environments) = 540 rows. Generated, not hand-written, so nothing is skipped.
 export function enumerateVisibilityMatrix(): readonly VisibilityMatrixRow[] {
   const rows: VisibilityMatrixRow[] = [];
   for (const note of CARE_NOTE_ROWS) {

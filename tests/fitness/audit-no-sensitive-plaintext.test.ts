@@ -48,8 +48,10 @@ import {
 // variable before the insert — `v_x := jsonb_build_object(...)`, typed
 // DECLARE-block initializers (`v_x jsonb := …`), and single-target JSON
 // `SELECT jsonb_build_object(...) INTO v_x` snapshots — by expanding each audit
-// insert with the right-hand sides of the variables it references. Each expanded
-// payload is then scanned TWO complementary ways:
+// insert with the right-hand sides of the variables it references. Presence and
+// boolean change flags are content-free reductions: `is [not] null` and
+// `is [not] distinct from` reveal no identifier value. Each expanded payload is
+// then scanned TWO complementary ways:
 //   - KEY-AWARE: every `jsonb_build_object('<field>', <value>)` pair — a sealed
 //     audit FIELD with a non-presence value is a leak, however the value is named
 //     or sanitized into an alias; an admin-private-ONLY field (`admin_metric_notes`)
@@ -197,7 +199,7 @@ function auditScanUnits(files: readonly SourceFile[]): AuditScanUnit[] {
 const ALL_UNITS: readonly AuditScanUnit[] = auditScanUnits(MIGRATIONS);
 
 // KEY-AWARE leaks: an audit field whose key names a sealed column, carrying a
-// value that is not a presence/cardinality reduction. Catches a sealed value
+// value that is not a presence/change/cardinality reduction. Catches a sealed value
 // however it is named or sanitized into an alias, and disambiguates the
 // overloaded `notes` field (sealed under `'notes'`, in-policy under the
 // admin-private-only `'admin_metric_notes'`).
@@ -215,8 +217,9 @@ function sealedKeyLeaks(unit: AuditScanUnit): string[] {
 // TOKEN leaks: a sealed column VALUE appearing in the expanded payload (strings
 // stripped so a key/label literal can't masquerade as a column). Catches a sealed
 // value carried under a NON-sealed key. A reference is allowed as a presence
-// predicate (`<ref> is [not] null`) or as the argument of a cardinality/type
-// reduction (`jsonb_array_length(...)`).
+// predicate (`<ref> is [not] null`), a boolean change comparison
+// (`<ref> is [not] distinct from <other>`), or as the argument of a
+// cardinality/type reduction (`jsonb_array_length(...)`).
 function sealedTokenLeaks(unit: AuditScanUnit): string[] {
   const leaks: string[] = [];
   const text = stripSqlStrings(unit.text);
@@ -225,9 +228,11 @@ function sealedTokenLeaks(unit: AuditScanUnit): string[] {
     for (let m = re.exec(text); m; m = re.exec(text)) {
       const after = text.slice(m.index + m[0].length).trimStart();
       if (/^is\s+(not\s+)?null\b/i.test(after)) continue;
+      if (/^is\s+(not\s+)?distinct\s+from\b/i.test(after)) continue;
       // `length` / `char_length` are deliberately NOT allowed here: a body's
       // character count is content-adjacent.
       const before = text.slice(0, m.index);
+      if (/\bis\s+(?:not\s+)?distinct\s+from\s*$/i.test(before)) continue;
       if (
         /\b(?:jsonb_array_length|array_length|cardinality|jsonb_typeof)\s*\(\s*$/i.test(
           before
@@ -255,7 +260,7 @@ describe("fitness: audit_events metadata carries no sensitive plaintext", () => 
     expect(sealedColumns.length).toBeGreaterThan(10);
   });
 
-  it("references sealed columns only as presence (is null / is not null), including via variables", () => {
+  it("references sealed columns only through content-free reductions, including via variables", () => {
     const leaks = ALL_UNITS.flatMap(sealedLeaks);
     expect(
       leaks,
@@ -305,6 +310,24 @@ describe("fitness: audit_events metadata carries no sensitive plaintext", () => 
          v_after := jsonb_build_object('has_body', v_body is not null);
          insert into public.audit_events (action, metadata)
            values ('x', jsonb_build_object('after', v_after));
+       end $$;`
+    );
+    expect(auditScanUnits([file]).flatMap(sealedLeaks)).toEqual([]);
+  });
+
+  it("does NOT flag a boolean change flag derived with IS DISTINCT FROM", () => {
+    const file = sql(
+      "m_changed_flag.sql",
+      `create or replace function public.safe_change_flag() returns void
+       language plpgsql security definer set search_path = public, pg_temp as $$
+       declare v_before jsonb; v_existing_auth uuid; p_auth_user_id uuid;
+       begin
+         v_before := jsonb_build_object(
+           'auth_user_id_changed',
+           v_existing_auth is distinct from p_auth_user_id
+         );
+         insert into public.audit_events (action, metadata)
+           values ('x', jsonb_build_object('before', v_before));
        end $$;`
     );
     expect(auditScanUnits([file]).flatMap(sealedLeaks)).toEqual([]);

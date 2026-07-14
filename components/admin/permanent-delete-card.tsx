@@ -14,6 +14,7 @@ import type { AccountDeletionRequestQueueState } from "@/components/admin/super-
 import { useValueChange } from "@/lib/hooks/use-value-change";
 import {
   superAdminPermanentDelete,
+  superAdminLoadPermanentDeletionTargets,
   superAdminPermanentDeletePreflight,
   superAdminRestoreTombstone,
 } from "@/app/(protected)/admin/super-admin/permanent-delete-actions";
@@ -27,13 +28,16 @@ import {
 import type {
   PermanentDeletionTargetGroup,
   RecentTombstone,
+  RecentTombstonesState,
 } from "@/lib/supabase/permanent-deletion-reads";
+import type { PermanentDeletionTargetPage } from "@/lib/admin/permanent-deletion";
 import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import {
   fieldLabelClassName,
+  fieldInputClassName,
   fieldSelectClassName,
   successTextClassName,
 } from "@/components/admin/forms/field-styles";
@@ -53,11 +57,14 @@ export function PermanentDeleteCard({
   accountDeletionRequestQueue,
 }: {
   targets: PermanentDeletionTargetGroup[];
-  tombstones: RecentTombstone[];
+  tombstones: RecentTombstonesState;
   accountDeletionRequestQueue: AccountDeletionRequestQueueState;
 }) {
   const preflight = useActionForm<DeletionPreflight>(
     superAdminPermanentDeletePreflight
+  );
+  const targetPage = useActionForm<PermanentDeletionTargetPage>(
+    superAdminLoadPermanentDeletionTargets
   );
   // Pull formRef out of the returned object: reading a ref member during render
   // (here, to bind the <form>) otherwise trips react-hooks/refs for every access
@@ -70,13 +77,25 @@ export function PermanentDeleteCard({
   const [entityType, setEntityType] = useState(targets[0]?.entityType ?? "");
   const [selectedId, setSelectedId] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [loadAttemptEntityType, setLoadAttemptEntityType] = useState("");
 
   const activeGroup = useMemo(
     () => targets.find((t) => t.entityType === entityType),
     [targets, entityType]
   );
+  const isProfileDeletion = entityType === "profile";
+  const loadedPage =
+    targetPage.state?.ok && targetPage.state.value.entityType === entityType
+      ? targetPage.state.value
+      : null;
+  const targetReadFailed = Boolean(
+    activeGroup === undefined ||
+    activeGroup.status === "failed" ||
+    (loadAttemptEntityType === entityType && targetPage.state?.ok === false)
+  );
   const activeItems = useMemo(() => {
-    const items = activeGroup?.items ?? [];
+    if (activeGroup?.status === "failed") return [];
+    const items = loadedPage?.items ?? activeGroup?.items ?? [];
     if (
       entityType !== "profile" ||
       accountDeletionRequestQueue.status !== "loaded"
@@ -94,7 +113,7 @@ export function PermanentDeleteCard({
       }
     }
     return [...itemsById.values()];
-  }, [activeGroup, accountDeletionRequestQueue, entityType]);
+  }, [activeGroup, accountDeletionRequestQueue, entityType, loadedPage]);
 
   // A new target selection invalidates the prior confirm phrase. Derived during
   // render rather than in an effect to avoid the cascading-render smell.
@@ -129,12 +148,20 @@ export function PermanentDeleteCard({
     PERMANENT_DELETE_CONFIRM_PHRASE
   );
   const canDelete =
-    !!selectedId && phraseMatches && report !== null && report.deletable;
+    !targetReadFailed &&
+    !!selectedId &&
+    phraseMatches &&
+    report !== null &&
+    report.deletable;
 
   return (
     <DangerCard
       title="Permanent deletion"
-      intro="Physically removes a curated record. This is the bounded exception to archive-everywhere: a backup copy is captured first so it can be recovered, and the act is audited. Records that other records still depend on are refused until those are cleared; confidential records cannot be deleted (disable instead)."
+      intro={
+        isProfileDeletion
+          ? "Permanently erases a person's profile and identifying data. No restorable backup is retained, and the profile cannot be recovered. The act is audited; dependent or confidential records must be resolved first."
+          : "Physically removes a curated record. This is the bounded exception to archive-everywhere: a backup copy is captured first so the record can be recovered, and the act is audited. Records that other records still depend on are refused until those are cleared; confidential records cannot be deleted (disable instead)."
+      }
     >
       <AccountDeletionRequestQueue
         queue={accountDeletionRequestQueue}
@@ -163,6 +190,7 @@ export function PermanentDeleteCard({
                 setSelectedId("");
               }}
               className={fieldSelectClassName}
+              disabled={targets.length === 0}
             >
               {targets.map((g) => (
                 <option key={g.entityType} value={g.entityType}>
@@ -171,6 +199,61 @@ export function PermanentDeleteCard({
               ))}
             </select>
           </div>
+          <form
+            action={targetPage.formAction}
+            className="grid gap-2"
+            onSubmit={() => setLoadAttemptEntityType(entityType)}
+          >
+            <input type="hidden" name="entityType" value={entityType} />
+            <div className="flex flex-wrap items-center gap-2">
+              {loadedPage?.hasPrevious ? (
+                <Button
+                  type="submit"
+                  name="page"
+                  value={loadedPage.page - 1}
+                  variant="ghost"
+                  size="md"
+                  disabled={targetPage.pending}
+                >
+                  Previous page
+                </Button>
+              ) : null}
+              <Button
+                type="submit"
+                name="page"
+                value={loadedPage?.page ?? 0}
+                variant="ghost"
+                size="md"
+                disabled={targetPage.pending || !entityType}
+              >
+                {targetPage.pending
+                  ? "Loading..."
+                  : loadedPage
+                    ? "Reload page"
+                    : "Load records"}
+              </Button>
+              {loadedPage?.hasNext ? (
+                <Button
+                  type="submit"
+                  name="page"
+                  value={loadedPage.page + 1}
+                  variant="ghost"
+                  size="md"
+                  disabled={targetPage.pending}
+                >
+                  Next page
+                </Button>
+              ) : null}
+              {loadedPage ? (
+                <span className="font-sans text-xs text-ink3">
+                  Page {loadedPage.page + 1}; up to 50 records per page.
+                </span>
+              ) : null}
+            </div>
+            {loadAttemptEntityType === entityType ? (
+              <FormStatus state={targetPage.state} />
+            ) : null}
+          </form>
           <div>
             <label htmlFor="perm-delete-row" className={fieldLabelClassName}>
               Record
@@ -180,6 +263,7 @@ export function PermanentDeleteCard({
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
               className={fieldSelectClassName}
+              disabled={targetReadFailed || activeItems.length === 0}
             >
               <option value="">
                 Select a {activeGroup?.label ?? "record"}…
@@ -191,6 +275,36 @@ export function PermanentDeleteCard({
               ))}
             </select>
           </div>
+          <div>
+            <label htmlFor="perm-delete-id" className={fieldLabelClassName}>
+              Record ID (direct lookup)
+            </label>
+            <input
+              id="perm-delete-id"
+              name="directRecordId"
+              value={selectedId}
+              onChange={(e) => setSelectedId(e.target.value.trim())}
+              className={fieldInputClassName}
+              placeholder="Paste the exact record UUID"
+              autoComplete="off"
+            />
+          </div>
+          {targetReadFailed ? (
+            <p className="m-0 font-sans text-sm text-ink2">
+              {activeGroup?.pluralLabel ?? "Records"} could not be loaded.
+              Refresh this page to try again.
+            </p>
+          ) : activeGroup?.status === "idle" && loadedPage === null ? (
+            <p className="m-0 font-sans text-sm text-ink2">
+              Load a page of records, or paste an exact record UUID.
+            </p>
+          ) : activeGroup?.status === "empty" ||
+            loadedPage?.items.length === 0 ? (
+            <p className="m-0 font-sans text-sm text-ink2">
+              No {(activeGroup?.pluralLabel ?? "records").toLowerCase()} are
+              available.
+            </p>
+          ) : null}
         </div>
 
         {/* Preflight. */}
@@ -202,7 +316,7 @@ export function PermanentDeleteCard({
               type="submit"
               variant="ghost"
               size="md"
-              disabled={preflight.pending || !selectedId}
+              disabled={preflight.pending || targetReadFailed || !selectedId}
             >
               {preflight.pending ? "Checking…" : "Check dependents"}
             </Button>
@@ -210,7 +324,16 @@ export function PermanentDeleteCard({
           <FormStatus state={preflight.state} />
         </form>
 
-        {report ? <PreflightReport report={report} /> : null}
+        {report ? (
+          <PreflightReport
+            report={report}
+            onTargetBlocker={(nextEntityType, id) => {
+              setEntityType(nextEntityType);
+              setSelectedId(id);
+              setConfirm("");
+            }}
+          />
+        ) : null}
 
         {/* Confirm + delete. */}
         <form ref={delFormRef} action={del.formAction} className="grid gap-2.5">
@@ -234,7 +357,9 @@ export function PermanentDeleteCard({
             </Button>
             {del.state?.ok ? (
               <span className={successTextClassName}>
-                Deleted. A backup copy was captured for recovery.
+                {del.state.value.entityType === "profile"
+                  ? "Profile erased. Identifying data was permanently removed; there is no recovery copy."
+                  : "Deleted. A backup copy was captured for recovery."}
               </span>
             ) : null}
           </div>
@@ -252,7 +377,13 @@ export function PermanentDeleteCard({
   );
 }
 
-function PreflightReport({ report }: { report: DeletionPreflight }) {
+function PreflightReport({
+  report,
+  onTargetBlocker,
+}: {
+  report: DeletionPreflight;
+  onTargetBlocker: (entityType: string, id: string) => void;
+}) {
   if (report.confidential) {
     return (
       <div className="rounded-sm border border-line bg-surfaceAlt px-3 py-2.5 font-sans text-sm text-ink2">
@@ -268,6 +399,9 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
       </div>
     );
   }
+  const profileErasure = report.entityType === "profile";
+  const cleanupCount = report.cleanup.reduce((n, item) => n + item.count, 0);
+  const setNullCount = report.setNull.reduce((n, item) => n + item.count, 0);
   return (
     <div className="grid gap-1.5 rounded-sm border border-line bg-surfaceAlt px-3 py-2.5 font-sans text-xs text-ink2">
       {report.blockers.length > 0 ? (
@@ -279,61 +413,110 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
           {report.blockers.map((b) => (
             <div
               key={`${b.table}.${b.column}`}
-              className="flex justify-between gap-3"
+              className="grid gap-1 rounded-sm border border-line px-2 py-1.5"
             >
-              <span>
-                {b.table}.{b.column} ({b.action})
-              </span>
-              <strong className="text-ink">{b.count}</strong>
+              <div className="flex justify-between gap-3">
+                <span>
+                  {b.table}.{b.column} ({b.action})
+                </span>
+                <strong className="text-ink">{b.count}</strong>
+              </div>
+              {b.ids.length > 0 ? (
+                <div className="grid gap-1">
+                  {b.ids.map((id) => (
+                    <div
+                      key={id}
+                      className="flex flex-wrap items-center justify-between gap-2"
+                    >
+                      <code className="break-all text-ink">{id}</code>
+                      {b.entityType ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onTargetBlocker(b.entityType!, id)}
+                        >
+                          Use as deletion target
+                        </Button>
+                      ) : null}
+                    </div>
+                  ))}
+                  {b.count > b.ids.length ? (
+                    <span>Showing the first {b.ids.length} blocker IDs.</span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ))}
         </>
       ) : (
-        <div className="text-ink">No blocking dependents. Safe to delete.</div>
+        <div className="text-ink">
+          {profileErasure
+            ? "No blocking dependents. Ready for irreversible profile erasure."
+            : "No blocking dependents. Safe to delete."}
+        </div>
       )}
       {report.cleanup.length > 0 ? (
         <div className="mt-1">
-          Will remove and back up{" "}
-          {report.cleanup.reduce((n, c) => n + c.count, 0)} assignment record
-          {report.cleanup.reduce((n, c) => n + c.count, 0) === 1
-            ? ""
-            : "s"}{" "}
-          (kept in the backup copy; not re-created on restore).
+          {profileErasure
+            ? `Will permanently remove ${cleanupCount} assignment record${cleanupCount === 1 ? "" : "s"}. No recovery copy will be retained.`
+            : `Will remove and back up ${cleanupCount} assignment record${cleanupCount === 1 ? "" : "s"} (kept in the backup copy; not re-created on restore).`}
         </div>
       ) : null}
       {report.setNull.length > 0 ? (
         <div className="mt-1">
-          Will clear and back up{" "}
-          {report.setNull.reduce((n, s) => n + s.count, 0)} linked reference
-          {report.setNull.reduce((n, s) => n + s.count, 0) === 1
-            ? ""
-            : "s"}{" "}
-          (re-linkable on restore).
+          {profileErasure
+            ? `Will permanently clear ${setNullCount} linked reference${setNullCount === 1 ? "" : "s"}. No recovery copy or re-link step will remain.`
+            : `Will clear and back up ${setNullCount} linked reference${setNullCount === 1 ? "" : "s"} (re-linkable on restore).`}
         </div>
       ) : null}
     </div>
   );
 }
 
-function TombstoneRecovery({ tombstones }: { tombstones: RecentTombstone[] }) {
+function TombstoneRecovery({
+  tombstones,
+}: {
+  tombstones: RecentTombstonesState;
+}) {
+  const records = tombstones.tombstones;
+  const hasRestorableBackup =
+    tombstones.status === "loaded" &&
+    records.some((record) => record.restorable && record.restoredAt === null);
+  const hasIrreversibleRecord =
+    tombstones.status === "loaded" &&
+    records.some((record) => !record.restorable && record.restoredAt === null);
   return (
     <DangerSection
       variant="recovery"
-      label="Recover a deleted record"
+      label="Deleted-record recovery"
       status={
-        tombstones.length > 0
-          ? { label: "Reversible", tone: "reversible" }
-          : { label: "No backups", tone: "info" }
+        hasRestorableBackup && hasIrreversibleRecord
+          ? { label: "Mixed recovery", tone: "reversible" }
+          : hasRestorableBackup
+            ? { label: "Restores available", tone: "reversible" }
+            : hasIrreversibleRecord
+              ? { label: "Irreversible records", tone: "info" }
+              : tombstones.status === "loaded"
+                ? { label: "No pending restores", tone: "info" }
+                : tombstones.status === "failed"
+                  ? { label: "Unavailable", tone: "info" }
+                  : { label: "No deletion records", tone: "info" }
       }
-      description="Restore a deleted record from its backup copy, re-linking the references the delete cleared. The backup is kept after restoring."
+      description="Eligible non-profile records can be restored from their backup copies, including cleared references. Profile erasure records are status-only and can never be restored."
     >
-      {tombstones.length === 0 ? (
+      {tombstones.status === "failed" ? (
         <p className="m-0 font-sans text-sm text-ink2">
-          No backups yet. Nothing has been permanently deleted.
+          Deleted-record history could not be loaded. Refresh this page to try
+          again; no recovery state is assumed.
+        </p>
+      ) : tombstones.status === "empty" ? (
+        <p className="m-0 font-sans text-sm text-ink2">
+          No deleted-record history yet.
         </p>
       ) : (
         <div className="grid gap-2">
-          {tombstones.map((t) => (
+          {records.map((t) => (
             <TombstoneRow key={t.id} tombstone={t} />
           ))}
         </div>
@@ -363,6 +546,7 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
     TOMBSTONE_RESTORE_CONFIRM_PHRASE
   );
   const alreadyRestored = tombstone.restoredAt !== null;
+  const irreversible = !tombstone.restorable;
 
   return (
     <form
@@ -382,6 +566,13 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
         <span className="font-sans text-xs text-ink3">
           Already restored{" "}
           {formatIsoDateTimeUtc(tombstone.restoredAt as string)} UTC.
+        </span>
+      ) : irreversible ? (
+        <span className="font-sans text-xs text-ink2">
+          Irreversible:{" "}
+          {tombstone.entityType === "profile"
+            ? "this person's identifying data was permanently erased and cannot be restored."
+            : "this deleted record cannot be restored."}
         </span>
       ) : (
         <div className="flex flex-wrap items-center gap-2">

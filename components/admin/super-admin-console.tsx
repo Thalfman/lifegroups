@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  startTransition,
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { scrollToHashTarget } from "@/lib/nav/scroll-to-hash";
 
@@ -35,7 +29,7 @@ export function SuperAdminConsole({
   statusRow,
   banner,
   workspaces,
-  defaultWorkspaceId = "readiness",
+  activeWorkspaceId,
   hashAliases,
 }: {
   statusRow: ReactNode;
@@ -45,45 +39,35 @@ export function SuperAdminConsole({
   // the wrong tab.
   banner?: ReactNode;
   workspaces: SuperAdminWorkspace[];
-  defaultWorkspaceId?: string;
+  activeWorkspaceId: string;
   // Legacy/deep-link hash → workspace id (e.g. "people-import" → "access"), so
   // an existing `/admin/super-admin#people-import` link still opens the right
   // workspace instead of landing on the default with a dead anchor.
   hashAliases?: Record<string, string>;
 }) {
-  const initial = workspaces.some((w) => w.id === defaultWorkspaceId)
-    ? defaultWorkspaceId
-    : (workspaces[0]?.id ?? "");
-  const [activeId, setActiveId] = useState(initial);
-  const tabRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
-
-  // Read the latest workspaces/aliases from refs so the hash listener can stay a
-  // mount-once effect: it must apply the URL hash on load and on hashchange, but
-  // never re-snap the operator's manual tab choice on an unrelated re-render. The
-  // refs are written in an effect (not during render) so react-hooks/refs stays
-  // satisfied; the only reader is the hashchange effect below, which runs after
-  // this one and reads them only on async hash events.
-  const workspacesRef = useRef(workspaces);
-  const aliasesRef = useRef(hashAliases);
-  useEffect(() => {
-    workspacesRef.current = workspaces;
-    aliasesRef.current = hashAliases;
-  });
+  const router = useRouter();
+  const tabRefs = useRef<Map<string, HTMLAnchorElement | null>>(new Map());
 
   useEffect(() => {
     let cancelScroll = () => {};
     function applyHash() {
       const raw = decodeURIComponent(window.location.hash.replace(/^#/, ""));
       if (!raw) return;
-      const ids = new Set(workspacesRef.current.map((w) => w.id));
+      const ids = new Set(workspaces.map((w) => w.id));
       // A direct workspace-id hash wins; otherwise fall back to a known alias.
-      const target = ids.has(raw) ? raw : aliasesRef.current?.[raw];
+      const target = ids.has(raw) ? raw : hashAliases?.[raw];
       if (!target || !ids.has(target)) return;
-      setActiveId(target);
-      // The target workspace panel mounts on the next render, and now that the
-      // workspaces are dynamically imported (ssr:false) the element the hash
-      // names (e.g. the import card inside Access) is absent until that chunk
-      // loads. Poll past the commit until it appears, then scroll to it —
+      if (target !== activeWorkspaceId) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("workspace", target);
+        router.replace(url.pathname + url.search + url.hash, {
+          scroll: false,
+        });
+        return;
+      }
+      // The target workspace panel mounts on the next render, so the element
+      // the hash names (e.g. the import card inside Access) is absent until
+      // that commit. Poll until it appears, then scroll to it —
       // restoring the anchor's land-on-the-section behaviour instead of stopping
       // at the top. Cancel any in-flight scroll first so a second hashchange wins.
       cancelScroll();
@@ -95,23 +79,22 @@ export function SuperAdminConsole({
       cancelScroll();
       window.removeEventListener("hashchange", applyHash);
     };
-  }, []);
+  }, [activeWorkspaceId, hashAliases, router, workspaces]);
 
   function focusTab(id: string) {
     // The switch mounts a whole workspace panel; deferring it keeps the
     // interaction's next paint fast (INP) while focus moves immediately —
     // the tab buttons themselves always exist.
-    startTransition(() => {
-      setActiveId(id);
-    });
     // Move DOM focus to the newly selected tab so keyboard navigation tracks
     // the selection (roving tabindex).
     requestAnimationFrame(() => {
-      tabRefs.current.get(id)?.focus();
+      const tab = tabRefs.current.get(id);
+      tab?.focus();
+      tab?.click();
     });
   }
 
-  function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+  function onKeyDown(event: KeyboardEvent<HTMLAnchorElement>, index: number) {
     let nextIndex: number | null = null;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
       nextIndex = (index + 1) % workspaces.length;
@@ -129,7 +112,7 @@ export function SuperAdminConsole({
   }
 
   const activeWorkspace =
-    workspaces.find((w) => w.id === activeId) ?? workspaces[0];
+    workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0];
 
   return (
     <div className="grid min-w-0 gap-5">
@@ -153,20 +136,22 @@ export function SuperAdminConsole({
           aria-label="Super admin workspaces"
         >
           {workspaces.map((workspace, index) => {
-            const selected = workspace.id === activeId;
+            const selected = workspace.id === activeWorkspaceId;
             return (
-              <button
+              <a
                 key={workspace.id}
                 ref={(el) => {
                   tabRefs.current.set(workspace.id, el);
                 }}
-                type="button"
+                href={
+                  "/admin/super-admin?workspace=" +
+                  encodeURIComponent(workspace.id)
+                }
                 role="tab"
                 id={`super-admin-tab-${workspace.id}`}
                 aria-selected={selected}
                 aria-controls={`super-admin-panel-${workspace.id}`}
                 tabIndex={selected ? 0 : -1}
-                onClick={() => startTransition(() => setActiveId(workspace.id))}
                 onKeyDown={(event) => onKeyDown(event, index)}
                 className={cn(
                   "cursor-pointer appearance-none rounded-pill border border-transparent bg-transparent px-4 py-2 font-sans text-sm font-medium leading-tight transition-colors duration-150",
@@ -180,7 +165,7 @@ export function SuperAdminConsole({
                 )}
               >
                 {workspace.label}
-              </button>
+              </a>
             );
           })}
         </div>
