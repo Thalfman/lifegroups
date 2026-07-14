@@ -170,9 +170,13 @@ None are launch-gating for the core team:
 - **The two visibility exceptions work as specified:** the Ministry Admin's
   Private Care Note is creator-scoped (hidden even from the Super Admin);
   author-private Care Notes unlock only via the transparency grant.
-- **No secrets committed;** the service role is confined to the four Edge
+- **No secrets committed;** the service role is confined to the Edge
   Functions, which are hardened (timing floors against email enumeration,
-  HMAC'd IPs, generic error codes).
+  HMAC'd IPs, generic error codes). Note the fourth function,
+  `manage-test-auth-users`, is local/test tooling only — the
+  [launch runbook](../runbooks/LAUNCH_RUNBOOK.md) requires deleting it from
+  production, which must then show exactly `invite-user`, `redeem-invite`,
+  and `purge-profile-auth` (verified in §5 item 1).
 
 ### 4.2 Open security items
 
@@ -203,8 +207,13 @@ item is verification or wiring; none requires building new product.
    project: custom SMTP is configured and a real invite email arrives;
    `UPSTASH_REDIS_REST_URL`/`TOKEN` and `RATE_LIMIT_HMAC_SECRET` are set (and
    no `rate_limit_disabled` lines appear in logs); `TRUSTED_PROXY` matches
-   the host. Confirm migrations through `20260718020000` are applied to prod
-   per the [release runbook](../runbooks/RELEASE.md).
+   the host. On the Supabase side: `RATE_LIMIT_HMAC_SECRET` is **also** set
+   as an Edge Function secret — `redeem-invite` hard-fails with
+   `missing_rate_limit_hmac_secret` without it, so a Vercel-only check can
+   pass while invite redemption is broken; and `manage-test-auth-users` is
+   absent from the production project's Edge Functions (test tooling the
+   launch runbook deletes). Confirm migrations through `20260718020000` are
+   applied to prod per the [release runbook](../runbooks/RELEASE.md).
 2. **Wire one real alerting path (O-1).** Add an error-monitoring service or
    a log drain with alerts for the "page immediately" conditions in
    [`OBSERVABILITY.md`](../runbooks/OBSERVABILITY.md). One channel that a
@@ -264,12 +273,17 @@ protection against risks the core team doesn't yet face. They are the right
 Because the Shepherd surface sits behind the verified `leader_surface` flag,
 a two-stage launch is one toggle: complete the checklist, launch to the
 Ministry Admin and Super Admin, run for a week or two, then re-enable the
-flag for Shepherds once the alerting channel has proven quiet. This is a
-legitimate choice if the team wants extra caution around the largest and
-least-trusted user tier. Not made the primary recommendation only because the
-Shepherd surface already has the same E2E, RLS, and fitness coverage as the
-admin surfaces, and ADR 0024 deliberately defaulted it on — but nothing in
-this evaluation argues against taking the slower path.
+flag for Shepherds once the alerting channel has proven quiet. There is a
+real evidence asymmetry supporting this path: the Shepherd surface is
+guarded by the same fitness invariants and RLS posture, but its E2E presence
+is route/visibility handshakes (the assigned Shepherd sees the group on
+`/leader`; invite redemption) rather than Shepherd-authored write flows, and
+several leader-scoped tables (`guests`, `follow_ups`, `attendance_sessions`,
+`group_health_updates`) are still deferred from live per-tier RLS assertions
+(S-3). The §5 rollout order (admins first, then Over-Shepherds and
+Shepherds) already accommodates this staging — treat the widening step as
+the natural point to add Shepherd-authored E2E coverage or promote the live
+RLS lane, per the post-launch ladder in §6.2.
 
 ## 7. Method, verification record, and limitations
 
