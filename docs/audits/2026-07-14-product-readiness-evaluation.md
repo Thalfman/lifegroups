@@ -23,8 +23,8 @@ ADRs 0001–0039, the runbooks, and local check runs (verification record in §7
 short pre-launch checklist (§5) that is measured in days of verification and
 wiring, not weeks of building. The product surface is complete for its job,
 the security posture is unusually strong for an app of this size, and the
-remaining gaps are operational (alerting, production env verification,
-privacy-copy truthfulness) rather than missing features or open exposures.
+remaining gaps are operational (alerting, production env verification, the
+login-throttle decision) rather than missing features or open exposures.
 
 The three-axis picture:
 
@@ -32,11 +32,15 @@ The three-axis picture:
   People, Settings, the Super-Admin console, the Over-Shepherd surface, and
   the Shepherd (leader) surface — are shipped and cohesive. The full account
   lifecycle (invite → set password → self-name → role-scoped surface →
-  password reset → account deletion) works end-to-end with real-stack E2E
-  proof. There are no stubs, no TODO debt, and no placeholder surfaces a real
-  user could stumble into.
-- **Engineering:** lint, typecheck, and the ~4,275-test gating suite are
-  green; 31 fitness invariants machine-enforce the security posture in the
+  password reset → account deletion) works end-to-end: invite redemption has
+  real-stack E2E proof, and password reset and account deletion are covered
+  by unit/integration tests (`tests/integration/profile-purge.test.ts`).
+  There are no stubs, no TODO debt, and no placeholder surfaces a real user
+  could stumble into.
+- **Engineering:** lint and typecheck pass, and the ~4,275-test gating suite
+  is green in CI; locally 4,274 of 4,275 pass, the one failure being a
+  sandbox-only environmental miss of the react-dom patch guard (§7).
+  31 fitness invariants machine-enforce the security posture in the
   required CI lane; production already exists (Vercel + Supabase Pro,
   `fvclifegroups.vercel.app`); and a complete runbook set covers release,
   backup/restore (with a drill), incident response, and observability.
@@ -49,8 +53,7 @@ The three-axis picture:
 What stands between "engineered well" and "ready for real users" is a short
 list: nothing is watching the emitted alerts, the production environment
 wiring (SMTP, rate-limit credentials) has to be verified rather than assumed,
-the login action has no app-level throttle, and the public deletion/privacy
-copy must be reconciled with what erasure now actually leaves behind.
+and the login action has no app-level throttle.
 
 ## 2. Product completeness
 
@@ -173,22 +176,22 @@ None are launch-gating for the core team:
 
 ### 4.2 Open security items
 
-| #   | Item                                                                                                                                                                                                                                                                                                                                                                                  | Tier          |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| S-1 | **No app-level login throttle.** `app/login/actions.ts` relies solely on Supabase GoTrue's built-in rate limits, while forgot-password and invite-redeem have explicit throttles. Needs a deliberate decision (add one, or confirm GoTrue limits are configured to taste).                                                                                                            | Launch-gating |
-| S-2 | **Privacy-copy truthfulness.** The 2026-07-11 P1 code fixes landed (§4.3), but the deletion/privacy copy (`app/account-deletion/page.tsx`, `app/privacy/page.tsx`) and the canonical glossary (`CONTEXT.md` permanent-deletion definition, prior audit DOC-1) must be reconciled with what erasure now actually retains (redacted structural tombstone + audit-attribution identity). | Launch-gating |
-| S-3 | **RLS semantics beyond Care Notes are review-dependent.** Only care_notes/prayer_requests have the behavioral differential; other tables rely on the static sweep + review. 18 sensitive tables are deferred to the static sweep with no live per-tier fixture. Reasonable for a trusted team; promote the live RLS lane before broadening the user base.                             | Pre-scale     |
-| S-4 | **Admin-private columns on mixed tables are guarded by read-layer allowlists, not RLS** (`groups.admin_notes` etc.) — enforced by the no-`select("*")` and leader-allowlist fitness tests, but it is a column boundary held by static checks + review rather than the database.                                                                                                       | Pre-scale     |
-| S-5 | Public telemetry endpoints (`/api/vitals`, `/api/client-error`) are session-exempt and log caller-supplied content with truncation, not redaction (prior audit P2).                                                                                                                                                                                                                   | Polish        |
+| #   | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Tier          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| S-1 | **No app-level login throttle.** `app/login/actions.ts` relies solely on Supabase GoTrue's built-in rate limits, while forgot-password and invite-redeem have explicit throttles. Needs a deliberate decision (add one, or confirm GoTrue limits are configured to taste).                                                                                                                                                                                                                                                              | Launch-gating |
+| S-2 | **Privacy-copy truthfulness — verified consistent at the evaluated ref.** The deletion/privacy copy (`app/account-deletion/page.tsx`, `app/privacy/page.tsx`) and the canonical glossary (`CONTEXT.md` permanent-deletion definition) were checked against shipped erasure behavior and match: no recoverable profile copy, a structural non-restorable deletion record, audit attribution removed. This closes prior-audit DOC-1. Remaining ask is only a one-time production spot-check of the deletion flow (folded into §5 item 4). | Resolved      |
+| S-3 | **RLS semantics beyond Care Notes are review-dependent.** Only care_notes/prayer_requests have the behavioral differential; other tables rely on the static sweep + review. 18 sensitive tables are deferred to the static sweep with no live per-tier fixture. Reasonable for a trusted team; promote the live RLS lane before broadening the user base.                                                                                                                                                                               | Pre-scale     |
+| S-4 | **Admin-private columns on mixed tables are guarded by read-layer allowlists, not RLS** (`groups.admin_notes` etc.) — enforced by the no-`select("*")` and leader-allowlist fitness tests, but it is a column boundary held by static checks + review rather than the database.                                                                                                                                                                                                                                                         | Pre-scale     |
+| S-5 | Public telemetry endpoints (`/api/vitals`, `/api/client-error`) are session-exempt and log caller-supplied content with truncation, not redaction (prior audit P2).                                                                                                                                                                                                                                                                                                                                                                     | Polish        |
 
 ### 4.3 Status of the 2026-07-11 P1s at the evaluated ref
 
 | Prior ID | Status                                                                                                                                                                               |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| SEC-1    | **Fixed in code** — `20260718010000_irreversible_profile_erasure.sql` reduces profile tombstones to structural metadata. Copy reconciliation remains (S-2).                          |
+| SEC-1    | **Fixed** — `20260718010000_irreversible_profile_erasure.sql` reduces profile tombstones to structural metadata, and the public copy matches (S-2).                                  |
 | SEC-2    | **Fixed in code** — `20260718000000_harden_invite_throttle_retention.sql` purges legacy literal-IP rows and enforces the `ip:v1:<hex>` HMAC constraint; `rate-limit.ts` HMACs first. |
 | TEST-1   | **Open** — tracked here as O-4.                                                                                                                                                      |
-| DOC-1    | **Open** — folded into S-2.                                                                                                                                                          |
+| DOC-1    | **Fixed** — `CONTEXT.md`'s permanent-deletion definition now describes the linked database + Auth erasure workflow with no recoverable snapshot (verified, S-2).                     |
 
 ## 5. Recommendation: conditional GO
 
@@ -210,13 +213,10 @@ item is verification or wiring; none requires building new product.
    throttle to `app/login/actions.ts` using the existing
    `lib/security/rate-limit.ts` machinery, or explicitly confirm and record
    that GoTrue's configured limits are acceptable.
-4. **Make the deletion/privacy promises truthful (S-2).** Update
-   `app/account-deletion/page.tsx`, `app/privacy/page.tsx`, and the
-   `CONTEXT.md` permanent-deletion definition to state exactly what erasure
-   retains. With real pastoral data, an overstated deletion promise is the
-   one gap that damages trust even at two users.
-5. **Run the existing [`LAUNCH_RUNBOOK.md`](../runbooks/LAUNCH_RUNBOOK.md)**
-   as written.
+4. **Run the existing [`LAUNCH_RUNBOOK.md`](../runbooks/LAUNCH_RUNBOOK.md)**
+   as written, including a one-time spot-check that the production deletion
+   flow behaves exactly as `/account-deletion` describes (the copy was
+   verified truthful at the evaluated ref — S-2).
 
 Rationale: the audience is a small, trusted, known team using a purpose-built
 tool; there is no cross-tier exposure, no missing feature on the critical
@@ -233,8 +233,8 @@ the risk is small. Rejected because two of the gaps are precisely the kind
 that don't announce themselves: rate limiting **fails open silently** if the
 production credentials were never set, and invites **silently fail to
 deliver** without SMTP — both would be discovered by a confused or exposed
-user rather than by an operator. And launching a pastoral-care tool with a
-deletion promise the system doesn't keep is a trust cost out of proportion to
+user rather than by an operator. For a pastoral-care tool, discovering those
+gaps through users rather than checks is a trust cost out of proportion to
 the few days the checklist takes.
 
 ### 6.2 Hold for full hardening first — rejected
