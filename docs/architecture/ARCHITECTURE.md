@@ -32,8 +32,8 @@ hidden nav flags and now carry a "preserved, not actively maintained" banner
 - Supabase: `@supabase/supabase-js` for typed reads,
   `@supabase/ssr` for cookie-aware server/browser auth clients,
   Postgres with RLS, Edge Functions for service-role workflows.
-- Upstash Redis + `@upstash/ratelimit` for the forgot-password
-  throttle.
+- Upstash Redis + `@upstash/ratelimit` for the login and
+  forgot-password throttles.
 
 ## Routes
 

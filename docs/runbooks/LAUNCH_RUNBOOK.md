@@ -81,7 +81,7 @@ until Julian's explicit go-ahead.
       `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`,
       `RATE_LIMIT_HMAC_SECRET`, `LOG_HASH_SALT`,
       `TRUSTED_PROXY=vercel`. **Never** a service-role key. Upstash supplies
-      distributed forgot-password/invite throttling; public telemetry retains a
+      distributed login/forgot-password/invite throttling; public telemetry retains a
       bounded per-process fallback during an Upstash gap. _Tom + Eng_
       Production service-role key removed from Vercel env settings 2026-06-10;
       Vercel reported a new deployment is needed for the change to affect the
