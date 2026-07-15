@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/dashboard/cards";
 import { MyShepherdsTable } from "@/components/over-shepherd/my-shepherds-table";
 import { requireOverShepherd } from "@/lib/auth/session";
 import { toShellUser } from "@/lib/auth/shell-user";
-import { FirstRunCard } from "@/components/orientation/first-run-card";
+import { OrientationPanel } from "@/components/orientation/orientation-panel";
 import { loadOverShepherdData } from "@/lib/over-shepherd/over-shepherd-data";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +59,10 @@ export default async function OverShepherdPage() {
   return shell(
     data.lede,
     <>
-      {data.orientationSeen ? null : <FirstRunCard variant="over_shepherd" />}
+      <OrientationPanel
+        variant="over_shepherd"
+        initiallySeen={data.orientationSeen}
+      />
       <MyShepherdsTable entries={data.entries} />
     </>
   );
