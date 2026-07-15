@@ -16,12 +16,12 @@ describe("buildSecurityHeaders", () => {
     expect(byKey["Permissions-Policy"]).toContain("geolocation=()");
   });
 
-  it("emits CSP as report-only, never enforcing", () => {
+  it("emits CSP enforcing, never report-only (#904 — do not regress the flip)", () => {
     const headers = buildSecurityHeaders("https://proj.supabase.co");
     const keys = headers.map((h) => h.key);
 
-    expect(keys).toContain("Content-Security-Policy-Report-Only");
-    expect(keys).not.toContain("Content-Security-Policy");
+    expect(keys).toContain("Content-Security-Policy");
+    expect(keys).not.toContain("Content-Security-Policy-Report-Only");
   });
 });
 

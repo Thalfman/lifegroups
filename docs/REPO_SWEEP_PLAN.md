@@ -614,6 +614,9 @@ resolved by inspection):
    Next's inline styles/runtime. Is a **strict** CSP desired, or is a pragmatic
    policy (frame-ancestors + nonce-less style-src) acceptable for v1? (Affects
    Task 2 scope.)
+   **Resolved (#904, 2026-07):** the pragmatic policy is accepted for v1 and is
+   now served **enforcing** (`lib/security/headers.ts`); a strict nonce-based
+   policy stays future work alongside the inline-style burn-down (#908).
 2. **Dependency-major appetite.** Is a Next 15→16 (plus tailwind-merge 3,
    lucide 1, `@supabase/ssr` 0.12) upgrade in scope soon, or should the sweep
    stay on the current majors and only clear the dev-chain advisory? (Affects

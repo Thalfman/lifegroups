@@ -42,10 +42,8 @@ const nextConfig: NextConfig = {
     },
   },
   // Defense-in-depth HTTP security headers on every response. The CSP is
-  // emitted report-only (see lib/security/headers.ts) — it reports violations
-  // without blocking, so it can ship without breaking Next's inline styles or
-  // the Vercel analytics scripts. Flipping CSP to enforcing is a separate
-  // decision (docs/REPO_SWEEP_PLAN.md §8 Q1).
+  // enforcing (#904) in its pragmatic form — the allowance rationale and the
+  // report-only history live with the builder in lib/security/headers.ts.
   async headers() {
     return [
       {

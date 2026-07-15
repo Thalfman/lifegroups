@@ -4,12 +4,22 @@
 // MIME-sniffing, referrer leak, transport downgrade) for an app that handles
 // sensitive pastoral-care data.
 //
-// The Content-Security-Policy here is intentionally **report-only**: it is
-// emitted as `Content-Security-Policy-Report-Only` so violations are reported
-// (browser console) without blocking anything. Flipping CSP to enforcing — and
-// choosing strict (nonce-based) vs pragmatic — is a separate, deliberate
-// decision (see docs/REPO_SWEEP_PLAN.md §8 Q1) and is out of scope here. The
-// builder is split out from next.config so its values are unit-testable.
+// The Content-Security-Policy is **enforcing** (#904; it shipped report-only
+// first per docs/REPO_SWEEP_PLAN.md §8 Q1). It is the pragmatic variant — the
+// decision record for each allowance:
+//   - `style-src 'unsafe-inline'` + `script-src 'unsafe-inline' 'unsafe-eval'`:
+//     Next injects inline styles and its runtime needs eval in dev; the three
+//     shimmer-keyframe <style> blocks (components/*/lazy-*.tsx) also rely on
+//     it. Tightening to a nonce-based strict policy is deliberate future work,
+//     tracked with the design-debt burn-down (#908) — never widen beyond this.
+//   - Supabase REST + Realtime (wss) origins in `connect-src`, derived from
+//     the same env the server client reads.
+//   - Vercel Analytics / Speed Insights script + beacon origins.
+// No report endpoint was ever configured (violations only ever surfaced in the
+// browser console), so the report-only soak was reviewed as: every observed
+// source is allowlisted above and the a11y + E2E browser lanes run green under
+// this exact policy. The builder is split out from next.config so its values
+// are unit-testable.
 
 // Relative (not the `@/` alias) on purpose: this module is imported by
 // `next.config.ts`, whose transpile context resolves relative paths but not the
@@ -18,8 +28,8 @@ import { getSupabaseUrlRaw } from "../env";
 
 export type HttpHeader = { key: string; value: string };
 
-// The third parties the app actually talks to, so the report-only CSP doesn't
-// flag legitimate traffic:
+// The third parties the app actually talks to, so the enforced CSP doesn't
+// block legitimate traffic:
 //   - the Supabase origin (REST + Realtime websocket) — derived at config time
 //   - Vercel Analytics / Speed Insights (script host + vitals beacon)
 const VERCEL_SCRIPT_ORIGIN = "https://va.vercel-scripts.com";
@@ -42,9 +52,9 @@ export function getSupabaseOrigin(): string | null {
 }
 
 /**
- * Build the report-only Content-Security-Policy string. `'unsafe-inline'` /
- * `'unsafe-eval'` are accepted for v1 (Next ships inline styles and a dev-time
- * eval runtime); a future enforcing policy can tighten these via nonces.
+ * Build the Content-Security-Policy string (served enforcing). `'unsafe-inline'`
+ * / `'unsafe-eval'` are accepted for v1 (Next ships inline styles and a
+ * dev-time eval runtime); tightening via nonces is the future strict variant.
  */
 export function buildContentSecurityPolicy(
   supabaseOrigin: string | null = getSupabaseOrigin()
@@ -82,7 +92,7 @@ export function buildContentSecurityPolicy(
 }
 
 /**
- * The full security header set applied to every route. CSP is report-only.
+ * The full security header set applied to every route. CSP is enforcing.
  */
 export function buildSecurityHeaders(
   supabaseOrigin: string | null = getSupabaseOrigin()
@@ -100,7 +110,7 @@ export function buildSecurityHeaders(
       value: "camera=(), microphone=(), geolocation=(), browsing-topics=()",
     },
     {
-      key: "Content-Security-Policy-Report-Only",
+      key: "Content-Security-Policy",
       value: buildContentSecurityPolicy(supabaseOrigin),
     },
   ];
