@@ -9,6 +9,8 @@
 // follow-ups about Leaders (lib/admin/shepherd-care-follow-ups.ts).
 
 import type { FollowUpPriority, FollowUpStatus } from "@/types/enums";
+import { isOverdueIso } from "@/lib/admin/care-temporal";
+import { addDaysIso } from "@/lib/shared/church-time";
 
 // Display + partition order for the status-grouped queue.
 export const FOLLOW_UP_STATUS_ORDER: readonly FollowUpStatus[] = [
@@ -113,17 +115,16 @@ export function coerceSavedIdFilter(
   return saved === "all" || known.has(saved) ? saved : "all";
 }
 
-// The due window the overdue / this-week filters compare against: local
-// midnight of "now" and the day seven days out (both inclusive bounds for
-// this_week; overdue is strictly before today).
-export type FollowUpDueWindow = { today: Date; inSevenDays: Date };
+// The due window the overdue / this-week filters compare against: the
+// caller's church-local today (churchTodayIso, lib/shared/church-time) and
+// the day seven days out (both inclusive bounds for this_week; overdue is
+// strictly before today). Due dates are date-only YYYY-MM-DD strings, so the
+// window stays in string space — no Date, so no browser/server timezone can
+// shift the boundary (#898).
+export type FollowUpDueWindow = { todayIso: string; inSevenDaysIso: string };
 
-export function followUpDueWindow(now: Date): FollowUpDueWindow {
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const inSevenDays = new Date(today);
-  inSevenDays.setDate(inSevenDays.getDate() + 7);
-  return { today, inSevenDays };
+export function followUpDueWindow(todayIso: string): FollowUpDueWindow {
+  return { todayIso, inSevenDaysIso: addDaysIso(todayIso, 7) };
 }
 
 // Minimal structural shape the queue helpers need; AdminFollowUpEntry is
@@ -147,12 +148,6 @@ export type FollowUpQueueFilters = {
   groupFilter: string;
   guestFilter: string;
 };
-
-// Due dates are date-only strings; parse at local midnight so comparisons
-// against the local-midnight due window are day-accurate.
-function dueDateAtLocalMidnight(dueDate: string): Date {
-  return new Date(`${dueDate}T00:00:00`);
-}
 
 export function filterFollowUps<T extends FollowUpQueueItem>(
   followUps: T[],
@@ -186,13 +181,14 @@ export function filterFollowUps<T extends FollowUpQueueItem>(
         if (fu.due_date) return false;
       } else if (!fu.due_date) {
         return false;
-      } else {
-        const due = dueDateAtLocalMidnight(fu.due_date);
-        if (dueFilter === "overdue") {
-          if (due >= window.today) return false;
-        } else if (dueFilter === "this_week") {
-          if (due < window.today || due > window.inSevenDays) return false;
-        }
+      } else if (dueFilter === "overdue") {
+        if (!isOverdueIso(fu.due_date, window.todayIso)) return false;
+      } else if (dueFilter === "this_week") {
+        if (
+          fu.due_date < window.todayIso ||
+          fu.due_date > window.inSevenDaysIso
+        )
+          return false;
       }
     }
     return true;
@@ -239,12 +235,13 @@ export function partitionFollowUpsByStatus<T extends FollowUpQueueItem>(
   return out;
 }
 
-// Overdue badge rule: a dated, not-yet-done follow-up whose due date has
-// passed. A done item is never overdue regardless of its date.
+// Overdue badge rule: a dated, not-yet-done follow-up whose due date is
+// strictly before the church-local todayIso. A done item is never overdue
+// regardless of its date.
 export function isFollowUpOverdue(
   followUp: Pick<FollowUpQueueItem, "due_date" | "status">,
-  today: Date
+  todayIso: string
 ): boolean {
-  if (!followUp.due_date || followUp.status === "done") return false;
-  return dueDateAtLocalMidnight(followUp.due_date) < today;
+  if (followUp.status === "done") return false;
+  return isOverdueIso(followUp.due_date, todayIso);
 }

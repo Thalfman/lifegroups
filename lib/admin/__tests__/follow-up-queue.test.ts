@@ -10,6 +10,7 @@ import {
   type FollowUpQueueFilters,
   type FollowUpQueueItem,
 } from "@/lib/admin/follow-up-queue";
+import { churchTodayIso } from "@/lib/shared/church-time";
 
 // An open, normal-priority, undated, unrelated follow-up; each test overrides
 // only the fields under test.
@@ -35,16 +36,20 @@ const noFilters: FollowUpQueueFilters = {
   guestFilter: "all",
 };
 
-// A fixed clock: "now" is mid-afternoon June 11 so the window proves the
-// midnight anchor.
-const WINDOW = followUpDueWindow(new Date("2026-06-11T15:30:00"));
+// A fixed church-local today (the caller derives it via churchTodayIso, so
+// the queue helpers stay pure string math — no Date, no timezone).
+const WINDOW = followUpDueWindow("2026-06-11");
 
 describe("followUpDueWindow", () => {
-  it("anchors today at local midnight and the window end seven days out", () => {
-    expect(WINDOW.today.getHours()).toBe(0);
-    expect(WINDOW.today.getMinutes()).toBe(0);
-    expect(WINDOW.today.getDate()).toBe(11);
-    expect(WINDOW.inSevenDays.getDate()).toBe(18);
+  it("spans today through seven days out", () => {
+    expect(WINDOW).toEqual({
+      todayIso: "2026-06-11",
+      inSevenDaysIso: "2026-06-18",
+    });
+  });
+
+  it("crosses month boundaries", () => {
+    expect(followUpDueWindow("2026-06-28").inSevenDaysIso).toBe("2026-07-05");
   });
 });
 
@@ -218,13 +223,13 @@ describe("partitionFollowUpsByStatus", () => {
 describe("isFollowUpOverdue", () => {
   it("is true for a dated, not-done follow-up past its due date", () => {
     expect(
-      isFollowUpOverdue(fu({ due_date: "2026-06-10" }), WINDOW.today)
+      isFollowUpOverdue(fu({ due_date: "2026-06-10" }), WINDOW.todayIso)
     ).toBe(true);
   });
 
   it("is false on the due date itself", () => {
     expect(
-      isFollowUpOverdue(fu({ due_date: "2026-06-11" }), WINDOW.today)
+      isFollowUpOverdue(fu({ due_date: "2026-06-11" }), WINDOW.todayIso)
     ).toBe(false);
   });
 
@@ -232,13 +237,32 @@ describe("isFollowUpOverdue", () => {
     expect(
       isFollowUpOverdue(
         fu({ due_date: "2020-01-01", status: "done" }),
-        WINDOW.today
+        WINDOW.todayIso
       )
     ).toBe(false);
   });
 
   it("an undated item is never overdue", () => {
-    expect(isFollowUpOverdue(fu(), WINDOW.today)).toBe(false);
+    expect(isFollowUpOverdue(fu(), WINDOW.todayIso)).toBe(false);
+  });
+
+  // The #898 regression this migration exists to prevent: at 22:30 US Central
+  // the UTC calendar has already rolled to tomorrow. A church-local todayIso
+  // derived at that instant must NOT mark an item due "tomorrow" as overdue —
+  // and must not even mark an item due "today" as overdue.
+  it("does not mark items overdue a day early during the UTC-rollover evening", () => {
+    // 2026-06-12T03:30:00Z is 2026-06-11 22:30 in America/Chicago (CDT).
+    const eveningTodayIso = churchTodayIso(new Date("2026-06-12T03:30:00Z"));
+    expect(eveningTodayIso).toBe("2026-06-11");
+    expect(
+      isFollowUpOverdue(fu({ due_date: "2026-06-11" }), eveningTodayIso)
+    ).toBe(false);
+    expect(
+      isFollowUpOverdue(fu({ due_date: "2026-06-12" }), eveningTodayIso)
+    ).toBe(false);
+    expect(
+      isFollowUpOverdue(fu({ due_date: "2026-06-10" }), eveningTodayIso)
+    ).toBe(true);
   });
 });
 
