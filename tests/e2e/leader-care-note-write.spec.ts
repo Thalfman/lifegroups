@@ -178,7 +178,12 @@ test.describe("Shepherd-authored group care writes", () => {
       // now-readable notes — into the live page. Assert on that LIVE render
       // (the same no-reload posture as the admin-author care-note test);
       // reloading here is what kept hitting the #839/#910 post-action stall.
-      await expect(adminView.getByText("About their group")).toBeVisible();
+      // Match the counted list label exactly — the panel's intro paragraph
+      // also contains the words "about their group", so a bare substring
+      // locator resolves to two elements and trips strict mode.
+      await expect(
+        adminView.getByText(/^About their group \(\d+\)$/)
+      ).toBeVisible();
       await expect(adminView.getByText(careBody)).toBeVisible();
       await expect(adminView.getByText(prayerBody)).toBeVisible();
 
