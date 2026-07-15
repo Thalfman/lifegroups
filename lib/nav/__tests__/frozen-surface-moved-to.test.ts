@@ -12,10 +12,11 @@ import {
 // mapping lives in ONE place — movedToFor / canonicalFor over the registry —
 // consumed two ways:
 //
-//   * flag-off gates: guests redirects to canonicalFor("/admin/guests") (the
-//     Plan Interest Funnel genuinely absorbed that workflow); check-ins keep
-//     the frozen NOTICE instead, because per ADR 0033 no canonical surface
-//     covers the weekly review — there is nowhere truthful to redirect.
+//   * flag-off gates (guests, check-ins): the frozen NOTICE stays (never a
+//     redirect — these routes are windows into legacy data / unreplaced
+//     workflows), carrying the movedToFor(<route>) pointer where a post-pivot
+//     home exists (guests → Plan) and none where it doesn't (check-ins, ADR
+//     0033: no canonical surface covers the weekly review).
 //   * banner links: pages call movedToFor(<own route>); routes whose registry
 //     canonical is only the nav active-owner get a per-route override —
 //     leader-pipeline points at Multiply's Shepherds tab, and
@@ -123,17 +124,17 @@ describe("frozen entry points derive their moved-to target from the registry", (
     expect(read(relPath)).toContain(expected);
   });
 
-  it("guests' flag-off gate redirects via its registry canonical", () => {
-    expect(read("guests/layout.tsx")).toContain(
-      'canonicalFor("/admin/guests")'
-    );
-  });
-
-  it("check-ins' flag-off gate keeps the notice — no redirect (ADR 0033)", () => {
-    const src = read("check-ins/layout.tsx");
-    expect(src).toContain("notice");
-    expect(src).not.toContain("redirectTo");
-  });
+  it.each([
+    ["guests/layout.tsx", 'movedToFor("/admin/guests")'],
+    ["check-ins/layout.tsx", 'movedToFor("/admin/check-ins")'],
+  ])(
+    "%s keeps the frozen notice (no redirect) and derives its pointer via %s",
+    (relPath, expected) => {
+      const src = read(relPath);
+      expect(src).toContain(expected);
+      expect(src).not.toMatch(/\bredirect\s*\(/);
+    }
+  );
 
   it("the Planning host keeps no moved-to link (ADR 0033)", () => {
     const src = read("planning/page.tsx");

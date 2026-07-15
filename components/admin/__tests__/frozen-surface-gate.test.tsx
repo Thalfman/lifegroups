@@ -1,24 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// The frozen-surface gate (#191 / ADR 0002 + 0009; flag-off fallbacks #901):
+// The frozen-surface gate (#191 / ADR 0002 + 0009; moved-to pointer #901):
 // guard first (the access gate is never loosened), then the live surface only
-// when the flag is enabled-and-verified — otherwise the layout's declared
-// fallback: a redirect to the surface's post-pivot home (guests → Plan), or
-// the explicit frozen notice where no replacement exists (check-ins, per ADR
-// 0033). The flag resolution itself (verify-before-flip, fail-safe on no
-// client / read error) is pinned in lib/admin/__tests__/feature-flags-read.test.ts;
-// this file pins the gate's composition around it.
+// when the flag is enabled-and-verified — otherwise the explicit frozen
+// notice, carrying a registry-derived "current home" pointer where a
+// post-pivot workflow home exists (guests → Plan) and none where no
+// replacement exists (check-ins, per ADR 0033). Never a redirect: these
+// routes are windows into legacy data / unreplaced workflows, and an old
+// bookmark must keep the frozen-state explanation. The flag resolution
+// itself (verify-before-flip, fail-safe on no client / read error) is pinned
+// in lib/admin/__tests__/feature-flags-read.test.ts; this file pins the
+// gate's composition around it.
 
-const { mockRedirect, mockIsFrozenSurfaceLive } = vi.hoisted(() => ({
-  mockRedirect: vi.fn((href: string) => {
-    // Mirror next/navigation's real control flow: redirect() never returns.
-    throw new Error(`REDIRECT:${href}`);
-  }),
+const { mockIsFrozenSurfaceLive } = vi.hoisted(() => ({
   mockIsFrozenSurfaceLive: vi.fn(),
-}));
-
-vi.mock("next/navigation", () => ({
-  redirect: mockRedirect,
 }));
 
 vi.mock("@/lib/admin/frozen-surface", () => ({
@@ -40,47 +35,51 @@ describe("frozenSurfaceGate", () => {
     const node = await frozenSurfaceGate({
       guard,
       flagKey: "guests",
-      whenFrozen: { redirectTo: "/admin/plan" },
+      surfaceLabel: "The guest pipeline",
+      movedTo: { href: "/admin/plan", label: "Plan — the Interest Funnel" },
       children: "live-surface",
     });
 
     expect(guard).toHaveBeenCalledOnce();
-    expect(mockRedirect).not.toHaveBeenCalled();
-    expect(node).not.toBeNull();
+    expect(renderToStaticMarkup(<>{node}</>)).toContain("live-surface");
   });
 
-  it("redirects an old bookmark to the declared home while the flag is off", async () => {
+  it("shows the frozen notice with the moved-to pointer while the flag is off", async () => {
     mockIsFrozenSurfaceLive.mockResolvedValue(false);
 
-    await expect(
-      frozenSurfaceGate({
-        guard: vi.fn().mockResolvedValue(undefined),
-        flagKey: "guests",
-        whenFrozen: { redirectTo: "/admin/plan" },
-        children: "frozen-surface",
-      })
-    ).rejects.toThrow("REDIRECT:/admin/plan");
+    const node = await frozenSurfaceGate({
+      guard: vi.fn().mockResolvedValue(undefined),
+      flagKey: "guests",
+      surfaceLabel: "The guest pipeline",
+      movedTo: { href: "/admin/plan", label: "Plan — the Interest Funnel" },
+      children: "frozen-surface",
+    });
 
-    expect(mockRedirect).toHaveBeenCalledWith("/admin/plan");
+    const html = renderToStaticMarkup(<>{node}</>);
+    expect(html).toContain("The guest pipeline is frozen");
+    expect(html).toContain('href="/admin/plan"');
+    expect(html).toContain("Plan — the Interest Funnel");
+    expect(html).not.toContain("frozen-surface");
   });
 
-  it("keeps the frozen notice for surfaces with no replacement (ADR 0033)", async () => {
+  it("shows the notice without a pointer where no replacement exists (ADR 0033)", async () => {
     mockIsFrozenSurfaceLive.mockResolvedValue(false);
 
     const node = await frozenSurfaceGate({
       guard: vi.fn().mockResolvedValue(undefined),
       flagKey: "check_ins",
-      whenFrozen: { notice: { surfaceLabel: "Weekly check-ins" } },
+      surfaceLabel: "Weekly check-ins",
+      movedTo: null,
       children: "frozen-surface",
     });
 
-    expect(mockRedirect).not.toHaveBeenCalled();
     const html = renderToStaticMarkup(<>{node}</>);
-    expect(html).toContain("Weekly check-ins");
+    expect(html).toContain("Weekly check-ins is frozen");
+    expect(html).not.toContain("current home");
     expect(html).not.toContain("frozen-surface");
   });
 
-  it("runs the access guard before the flag read, and never redirects past a failed guard", async () => {
+  it("runs the access guard before the flag read, and never renders past a failed guard", async () => {
     const order: string[] = [];
     mockIsFrozenSurfaceLive.mockImplementation(async () => {
       order.push("flag");
@@ -95,14 +94,13 @@ describe("frozenSurfaceGate", () => {
       frozenSurfaceGate({
         guard,
         flagKey: "guests",
-        whenFrozen: { redirectTo: "/admin/plan" },
+        surfaceLabel: "The guest pipeline",
         children: null,
       })
     ).rejects.toThrow("GUARD_REDIRECT");
 
-    // The guard exits first; the flag is never consulted and the fallback
-    // never fires for a viewer the guard rejected.
+    // The guard exits first; the flag is never consulted for a viewer the
+    // guard rejected.
     expect(order).toEqual(["guard"]);
-    expect(mockRedirect).not.toHaveBeenCalled();
   });
 });
