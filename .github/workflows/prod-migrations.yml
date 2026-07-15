@@ -1,0 +1,144 @@
+# Production migrations — automated apply + drift check (issue #905).
+#
+# Vercel deploys `main` automatically, but nothing used to apply database
+# migrations to production — the runbook (docs/runbooks/RELEASE.md) relied on
+# a remembered `supabase db push`, and prod/`main` drifted once because of it.
+# This workflow closes that gap while PRESERVING the runbook's schema-first
+# ordering (schema before code):
+#
+#   * `apply` — manual, one-click, approval-gated (`environment: production`).
+#     Dispatch it FROM THE APPROVED PR BRANCH before merging, exactly where
+#     the runbook's manual step sat, so migrations land before Vercel ships
+#     the code that needs them. Applying on merge would race the code deploy,
+#     so a push-triggered apply is deliberately NOT offered.
+#   * `drift-check` — automatic on every push to `main` that touches
+#     `supabase/migrations/**`, weekly, and on any dispatch. It compares the
+#     production project's applied history against `supabase/migrations/` and
+#     fails loudly on ANY divergence (pending locals or remote-only rows), so
+#     a forgotten apply or an ad-hoc dashboard edit surfaces within minutes,
+#     not at the next release.
+#
+# Required repo secrets (the one human provisioning step — see RELEASE.md):
+#   SUPABASE_ACCESS_TOKEN  — a Supabase personal access token that can manage
+#                            the production project (Dashboard → Account →
+#                            Access Tokens).
+#   SUPABASE_PROJECT_REF   — the production project ref.
+#   SUPABASE_DB_PASSWORD   — the production database password (Dashboard →
+#                            Project Settings → Database).
+# Both jobs fail fast with an explicit message when any secret is absent —
+# never silently skip. The `production` environment on the apply job is where
+# a required-reviewer approval gate attaches (Settings → Environments).
+name: Production migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  # Weekly drift safety net (Tuesdays 06:00 UTC), offset from the Monday lanes.
+  schedule:
+    - cron: "0 6 * * 2"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: >-
+          Apply pending supabase/migrations/* to PRODUCTION (run from the
+          approved branch, before merging — schema first, then code). Leave
+          unchecked for a drift check only.
+        type: boolean
+        default: false
+
+# One production DB — never two runs at once, and never cancel an in-flight
+# apply.
+concurrency:
+  group: prod-migrations
+  cancel-in-progress: false
+
+jobs:
+  drift-check:
+    name: Prod vs supabase/migrations drift check
+    # On an apply dispatch the apply job below does its own before/after
+    # parity verification; running this too would fail on the very pending
+    # migrations the apply is about to ship.
+    if: github.event_name != 'workflow_dispatch' || !inputs.apply
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require production secrets
+        run: |
+          missing=""
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || missing="$missing SUPABASE_ACCESS_TOKEN"
+          [ -n "$SUPABASE_PROJECT_REF" ] || missing="$missing SUPABASE_PROJECT_REF"
+          [ -n "$SUPABASE_DB_PASSWORD" ] || missing="$missing SUPABASE_DB_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repo secret(s):$missing — provision them per docs/runbooks/RELEASE.md (Automation) before this lane can watch production."
+            exit 1
+          fi
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Compare applied migrations against supabase/migrations
+        run: ./scripts/check-migration-drift.sh
+
+  apply:
+    name: Apply pending migrations to production
+    if: github.event_name == 'workflow_dispatch' && inputs.apply
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The approval gate: configure required reviewers on the `production`
+    # environment so this job pauses for a human click.
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require production secrets
+        run: |
+          missing=""
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || missing="$missing SUPABASE_ACCESS_TOKEN"
+          [ -n "$SUPABASE_PROJECT_REF" ] || missing="$missing SUPABASE_PROJECT_REF"
+          [ -n "$SUPABASE_DB_PASSWORD" ] || missing="$missing SUPABASE_DB_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repo secret(s):$missing — provision them per docs/runbooks/RELEASE.md (Automation) before migrations can be applied from CI."
+            exit 1
+          fi
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Show pending migrations
+        # Visibility before the write: the log records exactly what is about
+        # to be applied, from which ref.
+        run: |
+          echo "Applying from ref: ${{ github.ref_name }} (${{ github.sha }})"
+          supabase migration list
+
+      - name: Apply pending migrations (supabase db push)
+        # Applies pending supabase/migrations/* in file order, recording each
+        # under its repo version number — the same command as the runbook's
+        # manual step. A failed push leaves the failed migration unrecorded;
+        # fix the SQL and re-run (never hand-edit schema_migrations).
+        run: supabase db push
+
+      - name: Verify parity after apply
+        run: ./scripts/check-migration-drift.sh

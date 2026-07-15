@@ -2,10 +2,14 @@
 
 The one sanctioned path for getting a change into production. It exists
 because the two halves of a release are NOT symmetric: Vercel deploys `main`
-automatically, but **nothing applies database migrations automatically**. The
-2026-06 launch-readiness review found production two migrations behind `main`
-(including an RLS fix) precisely because of this asymmetry — this runbook is
-the fix.
+automatically, but migrations only reach production through a deliberate
+apply step. The 2026-06 launch-readiness review found production two
+migrations behind `main` (including an RLS fix) precisely because that step
+used to be a remembered manual command — this runbook, plus the
+**`Production migrations` workflow** (#905,
+`.github/workflows/prod-migrations.yml`), is the fix: the workflow is the
+default way to apply, and its drift check fails loudly whenever prod and
+`main` disagree.
 
 ## The rule
 
@@ -27,8 +31,15 @@ against a database that doesn't have the schema it expects:
    might still change.
 
 2. **Apply the migration(s)** to the production project
-   (`juvytverslrcqbkxgkvg`), in file order, using the Supabase CLI from the
-   approved branch:
+   (`juvytverslrcqbkxgkvg`), in file order.
+
+   **Default — the `Production migrations` workflow:** Actions →
+   `Production migrations` → Run workflow → pick the **approved PR branch**
+   as the ref → check **apply**. The job pauses on the `production`
+   environment for approval, runs the same `supabase db push` below, and
+   verifies parity afterward — all recorded in the run log.
+
+   **Fallback — the Supabase CLI from the approved branch:**
 
    ```bash
    supabase link --project-ref juvytverslrcqbkxgkvg
@@ -51,7 +62,10 @@ against a database that doesn't have the schema it expects:
 3. **Merge the PR.** Vercel builds and promotes `main` automatically; wait
    for the deploy of the merge commit to show READY.
 
-4. **Verify parity.** The applied list must match the repo:
+4. **Verify parity.** The `Production migrations` drift check runs this
+   automatically on the merge to `main` (path-gated on
+   `supabase/migrations/**`) and weekly, failing the workflow on any
+   divergence in either direction. Manual equivalent:
 
    ```bash
    supabase migration list   # local and remote columns must agree
@@ -65,6 +79,35 @@ supabase_migrations.schema_migrations order by version;` against
    re-run the Supabase advisors (Dashboard → Advisors, or the MCP
    `get_advisors` tool) after any migration that touches RLS, grants, or
    `security definer` functions.
+
+## Automation — the `Production migrations` workflow
+
+`.github/workflows/prod-migrations.yml` (#905) carries both halves of the
+schema story:
+
+- **`apply`** (manual dispatch only, `apply` checked): approval-gated on the
+  `production` environment, runs `supabase db push` from whichever ref you
+  dispatch it on — use the approved PR branch so schema lands before the
+  merge deploys code. A push-triggered apply is deliberately not offered: it
+  would race the Vercel code deploy and invert the schema-first ordering.
+- **`drift-check`** (push to `main` touching `supabase/migrations/**`,
+  weekly, or a dispatch without `apply`): `scripts/check-migration-drift.sh`
+  compares production's applied history against `supabase/migrations/` and
+  fails on drift in either direction (pending locals, or remote-only versions
+  like the ones the 2026-06 incident left behind).
+
+**One-time provisioning (the only human setup):** add these repo secrets
+(Settings → Secrets and variables → Actions); the jobs fail with an explicit
+"missing secret" error until they exist — they never skip silently.
+
+| Secret                  | Value                                                                              |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN` | A personal access token that can manage the prod project (Account → Access Tokens) |
+| `SUPABASE_PROJECT_REF`  | `juvytverslrcqbkxgkvg`                                                             |
+| `SUPABASE_DB_PASSWORD`  | The production database password (Project Settings → Database)                     |
+
+Also create the **`production` environment** (Settings → Environments) with a
+required reviewer, so every apply pauses for a human approval click.
 
 ## Edge Functions
 
