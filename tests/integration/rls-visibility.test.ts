@@ -756,6 +756,108 @@ suite("RLS per-tier visibility (local Supabase stack)", () => {
     });
   });
 
+  describe("LEADER_SCOPED - guests, follow-ups, attendance, health updates (#902)", () => {
+    // The four tables graduated from the static sweep by the wave-3 ratchet.
+    // Shape mirrors the groups/members block above: both admins read every
+    // row, the assigned Leader reads only rows tied to a group they lead (or,
+    // where the policy has a second arm, rows pointing at them directly), and
+    // the Over-Shepherd / unrelated Co-Leader tiers read nothing.
+    async function visibleIds(
+      tier: Tier,
+      table:
+        | "guests"
+        | "follow_ups"
+        | "attendance_sessions"
+        | "group_health_updates",
+      ids: readonly string[]
+    ): Promise<Set<string>> {
+      const { data, error } = await tier.client
+        .from(table)
+        .select("id")
+        .in("id", [...ids]);
+      expect(error, `${tier.key} ${table} read`).toBeNull();
+      return new Set((data ?? []).map((row) => row.id as string));
+    }
+
+    it("scopes guests to the leading Leader through BOTH read arms (first-attended and assigned group)", async () => {
+      const { assignedGuestId, firstAttendedGuestId, unrelatedGuestId } =
+        priorityFx.leaderScoped;
+      const ids = [assignedGuestId, firstAttendedGuestId, unrelatedGuestId];
+
+      for (const admin of [fx.superAdmin, fx.ministryAdmin]) {
+        expect(await visibleIds(admin, "guests", ids)).toEqual(new Set(ids));
+      }
+      expect(await visibleIds(fx.leader, "guests", ids)).toEqual(
+        new Set([assignedGuestId, firstAttendedGuestId])
+      );
+      for (const tier of [fx.overShepherd, fx.coLeader]) {
+        expect(await visibleIds(tier, "guests", ids)).toEqual(new Set());
+      }
+    });
+
+    it("scopes follow-ups to the leading Leader via the led group OR direct assignment", async () => {
+      const { relatedFollowUpId, assignedToFollowUpId, unrelatedFollowUpId } =
+        priorityFx.leaderScoped;
+      const ids = [
+        relatedFollowUpId,
+        assignedToFollowUpId,
+        unrelatedFollowUpId,
+      ];
+
+      for (const admin of [fx.superAdmin, fx.ministryAdmin]) {
+        expect(await visibleIds(admin, "follow_ups", ids)).toEqual(
+          new Set(ids)
+        );
+      }
+      expect(await visibleIds(fx.leader, "follow_ups", ids)).toEqual(
+        new Set([relatedFollowUpId, assignedToFollowUpId])
+      );
+      for (const tier of [fx.overShepherd, fx.coLeader]) {
+        expect(await visibleIds(tier, "follow_ups", ids)).toEqual(new Set());
+      }
+    });
+
+    it("scopes attendance sessions to the leading Leader without leaking an unrelated group's session", async () => {
+      const { assignedAttendanceSessionId, unrelatedAttendanceSessionId } =
+        priorityFx.leaderScoped;
+      const ids = [assignedAttendanceSessionId, unrelatedAttendanceSessionId];
+
+      for (const admin of [fx.superAdmin, fx.ministryAdmin]) {
+        expect(await visibleIds(admin, "attendance_sessions", ids)).toEqual(
+          new Set(ids)
+        );
+      }
+      expect(await visibleIds(fx.leader, "attendance_sessions", ids)).toEqual(
+        new Set([assignedAttendanceSessionId])
+      );
+      for (const tier of [fx.overShepherd, fx.coLeader]) {
+        expect(await visibleIds(tier, "attendance_sessions", ids)).toEqual(
+          new Set()
+        );
+      }
+    });
+
+    it("scopes group health updates to the leading Leader without leaking an unrelated group's pulse", async () => {
+      const { assignedHealthUpdateId, unrelatedHealthUpdateId } =
+        priorityFx.leaderScoped;
+      const ids = [assignedHealthUpdateId, unrelatedHealthUpdateId];
+
+      for (const admin of [fx.superAdmin, fx.ministryAdmin]) {
+        expect(await visibleIds(admin, "group_health_updates", ids)).toEqual(
+          new Set(ids)
+        );
+      }
+      expect(await visibleIds(fx.leader, "group_health_updates", ids)).toEqual(
+        new Set([assignedHealthUpdateId])
+      );
+      for (const tier of [fx.overShepherd, fx.coLeader]) {
+        expect(await visibleIds(tier, "group_health_updates", ids)).toEqual(
+          new Set()
+        );
+      }
+    });
+  });
+
   describe("SUPER_ADMIN_ONLY — audit_events (Ministry Admin excluded)", () => {
     // The audit spine sits above the Ministry Admin on the ladder. The fixture
     // RPCs (care/prayer writes, grant flips) have already written audit rows

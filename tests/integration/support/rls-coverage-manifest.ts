@@ -124,25 +124,13 @@ export const RLS_COVERAGE: Readonly<Record<string, CoverageEntry>> = {
     `needs a seeded attendance snapshot row; ${STATIC_SWEEP}`
   ),
 
-  // --- LEADER_SCOPED: groups/members live; remaining fixtures deferred -----
+  // --- LEADER_SCOPED: live except the status-history fixture ---------------
   groups: asserted("LEADER_SCOPED"),
   members: asserted("LEADER_SCOPED"),
-  guests: deferred(
-    "LEADER_SCOPED",
-    `needs a group + guest fixture; ${STATIC_SWEEP}`
-  ),
-  follow_ups: deferred(
-    "LEADER_SCOPED",
-    `needs a group-scoped follow-up fixture; ${STATIC_SWEEP}`
-  ),
-  attendance_sessions: deferred(
-    "LEADER_SCOPED",
-    `needs a group + attendance-session fixture; ${STATIC_SWEEP}`
-  ),
-  group_health_updates: deferred(
-    "LEADER_SCOPED",
-    `needs a group + health-update fixture; ${STATIC_SWEEP}`
-  ),
+  guests: asserted("LEADER_SCOPED"),
+  follow_ups: asserted("LEADER_SCOPED"),
+  attendance_sessions: asserted("LEADER_SCOPED"),
+  group_health_updates: asserted("LEADER_SCOPED"),
   group_status_history: deferred(
     "LEADER_SCOPED",
     `needs a group with a status-change fixture; ${STATIC_SWEEP}`
