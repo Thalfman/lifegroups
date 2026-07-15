@@ -98,6 +98,11 @@ export type SuperAdminConsoleData = {
   // there's no client — the panel reads the resolved usage_tracking flag to tell
   // "off" apart from "on but quiet".
   usageEvents: UsageEventsRow[];
+  // #899: set when the usage read failed, so the panel can say "couldn't load"
+  // instead of the false-healthy "tracking on but quiet" empty state. Kept out
+  // of the `errors` bag on purpose — usage telemetry is a soft, optional
+  // signal that shouldn't flip the console-wide error banner.
+  usageEventsError: string | null;
   // PRD-SAC6 Danger Zone impact previews. Null when the read failed / no client.
   cleanSlateImpact: CleanSlateImpact | null;
   // PRD-SAC6 (#293/#294): the latest un-restored snapshot for the revert/export
@@ -127,6 +132,13 @@ export type SuperAdminConsoleData = {
     members: string | null;
     leaders: string | null;
     platformConfig: string | null;
+    // #899: the Access workspace's coverage reads. Null off-workspace and on
+    // success; a message here (a) flips the console error banner / Readiness
+    // warning chip via buildSuperAdminConsoleStatus and (b) lets the coverage
+    // card render "couldn't load" instead of a false-empty pool or list.
+    overShepherds: string | null;
+    coverageLeaders: string | null;
+    coverageAssignments: string | null;
   };
 };
 
@@ -344,6 +356,7 @@ export function buildNoClientConsoleData(): SuperAdminConsoleData {
     appConfig: BUILT_IN_APP_CONFIG,
     auditEvents: [],
     usageEvents: [],
+    usageEventsError: notConfigured,
     cleanSlateImpact: null,
     latestCleanSlateSnapshot: null,
     historyResetState: null,
@@ -376,6 +389,9 @@ export function buildNoClientConsoleData(): SuperAdminConsoleData {
       members: notConfigured,
       leaders: notConfigured,
       platformConfig: notConfigured,
+      overShepherds: notConfigured,
+      coverageLeaders: notConfigured,
+      coverageAssignments: notConfigured,
     },
   };
 }
@@ -412,18 +428,30 @@ export async function buildSuperAdminConsoleData(
   let overShepherds: SuperAdminConsoleOverShepherd[] = [];
   let coverageLeaders: SuperAdminConsoleCoverageLeader[] = [];
   let coverageAssignments: SuperAdminConsoleCoverageAssignment[] = [];
+  let overShepherdsError: string | null = null;
+  let coverageLeadersError: string | null = null;
+  let coverageAssignmentsError: string | null = null;
   if (workspace === "access") {
-    [overShepherds, coverageLeaders, coverageAssignments] = await Promise.all([
-      reads.fetchActiveOverShepherds(),
-      reads.fetchCoverageAssignableLeaders(),
-      reads.fetchCurrentCoverageAssignments(),
-    ]);
+    const [overShepherdsResult, coverageLeadersResult, assignmentsResult] =
+      await Promise.all([
+        reads.fetchActiveOverShepherds(),
+        reads.fetchCoverageAssignableLeaders(),
+        reads.fetchCurrentCoverageAssignments(),
+      ]);
+    overShepherds = overShepherdsResult.data ?? [];
+    coverageLeaders = coverageLeadersResult.data ?? [];
+    coverageAssignments = assignmentsResult.data ?? [];
+    overShepherdsError = overShepherdsResult.error?.message ?? null;
+    coverageLeadersError = coverageLeadersResult.error?.message ?? null;
+    coverageAssignmentsError = assignmentsResult.error?.message ?? null;
   }
 
   let usageEvents: UsageEventsRow[] = [];
+  let usageEventsError: string | null = null;
   if (workspace === "usage") {
     const usageResult = await reads.fetchRecentUsageEvents({ limit: 200 });
     usageEvents = usageResult.data ?? [];
+    usageEventsError = usageResult.error?.message ?? null;
   }
 
   let cleanSlateImpact: CleanSlateImpact | null = null;
@@ -494,6 +522,9 @@ export async function buildSuperAdminConsoleData(
     leaders: leadersResult.error?.message ?? null,
     audit: auditResult.error?.message ?? null,
     platformConfig: platformConfigResult.error?.message ?? null,
+    overShepherds: overShepherdsError,
+    coverageLeaders: coverageLeadersError,
+    coverageAssignments: coverageAssignmentsError,
   };
 
   const assignableProfiles = buildAssignableProfiles(
@@ -524,9 +555,12 @@ export async function buildSuperAdminConsoleData(
     coverageLeaders,
     appConfig: decodeAppConfig(platformConfigResult.data),
     auditEvents: auditEvents as AuditEventsRow[],
-    // Usage telemetry is a soft signal: on a read failure show an empty panel
-    // rather than alarming with a banner — it's optional, off-by-default data.
+    // Usage telemetry is a soft signal: a read failure surfaces inside the
+    // panel (usageEventsError, #899) rather than via the console-wide banner —
+    // it's optional, off-by-default data, but a failure must not masquerade
+    // as "tracking on but quiet".
     usageEvents,
+    usageEventsError,
     cleanSlateImpact,
     latestCleanSlateSnapshot,
     historyResetState,

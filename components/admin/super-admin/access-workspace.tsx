@@ -144,6 +144,12 @@ function PeopleImportCard() {
 
 // Current coverage list (with end controls) + the assign form.
 function CoverageManagementCard({ data }: { data: SuperAdminConsoleData }) {
+  // #899: a failed read must never masquerade as an empty pool or an empty
+  // assignment list — "we don't know" and "there are none" render differently.
+  const poolsFailed = Boolean(
+    data.errors.overShepherds || data.errors.coverageLeaders
+  );
+  const assignmentsFailed = Boolean(data.errors.coverageAssignments);
   return (
     <Panel id="coverage">
       <PanelTitle>Coverage</PanelTitle>
@@ -151,12 +157,30 @@ function CoverageManagementCard({ data }: { data: SuperAdminConsoleData }) {
         Assign or end Over-Shepherd → Leader coverage. Edits write to the same
         records the cadence tiers and over-shepherd scoping already read.
       </p>
-      <CoverageAssignForm
-        overShepherds={data.overShepherds}
-        leaders={data.coverageLeaders}
-      />
+      {poolsFailed ? (
+        <p
+          role="alert"
+          className="m-0 rounded-sm border border-clay bg-claySoft px-3.5 py-3 font-sans text-sm text-clayDeep"
+        >
+          Couldn&rsquo;t load the Over-Shepherd or Shepherd pools the assign
+          form draws from. Refresh this page to try again.
+        </p>
+      ) : (
+        <CoverageAssignForm
+          overShepherds={data.overShepherds}
+          leaders={data.coverageLeaders}
+        />
+      )}
       <div className="grid gap-2">
-        {data.coverageAssignments.length === 0 ? (
+        {assignmentsFailed ? (
+          <p
+            role="alert"
+            className="m-0 rounded-sm border border-clay bg-claySoft px-3.5 py-3 font-sans text-sm text-clayDeep"
+          >
+            Couldn&rsquo;t load the current coverage assignments. Refresh this
+            page to try again.
+          </p>
+        ) : data.coverageAssignments.length === 0 ? (
           <p className="m-0 font-sans text-sm text-ink3">
             No active coverage assignments.
           </p>

@@ -41,16 +41,20 @@ export type SuperAdminConsoleCoverageLeader = {
 };
 
 // Active over-shepherds, name-sorted, for the assign form's target pool.
+// Returns ReadResult so a failed read is distinguishable from an empty pool
+// (#899) — and so the reads seam's instrument() emits its read_unit failure
+// line, which the old swallow-to-[] shape suppressed.
 export async function fetchActiveOverShepherds(
   client: ReadClient
-): Promise<SuperAdminConsoleOverShepherd[]> {
+): Promise<ReadResult<SuperAdminConsoleOverShepherd[]>> {
   const { data, error } = await client
     .from("over_shepherds")
     .select("id, full_name")
     .eq("active", true)
     .order("full_name", { ascending: true });
-  if (error || !data) return [];
-  return data as SuperAdminConsoleOverShepherd[];
+  if (error)
+    return { data: null, error: wrapError("fetchActiveOverShepherds", error) };
+  return { data: (data ?? []) as SuperAdminConsoleOverShepherd[], error: null };
 }
 
 const SUPER_ADMIN_COVERAGE_LEADER_COLUMNS = columns<
@@ -60,18 +64,27 @@ const SUPER_ADMIN_COVERAGE_LEADER_COLUMNS = columns<
 // Active leader / co-leader profiles, the eligible coverage subjects.
 export async function fetchCoverageAssignableLeaders(
   client: ReadClient
-): Promise<SuperAdminConsoleCoverageLeader[]> {
+): Promise<ReadResult<SuperAdminConsoleCoverageLeader[]>> {
   const { data, error } = await client
     .from("profiles")
     .select(SUPER_ADMIN_COVERAGE_LEADER_COLUMNS.select)
     .in("role", ["leader", "co_leader"])
     .eq("status", "active")
     .order("full_name", { ascending: true });
-  if (error || !data) return [];
-  return (data as Array<{ id: string; full_name: string }>).map((row) => ({
-    profile_id: row.id,
-    full_name: row.full_name,
-  }));
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchCoverageAssignableLeaders", error),
+    };
+  return {
+    data: ((data ?? []) as Array<{ id: string; full_name: string }>).map(
+      (row) => ({
+        profile_id: row.id,
+        full_name: row.full_name,
+      })
+    ),
+    error: null,
+  };
 }
 
 // Current (active) coverage assignments, with the shepherd + over-shepherd
@@ -85,21 +98,27 @@ const SUPER_ADMIN_COVERAGE_ASSIGNMENT_COLUMNS = columns<
 
 export async function fetchCurrentCoverageAssignments(
   client: ReadClient
-): Promise<SuperAdminConsoleCoverageAssignment[]> {
+): Promise<ReadResult<SuperAdminConsoleCoverageAssignment[]>> {
   const { data, error } = await client
     .from("shepherd_coverage_assignments")
     .select(SUPER_ADMIN_COVERAGE_ASSIGNMENT_COLUMNS.select)
     .eq("active", true)
     .order("assigned_at", { ascending: false });
-  if (error || !data) return [];
+  // Only the assignment-row read fails the result; the nested name lookups
+  // below keep degrading to the "Unknown …" fallback labels.
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchCurrentCoverageAssignments", error),
+    };
 
-  const rows = data as Array<{
+  const rows = (data ?? []) as Array<{
     id: string;
     shepherd_profile_id: string;
     over_shepherd_id: string;
     assigned_at: string;
   }>;
-  if (rows.length === 0) return [];
+  if (rows.length === 0) return { data: [], error: null };
 
   const shepherdIds = Array.from(
     new Set(rows.map((r) => r.shepherd_profile_id))
@@ -121,15 +140,19 @@ export async function fetchCurrentCoverageAssignments(
     overName.set(o.id, o.full_name);
   }
 
-  return rows.map((r) => ({
-    id: r.id,
-    shepherd_profile_id: r.shepherd_profile_id,
-    shepherd_name: profileName.get(r.shepherd_profile_id) ?? "Unknown shepherd",
-    over_shepherd_id: r.over_shepherd_id,
-    over_shepherd_name:
-      overName.get(r.over_shepherd_id) ?? "Unknown over-shepherd",
-    assigned_at: r.assigned_at,
-  }));
+  return {
+    data: rows.map((r) => ({
+      id: r.id,
+      shepherd_profile_id: r.shepherd_profile_id,
+      shepherd_name:
+        profileName.get(r.shepherd_profile_id) ?? "Unknown shepherd",
+      over_shepherd_id: r.over_shepherd_id,
+      over_shepherd_name:
+        overName.get(r.over_shepherd_id) ?? "Unknown over-shepherd",
+      assigned_at: r.assigned_at,
+    })),
+    error: null,
+  };
 }
 
 // Phase USAGE.1: read the recent usage_events for the Super Admin Console's

@@ -96,9 +96,9 @@ function emptyReads(
     fetchAllGroupLeaders: async () => ok([]),
     fetchRecentAuditEvents: async () => ok([]),
     fetchPlatformConfig: async () => ok(null),
-    fetchActiveOverShepherds: async () => [],
-    fetchCoverageAssignableLeaders: async () => [],
-    fetchCurrentCoverageAssignments: async () => [],
+    fetchActiveOverShepherds: async () => ok([]),
+    fetchCoverageAssignableLeaders: async () => ok([]),
+    fetchCurrentCoverageAssignments: async () => ok([]),
     fetchCleanSlateImpact: async () => fail("not provided"),
     fetchAuditEventCount: async () => ok(0),
     fetchLatestCleanSlateSnapshot: async () => ok(null),
@@ -198,7 +198,11 @@ describe("buildSuperAdminConsoleData", () => {
       members: null,
       leaders: null,
       platformConfig: null,
+      overShepherds: null,
+      coverageLeaders: null,
+      coverageAssignments: null,
     });
+    expect(data.usageEventsError).toBeNull();
     expect(rowTone(data.checklist, "supabase")).toBe("ok");
     expect(rowTone(data.checklist, "is_super_admin")).toBe("info");
     expect(rowTone(data.checklist, "groups")).toBe("ok");
@@ -264,6 +268,61 @@ describe("buildSuperAdminConsoleData", () => {
     );
 
     expect(data.accountDeletionRequestQueue).toEqual({ status: "failed" });
+  });
+
+  it("does not present a failed coverage read as an empty pool or list (#899)", async () => {
+    const data = await buildSuperAdminConsoleData(
+      emptyReads({
+        fetchActiveOverShepherds: async () => fail("over-shepherds boom"),
+        fetchCurrentCoverageAssignments: async () =>
+          ok([
+            {
+              id: "cov-1",
+              shepherd_profile_id: "p-1",
+              shepherd_name: "Avery Leader",
+              over_shepherd_id: "os-1",
+              over_shepherd_name: "Orla Over",
+              assigned_at: "2026-01-01",
+            },
+          ]),
+      }),
+      { currentActorProfileId: ACTOR_ID, workspace: "access" }
+    );
+
+    // The failed pool read is captured (flipping the console error banner via
+    // the errors bag) while the reads that succeeded still load.
+    expect(data.errors.overShepherds).toBe("over-shepherds boom");
+    expect(data.errors.coverageLeaders).toBeNull();
+    expect(data.errors.coverageAssignments).toBeNull();
+    expect(data.overShepherds).toEqual([]);
+    expect(data.coverageAssignments).toHaveLength(1);
+  });
+
+  it("does not surface coverage errors off the access workspace", async () => {
+    const data = await buildSuperAdminConsoleData(
+      emptyReads({
+        fetchActiveOverShepherds: async () => fail("never called"),
+      }),
+      { currentActorProfileId: ACTOR_ID, workspace: "readiness" }
+    );
+
+    expect(data.errors.overShepherds).toBeNull();
+    expect(data.errors.coverageLeaders).toBeNull();
+    expect(data.errors.coverageAssignments).toBeNull();
+  });
+
+  it("does not present a failed usage read as a quiet-but-tracking log (#899)", async () => {
+    const data = await buildSuperAdminConsoleData(
+      emptyReads({
+        fetchRecentUsageEvents: async () => fail("usage boom"),
+      }),
+      { currentActorProfileId: ACTOR_ID, workspace: "usage" }
+    );
+
+    expect(data.usageEventsError).toContain("usage boom");
+    expect(data.usageEvents).toEqual([]);
+    // Usage stays a panel-local (soft) signal — never the console-wide banner.
+    expect(Object.values(data.errors).filter(Boolean)).toHaveLength(0);
   });
 
   it("renders the no-client fallback with built-in config and all rows warned", async () => {
