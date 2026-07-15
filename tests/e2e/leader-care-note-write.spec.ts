@@ -146,8 +146,12 @@ test.describe("Shepherd-authored group care writes", () => {
       });
       if (await sealButton.isVisible()) {
         await sealButton.click();
+        // Assert on the toggle's STATE SPAN, not its transient status text:
+        // the FormStatus success message recomputes from the revalidated
+        // server prop, so "Sealed." / "Leadership can now read." can be
+        // replaced before Playwright samples it (the state span is stable).
         await expect(
-          adminPage.getByText("Sealed.", { exact: true })
+          adminView.getByText("Leadership visibility: Sealed", { exact: true })
         ).toBeVisible();
         await adminPage.reload();
         await adminPage
