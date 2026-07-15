@@ -131,8 +131,12 @@ test.describe("Shepherd-authored group care writes", () => {
       const adminPage = await adminContext.newPage();
       instrumentPage(adminPage, `${testInfo.title} [admin context]`);
       await signIn(adminPage, creds.admin.email!, creds.admin.password!);
-      await adminPage.goto(`/admin/shepherd-care/${authorProfileId}`);
-      await adminPage.getByRole("tab", { name: "Care notes & prayer" }).click();
+      // Deep-link the tab (?tab= is honored server-side), so the panel is in
+      // the initial HTML and reloads land back on it — clicking the client
+      // tablist right after a load can be swallowed pre-hydration.
+      await adminPage.goto(
+        `/admin/shepherd-care/${authorProfileId}?tab=care-notes`
+      );
       const adminView = adminPage.getByRole("main");
       await expect(
         adminView.getByText("Care notes & prayer requests")
@@ -153,10 +157,9 @@ test.describe("Shepherd-authored group care writes", () => {
         await expect(
           adminView.getByText("Leadership visibility: Sealed", { exact: true })
         ).toBeVisible();
+        // The URL still carries ?tab=care-notes, so the reload re-lands on
+        // the panel without a (hydration-racy) tab click.
         await adminPage.reload();
-        await adminPage
-          .getByRole("tab", { name: "Care notes & prayer" })
-          .click();
       }
 
       // Grant OFF: the sealed notice shows and neither body leaks.
@@ -173,7 +176,6 @@ test.describe("Shepherd-authored group care writes", () => {
         adminPage.getByText("Leadership can now read.", { exact: true })
       ).toBeVisible();
       await adminPage.reload();
-      await adminPage.getByRole("tab", { name: "Care notes & prayer" }).click();
       await expect(adminView.getByText("About their group")).toBeVisible();
       await expect(adminView.getByText(careBody)).toBeVisible();
       await expect(adminView.getByText(prayerBody)).toBeVisible();
