@@ -384,6 +384,7 @@ export function buildCareWorkspace({
             </section>
             <AdminFollowUpsShell
               data={followUpsData}
+              todayIso={todayIso}
               viewerId={viewerId}
               isSuperAdmin={isSuperAdmin}
             />

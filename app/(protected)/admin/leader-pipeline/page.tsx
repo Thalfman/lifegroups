@@ -2,6 +2,7 @@ import { PageBody } from "@/components/lg/PageHeader";
 import { adminPage } from "@/lib/admin/admin-page";
 import { loadLeaderPipelineData } from "@/components/admin/leader-pipeline/leader-pipeline-data";
 import { LeaderPipeline } from "@/components/admin/leader-pipeline/leader-pipeline";
+import { movedToFor } from "@/lib/nav/route-registry";
 
 // Kept off-nav by design — keep/retire/re-export decision: Keep (ADR 0033,
 // applied to this eighth surface retroactively). The pipeline component, data
@@ -14,7 +15,7 @@ import { LeaderPipeline } from "@/components/admin/leader-pipeline/leader-pipeli
 export const dynamic = "force-dynamic";
 
 export default adminPage({
-  frozenBanner: true,
+  frozenBanner: { movedTo: movedToFor("/admin/leader-pipeline") },
   load: () => loadLeaderPipelineData(),
   header: () => ({
     eyebrow: "People",

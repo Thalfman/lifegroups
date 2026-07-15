@@ -57,8 +57,11 @@ export type AdminPageSpec<TParams, TData> = {
   // the body suspends. When absent, the runner awaits the loader inline.
   fallback?: ReactNode;
   // Optional. Render the shared FrozenSurfaceBanner above the header (for the
-  // off-nav surfaces that still resolve by direct URL).
-  frozenBanner?: boolean;
+  // off-nav surfaces that still resolve by direct URL). The object form adds
+  // the banner's "this moved" link to the post-pivot home (#901) — pass the
+  // registry-derived movedToFor(<route>) so the target can't fork from
+  // lib/nav/route-registry (null = no live replacement, plain banner).
+  frozenBanner?: boolean | { movedTo: { href: string; label: string } | null };
 };
 
 // The streamed body: an async child so the loader runs INSIDE the Suspense
@@ -93,7 +96,15 @@ export function adminPage<TParams = undefined, TData = unknown>(
 
     const head = (
       <>
-        {spec.frozenBanner ? <FrozenSurfaceBanner /> : null}
+        {spec.frozenBanner ? (
+          <FrozenSurfaceBanner
+            movedTo={
+              typeof spec.frozenBanner === "object"
+                ? spec.frozenBanner.movedTo
+                : undefined
+            }
+          />
+        ) : null}
         <PageHeader
           eyebrow={eyebrow}
           title={title}

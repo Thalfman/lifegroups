@@ -218,6 +218,77 @@ export function routeEntry(path: string): RouteEntry | undefined {
   return ADMIN_ROUTE_REGISTRY.find((e) => e.path === path);
 }
 
+/**
+ * The registry-recorded canonical target for an alias/frozen route, or null
+ * when the entry has none (e.g. /admin/planning, kept as the Planning alias
+ * host per ADR 0033). The "this moved" affordances (#901) — the frozen-gate
+ * redirect and the FrozenSurfaceBanner link — derive their targets from this
+ * so the mapping can't fork from the registry.
+ */
+export function canonicalFor(path: string): string | null {
+  return routeEntry(path)?.canonical ?? null;
+}
+
+/**
+ * Current-vocabulary link labels for the canonical areas the frozen surfaces
+ * point at (CONTEXT.md terms — Prospects live in the Interest Funnel under
+ * Plan; never "Guests" / "check-in" phrasing in moved-to copy).
+ */
+export const CANONICAL_AREA_LABELS: Record<string, string> = {
+  "/admin/care": "Care",
+  "/admin/plan": "Plan — the Interest Funnel",
+  "/admin/multiply": "Multiply",
+};
+
+/**
+ * Per-route moved-to overrides for frozen surfaces whose registry `canonical`
+ * (the NAV active-owner) is not the surface that actually contains the work.
+ *
+ *   - The leader pipeline highlights Care in the nav, but its workflow was
+ *     re-homed to Multiply's Shepherds tab (ADR 0022/0030 — `?tab=leaders`
+ *     keeps the ADR 0025 code identity; "Shepherds" is the user-facing term).
+ *   - `null` suppresses the link entirely: per ADR 0033 the master calendar /
+ *     launch panels still live only in PlanningView (Multiply hosts no
+ *     calendar/launches/scenarios), weekly check-ins are "not yet
+ *     replaceable — no canonical surface covers them" (Care renders no weekly
+ *     review), and the all-groups health triage/editor lives only on
+ *     /admin/group-health (Care shows per-group health badges and deep-links
+ *     BACK here to edit — it does not host the triage table). Claiming a
+ *     "current home" for those would send an old bookmark to a page that
+ *     does not contain the work.
+ */
+const MOVED_TO_OVERRIDES: Record<
+  string,
+  { href: string; label: string } | null
+> = {
+  "/admin/leader-pipeline": {
+    href: "/admin/multiply?tab=leaders",
+    label: "Multiply — the Shepherds tab",
+  },
+  "/admin/calendar": null,
+  "/admin/launch-planning": null,
+  "/admin/check-ins": null,
+  "/admin/check-ins/[groupId]": null,
+  "/admin/group-health": null,
+};
+
+/**
+ * The moved-to link shape FrozenSurfaceBanner consumes: the per-route
+ * workflow-home override when one exists (null = the work has no live
+ * replacement surface, so no link), else the registry canonical.
+ */
+export function movedToFor(
+  path: string
+): { href: string; label: string } | null {
+  if (path in MOVED_TO_OVERRIDES) return MOVED_TO_OVERRIDES[path];
+  const canonical = canonicalFor(path);
+  if (!canonical) return null;
+  return {
+    href: canonical,
+    label: CANONICAL_AREA_LABELS[canonical] ?? canonical,
+  };
+}
+
 /** The set of canonical (`active`) route paths an alias/frozen entry may target. */
 export function activeRoutePaths(): Set<string> {
   return new Set(

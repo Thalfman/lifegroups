@@ -946,7 +946,11 @@ export function A11yHarnessClient({ demo }: { demo: HarnessDemoData }) {
         id="frozen-surface-banner"
         heading="Frozen surface banner (#596)"
       >
-        <FrozenSurfaceBanner />
+        {/* movedTo (#901): exercise the "this moved" link so axe covers its
+            contrast and accessible name alongside the base banner copy. */}
+        <FrozenSurfaceBanner
+          movedTo={{ href: "/admin/plan", label: "Plan — the Interest Funnel" }}
+        />
       </Surface>
 
       <Surface id="offline-error" heading="Offline / error state (#559)">
@@ -1165,11 +1169,17 @@ export function A11yHarnessClient({ demo }: { demo: HarnessDemoData }) {
       </Surface>
 
       <Surface id="follow-ups" heading="Follow-ups (admin queue)">
-        <AdminFollowUpsShell data={demo.followUps} />
+        <AdminFollowUpsShell
+          data={demo.followUps}
+          todayIso={demo.followUpsTodayIso}
+        />
       </Surface>
 
       <Surface id="follow-ups-empty" heading="Follow-ups (empty queue)">
-        <AdminFollowUpsShell data={demo.followUpsEmpty} />
+        <AdminFollowUpsShell
+          data={demo.followUpsEmpty}
+          todayIso={demo.followUpsTodayIso}
+        />
       </Surface>
 
       {/* Leader care follow-ups (#268, Admin Interaction Model req 1). Proves

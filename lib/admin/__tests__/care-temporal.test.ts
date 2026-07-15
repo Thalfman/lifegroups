@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatDueLabel, laterIso } from "@/lib/admin/care-temporal";
+import {
+  formatDueLabel,
+  isOverdueIso,
+  laterIso,
+} from "@/lib/admin/care-temporal";
 
 describe("formatDueLabel", () => {
   it("labels today, tomorrow, and upcoming", () => {
@@ -10,6 +14,17 @@ describe("formatDueLabel", () => {
   it("labels overdue with singular/plural", () => {
     expect(formatDueLabel(-1)).toBe("Overdue 1 day");
     expect(formatDueLabel(-3)).toBe("Overdue 3 days");
+  });
+});
+
+describe("isOverdueIso", () => {
+  it("is true only strictly before today", () => {
+    expect(isOverdueIso("2026-06-10", "2026-06-11")).toBe(true);
+    expect(isOverdueIso("2026-06-11", "2026-06-11")).toBe(false);
+    expect(isOverdueIso("2026-06-12", "2026-06-11")).toBe(false);
+  });
+  it("a null due date is never overdue", () => {
+    expect(isOverdueIso(null, "2026-06-11")).toBe(false);
   });
 });
 

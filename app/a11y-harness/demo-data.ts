@@ -82,6 +82,10 @@ function fail<T>(message: string): Promise<ReadResult<T>> {
 // (#267).
 // ---------------------------------------------------------------------------
 
+// Fixed "today" for the demo queue so the 2026-05-20 due date renders the
+// Overdue badge deterministically, independent of when the harness runs.
+const DEMO_FOLLOW_UPS_TODAY_ISO = "2026-06-01";
+
 const FOLLOW_UP_QUEUE: AdminFollowUpEntry[] = [
   {
     id: "afu-1",
@@ -479,6 +483,9 @@ function demoMultiplyShepherdReads(): LeaderPipelineReads {
 export type HarnessDemoData = {
   followUps: AdminFollowUpsData;
   followUpsEmpty: AdminFollowUpsData;
+  // Fixed church-local "today" for the follow-up queue surfaces so the demo
+  // due dates render deterministic badges (see DEMO_FOLLOW_UPS_TODAY_ISO).
+  followUpsTodayIso: string;
   settings: SettingsShellData;
   settingsErrors: SettingsShellData;
   people: PeopleManagementData;
@@ -512,6 +519,7 @@ export async function buildHarnessDemoData(): Promise<HarnessDemoData> {
   return {
     followUps,
     followUpsEmpty,
+    followUpsTodayIso: DEMO_FOLLOW_UPS_TODAY_ISO,
     settings: settingsData,
     settingsErrors,
     people,

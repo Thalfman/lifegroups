@@ -23,6 +23,19 @@ export function formatDueLabel(daysFromToday: number): string {
   return daysFromToday === 1 ? "Due tomorrow" : `Due in ${daysFromToday} days`;
 }
 
+// The single overdue-boundary rule shared by the care follow-ups
+// (lib/admin/shepherd-care-follow-ups.ts) and the general follow-up queue
+// (lib/admin/follow-up-queue.ts): a dated item is overdue only when its due
+// date is strictly before the caller's church-local todayIso (churchTodayIso,
+// lib/shared/church-time). Lexicographic compare is date order for
+// YYYY-MM-DD, so no Date parsing — and no timezone — can creep in here.
+export function isOverdueIso(
+  dueDateIso: string | null,
+  todayIso: string
+): boolean {
+  return dueDateIso !== null && dueDateIso < todayIso;
+}
+
 // The later of two ISO YYYY-MM-DD dates (lexicographic compare is date order),
 // treating null as "absent". Returns null only when both are null. Used to floor
 // a staleness clock at the later of real last-contact and a reset baseline.

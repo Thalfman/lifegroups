@@ -15,6 +15,7 @@
 import { PageBody } from "@/components/lg/PageHeader";
 import { CheckInReviewShell } from "@/components/admin/check-in-review-shell";
 import { adminPage } from "@/lib/admin/admin-page";
+import { movedToFor } from "@/lib/nav/route-registry";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   buildWeekOptions,
@@ -50,7 +51,7 @@ const EMPTY_DATA: (meetingWeek: string) => WeeklyReviewData = (
 });
 
 export default adminPage({
-  frozenBanner: true,
+  frozenBanner: { movedTo: movedToFor("/admin/check-ins") },
   params: (raw) => ({ meetingWeek: validateWeekParam(raw.searchParams.week) }),
   load: async ({ meetingWeek }) => {
     const client = await createSupabaseServerClient();

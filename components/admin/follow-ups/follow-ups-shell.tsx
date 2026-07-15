@@ -62,10 +62,15 @@ const STATUS_LABEL: Record<FollowUpStatus, string> = {
 
 export function AdminFollowUpsShell({
   data,
+  todayIso,
   viewerId,
   isSuperAdmin = false,
 }: {
   data: AdminFollowUpsData;
+  // Church-local today (churchTodayIso, lib/shared/church-time), computed on
+  // the server so the due window never depends on the browser's timezone
+  // (#898). Due dates are date-only strings compared in string space.
+  todayIso: string;
   // Signed-in profile id, used only to scope this admin's saved filters (#263).
   viewerId?: string | null;
   // SAD9: super-admin-only inline permanent delete of a follow-up row.
@@ -142,8 +147,7 @@ export function AdminFollowUpsShell({
     validate: isFollowUpsViewSnapshot,
   });
 
-  const dueWindow = useMemo(() => followUpDueWindow(new Date()), []);
-  const { today } = dueWindow;
+  const dueWindow = useMemo(() => followUpDueWindow(todayIso), [todayIso]);
 
   const filtered = useMemo(
     () =>
@@ -414,7 +418,7 @@ export function AdminFollowUpsShell({
                           membersById={membersById}
                           guestsById={guestsById}
                           profilesById={profilesById}
-                          today={today}
+                          todayIso={todayIso}
                           isSuperAdmin={isSuperAdmin}
                         />
                       </li>
@@ -454,7 +458,7 @@ export function AdminFollowUpsShell({
 }
 
 // Memoized: the queue re-renders on every filter/status-tab change, but the
-// lookup Maps and `today` are stable (memoized in the parent) and each followUp
+// lookup Maps and `todayIso` are stable (from the parent) and each followUp
 // object is stable, so rows that stayed in the list skip re-rendering.
 const FollowUpRow = memo(function FollowUpRow({
   followUp,
@@ -462,7 +466,7 @@ const FollowUpRow = memo(function FollowUpRow({
   membersById,
   guestsById,
   profilesById,
-  today,
+  todayIso,
   isSuperAdmin,
 }: {
   followUp: AdminFollowUpEntry;
@@ -470,7 +474,7 @@ const FollowUpRow = memo(function FollowUpRow({
   membersById: Map<string, MembersRow>;
   guestsById: Map<string, GuestDirectoryEntry>;
   profilesById: Map<string, ProfilesRow>;
-  today: Date;
+  todayIso: string;
   isSuperAdmin: boolean;
 }) {
   const group = followUp.related_group_id
@@ -486,7 +490,7 @@ const FollowUpRow = memo(function FollowUpRow({
     ? profilesById.get(followUp.assigned_to)
     : null;
 
-  const isOverdue = isFollowUpOverdue(followUp, today);
+  const isOverdue = isFollowUpOverdue(followUp, todayIso);
 
   const links: string[] = [];
   if (group) links.push(`Group: ${group.name}`);

@@ -1,5 +1,6 @@
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
+import { movedToFor } from "@/lib/nav/route-registry";
 import { requireAdmin } from "@/lib/auth/session";
 import { loadGroupHealthData } from "@/components/admin/group-health/group-health-data";
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
@@ -24,7 +25,9 @@ function GroupHealthNotice({
 }) {
   return (
     <>
-      <FrozenSurfaceBanner />
+      <FrozenSurfaceBanner
+        movedTo={movedToFor("/admin/group-health") ?? undefined}
+      />
       <PageHeader eyebrow="Groups" title="Group health" />
       <PageBody>
         <p
@@ -71,7 +74,9 @@ export default async function GroupHealthPage() {
 
   return (
     <>
-      <FrozenSurfaceBanner />
+      <FrozenSurfaceBanner
+        movedTo={movedToFor("/admin/group-health") ?? undefined}
+      />
       <PageHeader
         eyebrow="Groups"
         title="Group health"

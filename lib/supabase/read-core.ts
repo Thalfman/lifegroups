@@ -12,20 +12,6 @@ export function wrapError(prefix: string, err: unknown): Error {
 }
 
 /**
- * UTC-anchored YYYY-MM-DD string for "today", used by every shepherd-care
- * read/composition path so date math (stale window, overdue touchpoints,
- * upcoming window) stays consistent across server timezones.
- */
-export function currentUtcDateIso(): string {
-  const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-  )
-    .toISOString()
-    .slice(0, 10);
-}
-
-/**
  * Decode a raw jsonb object (e.g. a grade row's `criterion_scores`) into a
  * clean `Record<string, number>` at the trust boundary, dropping any
  * non-finite or non-numeric value. Used by the Care / leader / multiplication

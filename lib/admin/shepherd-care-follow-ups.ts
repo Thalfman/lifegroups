@@ -8,15 +8,13 @@
 // pastoral content.
 
 import type { ShepherdCareFollowUpStatus } from "@/types/enums";
+import { isOverdueIso } from "@/lib/admin/care-temporal";
 
-export const SHEPHERD_CARE_FOLLOW_UP_STATUSES: readonly ShepherdCareFollowUpStatus[] = [
-  "open",
-  "in_progress",
-  "done",
-];
+export const SHEPHERD_CARE_FOLLOW_UP_STATUSES: readonly ShepherdCareFollowUpStatus[] =
+  ["open", "in_progress", "done"];
 
 export function isShepherdCareFollowUpStatus(
-  value: unknown,
+  value: unknown
 ): value is ShepherdCareFollowUpStatus {
   return (
     typeof value === "string" &&
@@ -42,9 +40,12 @@ export type CareFollowUpBucket = "overdue" | "open" | "in_progress" | "done";
  */
 export function canTransitionFollowUpStatus(
   from: ShepherdCareFollowUpStatus,
-  to: ShepherdCareFollowUpStatus,
+  to: ShepherdCareFollowUpStatus
 ): boolean {
-  if (!isShepherdCareFollowUpStatus(from) || !isShepherdCareFollowUpStatus(to)) {
+  if (
+    !isShepherdCareFollowUpStatus(from) ||
+    !isShepherdCareFollowUpStatus(to)
+  ) {
     return false;
   }
   return from !== to;
@@ -55,29 +56,29 @@ export function canTransitionFollowUpStatus(
  * completed_at is owned by the done state: set on entry, cleared on exit.
  */
 export function followUpCompletionEffect(
-  to: ShepherdCareFollowUpStatus,
+  to: ShepherdCareFollowUpStatus
 ): "set" | "clear" {
   return to === "done" ? "set" : "clear";
 }
 
 /**
  * A follow-up is overdue when it has a due date in the past and is not yet
- * done. "Past" uses strict `<` against the caller's UTC `todayIso`, so a
- * task due today is not yet overdue — matching the next-touchpoint overdue
- * convention in the care dashboard.
+ * done. "Past" is the shared isOverdueIso rule (strict `<` against the
+ * caller's church-local `todayIso` from churchTodayIso,
+ * lib/shared/church-time), so a task due today is not yet overdue — matching
+ * the next-touchpoint overdue convention in the care dashboard.
  */
 export function isFollowUpOverdue(
   followUp: CareFollowUpLike,
-  todayIso: string,
+  todayIso: string
 ): boolean {
   if (followUp.status === "done") return false;
-  if (followUp.due_date === null) return false;
-  return followUp.due_date < todayIso;
+  return isOverdueIso(followUp.due_date, todayIso);
 }
 
 export function bucketFollowUp(
   followUp: CareFollowUpLike,
-  todayIso: string,
+  todayIso: string
 ): CareFollowUpBucket {
   if (followUp.status === "done") return "done";
   if (isFollowUpOverdue(followUp, todayIso)) return "overdue";
@@ -96,7 +97,7 @@ export type CareFollowUpCounts = {
 
 export function summarizeFollowUps(
   followUps: readonly CareFollowUpLike[],
-  todayIso: string,
+  todayIso: string
 ): CareFollowUpCounts {
   const counts: CareFollowUpCounts = {
     open: 0,
@@ -135,7 +136,7 @@ export function summarizeFollowUps(
 export function compareFollowUpUrgency(
   a: CareFollowUpLike,
   b: CareFollowUpLike,
-  todayIso: string,
+  todayIso: string
 ): number {
   const aDone = a.status === "done";
   const bDone = b.status === "done";
@@ -161,7 +162,7 @@ export function compareFollowUpUrgency(
  */
 export function sortFollowUpsByUrgency<T extends CareFollowUpLike>(
   followUps: readonly T[],
-  todayIso: string,
+  todayIso: string
 ): T[] {
   return followUps
     .map((value, index) => ({ value, index }))

@@ -17,11 +17,12 @@ import { GuestsManagementShell } from "@/components/admin/guests/guests-shell";
 import { loadGuestsData } from "@/components/admin/guests/guests-data";
 import { adminPage } from "@/lib/admin/admin-page";
 import { isSuperAdminRole } from "@/lib/auth/roles";
+import { movedToFor } from "@/lib/nav/route-registry";
 
 export const dynamic = "force-dynamic";
 
 export default adminPage({
-  frozenBanner: true,
+  frozenBanner: { movedTo: movedToFor("/admin/guests") },
   load: async (_params, session) => ({
     data: await loadGuestsData(),
     isSuperAdmin: isSuperAdminRole(session.profile.role),
