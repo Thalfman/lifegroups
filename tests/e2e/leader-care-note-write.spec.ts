@@ -175,8 +175,17 @@ test.describe("Shepherd-authored group care writes", () => {
       await expect(
         adminPage.getByText("Leadership can now read.", { exact: true })
       ).toBeVisible();
-      await adminPage.reload();
-      await expect(adminView.getByText("About their group")).toBeVisible();
+      // The first request after a server action can hit the CI stack's
+      // intermittent >30s stall (#839) — retry the reload until the fresh
+      // force-dynamic read paints the opened notes, the same settle-then-
+      // reload posture the funnel/pipeline specs use. The URL still carries
+      // ?tab=care-notes, so each reload lands back on the panel.
+      await expect(async () => {
+        await adminPage.reload({ timeout: 15_000 }).catch(() => {});
+        await expect(adminView.getByText("About their group")).toBeVisible({
+          timeout: 10_000,
+        });
+      }).toPass({ timeout: 60_000 });
       await expect(adminView.getByText(careBody)).toBeVisible();
       await expect(adminView.getByText(prayerBody)).toBeVisible();
 
