@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { markFirstRunOrientationSeenAction } from "@/app/(protected)/orientation-actions";
 
@@ -113,6 +113,9 @@ export function OrientationPanel({
   /** Whether this profile has already dismissed the orientation (server flag). */
   initiallySeen: boolean;
 }) {
+  // Per-instance heading id: more than one panel can be mounted and open at
+  // once (the a11y harness does), so a hard-coded id would duplicate.
+  const headingId = useId();
   // Open on first run; collapsed behind "View orientation" once seen.
   const [open, setOpen] = useState(!initiallySeen);
   // Once true, closing never re-fires the persistence action.
@@ -141,11 +144,11 @@ export function OrientationPanel({
 
   return (
     <section
-      aria-labelledby="orientation-heading"
+      aria-labelledby={headingId}
       className="mb-4 max-w-card rounded-lg border border-sageSoft bg-sageTint p-card md:p-6"
     >
       <h2
-        id="orientation-heading"
+        id={headingId}
         className="m-0 mb-1.5 font-display text-lg font-medium text-ink"
       >
         {TITLE}
