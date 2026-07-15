@@ -6,12 +6,7 @@ import {
   signIn,
   uniqueBody,
 } from "./helpers";
-import {
-  e2eDbEnv,
-  fetchAuditEvents,
-  findGroupIdByName,
-  findProfileIdByEmail,
-} from "./db";
+import { e2eDbEnv, fetchAuditEvents, findProfileIdByEmail } from "./db";
 
 // Shepherd-AUTHORED write flows, end to end (#903; ADR 0020). The existing
 // leader-surface E2E presence was route/visibility handshakes; before Shepherd
@@ -30,14 +25,18 @@ import {
 // so it cannot be driven end-to-end on the seeded stack. The Prayer Request is
 // the other real, audited, non-frozen Shepherd write on the same surface.
 //
-// Seeded fixtures (scripts/test-auth-shared.ts): "Test Leader One" leads
-// "TEST Life Group A"; "Test Leader Two" leads "TEST Life Group B" and is the
-// unrelated-Shepherd negative control. Bodies are unique per run and the
-// transparency grant is restored to OFF afterward, so re-runs against a
-// persistent local stack stay green.
+// Seeded fixtures (scripts/test-auth-shared.ts): "Test Leader One" is the
+// authoring Shepherd; "Test Leader Two" leads a DIFFERENT group and is the
+// unrelated-Shepherd negative control. The seed REUSES an existing demo-safe
+// group when one is active (resolveTestGroup — e.g. "Northside Young Adults"
+// from the operational seed) and only creates "TEST Life Group A" as a
+// fallback, so the group NAME is not stable — the spec drives the FIRST care
+// space on the Shepherd's dashboard and keys every later assertion off the
+// group id, never the name. Bodies are unique per run and the transparency
+// grant is restored to OFF afterward, so re-runs against a persistent local
+// stack stay green.
 
 const creds = e2eCreds();
-const GROUP_NAME = "TEST Life Group A";
 const CARE_NOTE_LABEL = "Care note (max 4000 chars)";
 const PRAYER_LABEL = "Prayer request (max 4000 chars)";
 
@@ -47,17 +46,23 @@ test.describe("Shepherd-authored group care writes", () => {
     browser,
   }, testInfo) => {
     test.skip(
-      !creds.leader.present || !creds.admin.present || e2eDbEnv() === null,
+      !creds.leader.present ||
+        !creds.leader2.present ||
+        !creds.admin.present ||
+        e2eDbEnv() === null,
       "Seeded E2E creds / local service env not configured (run via scripts/e2e.sh)"
     );
 
     const since = new Date().toISOString();
 
     // ---- Author: the seeded Shepherd writes both note kinds for their group.
+    // Any group they lead is a valid subject for group-scoped writes; take the
+    // dashboard's first care space rather than assuming a group name.
     await signIn(page, creds.leader.email!, creds.leader.password!);
     await page.goto("/leader");
     await page
-      .getByRole("link", { name: `Care notes for ${GROUP_NAME}` })
+      .getByRole("link", { name: /^Care notes for / })
+      .first()
       .click();
     await page.waitForURL(/\/leader\/[0-9a-f-]{36}\/care$/);
     const groupId = new URL(page.url()).pathname.split("/").at(-2)!;
@@ -179,31 +184,32 @@ test.describe("Shepherd-authored group care writes", () => {
     } finally {
       await adminContext.close();
     }
-  });
 
-  test("an unrelated Shepherd never sees another group's care space", async ({
-    page,
-  }) => {
-    // The ladder's negative arm: Test Leader Two (TEST Life Group B) neither
-    // sees Group A on their dashboard nor reaches its care space — the
-    // assigned-group guard bounces them back to /leader, so nothing a Group A
-    // Shepherd wrote can ever render for them.
-    test.skip(
-      !creds.leader2.present || e2eDbEnv() === null,
-      "Second seeded Shepherd / local service env not configured (run via scripts/e2e.sh)"
-    );
+    // ---- Ladder, negative arm: an unrelated Shepherd (Test Leader Two, who
+    // leads a different group) neither sees this group's care space on their
+    // dashboard nor reaches it directly — the assigned-group guard bounces
+    // them back to /leader, so nothing this Shepherd wrote can render for a
+    // peer.
+    const peerContext = await browser.newContext({
+      baseURL: testInfo.project.use.baseURL,
+    });
+    try {
+      const peerPage = await peerContext.newPage();
+      instrumentPage(peerPage, `${testInfo.title} [unrelated shepherd]`);
+      await signIn(peerPage, creds.leader2.email!, creds.leader2.password!);
+      await peerPage.goto("/leader");
+      await expect(
+        peerPage.locator(`a[href="/leader/${groupId}/care"]`)
+      ).toHaveCount(0);
 
-    const groupAId = await findGroupIdByName(GROUP_NAME);
-    await signIn(page, creds.leader2.email!, creds.leader2.password!);
-    await page.goto("/leader");
-    await expect(
-      page.getByRole("link", { name: `Care notes for ${GROUP_NAME}` })
-    ).toHaveCount(0);
-
-    await page.goto(`/leader/${groupAId}/care`);
-    await page.waitForURL(
-      (url) => url.pathname === "/leader" || url.pathname === "/unauthorized"
-    );
-    await expect(page.getByRole("main").getByText(GROUP_NAME)).toHaveCount(0);
+      await peerPage.goto(`/leader/${groupId}/care`);
+      await peerPage.waitForURL(
+        (url) => url.pathname === "/leader" || url.pathname === "/unauthorized"
+      );
+      await expect(peerPage.getByText(careBody)).toHaveCount(0);
+      await expect(peerPage.getByText(prayerBody)).toHaveCount(0);
+    } finally {
+      await peerContext.close();
+    }
   });
 });

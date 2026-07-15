@@ -165,25 +165,6 @@ export async function findProfileIdByEmail(email: string): Promise<string> {
   return data.id as string;
 }
 
-/**
- * Look up a seeded group's id by exact name (fixture read, not an app path).
- */
-export async function findGroupIdByName(name: string): Promise<string> {
-  const client = e2eServiceClient();
-  const { data, error } = await client
-    .from("groups")
-    .select("id")
-    .eq("name", name)
-    .maybeSingle();
-  if (error) {
-    throw new Error(`groups read failed for ${name}: ${error.message}`);
-  }
-  if (!data?.id) {
-    throw new Error(`no groups row named ${name} — run scripts/e2e.sh`);
-  }
-  return data.id as string;
-}
-
 export type E2eSuperAdmin = {
   readonly email: string;
   readonly password: string;
