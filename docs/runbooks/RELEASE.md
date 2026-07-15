@@ -107,7 +107,12 @@ schema story:
 | `SUPABASE_DB_PASSWORD`  | The production database password (Project Settings → Database)                     |
 
 Also create the **`production` environment** (Settings → Environments) with a
-required reviewer, so every apply pauses for a human approval click.
+required reviewer, so every apply pauses for a human approval click. That
+approval is also the **ref check**: a dispatched run executes the workflow and
+scripts from the selected ref, so approve only a reviewed branch — and read
+any diff touching `.github/workflows/prod-migrations.yml` or
+`scripts/check-migration-drift.sh` with extra care. (The unapproved
+drift-check job protects itself: on dispatch it runs only from `main`.)
 
 ## Edge Functions
 

@@ -28,6 +28,17 @@
 # Both jobs fail fast with an explicit message when any secret is absent —
 # never silently skip. The `production` environment on the apply job is where
 # a required-reviewer approval gate attaches (Settings → Environments).
+#
+# REF-TRUST MODEL (a dispatched run executes the WORKFLOW AND SCRIPTS from the
+# selected ref, not just its migrations):
+#   * drift-check loads production secrets with NO approval gate, so it only
+#     ever runs from `main`'s code: push/schedule already do, and a dispatch
+#     from any other ref skips it (the `if` below) instead of handing that
+#     ref's code the secrets.
+#   * apply runs from the dispatched PR branch BY DESIGN (schema-first), and
+#     the `production` required-reviewer approval is exactly the human check
+#     of that ref: approve only a reviewed branch, and treat any diff touching
+#     this workflow or scripts/check-migration-drift.sh with extra care.
 name: Production migrations
 
 on:
@@ -44,7 +55,8 @@ on:
         description: >-
           Apply pending supabase/migrations/* to PRODUCTION (run from the
           approved branch, before merging — schema first, then code). Leave
-          unchecked for a drift check only.
+          unchecked for a drift check only (drift checks run only when
+          dispatched from main).
         type: boolean
         default: false
 
@@ -59,8 +71,13 @@ jobs:
     name: Prod vs supabase/migrations drift check
     # On an apply dispatch the apply job below does its own before/after
     # parity verification; running this too would fail on the very pending
-    # migrations the apply is about to ship.
-    if: github.event_name != 'workflow_dispatch' || !inputs.apply
+    # migrations the apply is about to ship. On a drift-only dispatch, run
+    # ONLY from main: this job has no approval gate, so an arbitrary ref must
+    # never get to execute its (potentially modified) code with production
+    # secrets loaded.
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      (!inputs.apply && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -136,9 +153,12 @@ jobs:
       - name: Apply pending migrations (supabase db push)
         # Applies pending supabase/migrations/* in file order, recording each
         # under its repo version number — the same command as the runbook's
-        # manual step. A failed push leaves the failed migration unrecorded;
-        # fix the SQL and re-run (never hand-edit schema_migrations).
-        run: supabase db push
+        # manual step. --yes answers the CLI's confirmation prompt (there is
+        # no TTY here; without it the one-click apply would stall or fail
+        # after the environment approval). A failed push leaves the failed
+        # migration unrecorded; fix the SQL and re-run (never hand-edit
+        # schema_migrations).
+        run: supabase db push --yes
 
       - name: Verify parity after apply
         run: ./scripts/check-migration-drift.sh
