@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { PageSkeleton } from "@/components/lg/PageSkeleton";
 import {
   SuperAdminConsoleShell,
   type SuperAdminTestAccountsSummary,
@@ -6,8 +8,12 @@ import {
 import { loadSuperAdminConsoleData } from "@/components/admin/super-admin/console-data";
 import { TestAccountsPanel } from "@/components/admin/test-accounts-panel";
 import { requireSuperAdmin } from "@/lib/auth/session";
+import { measureReadBundle } from "@/lib/observability/read-timing";
 import { testAccountsStatus } from "./test-accounts-actions";
-import { resolveSuperAdminWorkspaceId } from "@/lib/admin/super-admin-console-model";
+import {
+  resolveSuperAdminWorkspaceId,
+  type SuperAdminWorkspaceId,
+} from "@/lib/admin/super-admin-console-model";
 
 export const dynamic = "force-dynamic";
 
@@ -61,16 +67,57 @@ export default async function AdminSuperAdminPage({
 }: {
   searchParams?: Promise<{ workspace?: string | string[] }>;
 }) {
+  // Guard and tab resolution stay outside the Suspense boundary (both are
+  // cheap, and redirect() must not fire from inside a streamed body); the
+  // console's read fan-out streams behind it (#900) so the header flushes
+  // immediately instead of waiting on up to 14 reads for the danger workspace.
   const session = await requireSuperAdmin();
   const activeWorkspaceId = resolveSuperAdminWorkspaceId(
     (await searchParams)?.workspace
   );
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Super admin"
+        title="Super Admin"
+        lede="Owner and operator console for launch readiness, access, configuration, diagnostics, audit, usage, and guarded danger actions."
+        maxWidth={CONSOLE_MAX_WIDTH}
+      />
+      <Suspense fallback={<PageSkeleton bodyOnly />}>
+        <ConsoleBody
+          profileId={session.profile.id}
+          activeWorkspaceId={activeWorkspaceId}
+        />
+      </Suspense>
+    </>
+  );
+}
+
+async function ConsoleBody({
+  profileId,
+  activeWorkspaceId,
+}: {
+  profileId: string;
+  activeWorkspaceId: SuperAdminWorkspaceId;
+}) {
   const loadTestAccounts =
     activeWorkspaceId === "readiness" || activeWorkspaceId === "diagnostics";
-  const [data, initialTestAccounts] = await Promise.all([
-    loadSuperAdminConsoleData(session.profile.id, activeWorkspaceId),
-    loadTestAccounts ? testAccountsStatus() : Promise.resolve(null),
-  ]);
+  // Timed so the production `read_bundle` logs attribute this surface's read
+  // latency (the signal #900's streaming split is measured by); `describe`
+  // carries only the workspace id and an error count — never data.
+  const [data, initialTestAccounts] = await measureReadBundle(
+    "super_admin_console",
+    () =>
+      Promise.all([
+        loadSuperAdminConsoleData(profileId, activeWorkspaceId),
+        loadTestAccounts ? testAccountsStatus() : Promise.resolve(null),
+      ]),
+    ([consoleData]) => ({
+      workspace: activeWorkspaceId,
+      error_count: Object.values(consoleData.errors).filter(Boolean).length,
+    })
+  );
   const testAccountsSummary = initialTestAccounts
     ? buildTestAccountsSummary(initialTestAccounts)
     : {
@@ -87,25 +134,17 @@ export default async function AdminSuperAdminPage({
   ) : null;
 
   return (
-    <>
-      <PageHeader
-        eyebrow="Super admin"
-        title="Super Admin"
-        lede="Owner and operator console for launch readiness, access, configuration, diagnostics, audit, usage, and guarded danger actions."
-        maxWidth={CONSOLE_MAX_WIDTH}
+    /* ADR 0027: the setup "Import people" deep-link lands deep in the
+        console (the People-import panel, via #people-import); the return
+        affordance renders AT that panel (SetupReturnBanner), not page-top,
+        since the hash handler scrolls past anything up here. */
+    <PageBody maxWidth={CONSOLE_MAX_WIDTH}>
+      <SuperAdminConsoleShell
+        data={data}
+        activeWorkspaceId={activeWorkspaceId}
+        testAccountsSummary={testAccountsSummary}
+        testAccountsPanel={testAccountsPanel}
       />
-      {/* ADR 0027: the setup "Import people" deep-link lands deep in the
-          console (the People-import panel, via #people-import); the return
-          affordance renders AT that panel (SetupReturnBanner), not page-top,
-          since the hash handler scrolls past anything up here. */}
-      <PageBody maxWidth={CONSOLE_MAX_WIDTH}>
-        <SuperAdminConsoleShell
-          data={data}
-          activeWorkspaceId={activeWorkspaceId}
-          testAccountsSummary={testAccountsSummary}
-          testAccountsPanel={testAccountsPanel}
-        />
-      </PageBody>
-    </>
+    </PageBody>
   );
 }
