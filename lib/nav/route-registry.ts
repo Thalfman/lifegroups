@@ -240,10 +240,29 @@ export const CANONICAL_AREA_LABELS: Record<string, string> = {
   "/admin/multiply": "Multiply",
 };
 
-/** The moved-to link shape FrozenSurfaceBanner consumes, registry-derived. */
+/**
+ * Per-route moved-to overrides for frozen surfaces whose registry `canonical`
+ * (the NAV active-owner) is not the surface that actually contains the work.
+ * The leader pipeline highlights Care in the nav, but its workflow was
+ * re-homed to Multiply's Shepherds tab (ADR 0022/0030 — `?tab=leaders` keeps
+ * the ADR 0025 code identity; "Shepherds" is the user-facing term).
+ */
+const MOVED_TO_OVERRIDES: Record<string, { href: string; label: string }> = {
+  "/admin/leader-pipeline": {
+    href: "/admin/multiply?tab=leaders",
+    label: "Multiply — the Shepherds tab",
+  },
+};
+
+/**
+ * The moved-to link shape FrozenSurfaceBanner consumes: the per-route
+ * workflow-home override when one exists, else the registry canonical.
+ */
 export function movedToFor(
   path: string
 ): { href: string; label: string } | null {
+  const override = MOVED_TO_OVERRIDES[path];
+  if (override) return override;
   const canonical = canonicalFor(path);
   if (!canonical) return null;
   return {

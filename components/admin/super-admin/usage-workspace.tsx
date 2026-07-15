@@ -48,22 +48,24 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
       </p>
 
       {/* #899: a failed usage read must not render as "tracking on but quiet"
-          — that empty state is a genuine fact, this one is "we don't know". */}
+          — that empty state is a genuine fact, this one is "we don't know". So
+          on failure the alert REPLACES the shell: rendering the shell below it
+          would show its quiet empty state and reintroduce the false signal. */}
       {data.usageEventsError ? (
         <p
           role="alert"
           className="m-0 rounded-sm border border-clay bg-claySoft px-3.5 py-3 font-sans text-sm text-clayDeep"
         >
-          Couldn&rsquo;t load usage events — the log below may be empty or
-          incomplete. Refresh this page to try again.
+          Couldn&rsquo;t load usage events, so the activity log is unavailable.
+          Refresh this page to try again.
         </p>
-      ) : null}
-
-      <UsagePanelShell
-        events={data.usageEvents}
-        people={people}
-        featureFlags={data.appConfig.featureFlags}
-      />
+      ) : (
+        <UsagePanelShell
+          events={data.usageEvents}
+          people={people}
+          featureFlags={data.appConfig.featureFlags}
+        />
+      )}
     </Panel>
   );
 }

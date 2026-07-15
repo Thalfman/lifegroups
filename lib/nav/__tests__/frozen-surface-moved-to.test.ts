@@ -62,6 +62,20 @@ describe("canonicalFor / movedToFor derive from the registry", () => {
       label: "Care",
     });
   });
+
+  it("overrides the leader pipeline's moved-to target to its workflow home", () => {
+    // The registry canonical (/admin/care) is only the nav active-owner; the
+    // pipeline itself was re-homed to Multiply's Shepherds tab (ADR 0022) —
+    // the moved-to link must land where the work actually lives, and no
+    // retired vocabulary may leak into the override label either.
+    const movedTo = movedToFor("/admin/leader-pipeline");
+    expect(movedTo).toEqual({
+      href: "/admin/multiply?tab=leaders",
+      label: "Multiply — the Shepherds tab",
+    });
+    expect(canonicalFor("/admin/leader-pipeline")).toBe("/admin/care");
+    expect(movedTo?.label).not.toMatch(/guest|check-?in/i);
+  });
 });
 
 // Source pins: each frozen entry point references the registry helper with its
