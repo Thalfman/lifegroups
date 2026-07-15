@@ -249,10 +249,13 @@ export const CANONICAL_AREA_LABELS: Record<string, string> = {
  *     keeps the ADR 0025 code identity; "Shepherds" is the user-facing term).
  *   - `null` suppresses the link entirely: per ADR 0033 the master calendar /
  *     launch panels still live only in PlanningView (Multiply hosts no
- *     calendar/launches/scenarios), and weekly check-ins are "not yet
+ *     calendar/launches/scenarios), weekly check-ins are "not yet
  *     replaceable — no canonical surface covers them" (Care renders no weekly
- *     review). Claiming a "current home" for those would send an old bookmark
- *     to a page that does not contain the work.
+ *     review), and the all-groups health triage/editor lives only on
+ *     /admin/group-health (Care shows per-group health badges and deep-links
+ *     BACK here to edit — it does not host the triage table). Claiming a
+ *     "current home" for those would send an old bookmark to a page that
+ *     does not contain the work.
  */
 const MOVED_TO_OVERRIDES: Record<
   string,
@@ -266,6 +269,7 @@ const MOVED_TO_OVERRIDES: Record<
   "/admin/launch-planning": null,
   "/admin/check-ins": null,
   "/admin/check-ins/[groupId]": null,
+  "/admin/group-health": null,
 };
 
 /**

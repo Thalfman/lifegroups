@@ -63,10 +63,6 @@ describe("canonicalFor / movedToFor derive from the registry", () => {
       href: "/admin/plan",
       label: "Plan — the Interest Funnel",
     });
-    expect(movedToFor("/admin/group-health")).toEqual({
-      href: "/admin/care",
-      label: "Care",
-    });
   });
 
   it("overrides the leader pipeline's moved-to target to its workflow home", () => {
@@ -84,14 +80,16 @@ describe("canonicalFor / movedToFor derive from the registry", () => {
   });
 
   it("suppresses the link where no live replacement exists (ADR 0033)", () => {
-    // The calendar/launch panels still live only in PlanningView, and no
-    // canonical surface covers weekly check-ins — a "current home" link for
+    // The calendar/launch panels still live only in PlanningView, no
+    // canonical surface covers weekly check-ins, and the all-groups health
+    // triage lives only on /admin/group-health — a "current home" link for
     // these would land old bookmarks on a page without the work. The nav
     // canonical stays untouched (active-nav highlighting is separate).
     expect(movedToFor("/admin/calendar")).toBeNull();
     expect(movedToFor("/admin/launch-planning")).toBeNull();
     expect(movedToFor("/admin/check-ins")).toBeNull();
     expect(movedToFor("/admin/check-ins/[groupId]")).toBeNull();
+    expect(movedToFor("/admin/group-health")).toBeNull();
     expect(canonicalFor("/admin/calendar")).toBe("/admin/multiply");
   });
 });
