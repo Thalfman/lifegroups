@@ -15,7 +15,7 @@ import { movedToFor } from "@/lib/nav/route-registry";
 export const dynamic = "force-dynamic";
 
 export default adminPage({
-  frozenBanner: { movedTo: movedToFor("/admin/leader-pipeline")! },
+  frozenBanner: { movedTo: movedToFor("/admin/leader-pipeline") },
   load: () => loadLeaderPipelineData(),
   header: () => ({
     eyebrow: "People",

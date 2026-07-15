@@ -18,7 +18,9 @@ export default async function GuestsLayout({
   return frozenSurfaceGate({
     guard: requireAdmin,
     flagKey: "guests",
-    canonicalHref: canonicalFor("/admin/guests") ?? "/admin/plan",
+    whenFrozen: {
+      redirectTo: canonicalFor("/admin/guests") ?? "/admin/plan",
+    },
     children,
   });
 }

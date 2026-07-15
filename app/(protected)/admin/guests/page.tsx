@@ -22,7 +22,7 @@ import { movedToFor } from "@/lib/nav/route-registry";
 export const dynamic = "force-dynamic";
 
 export default adminPage({
-  frozenBanner: { movedTo: movedToFor("/admin/guests")! },
+  frozenBanner: { movedTo: movedToFor("/admin/guests") },
   load: async (_params, session) => ({
     data: await loadGuestsData(),
     isSuperAdmin: isSuperAdminRole(session.profile.role),

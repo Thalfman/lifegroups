@@ -51,7 +51,7 @@ const EMPTY_DATA: (meetingWeek: string) => WeeklyReviewData = (
 });
 
 export default adminPage({
-  frozenBanner: { movedTo: movedToFor("/admin/check-ins")! },
+  frozenBanner: { movedTo: movedToFor("/admin/check-ins") },
   params: (raw) => ({ meetingWeek: validateWeekParam(raw.searchParams.week) }),
   load: async ({ meetingWeek }) => {
     const client = await createSupabaseServerClient();

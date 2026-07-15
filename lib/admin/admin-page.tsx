@@ -60,8 +60,8 @@ export type AdminPageSpec<TParams, TData> = {
   // off-nav surfaces that still resolve by direct URL). The object form adds
   // the banner's "this moved" link to the post-pivot home (#901) — pass the
   // registry-derived movedToFor(<route>) so the target can't fork from
-  // lib/nav/route-registry.
-  frozenBanner?: boolean | { movedTo: { href: string; label: string } };
+  // lib/nav/route-registry (null = no live replacement, plain banner).
+  frozenBanner?: boolean | { movedTo: { href: string; label: string } | null };
 };
 
 // The streamed body: an async child so the loader runs INSIDE the Suspense

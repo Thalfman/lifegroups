@@ -8,14 +8,19 @@ import {
   movedToFor,
 } from "@/lib/nav/route-registry";
 
-// "This moved" affordances for the frozen pre-pivot surfaces (#901). Two gate
-// styles share one mapping source — the registry's `canonical` field:
+// "This moved" affordances for the frozen pre-pivot surfaces (#901). The
+// mapping lives in ONE place — movedToFor / canonicalFor over the registry —
+// consumed two ways:
 //
-//   * flag-gated family (guests, check-ins): the layout's frozenSurfaceGate
-//     redirects to canonicalFor(<route>) while the flag is off;
-//   * always-off-nav family (leader-pipeline, group-health, calendar,
-//     launch-planning): the page stays a 200 (ADR 0033 alias-render) and its
-//     FrozenSurfaceBanner carries the movedToFor(<route>) link.
+//   * flag-off gates: guests redirects to canonicalFor("/admin/guests") (the
+//     Plan Interest Funnel genuinely absorbed that workflow); check-ins keep
+//     the frozen NOTICE instead, because per ADR 0033 no canonical surface
+//     covers the weekly review — there is nowhere truthful to redirect.
+//   * banner links: pages call movedToFor(<own route>); routes whose registry
+//     canonical is only the nav active-owner get a per-route override —
+//     leader-pipeline points at Multiply's Shepherds tab, and
+//     calendar / launch-planning / check-ins suppress the link (null) because
+//     their panels still live only in PlanningView / behind the check-ins gate.
 //
 // These tests pin (a) the derivation helpers and (b) that every frozen entry
 // point references ITS OWN registry path, so a page's target can never fork
@@ -76,6 +81,18 @@ describe("canonicalFor / movedToFor derive from the registry", () => {
     expect(canonicalFor("/admin/leader-pipeline")).toBe("/admin/care");
     expect(movedTo?.label).not.toMatch(/guest|check-?in/i);
   });
+
+  it("suppresses the link where no live replacement exists (ADR 0033)", () => {
+    // The calendar/launch panels still live only in PlanningView, and no
+    // canonical surface covers weekly check-ins — a "current home" link for
+    // these would land old bookmarks on a page without the work. The nav
+    // canonical stays untouched (active-nav highlighting is separate).
+    expect(movedToFor("/admin/calendar")).toBeNull();
+    expect(movedToFor("/admin/launch-planning")).toBeNull();
+    expect(movedToFor("/admin/check-ins")).toBeNull();
+    expect(movedToFor("/admin/check-ins/[groupId]")).toBeNull();
+    expect(canonicalFor("/admin/calendar")).toBe("/admin/multiply");
+  });
 });
 
 // Source pins: each frozen entry point references the registry helper with its
@@ -106,11 +123,16 @@ describe("frozen entry points derive their moved-to target from the registry", (
     expect(read(relPath)).toContain(expected);
   });
 
-  it.each([
-    ["guests/layout.tsx", 'canonicalFor("/admin/guests")'],
-    ["check-ins/layout.tsx", 'canonicalFor("/admin/check-ins")'],
-  ])("%s redirects its flag-off gate via %s", (relPath, expected) => {
-    expect(read(relPath)).toContain(expected);
+  it("guests' flag-off gate redirects via its registry canonical", () => {
+    expect(read("guests/layout.tsx")).toContain(
+      'canonicalFor("/admin/guests")'
+    );
+  });
+
+  it("check-ins' flag-off gate keeps the notice — no redirect (ADR 0033)", () => {
+    const src = read("check-ins/layout.tsx");
+    expect(src).toContain("notice");
+    expect(src).not.toContain("redirectTo");
   });
 
   it("the Planning host keeps no moved-to link (ADR 0033)", () => {

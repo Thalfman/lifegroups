@@ -243,26 +243,40 @@ export const CANONICAL_AREA_LABELS: Record<string, string> = {
 /**
  * Per-route moved-to overrides for frozen surfaces whose registry `canonical`
  * (the NAV active-owner) is not the surface that actually contains the work.
- * The leader pipeline highlights Care in the nav, but its workflow was
- * re-homed to Multiply's Shepherds tab (ADR 0022/0030 — `?tab=leaders` keeps
- * the ADR 0025 code identity; "Shepherds" is the user-facing term).
+ *
+ *   - The leader pipeline highlights Care in the nav, but its workflow was
+ *     re-homed to Multiply's Shepherds tab (ADR 0022/0030 — `?tab=leaders`
+ *     keeps the ADR 0025 code identity; "Shepherds" is the user-facing term).
+ *   - `null` suppresses the link entirely: per ADR 0033 the master calendar /
+ *     launch panels still live only in PlanningView (Multiply hosts no
+ *     calendar/launches/scenarios), and weekly check-ins are "not yet
+ *     replaceable — no canonical surface covers them" (Care renders no weekly
+ *     review). Claiming a "current home" for those would send an old bookmark
+ *     to a page that does not contain the work.
  */
-const MOVED_TO_OVERRIDES: Record<string, { href: string; label: string }> = {
+const MOVED_TO_OVERRIDES: Record<
+  string,
+  { href: string; label: string } | null
+> = {
   "/admin/leader-pipeline": {
     href: "/admin/multiply?tab=leaders",
     label: "Multiply — the Shepherds tab",
   },
+  "/admin/calendar": null,
+  "/admin/launch-planning": null,
+  "/admin/check-ins": null,
+  "/admin/check-ins/[groupId]": null,
 };
 
 /**
  * The moved-to link shape FrozenSurfaceBanner consumes: the per-route
- * workflow-home override when one exists, else the registry canonical.
+ * workflow-home override when one exists (null = the work has no live
+ * replacement surface, so no link), else the registry canonical.
  */
 export function movedToFor(
   path: string
 ): { href: string; label: string } | null {
-  const override = MOVED_TO_OVERRIDES[path];
-  if (override) return override;
+  if (path in MOVED_TO_OVERRIDES) return MOVED_TO_OVERRIDES[path];
   const canonical = canonicalFor(path);
   if (!canonical) return null;
   return {

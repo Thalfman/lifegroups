@@ -13,12 +13,15 @@ import Link from "next/link";
 // `movedTo` (#901) appends a "this moved" link to the post-pivot surface that
 // absorbed the workflow (registry-derived via movedToFor, lib/nav/route-registry)
 // so an old bookmark clearly points at the current home, in current vocabulary.
+// null/undefined renders the plain banner — used where no live replacement
+// exists (ADR 0033: calendar/launches still live only here; check-ins have no
+// canonical surface).
 export function FrozenSurfaceBanner({
   maxWidth = 1240,
   movedTo,
 }: {
   maxWidth?: number;
-  movedTo?: { href: string; label: string };
+  movedTo?: { href: string; label: string } | null;
 }) {
   return (
     <div
