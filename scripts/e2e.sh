@@ -58,6 +58,10 @@ export E2E_OVER_SHEPHERD_EMAIL="$TEST_OVERSHEPHERD_EMAIL"
 export E2E_OVER_SHEPHERD_PASSWORD="$TEST_OVERSHEPHERD_PASSWORD"
 export E2E_LEADER_EMAIL="$TEST_LEADER1_EMAIL"
 export E2E_LEADER_PASSWORD="$TEST_LEADER1_PASSWORD"
+# The unrelated second Shepherd (leads TEST Life Group B) — the negative
+# control for the leader-authored write specs' ladder assertions (#903).
+export E2E_LEADER2_EMAIL="$TEST_LEADER2_EMAIL"
+export E2E_LEADER2_PASSWORD="$TEST_LEADER2_PASSWORD"
 
 # Service-role access for the PLAYWRIGHT TEST PROCESS ONLY (tests/e2e/db.ts):
 # audit-pairing assertions and the invite spec's super-admin fixture (the seed

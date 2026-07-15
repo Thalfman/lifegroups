@@ -144,6 +144,46 @@ export async function fetchAuditEvents(filter: {
   return data ?? [];
 }
 
+/**
+ * Look up a seeded profile's id by email (fixture read, not an app path) —
+ * the leader-authored write specs need the author's profile id to open the
+ * admin's /admin/shepherd-care/[profileId] detail surface.
+ */
+export async function findProfileIdByEmail(email: string): Promise<string> {
+  const client = e2eServiceClient();
+  const { data, error } = await client
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`profiles read failed for ${email}: ${error.message}`);
+  }
+  if (!data?.id) {
+    throw new Error(`no profiles row for ${email} — run scripts/e2e.sh`);
+  }
+  return data.id as string;
+}
+
+/**
+ * Look up a seeded group's id by exact name (fixture read, not an app path).
+ */
+export async function findGroupIdByName(name: string): Promise<string> {
+  const client = e2eServiceClient();
+  const { data, error } = await client
+    .from("groups")
+    .select("id")
+    .eq("name", name)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`groups read failed for ${name}: ${error.message}`);
+  }
+  if (!data?.id) {
+    throw new Error(`no groups row named ${name} — run scripts/e2e.sh`);
+  }
+  return data.id as string;
+}
+
 export type E2eSuperAdmin = {
   readonly email: string;
   readonly password: string;
