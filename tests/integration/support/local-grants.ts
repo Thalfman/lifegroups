@@ -42,6 +42,11 @@ const FIXTURE_TABLES = [
   "group_leaders",
   "members",
   "group_memberships",
+  // Wave-3 graduation fixtures (#902): the four leader-scoped tables.
+  "guests",
+  "follow_ups",
+  "attendance_sessions",
+  "group_health_updates",
   "account_deletion_requests",
   "invitations",
   "tombstones",
