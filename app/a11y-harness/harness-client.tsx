@@ -946,7 +946,11 @@ export function A11yHarnessClient({ demo }: { demo: HarnessDemoData }) {
         id="frozen-surface-banner"
         heading="Frozen surface banner (#596)"
       >
-        <FrozenSurfaceBanner />
+        {/* movedTo (#901): exercise the "this moved" link so axe covers its
+            contrast and accessible name alongside the base banner copy. */}
+        <FrozenSurfaceBanner
+          movedTo={{ href: "/admin/plan", label: "Plan — the Interest Funnel" }}
+        />
       </Surface>
 
       <Surface id="offline-error" heading="Offline / error state (#559)">

@@ -218,6 +218,40 @@ export function routeEntry(path: string): RouteEntry | undefined {
   return ADMIN_ROUTE_REGISTRY.find((e) => e.path === path);
 }
 
+/**
+ * The registry-recorded canonical target for an alias/frozen route, or null
+ * when the entry has none (e.g. /admin/planning, kept as the Planning alias
+ * host per ADR 0033). The "this moved" affordances (#901) — the frozen-gate
+ * redirect and the FrozenSurfaceBanner link — derive their targets from this
+ * so the mapping can't fork from the registry.
+ */
+export function canonicalFor(path: string): string | null {
+  return routeEntry(path)?.canonical ?? null;
+}
+
+/**
+ * Current-vocabulary link labels for the canonical areas the frozen surfaces
+ * point at (CONTEXT.md terms — Prospects live in the Interest Funnel under
+ * Plan; never "Guests" / "check-in" phrasing in moved-to copy).
+ */
+export const CANONICAL_AREA_LABELS: Record<string, string> = {
+  "/admin/care": "Care",
+  "/admin/plan": "Plan — the Interest Funnel",
+  "/admin/multiply": "Multiply",
+};
+
+/** The moved-to link shape FrozenSurfaceBanner consumes, registry-derived. */
+export function movedToFor(
+  path: string
+): { href: string; label: string } | null {
+  const canonical = canonicalFor(path);
+  if (!canonical) return null;
+  return {
+    href: canonical,
+    label: CANONICAL_AREA_LABELS[canonical] ?? canonical,
+  };
+}
+
 /** The set of canonical (`active`) route paths an alias/frozen entry may target. */
 export function activeRoutePaths(): Set<string> {
   return new Set(

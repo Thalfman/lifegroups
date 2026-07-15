@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth/session";
 import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
+import { movedToFor } from "@/lib/nav/route-registry";
 import { PlanningView } from "@/components/admin/planning/planning-view";
 import { pickMonthParam } from "@/lib/calendar/month-param";
 import { churchMonthIso } from "@/lib/shared/church-time";
@@ -30,7 +31,9 @@ export default async function AdminLaunchPlanningPage({
 
   return (
     <>
-      <FrozenSurfaceBanner />
+      <FrozenSurfaceBanner
+        movedTo={movedToFor("/admin/launch-planning") ?? undefined}
+      />
       <PlanningView
         monthIso={monthIso}
         viewerId={session.profile.id}

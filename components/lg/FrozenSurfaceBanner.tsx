@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 // A shared, dashed "preserved, not actively maintained" banner for the off-nav
 // pre-pivot surfaces (#596). These routes still resolve by direct URL and stay
 // role-guarded — they're intentionally frozen, not deleted — so this strip tells
@@ -7,10 +9,16 @@
 // surfaces never show it. Visual only — no behavior, routing, or visibility
 // change. `maxWidth` mirrors PageHeader / PageBody so the strip aligns with the
 // page gutters it sits between.
+//
+// `movedTo` (#901) appends a "this moved" link to the post-pivot surface that
+// absorbed the workflow (registry-derived via movedToFor, lib/nav/route-registry)
+// so an old bookmark clearly points at the current home, in current vocabulary.
 export function FrozenSurfaceBanner({
   maxWidth = 1240,
+  movedTo,
 }: {
   maxWidth?: number;
+  movedTo?: { href: string; label: string };
 }) {
   return (
     <div
@@ -27,6 +35,19 @@ export function FrozenSurfaceBanner({
         This is a pre-pivot surface kept available by direct link but frozen. It
         isn&rsquo;t being updated and may not reflect the current Care · Plan ·
         Multiply model.
+        {movedTo ? (
+          <>
+            {" "}
+            The current home for this work is{" "}
+            <Link
+              href={movedTo.href}
+              className="font-semibold text-ink underline underline-offset-2"
+            >
+              {movedTo.label}
+            </Link>
+            .
+          </>
+        ) : null}
       </p>
     </div>
   );

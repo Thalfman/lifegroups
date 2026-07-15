@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
+import { movedToFor } from "@/lib/nav/route-registry";
 import { CheckInDetailShell } from "@/components/admin/check-in-detail-shell";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -64,7 +65,9 @@ export default async function AdminCheckInDetailPage({
 
   return (
     <>
-      <FrozenSurfaceBanner />
+      <FrozenSurfaceBanner
+        movedTo={movedToFor("/admin/check-ins/[groupId]") ?? undefined}
+      />
       <PageHeader
         eyebrow="Check-in detail"
         title={data.group?.name ?? "Group"}
