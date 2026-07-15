@@ -94,25 +94,40 @@ schema story:
   weekly, or a dispatch without `apply`): `scripts/check-migration-drift.sh`
   compares production's applied history against `supabase/migrations/` and
   fails on drift in either direction (pending locals, or remote-only versions
-  like the ones the 2026-06 incident left behind).
+  like the ones the 2026-06 incident left behind). Scope note: this is a
+  **version-history** check — content drift behind matching versions (editing
+  an applied migration file, or dashboard SQL that never stamps
+  `schema_migrations`) is invisible to it. Both moves are forbidden by this
+  runbook; that discipline is the content guard, and a shadow-DB
+  `supabase db diff` lane is the escalation if it ever proves insufficient.
 
-**One-time provisioning (the only human setup):** add these repo secrets
-(Settings → Secrets and variables → Actions); the jobs fail with an explicit
-"missing secret" error until they exist — they never skip silently.
+**One-time provisioning (the only human setup):** create two environments
+(Settings → Environments) and add the three secrets **to each environment**
+(not as repo-level secrets — environment secrets are only readable by jobs
+that pass that environment's protection rules, which is what makes the ref
+model below tamper-proof). The jobs fail with an explicit "missing secret"
+error until they exist — they never skip silently.
 
-| Secret                  | Value                                                                              |
-| ----------------------- | ---------------------------------------------------------------------------------- |
-| `SUPABASE_ACCESS_TOKEN` | A personal access token that can manage the prod project (Account → Access Tokens) |
-| `SUPABASE_PROJECT_REF`  | `juvytverslrcqbkxgkvg`                                                             |
-| `SUPABASE_DB_PASSWORD`  | The production database password (Project Settings → Database)                     |
+| Environment        | Protection rules                                        | Used by       |
+| ------------------ | ------------------------------------------------------- | ------------- |
+| `production`       | **Required reviewer** (every apply pauses for approval) | `apply`       |
+| `production-drift` | **Deployment branches: `main` only**, no reviewer       | `drift-check` |
 
-Also create the **`production` environment** (Settings → Environments) with a
-required reviewer, so every apply pauses for a human approval click. That
-approval is also the **ref check**: a dispatched run executes the workflow and
-scripts from the selected ref, so approve only a reviewed branch — and read
-any diff touching `.github/workflows/prod-migrations.yml` or
-`scripts/check-migration-drift.sh` with extra care. (The unapproved
-drift-check job protects itself: on dispatch it runs only from `main`.)
+| Secret (on both environments) | Value                                                                              |
+| ----------------------------- | ---------------------------------------------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN`       | A personal access token that can manage the prod project (Account → Access Tokens) |
+| `SUPABASE_PROJECT_REF`        | `juvytverslrcqbkxgkvg`                                                             |
+| `SUPABASE_DB_PASSWORD`        | The production database password (Project Settings → Database)                     |
+
+Why this shape: a dispatched run executes the workflow and scripts **from the
+selected ref**, and a branch can edit its own copy of the workflow file — so
+the protections must live in repo settings, not in the file. A branch that
+strips the `environment:` line simply gets no secrets; one that keeps it
+still pauses on the `production` reviewer, and that approval **is the ref
+check** — approve only a reviewed branch, and read any diff touching
+`.github/workflows/prod-migrations.yml` or `scripts/check-migration-drift.sh`
+with extra care. The unattended drift-check can only ever read the secrets
+through `production-drift`, whose branch policy admits `main` alone.
 
 ## Edge Functions
 

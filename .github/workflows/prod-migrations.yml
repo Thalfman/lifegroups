@@ -18,7 +18,9 @@
 #     a forgotten apply or an ad-hoc dashboard edit surfaces within minutes,
 #     not at the next release.
 #
-# Required repo secrets (the one human provisioning step — see RELEASE.md):
+# Required ENVIRONMENT secrets (the one human provisioning step — see
+# RELEASE.md; store them on BOTH environments below, NOT as repo secrets, so
+# only jobs that pass an environment's protection rules can read them):
 #   SUPABASE_ACCESS_TOKEN  — a Supabase personal access token that can manage
 #                            the production project (Dashboard → Account →
 #                            Access Tokens).
@@ -26,19 +28,23 @@
 #   SUPABASE_DB_PASSWORD   — the production database password (Dashboard →
 #                            Project Settings → Database).
 # Both jobs fail fast with an explicit message when any secret is absent —
-# never silently skip. The `production` environment on the apply job is where
-# a required-reviewer approval gate attaches (Settings → Environments).
+# never silently skip.
 #
 # REF-TRUST MODEL (a dispatched run executes the WORKFLOW AND SCRIPTS from the
-# selected ref, not just its migrations):
-#   * drift-check loads production secrets with NO approval gate, so it only
-#     ever runs from `main`'s code: push/schedule already do, and a dispatch
-#     from any other ref skips it (the `if` below) instead of handing that
-#     ref's code the secrets.
-#   * apply runs from the dispatched PR branch BY DESIGN (schema-first), and
-#     the `production` required-reviewer approval is exactly the human check
-#     of that ref: approve only a reviewed branch, and treat any diff touching
-#     this workflow or scripts/check-migration-drift.sh with extra care.
+# selected ref, not just its migrations — and a branch's copy of this file can
+# be edited, so the protections live in REPO SETTINGS, not in this file):
+#   * `production` (the apply job): required reviewers. Because the secrets
+#     are environment-scoped, a branch that strips the `environment:` line
+#     gets NO secrets, and a branch that keeps it still pauses for the human
+#     approval — which is exactly the review of the dispatched ref. Treat any
+#     diff touching this workflow or scripts/check-migration-drift.sh with
+#     extra care before approving.
+#   * `production-drift` (the drift-check job): no reviewers (it must run
+#     unattended on merges and the weekly cron), but its deployment-branch
+#     policy is restricted to `main` — so only `main`'s code can ever read
+#     the secrets through it. The `if` guard below skips non-main dispatches
+#     outright; the branch policy is the enforcement even if this file is
+#     tampered with.
 name: Production migrations
 
 on:
@@ -80,6 +86,9 @@ jobs:
       (!inputs.apply && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Unattended lane: no reviewer gate, so the secrets live on an environment
+    # whose deployment-branch policy only admits `main` (see header).
+    environment: production-drift
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}

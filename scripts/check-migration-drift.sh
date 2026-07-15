@@ -10,6 +10,15 @@
 # a version in Remote with an empty Local is a REMOTE-ONLY row (prod carries
 # history the repo doesn't know — exactly how the 2026-06 histories diverged).
 # Either direction is drift; both fail loudly, never silently.
+#
+# SCOPE: this is a VERSION-HISTORY check, not a schema diff. Content drift
+# behind matching versions — an already-applied migration file edited before
+# merge, or SQL pasted in the dashboard without stamping schema_migrations —
+# is invisible to it. Those moves are exactly what the release runbook
+# forbids (RELEASE.md: never edit applied migrations; never apply SQL through
+# the dashboard editor), so the discipline is the guard for content; a
+# shadow-DB `supabase db diff` lane would be the escalation if that guard
+# ever proves insufficient.
 set -euo pipefail
 
 list_output=$(supabase migration list)
