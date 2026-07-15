@@ -10,7 +10,7 @@ import { requireLeader } from "@/lib/auth/session";
 import { toShellUser } from "@/lib/auth/shell-user";
 import { type LeaderSafeGroupRow } from "@/lib/supabase/group-reads";
 import { loadLeaderCareData } from "@/lib/leader/leader-care-data";
-import { FirstRunCard } from "@/components/orientation/first-run-card";
+import { OrientationPanel } from "@/components/orientation/orientation-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +47,7 @@ export default async function LeaderPage() {
         actions={<AddToHomeScreenButton />}
       />
       <PageBody maxWidth={MAX_WIDTH}>
-        {orientationSeen ? null : <FirstRunCard variant="leader" />}
+        <OrientationPanel variant="leader" initiallySeen={orientationSeen} />
         {groups.length === 0 ? (
           <EmptyState />
         ) : (

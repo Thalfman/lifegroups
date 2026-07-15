@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { setNoteTransparencyGrant } from "@/app/(protected)/admin/shepherd-care/care-notes-actions";
 import {
@@ -33,12 +34,22 @@ export function NoteTransparencyToggle({
 
   // Submitting flips to the opposite of the current state.
   const next = !granted;
+  // Latch the submitted direction so the success message stays truthful: the
+  // action's revalidation re-renders this component with the NEW `granted`,
+  // which flips `next` — deriving the success text from `next` alone would
+  // make a successful "turn on" read "Sealed." the moment the fresh payload
+  // lands (and vice versa).
+  const [submittedNext, setSubmittedNext] = useState<boolean | null>(null);
   const buttonLabel = granted
     ? "Turn off (seal)"
     : "Turn on (let leadership read)";
 
   return (
-    <form action={formAction} className="flex flex-wrap items-center gap-2.5">
+    <form
+      action={formAction}
+      onSubmit={() => setSubmittedNext(next)}
+      className="flex flex-wrap items-center gap-2.5"
+    >
       <input type="hidden" name="subject_profile_id" value={subjectProfileId} />
       <input type="hidden" name="granted" value={next ? "true" : "false"} />
       <span
@@ -64,7 +75,9 @@ export function NoteTransparencyToggle({
       </Button>
       <FormStatus
         state={state}
-        successText={next ? "Leadership can now read." : "Sealed."}
+        successText={
+          (submittedNext ?? next) ? "Leadership can now read." : "Sealed."
+        }
       />
     </form>
   );

@@ -86,6 +86,7 @@ export function e2eCreds(): {
   admin: E2ECred;
   overShepherd: E2ECred;
   leader: E2ECred;
+  leader2: E2ECred;
   superAdmin: E2ECred;
 } {
   const admin = {
@@ -99,6 +100,12 @@ export function e2eCreds(): {
   const leader = {
     email: process.env.E2E_LEADER_EMAIL,
     password: process.env.E2E_LEADER_PASSWORD,
+  };
+  // The unrelated second Shepherd (Test Leader Two, TEST Life Group B) — the
+  // negative arm of the leader-authored ladder assertions (#903).
+  const leader2 = {
+    email: process.env.E2E_LEADER2_EMAIL,
+    password: process.env.E2E_LEADER2_PASSWORD,
   };
   // No super_admin is seeded (the seed tooling refuses to create one); these
   // are the credentials tests/e2e/db.ts ensureSuperAdmin() provisions-or-reuses
@@ -114,6 +121,10 @@ export function e2eCreds(): {
       present: Boolean(overShepherd.email && overShepherd.password),
     },
     leader: { ...leader, present: Boolean(leader.email && leader.password) },
+    leader2: {
+      ...leader2,
+      present: Boolean(leader2.email && leader2.password),
+    },
     superAdmin: {
       ...superAdmin,
       present: Boolean(superAdmin.email && superAdmin.password),

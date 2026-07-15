@@ -27,6 +27,18 @@ export interface PriorityRlsFixtures {
     readonly assignedMemberId: string;
     readonly unrelatedGroupId: string;
     readonly unrelatedMemberId: string;
+    // Wave-3 graduation fixtures (#902): one row tied to the assigned group
+    // per read arm, plus an unrelated-group negative control per table.
+    readonly assignedGuestId: string;
+    readonly firstAttendedGuestId: string;
+    readonly unrelatedGuestId: string;
+    readonly relatedFollowUpId: string;
+    readonly assignedToFollowUpId: string;
+    readonly unrelatedFollowUpId: string;
+    readonly assignedAttendanceSessionId: string;
+    readonly unrelatedAttendanceSessionId: string;
+    readonly assignedHealthUpdateId: string;
+    readonly unrelatedHealthUpdateId: string;
   };
   readonly teardown: () => Promise<void>;
 }
@@ -124,6 +136,62 @@ export async function provisionPriorityRlsFixtures(
     }
   );
 
+  // guests carries two leader read arms (first-attended group OR assigned
+  // group); seed one row per arm plus an unrelated-group negative control.
+  const assignedGuestId = await insertAndReturnId(service, "guests", {
+    full_name: `RLS assigned guest ${base.runId}`,
+    assigned_group_id: assignedGroupId,
+  });
+  const firstAttendedGuestId = await insertAndReturnId(service, "guests", {
+    full_name: `RLS first-attended guest ${base.runId}`,
+    first_attended_group_id: assignedGroupId,
+  });
+  const unrelatedGuestId = await insertAndReturnId(service, "guests", {
+    full_name: `RLS unrelated guest ${base.runId}`,
+    first_attended_group_id: unrelatedGroupId,
+    assigned_group_id: unrelatedGroupId,
+  });
+
+  // follow_ups also has two leader arms: a led related_group_id OR being the
+  // assignee (assigned_to) directly, with no group at all.
+  const relatedFollowUpId = await insertAndReturnId(service, "follow_ups", {
+    type: "care",
+    title: `RLS group follow-up ${base.runId}`,
+    related_group_id: assignedGroupId,
+  });
+  const assignedToFollowUpId = await insertAndReturnId(service, "follow_ups", {
+    type: "leader",
+    title: `RLS assignee follow-up ${base.runId}`,
+    assigned_to: base.leader.profileId,
+  });
+  const unrelatedFollowUpId = await insertAndReturnId(service, "follow_ups", {
+    type: "care",
+    title: `RLS unrelated follow-up ${base.runId}`,
+    related_group_id: unrelatedGroupId,
+  });
+
+  const assignedAttendanceSessionId = await insertAndReturnId(
+    service,
+    "attendance_sessions",
+    { group_id: assignedGroupId, meeting_week: "2026-01-05" }
+  );
+  const unrelatedAttendanceSessionId = await insertAndReturnId(
+    service,
+    "attendance_sessions",
+    { group_id: unrelatedGroupId, meeting_week: "2026-01-05" }
+  );
+
+  const assignedHealthUpdateId = await insertAndReturnId(
+    service,
+    "group_health_updates",
+    { group_id: assignedGroupId, update_week: "2026-01-05", pulse: "healthy" }
+  );
+  const unrelatedHealthUpdateId = await insertAndReturnId(
+    service,
+    "group_health_updates",
+    { group_id: unrelatedGroupId, update_week: "2026-01-05", pulse: "watch" }
+  );
+
   const accountDeletionRequestId = await insertAndReturnId(
     service,
     "account_deletion_requests",
@@ -207,6 +275,25 @@ export async function provisionPriorityRlsFixtures(
         deleteIds(service, table, [superAdminOnlyRowIds[table]])
       )
     );
+    // follow_ups can reference guests, so it goes first among the wave-3 rows.
+    await deleteIds(service, "follow_ups", [
+      relatedFollowUpId,
+      assignedToFollowUpId,
+      unrelatedFollowUpId,
+    ]);
+    await deleteIds(service, "guests", [
+      assignedGuestId,
+      firstAttendedGuestId,
+      unrelatedGuestId,
+    ]);
+    await deleteIds(service, "attendance_sessions", [
+      assignedAttendanceSessionId,
+      unrelatedAttendanceSessionId,
+    ]);
+    await deleteIds(service, "group_health_updates", [
+      assignedHealthUpdateId,
+      unrelatedHealthUpdateId,
+    ]);
     await deleteIds(service, "group_memberships", [
       assignedMembershipId,
       unrelatedMembershipId,
@@ -223,6 +310,16 @@ export async function provisionPriorityRlsFixtures(
       assignedMemberId,
       unrelatedGroupId,
       unrelatedMemberId,
+      assignedGuestId,
+      firstAttendedGuestId,
+      unrelatedGuestId,
+      relatedFollowUpId,
+      assignedToFollowUpId,
+      unrelatedFollowUpId,
+      assignedAttendanceSessionId,
+      unrelatedAttendanceSessionId,
+      assignedHealthUpdateId,
+      unrelatedHealthUpdateId,
     },
     teardown,
   };

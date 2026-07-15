@@ -52,7 +52,7 @@ describe("fitness: RLS coverage manifest is complete", () => {
   it("ratchets the maximum deferred live-RLS table count", () => {
     // Lower this ceiling whenever another table gains positive and negative
     // live-stack assertions. Never raise it to accommodate a regression.
-    const maximumDeferredTables = 18;
+    const maximumDeferredTables = 14;
     expect(report.deferred.length).toBeLessThanOrEqual(maximumDeferredTables);
   });
 

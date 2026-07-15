@@ -15,6 +15,7 @@
 import { Suspense, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
+import { OrientationPanel } from "@/components/orientation/orientation-panel";
 import { AppErrorState } from "@/components/lg/AppErrorState";
 import { OfflineBannerView } from "@/components/lg/OfflineBanner";
 import { FrozenSurfaceBanner } from "@/components/lg/FrozenSurfaceBanner";
@@ -970,6 +971,25 @@ export function A11yHarnessClient({ demo }: { demo: HarnessDemoData }) {
             </>
           }
         />
+      </Surface>
+
+      <Surface
+        id="orientation-first-run"
+        heading="Concept orientation (first run, #906)"
+      >
+        {/* Expanded first-run state: the concept sections and the persisting
+            "Got it" dismissal (the stubbed-by-absence action never runs — the
+            suite only exercises names, structure, and contrast). */}
+        <OrientationPanel variant="leader" initiallySeen={false} />
+      </Surface>
+
+      <Surface
+        id="orientation-seen"
+        heading="Concept orientation (seen — reopen affordance, #906)"
+      >
+        {/* Collapsed post-dismissal state: the "View orientation" reopen
+            button, which the spec expands to cover the Close path. */}
+        <OrientationPanel variant="over_shepherd" initiallySeen={true} />
       </Surface>
 
       <Surface id="groups-directory" heading="Groups directory">
