@@ -150,16 +150,14 @@ test.describe("Shepherd-authored group care writes", () => {
       });
       if (await sealButton.isVisible()) {
         await sealButton.click();
-        // Assert on the toggle's STATE SPAN, not its transient status text:
-        // the FormStatus success message recomputes from the revalidated
-        // server prop, so "Sealed." / "Leadership can now read." can be
-        // replaced before Playwright samples it (the state span is stable).
+        // Assert on the toggle's STATE SPAN — it re-renders from the
+        // revalidated server payload the action response streams back, so it
+        // proves the seal landed without any navigation. Post-action
+        // navigations are exactly where the CI stack's intermittent stall
+        // (#839/#910) bites, so this arm never reloads.
         await expect(
           adminView.getByText("Leadership visibility: Sealed", { exact: true })
         ).toBeVisible();
-        // The URL still carries ?tab=care-notes, so the reload re-lands on
-        // the panel without a (hydration-racy) tab click.
-        await adminPage.reload();
       }
 
       // Grant OFF: the sealed notice shows and neither body leaks.
@@ -175,17 +173,12 @@ test.describe("Shepherd-authored group care writes", () => {
       await expect(
         adminPage.getByText("Leadership can now read.", { exact: true })
       ).toBeVisible();
-      // The first request after a server action can hit the CI stack's
-      // intermittent >30s stall (#839) — retry the reload until the fresh
-      // force-dynamic read paints the opened notes, the same settle-then-
-      // reload posture the funnel/pipeline specs use. The URL still carries
-      // ?tab=care-notes, so each reload lands back on the panel.
-      await expect(async () => {
-        await adminPage.reload({ timeout: 15_000 }).catch(() => {});
-        await expect(adminView.getByText("About their group")).toBeVisible({
-          timeout: 10_000,
-        });
-      }).toPass({ timeout: 60_000 });
+      // setNoteTransparencyGrant revalidates this very route, so the action
+      // response streams the refreshed RSC payload — including the
+      // now-readable notes — into the live page. Assert on that LIVE render
+      // (the same no-reload posture as the admin-author care-note test);
+      // reloading here is what kept hitting the #839/#910 post-action stall.
+      await expect(adminView.getByText("About their group")).toBeVisible();
       await expect(adminView.getByText(careBody)).toBeVisible();
       await expect(adminView.getByText(prayerBody)).toBeVisible();
 
