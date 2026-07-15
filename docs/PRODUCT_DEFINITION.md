@@ -17,7 +17,7 @@
 > the landed 2026-06 pivot, fully executed; last trued up against the ADRs
 > (group-type model per ADR 0034, Shepherd labels per ADR 0025, Multiply tabs
 > per ADR 0030) on **2026-07-03**. §8 is a point-in-time assessment dated
-> **2026-06** and will age; re-date it when revising.
+> **2026-07-15** and will age; re-date it when revising.
 
 ---
 
@@ -430,12 +430,13 @@ free-text Categories); the fed capacity model (capacity is now derived);
 per-member care notes (the Leader's Care Note is group-scoped, ADR 0020);
 inviter-typed names (ADR 0025).
 
-## 8. Current-state assessment — 2026-06
+## 8. Current-state assessment — 2026-07
 
 _How user-friendly is it, and is it cohesive or confusing? Evidence-based
 snapshot; the structural source is [`ui-audit.md`](./ui-audit.md) (Nielsen
-heuristic score **25/40**) and the approved remediation direction is
-[`design-direction.md`](./design-direction.md)._
+heuristic score **25/40**, since remediated — see below) and the approved
+remediation direction is [`design-direction.md`](./design-direction.md),
+executed in the 2026-06 implementation slices and closed out by #847/#908._
 
 ### Where it is cohesive
 
@@ -455,25 +456,23 @@ heuristic score **25/40**) and the approved remediation direction is
   the Private Care Note never leaves the Ministry Admin's view.
 - **Strong, distinctive identity.** The journal theme is consistently
   recognizable and nothing like a default SaaS dashboard.
+- **One design system.** The 2026-06 ui-audit P1 debt is paid: one button
+  kit (`components/ui/button.tsx`; PButton retired), one color vocabulary
+  (the OKLCH `--c-*` tokens — the shadcn HSL bridge and `lib/pastoral.ts`
+  hex are gone, per #908/#847), ink/accent ramps that clear WCAG AA with
+  the axe `color-contrast` rule blocking (the old carve-out in
+  `tests/a11y/harness.ts` is removed), an 11px type floor, and inline
+  styles reduced to a fitness-enforced allowlist of genuinely dynamic
+  values (`tests/fitness/no-inline-style-sprawl.test.ts`).
 
 ### Where it is confusing or falls short
 
-- **Visual execution debt (the ui-audit P1 list).** Reading text and
-  primary buttons sit at ~4.2:1 contrast — below the WCAG AA 4.5:1 floor —
-  behind a documented carve-out in `tests/a11y/harness.ts`; microtext
-  (9–11.5px) is endemic; ~2,000 inline styles defeat hover/active states
-  and make the mobile layer rely on brittle `!important` overrides.
-- **Two design systems coexist.** `PButton` (pastoral tones) and shadcn
-  `Button` (variants) appear on the same pages, and three color systems
-  drift (OKLCH `--c-*` vars, `lib/pastoral.ts` hex, shadcn HSL bridge).
-- **Legacy vocabulary echo.** Frozen routes reachable by URL still say
-  "Guests" and "check-in" while the live product says Prospect / Interest
-  Funnel — confusing for anyone following an old link; internal
-  `shepherd-care` paths mislead contributors about role names.
-- **No orientation for new users.** After the invite flow a new Leader or
-  Over-Shepherd lands directly on their surface with no explanation of what
-  a Care Note is, what transparency means, or what "Needs follow-up"
-  implies.
+- **Legacy vocabulary echo (reduced).** Frozen routes reachable by URL
+  still say "Guests" and "check-in" while the live product says Prospect /
+  Interest Funnel, though they now carry frozen-surface notices pointing at
+  the live replacement where one exists (#901); internal `shepherd-care`
+  paths still mislead contributors about role names (deliberate — code
+  identity stays `leader`/`co_leader` per ADR 0025).
 - **Home is a wall on mobile.** Identical stat tiles produce ~12 screens of
   scrolling at 375px, and the Needs-Attention "review →" affordance clips.
 - **Duplicate entry points.** Over-Shepherd coverage is manageable both in
@@ -484,20 +483,21 @@ heuristic score **25/40**) and the approved remediation direction is
 
 The product is **cohesive in structure, vocabulary, and behavior** — the
 three-job spine genuinely matches how Julian works, and the privacy model
-is both unusual and consistently executed. The confusion that exists is
-mostly **visual execution and legacy echo**, not conceptual: the same
-information rendered at too-small sizes and too-low contrast, with frozen
-surfaces whispering the old product's names.
+is both unusual and consistently executed. The remediation order the
+2026-06 assessment prescribed has been worked through:
 
-Closing the gap means finishing what is already decided, in this order:
+1. ~~Land the [`design-direction.md`](./design-direction.md) execution~~ —
+   **done** (#847 landed the token deepening, 11px floor, one button
+   system, and the Tailwind migration; #908 removed the last duplicate
+   color vocabulary, the shadcn HSL bridge). Fitness tests keep the sprawl
+   and the retired systems from regrowing.
+2. ~~Add the missing first-run orientation~~ — **done** (#906 expanded the
+   first-run card into concept orientation for Shepherds and
+   Over-Shepherds).
+3. Tidy the echo — **partly done** (frozen surfaces carry "this moved"
+   notices, #901); one canonical coverage entry point and a
+   grade-explanation affordance remain open.
 
-1. Land the [`design-direction.md`](./design-direction.md) execution:
-   token deepening (retire the contrast carve-out), the 11px type floor,
-   one button system, one color system, interactive states (the Tailwind
-   migration is the structural fix).
-2. Add the missing first-run orientation for Leaders and Over-Shepherds
-   (the invite → welcome flow is the natural host).
-3. Tidy the echo: a "this moved" notice or redirect on frozen surfaces,
-   one canonical coverage entry point, and a grade-explanation affordance.
-
-None of these change the definition in §1–§7; they make the build match it.
+What remains is polish (the mobile Home wall, the coverage/grade items
+above), not conceptual repair. None of it changes the definition in §1–§7;
+it makes the build match it.

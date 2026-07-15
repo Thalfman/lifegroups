@@ -42,10 +42,12 @@ passed lint → typecheck → unit suite → build → mapped a11y specs.
    `lg-m-master-calendar-filters`. (`lg-super-admin-workspace-tabs` was
    deleted when the super-admin rail switched to wrapping on mobile.)
    No remaining rule is orphaned.
-3. **Compatibility wrappers.** `PButton`/`PLinkButton`/`Pill`/`PBadge`
-   delegate to `components/ui/button.tsx` / `badge.tsx`. New code should
-   import `Button`/`Badge` directly; collapse the wrappers when their
-   call-site count makes it cheap.
+3. **Compatibility wrapper (reduced to one).** `PButton`/`PLinkButton`/
+   `Pill` are gone (a fitness test keeps the pastoral button retired);
+   only `PBadge` (`components/pastoral/atoms.tsx`) remains, delegating to
+   `components/ui/badge.tsx` for ~12 mostly-frozen call sites. New code
+   should import `Badge` directly; collapse the wrapper when its surfaces
+   revive or the call-site count makes it cheap.
 4. **`MetricCard` color props.** `dashboard-summary-cards` (care) and
    `launch-planning/summary-cards` still pass `P.*` strings into
    `accent`/`valueColor`. Fine (vars, not hexes) — candidates for a tone
@@ -53,8 +55,11 @@ passed lint → typecheck → unit suite → build → mapped a11y specs.
 5. **Unused density var.** `--font-scale` no longer has consumers
    (PageHeader migrated off it); remove it with the next globals sweep,
    or wire it to a real density setting.
-6. **shadcn HSL bridge stays** (backs the global focus ring) — deepened
-   alongside the palette, by design (direction §1).
+6. **shadcn HSL bridge — paid (#908).** The bridge vars, their
+   `hsl(var(--…))` Tailwind entries, and `components.json` are removed;
+   the global focus ring and the skip links now use the pastoral tokens
+   (`ring-sage` / `ring-offset-bg` / `bg-surface`). A fitness check keeps
+   the bridge (and its now-dead utility classes) from returning.
 7. **a11y-harness inline styles** are test scaffolding, exempt from the
    no-inline-styles rule.
 8. **Audit P3 dispositions:** P3.15 (italic accent spans at card sizes)

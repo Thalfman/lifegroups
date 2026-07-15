@@ -1,6 +1,13 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { readSourceFiles } from "./support/source-globber";
+import {
+  readSourceFiles,
+  repoRoot,
+  stripComments,
+} from "./support/source-globber";
 import { TEST_FILE_EXCLUDES } from "./support/scan";
 
 // #847 finish line: one styling substrate. The pastoral surfaces used to carry
@@ -146,6 +153,58 @@ describe("fitness: no inline-style sprawl (#847)", () => {
         failures.push(`${file.relPath}: imports the retired pastoral button`);
       }
     }
+    expect(failures, failures.join("\n")).toEqual([]);
+  });
+
+  it("the shadcn HSL color bridge stays retired", () => {
+    // #908 removed the last duplicate color vocabulary: the shadcn HSL bridge
+    // (`--background`…`--ring` vars behind `hsl(var(--…))` theme entries) and
+    // its CLI config (components.json). The OKLCH `--c-*` pastoral tokens are
+    // the one color system. With the theme entries gone, a reintroduced
+    // bridge utility class (`bg-card`, `ring-ring`, …) would silently emit no
+    // CSS — fail loudly here instead.
+    const failures: string[] = [];
+    const root = repoRoot();
+
+    if (existsSync(resolve(root, "components.json"))) {
+      failures.push(
+        "components.json exists — the shadcn CLI config was retired by #908"
+      );
+    }
+
+    // The bridge's Tailwind utilities: <prefix>-<bridge token>. The pastoral
+    // theme defines none of these color names, so any match is a dead class
+    // (or, in an @apply, a build break).
+    const BRIDGE_CLASS =
+      /(?:^|[^-\w])(?:bg|text|border|ring|ring-offset|outline|fill|stroke|divide|placeholder|shadow|from|via|to)-(?:background|foreground|card|popover|primary|secondary|muted|accent|destructive|input|ring|border)(?:-foreground)?(?![-\w])/;
+
+    for (const relPath of ["tailwind.config.ts", "app/globals.css"]) {
+      const text = readFileSync(resolve(root, relPath), "utf8");
+      if (text.includes("hsl(var(--")) {
+        failures.push(
+          `${relPath}: hsl(var(--…)) — the shadcn HSL bridge was retired by ` +
+            `#908; use the OKLCH --c-* tokens`
+        );
+      }
+      const hit = text.match(BRIDGE_CLASS);
+      if (hit) {
+        failures.push(
+          `${relPath}: "${hit[0].trim()}" — retired shadcn bridge class; ` +
+            `use a pastoral token utility`
+        );
+      }
+    }
+
+    for (const file of appSourceFiles()) {
+      const hit = stripComments(file.text).match(BRIDGE_CLASS);
+      if (hit) {
+        failures.push(
+          `${file.relPath}: "${hit[0].trim()}" — retired shadcn bridge ` +
+            `class emits no CSS; use a pastoral token utility`
+        );
+      }
+    }
+
     expect(failures, failures.join("\n")).toEqual([]);
   });
 

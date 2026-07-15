@@ -58,27 +58,6 @@
     var(--font-geist), "Inter Tight", -apple-system, system-ui, sans-serif;
   --font-mono:
     var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
-
-  /* shadcn token bridge — re-pointed at the new palette so existing
-     shadcn components (and the legacy leader chrome) blend in. */
-  --background: 82 30% 96%;
-  --foreground: 30 16% 18%;
-  --card: 80 30% 99%;
-  --card-foreground: 30 16% 18%;
-  --primary: 148 30% 35%;
-  --primary-foreground: 60 30% 98%;
-  --secondary: 80 20% 93%;
-  --secondary-foreground: 30 16% 22%;
-  --muted: 80 20% 95%;
-  --muted-foreground: 60 10% 38%;
-  --accent: 145 22% 92%;
-  --accent-foreground: 148 30% 28%;
-  --destructive: 25 60% 44%;
-  --destructive-foreground: 60 30% 98%;
-  --border: 82 18% 84%;
-  --ring: 148 30% 35%;
-
-  --radius: 0.875rem;
 }
 
 /* Loading-skeleton breathing animation. Defined explicitly because nothing
@@ -117,7 +96,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-line;
   }
 
   html,
@@ -150,15 +129,11 @@
   input,
   textarea,
   select {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg;
   }
 }
 
 @layer components {
-  .surface-subtle {
-    @apply rounded-xl border border-border bg-muted/45;
-  }
-
   /* Off-screen render skipping for long, scrollable lists (People directory,
      Care Notes feed, Follow-ups queue, master-calendar list). The browser skips
      layout/paint for rows outside the viewport, cutting the cost of rendering

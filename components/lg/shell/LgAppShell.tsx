@@ -83,7 +83,7 @@ export function LgAppShell({
     <div className="grid min-h-screen grid-cols-1 bg-bg font-sans text-ink md:grid-cols-[232px_minmax(0,1fr)]">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:text-sm focus:shadow focus:ring-2 focus:ring-ring"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:shadow focus:ring-2 focus:ring-sage"
       >
         Skip to content
       </a>
