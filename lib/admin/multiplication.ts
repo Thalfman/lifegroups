@@ -2,8 +2,8 @@
 // no I/O — the read model supplies the inputs, these compute the rest so they
 // can be unit-tested with bare objects.
 //
-// Readiness criteria are Julian's, from LG_MULTIPLICATION_PLAN_2026.md and
-// systems-conversation answer 10:
+// Readiness criteria are Julian's, from his 2026 multiplication plan
+// (superseded in-app per ADR 0006) and systems-conversation answer 10:
 //   * 12+ members in the group
 //   * 3+ years meeting as a group
 //   * a co-shepherd serving 1+ year

@@ -20,7 +20,7 @@ freeform sheet. Q6 ("both!") makes history _and_ tasks first-class; Q3 fixes wha
 interaction must remember (issue/good-thing + whether/when/what follow-up).
 **Consequences.** `shepherd_care_profiles`, `shepherd_care_interactions`,
 `shepherd_care_follow_ups`. The spreadsheet columns in
-[`../julian-inputs/MIN_CARE_LIST_TEMPLATE.md`](../julian-inputs/MIN_CARE_LIST_TEMPLATE.md)
+`MIN_CARE_LIST_TEMPLATE.md` (retired to git history)
 map onto profile fields.
 
 ## D2 — A per-leader status enum · _answers Q2_

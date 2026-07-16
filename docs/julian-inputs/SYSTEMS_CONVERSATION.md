@@ -4,7 +4,7 @@ Source: Julian's emailed answers (`Answers.pdf`) plus the questions Tom sent
 (`Questions.md`), both supplied 2026-05-27. From Julian Guevara
 (`guevara.j@foxvalleychurch.org`) to `tomhalfman22@gmail.com`,
 **Wed, May 27, 2026 at 3:01 PM**. Attachment: the blank care spreadsheet
-(captured in [`MIN_CARE_LIST_TEMPLATE.md`](./MIN_CARE_LIST_TEMPLATE.md)).
+(captured in `MIN_CARE_LIST_TEMPLATE.md`, since retired to git history).
 
 Both halves are now captured: **questions are verbatim from `Questions.md`**,
 **answers are verbatim from Julian's email.** (An earlier capture had only the
@@ -33,10 +33,10 @@ concern, inactive, etc.
 > how they are doing and how I can serve them. I also oversee 60+ leaders, so
 > this would be broad breast strokes or specific concerns.
 
-*Note: the question proposed a candidate status vocabulary (doing well / needs
+_Note: the question proposed a candidate status vocabulary (doing well / needs
 encouragement / needs follow-up / concern / inactive). Julian did not adopt it
 verbatim — see [`../GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)
-for how this bears on the shipped `shepherd_care_status` enum.*
+for how this bears on the shipped `shepherd_care_status` enum._
 
 **Q3.** What do you usually want to remember after connecting with a leader?
 
@@ -57,21 +57,21 @@ for how this bears on the shipped `shepherd_care_status` enum.*
 > little more in the weeds, compared to the men or women leaders since they have
 > their over shepherd (where-as the mixed/couples groups have me).
 
-*Note: the question was about cadence ("how often"). Julian's answer reframes
+_Note: the question was about cadence ("how often"). Julian's answer reframes
 cadence as **tiered by oversight** — higher touch on the mixed/couples groups he
 directly over-shepherds, delegated cadence for the men's/women's groups that have
-their own over-shepherd. There is no single standing interval.*
+their own over-shepherd. There is no single standing interval._
 
 **Q6.** Do you want the care tracker to be more like a history log, a
 follow-up/task list, or both?
 
 > Maybe both!
 
-*Note: this directly answers the data-model question for Shepherd Care. "Both"
+_Note: this directly answers the data-model question for Shepherd Care. "Both"
 = history log **and** a task/follow-up list, which points to the **A1** model
 (profiles + interactions + `shepherd_care_follow_ups`), i.e. SC.1B is wanted,
-not optional. See [`MIN_CARE_LIST_TEMPLATE.md`](./MIN_CARE_LIST_TEMPLATE.md) and
-[`../SHEPHERD_CARE_TRACKER_PLAN.md`](../plans/SHEPHERD_CARE_TRACKER_PLAN.md) §6.*
+not optional. (`MIN_CARE_LIST_TEMPLATE.md` and the shepherd-care tracker plan,
+both retired to git history, carried the detail.)_
 
 **Q7.** For the 3 over-shepherds, do you mainly want to track who they are
 covering, or eventually have them help update the system too?
@@ -79,22 +79,22 @@ covering, or eventually have them help update the system too?
 > I think have them update the system too, but broad notes given simplicity and
 > confidentiality. I would also like something for leaders at some point too.
 
-*Note: confirms there are exactly **3 over-shepherds** and that future write
+_Note: confirms there are exactly **3 over-shepherds** and that future write
 access for over-shepherds/leaders should be limited to **broad** notes. Future
-scope — see roadmap LDR.1.*
+scope — see roadmap LDR.1._
 
 **Q8.** For the notes section, would you want any complete privacy/encryption
 option for notes that should only be readable by you?
 
 > Yes, that would be helpful.
 
-*Note: this is a **net-new privacy requirement** — a tier of notes readable by
+_Note: this is a **net-new privacy requirement** — a tier of notes readable by
 Julian only, excluding even `super_admin`. It is distinct from Q7's "broad
 notes" and is **not** satisfied by the shipped admin-only RLS (which grants
 SELECT to `super_admin` and `ministry_admin` alike). The Shepherd Care
 foundation migration already deferred this "if Julian asks for" it — that trigger
 is now met. Tracked as SC.4; see
-[`../SHEPHERD_CARE_TRACKER_PLAN.md`](../plans/SHEPHERD_CARE_TRACKER_PLAN.md) §12.*
+[`../SHEPHERD_CARE_TRACKER_PLAN.md`](../plans/SHEPHERD_CARE_TRACKER_PLAN.md) §12._
 
 **Q9.** For launch planning, what numbers do you currently use or estimate?
 Church attendance, people in groups, guests, expected growth, target group
@@ -135,8 +135,9 @@ January, or more generally as capacity fills up?
 > that tracks when groups should multiply, but maybe something cleaner would be
 > good. You can find the link here.
 
-The "google doc that tracks when groups should multiply" is the source of
-[`LG_MULTIPLICATION_PLAN_2026.md`](./LG_MULTIPLICATION_PLAN_2026.md).
+The "google doc that tracks when groups should multiply" was captured verbatim
+as `LG_MULTIPLICATION_PLAN_2026.md` (since retired to git history; superseded
+in-app per ADR 0006).
 [Google Doc link (in source)](https://docs.google.com/document/d/1xD0NVXYO3sOdKen9jupCSiMUyTdjUK_LdBdAEAjEPcE/edit?usp=sharing)
 
 > Thanks Tom!!! Julian

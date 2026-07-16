@@ -47,7 +47,7 @@ function SummaryTile({
   tone?: "missing" | "followup";
 }) {
   // Tone is carried by the figure color (clay = needs follow-up) — never a
-  // stripe. Sentence-case label, serif figure (design-direction §4 Cards).
+  // stripe. Sentence-case label, serif figure.
   const accented = tone === "missing" || tone === "followup";
   return (
     <div className="grid gap-1 rounded-sm border border-line bg-surface px-4 py-3.5">

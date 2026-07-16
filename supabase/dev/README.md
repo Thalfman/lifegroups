@@ -193,7 +193,7 @@ deployed app or a local `npm run dev` instance.
 ## Multiplication planner seed (Julian #144)
 
 To open the multiplication planner pre-populated from Julian's Google Doc
-(`docs/julian-inputs/LG_MULTIPLICATION_PLAN_2026.md`), run
+(captured as `LG_MULTIPLICATION_PLAN_2026.md`, retired to git history), run
 `supabase/seed/multiplication_seed.sql` after the schema, segmentation
 (`20260528150000`), and pipeline (`20260528160000` / `20260530030000`)
 migrations. It seeds the ~30 named groups + `multiplication_candidates`,

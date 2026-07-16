@@ -2,9 +2,12 @@
 
 The app is organised as **three areas — Care · Plan · Multiply** (the 2026-06
 pivot, now landed). The current direction lives in the pivot ADRs + PRD #371
-below; the prior north star (Julian's systems conversation, mapped 1:1 to
-Q1–Q12) is kept as the historical record it grew from. Everything off that path
-has been archived.
+below. Documentation here is deliberately limited to what the code cannot
+express: **decision records** (`adr/`), the **domain glossary**
+([`../CONTEXT.md`](../CONTEXT.md)), and thin **navigation/reference maps**.
+Point-in-time artifacts (plans, audits, reviews, retros, synthesis docs) are
+retired to git history once their work ships — the code is the source of truth
+for what exists.
 
 > ✅ **Current direction (the landed pivot):** **ADR
 > [0016](./adr/0016-pivot-to-care-plan-multiply.md)–[0021](./adr/0021-three-tier-multiplication-trigger.md)**
@@ -14,78 +17,49 @@ has been archived.
 > [ADR 0034](./adr/0034-collapse-cells-to-group-type-list.md). Glossary:
 > [`../CONTEXT.md`](../CONTEXT.md).
 >
-> 📖 **The end product, in one document:**
-> [`PRODUCT_DEFINITION.md`](./PRODUCT_DEFINITION.md) — audience, feature
-> inventory, placement (routes/nav/flags), theme, privacy model, and a dated
-> current-state assessment.
->
 > ⭐ **Original North Star:** [`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md)
 > — Julian's twelve questions (2026-05-27); re-shaped into Care/Plan/Multiply by the pivot.
->
-> 📌 **Prior PRD:** [`PRD.md`](./PRD.md) — requirements mapped 1:1 to Q1–Q12; superseded in framing by PRD #371.
->
-> 🏛️ **Prior ADR:** [`adr/0004-systems-conversation-architecture.md`](./adr/0004-systems-conversation-architecture.md)
-> — pre-pivot architecture decisions mapped to Q1–Q12 (deep records in
-> [`adr/0001`](./adr/0001-admin-write-action-runner.md)–[`0003`](./adr/0003-private-care-note-encryption.md)).
 
-## The North Star and its sources (`julian-inputs/`)
+## Decision records (`adr/`)
 
-| Doc                                                                                              | What it is                                         |
-| ------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| [`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md)               | ⭐ Julian's Q1–Q12, verbatim. The source of truth. |
-| [`julian-inputs/MIN_CARE_LIST_TEMPLATE.md`](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md)           | The blank care spreadsheet (Q1).                   |
-| [`julian-inputs/LG_MULTIPLICATION_PLAN_2026.md`](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md) | Julian's multiplication Google Doc (Q11/Q12).      |
-| [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md)                               | How his inputs map to decisions.                   |
-
-## The 1:1 mapping
-
-| Doc                                                                                                | What it is                                                               |
-| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| [`PRD.md`](./PRD.md)                                                                               | 📌 **THE PRD** — requirements per question, with shipped/blocked status. |
-| [`adr/0004-systems-conversation-architecture.md`](./adr/0004-systems-conversation-architecture.md) | 🏛️ **THE ADR** — architecture decisions per question.                    |
-
-## Referenced plans (linked from the conversation)
-
-| Doc                                                                                              | What it is                                                                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md)                   | Shepherd-care detail (Q1–Q8).                                                                                                                                                                                                 |
-| [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)             | Group-health rubric (Q12) — locked; shipped with placeholder labels (ADR 0007), since resolved by the configurable A–F rubrics (ADR 0018).                                                                                    |
-| [`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md)         | 📌 Capacity + leader-pipeline + multiplication, as one integrated workspace (Q9–Q11). Supersedes the retired multiplication-planner Google-Doc spec ([ADR 0006](./adr/0006-multiplication-planner-supersedes-google-doc.md)). |
-| [`plans/ADMIN_INTERACTION_MODEL_PRD.md`](./plans/ADMIN_INTERACTION_MODEL_PRD.md)                 | Admin interaction model for progressive disclosure, density reduction, and accessible list-to-detail editing across `/admin`.                                                                                                 |
-| [`plans/CONCEPT_RECONCILIATION.md`](./plans/CONCEPT_RECONCILIATION.md)                           | 🧹 Backlog/audit of where the pre-pivot "broad platform" concept still lingers in code, schema, and copy. Not a build spec.                                                                                                   |
-| [`plans/FRESH_SLATE_AND_ADMIN_COCKPIT_PRD.md`](./plans/FRESH_SLATE_AND_ADMIN_COCKPIT_PRD.md)     | Partially shipped — the Super-Admin "Danger Zone" tools are live (clean slate, launch prep, resets, permanent delete); the admin-cockpit ergonomics and CSV template are not. See its Status header.                          |
-| [`plans/REPO_CONSOLIDATION_SIMPLIFICATION.md`](./plans/REPO_CONSOLIDATION_SIMPLIFICATION.md)     | 🧹 Partially executed — behavior- and interface-preserving internal consolidation. Shipped waves: read-models barrel deletion, per-read seam timing, one-read admin first load (#803), orphan sweep (#801).                   |
-| [`plans/REPO_WIDE_AUDIT_PLAN.md`](./plans/REPO_WIDE_AUDIT_PLAN.md)                               | 🔍 Executable plan for periodic full-codebase audits (security/RLS, architecture, tests/CI, docs drift). Report-only; last run 2026-07-03 (see `audits/`).                                                                    |
-| [`plans/ADMIN_PERFORMANCE_INP_FCP_LCP_PLAN.md`](./plans/ADMIN_PERFORMANCE_INP_FCP_LCP_PLAN.md)   | ⚡ Plan for the admin INP / FCP / LCP anti-patterns flagged by Speed Insights; partially delivered by the first-load read-wave work (#803) and the seam timing.                                                               |
-| [`plans/CONTEXTUAL_POPOUT_ACTIONS_PLAN.md`](./plans/CONTEXTUAL_POPOUT_ACTIONS_PLAN.md)           | Plan for surfacing the existing write actions in-context (guided popout actions) instead of list-first navigation. Proposal.                                                                                                  |
-| [`plans/HOME_CARE_SETTINGS_FINISH_LINE_PLAN.md`](./plans/HOME_CARE_SETTINGS_FINISH_LINE_PLAN.md) | Finish-line definition of "done" for the Home, Care, and Settings tabs against the post-pivot direction.                                                                                                                      |
-| [`plans/SETTINGS_GROUPS_AND_TRIGGERS_PRD.md`](./plans/SETTINGS_GROUPS_AND_TRIGGERS_PRD.md)       | ⚠️ Superseded — specifies the retired per-cell Settings model; the cell → group-type collapse ([ADR 0034](./adr/0034-collapse-cells-to-group-type-list.md)) replaced its data model. Historical record.                       |
-| [`REPO_SWEEP_PLAN.md`](./REPO_SWEEP_PLAN.md)                                                     | ⚠️ Historical — the consolidated 2026-06-14 repo-sweep plan (pre-Next-16). Its live items were re-triaged into the 2026-07-03 audit issues; read `audits/` for current state.                                                 |
+Architecture Decision Records — which alternatives were evaluated and why the
+chosen one won. Start at the [ADR index](./adr/README.md) — one row per
+decision with status and the supersession/amendment chain (the pivot is
+0016–0022, amended onward; trace a decision's currency there before citing it).
 
 ## Engineering reference
 
 | Doc                                                                            | What it is                                                                                                                                                                                                                                                                                                                                                                           |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`PRODUCT_DEFINITION.md`](./PRODUCT_DEFINITION.md)                             | 📖 The end product in one document: roles, feature inventory, route/flag placement, theme, privacy model, current-state assessment.                                                                                                                                                                                                                                                  |
 | [`architecture/ARCHITECTURE.md`](./architecture/ARCHITECTURE.md)               | Stack, routes, auth, RLS, read/write paths.                                                                                                                                                                                                                                                                                                                                          |
 | [`architecture/DATABASE_SCHEMA.md`](./architecture/DATABASE_SCHEMA.md)         | Tables and the core model.                                                                                                                                                                                                                                                                                                                                                           |
 | [`architecture/RLS_VISIBILITY.md`](./architecture/RLS_VISIBILITY.md)           | The read-visibility matrix — what each tier can/can't `SELECT`.                                                                                                                                                                                                                                                                                                                      |
 | [`architecture/DATA_CLASSIFICATION.md`](./architecture/DATA_CLASSIFICATION.md) | Sensitivity taxonomy + the typed classification manifest (`lib/security/data-classification.ts`).                                                                                                                                                                                                                                                                                    |
 | [`architecture/diagrams.md`](./architecture/diagrams.md)                       | 🖼️ Rendered architecture diagrams (inline SVG + diagrams.net viewer links) — the **oversight ladder** (downward-visibility + the two privacy exceptions) and the **Care · Plan · Multiply nav spine**. Auto-rendered from the `*.drawio` sources by CI.                                                                                                                              |
 | [`architecture/DEPLOYMENT.md`](./architecture/DEPLOYMENT.md)                   | Hosting, env vars, Edge Function setup.                                                                                                                                                                                                                                                                                                                                              |
+| [`architecture/EMAIL_DELIVERY.md`](./architecture/EMAIL_DELIVERY.md)           | Email delivery configuration and posture.                                                                                                                                                                                                                                                                                                                                            |
 | [`architecture/FREE_TIER_NOTES.md`](./architecture/FREE_TIER_NOTES.md)         | Tier posture (Vercel Hobby + Supabase Pro) and cost constraints.                                                                                                                                                                                                                                                                                                                     |
 | [`store/data-inventory.md`](./store/data-inventory.md)                         | Mobile-store data inventory & processor disclosure — data categories, sub-processors, permissions/push posture, for the Apple/Google data forms.                                                                                                                                                                                                                                     |
 | [`store/reviewer-demo-seed.md`](./store/reviewer-demo-seed.md)                 | The synthetic reviewer/demo dataset + idempotent seed routine that fills the role surfaces for app-store reviewers.                                                                                                                                                                                                                                                                  |
-| [`adr/`](./adr/)                                                               | Architecture Decision Records. Start at the [ADR index](./adr/README.md) — one row per decision with status and the supersession/amendment chain (the pivot is 0016–0022, amended onward; trace a decision's currency there before citing it).                                                                                                                                       |
 | [`agents/`](./agents/)                                                         | Agent/skill config: domain-doc rules, issue tracker, triage labels.                                                                                                                                                                                                                                                                                                                  |
-| [`audits/`](./audits/)                                                         | Periodic full-codebase audit reports (security, architecture, tests, docs). Latest: [`2026-07-11-full-codebase-audit.md`](./audits/2026-07-11-full-codebase-audit.md); launch decision: [`2026-07-14-product-readiness-evaluation.md`](./audits/2026-07-14-product-readiness-evaluation.md).                                                                                         |
 | [`runbooks/`](./runbooks/)                                                     | Operator how-tos: [release process](./runbooks/RELEASE.md), [backup & restore + restore drill](./runbooks/BACKUP_AND_RESTORE.md), [incident response](./runbooks/INCIDENT_RESPONSE.md), [observability & SLOs](./runbooks/OBSERVABILITY.md), [launch checklist](./runbooks/LAUNCH_RUNBOOK.md), [seeded-auth route smoke](./runbooks/SEEDED_AUTH_ROUTE_SMOKE.md), live-surface setup. |
+
+## The North Star and its sources (`julian-inputs/`)
+
+[`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md)
+is Julian's Q1–Q12, verbatim — the source of his words, kept read-only. The
+folder's [README](./julian-inputs/README.md) records provenance. The other
+source artifacts that once lived alongside it (the care-list template, the
+2026 multiplication plan, the feedback map) shipped into the product and were
+retired to git history (`git log -- docs/julian-inputs`).
 
 ## Archived
 
-Everything not on the North-Star path — the former blueprint, the old product roadmap,
-the feature backlog, per-feature specs, process docs, and historical phase specs — has
-been removed from the tree and lives in git history (`git log -- docs/archive` to list
-it, `git show <commit>:docs/archive/<file>` to read one). The former root-level `okf/`
-parallel doc tree and `plans/` worklog were retired the same way (#830; `git log -- okf`
-/ `git log -- plans`). It is history, not the source of truth for what to build next.
+Everything off the North-Star path — the former blueprint, old roadmaps,
+shipped plans/PRDs (`git log -- docs/plans`), point-in-time audits
+(`git log -- docs/audits`), code reviews (`git log -- docs/reviews`), retros,
+doc-sweep reports, the prior 1:1 PRD (`git log -- docs/PRD.md`), and the
+`PRODUCT_DEFINITION.md` synthesis doc — has been removed from the tree and
+lives in git history (`git log --diff-filter=D --name-only -- docs` to list
+deletions, `git show <commit>:<path>` to read one). It is history, not the
+source of truth for what to build next.

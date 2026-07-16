@@ -164,7 +164,7 @@ async function fetchGrantedSubjectIds(
 // Acceptable while note volume is small-church scale; if it grows, replace
 // with a count aggregate — but note the counts must stay RLS-scoped (what the
 // VIEWER can read), so a SECURITY DEFINER count RPC would have to re-encode
-// the grant logic rather than lean on RLS. See docs/ui-followups.md.
+// the grant logic rather than lean on RLS.
 async function fetchSubjectProfileIds(
   client: ReadClient,
   table: "care_notes" | "prayer_requests"
