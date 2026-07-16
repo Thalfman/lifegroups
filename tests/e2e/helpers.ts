@@ -6,14 +6,83 @@ import { createActionTracker } from "./action-telemetry";
 // decoupled (the a11y lane runs against the harness build; this lane runs
 // against the real app).
 
+// How long after a committed hard navigation the wedge watchdog waits for the
+// document to finish loading before logging (#910). Well under the 120s test
+// budget, well over any healthy load on the local stack (~1-2s).
+const LOAD_WATCHDOG_MS = 15_000;
+
+// Navigation-wait policy (#910): the CI `next start` server can boot into a
+// wedged state where every streamed protected-shell response renders and
+// flushes completely — the page is populated, hydrated, and interactive, and
+// server actions round-trip fine — but the HTML stream is never closed, so the
+// document `load` event never fires for the whole run. Playwright's navigation
+// waits default to `waitUntil: "load"`, which turned that wedge into a 120s
+// timeout on every hard navigation (7 of 8 specs red on unchanged main).
+//
+// Since the app is fully usable in that state, the lane must not gate hard
+// navigations on `load`: `goto` / `reload` / `waitForURL` default to
+// `waitUntil: "commit"` here, and the specs' locator auto-waits + `toPass()`
+// hydration retries carry readiness from there. An explicit `waitUntil` from a
+// call site still wins (e.g. signIn's `networkidle` goto to the static
+// /login, which the wedge never affects).
+//
+// A passive watchdog (same never-assert stance as the #839 action telemetry)
+// logs when a committed goto/reload still hasn't reached
+// `document.readyState === "complete"` after LOAD_WATCHDOG_MS, so the wedge's
+// frequency stays observable in CI job logs even while the lane stays green.
+function hardenNavigationWaits(page: Page, specLabel: string): void {
+  const watchLoad = (kind: string, target: string) => {
+    const onLoad = () => clearTimeout(timer);
+    const timer = setTimeout(async () => {
+      page.off("load", onLoad);
+      try {
+        const state = await page.evaluate(() => document.readyState);
+        if (state !== "complete") {
+          console.log(
+            `[e2e] #910 wedge: load not fired ${LOAD_WATCHDOG_MS}ms after ` +
+              `${kind} commit — ${target} (${specLabel})`
+          );
+        }
+      } catch {
+        // Page closed or mid-navigation — nothing to report.
+      }
+    }, LOAD_WATCHDOG_MS);
+    page.once("load", onLoad);
+    page.once("close", () => clearTimeout(timer));
+  };
+
+  const originalGoto = page.goto.bind(page);
+  page.goto = async (url, options) => {
+    const merged = { waitUntil: "commit" as const, ...options };
+    const response = await originalGoto(url, merged);
+    if (merged.waitUntil === "commit") watchLoad("goto", url);
+    return response;
+  };
+
+  const originalReload = page.reload.bind(page);
+  page.reload = async (options) => {
+    const merged = { waitUntil: "commit" as const, ...options };
+    const response = await originalReload(merged);
+    if (merged.waitUntil === "commit") watchLoad("reload", page.url());
+    return response;
+  };
+
+  const originalWaitForURL = page.waitForURL.bind(page);
+  page.waitForURL = (url, options) =>
+    originalWaitForURL(url, { waitUntil: "commit", ...options });
+}
+
 // Server-action stall telemetry (#839): passive per-request logging of
 // server-action POSTs — headers received, body complete, failed, or still
 // pending when the page closes — so an intermittent >30s stall is diagnosable
 // from the CI job log alone. The listeners never assert; budgets and retries
 // are untouched. The extended `test` below wires the default `page` fixture;
 // call this directly for pages created outside the fixture (e.g. a second
-// browser context) so their writes are covered too.
+// browser context) so their writes are covered too. Also applies the #910
+// navigation-wait policy above, so every instrumented page — fixture or
+// manual — settles hard navigations on "commit" instead of "load".
 export function instrumentPage(page: Page, specLabel: string): () => void {
+  hardenNavigationWaits(page, specLabel);
   const tracker = createActionTracker(specLabel);
   const emit = (message: string | undefined) => {
     if (message) console.log(message);
