@@ -1,7 +1,7 @@
 # One Care Note surface kit; the broad note stays outside
 
 **Status:** Accepted — 2026-07-06. Implements candidate 2 in the
-[2026-07-06 architecture deepening review](../reviews/2026-07-06-architecture-deepening-review.html).
+2026-07-06 architecture deepening review (retired to git history).
 Sibling to [ADR 0001](./0001-admin-write-action-runner.md)'s write-lifecycle
 sharing (`useActionForm`) and to the `ConfirmActionButton` config precedent.
 

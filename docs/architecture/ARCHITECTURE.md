@@ -4,7 +4,8 @@ Snapshot of the running app — a behavior-level map of routes, auth, and the
 read/write boundaries. It deliberately **cross-links** the detailed docs rather
 than duplicating them:
 
-- Product direction — [`PRD.md`](../PRD.md) and the
+- Product direction — the pivot ADRs
+  ([`0016`](../adr/0016-pivot-to-care-plan-multiply.md) onward) and the
   [`README.md`](../../README.md) role model + route table.
 - SQL schema — [`DATABASE_SCHEMA.md`](./DATABASE_SCHEMA.md).
 - Visibility ladder + the two privacy exceptions —

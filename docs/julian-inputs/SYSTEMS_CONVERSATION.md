@@ -35,8 +35,8 @@ concern, inactive, etc.
 
 _Note: the question proposed a candidate status vocabulary (doing well / needs
 encouragement / needs follow-up / concern / inactive). Julian did not adopt it
-verbatim — see [`../GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)
-for how this bears on the shipped `shepherd_care_status` enum._
+verbatim — the group-health rubric discovery doc (retired to git history)
+recorded how this bears on the shipped `shepherd_care_status` enum._
 
 **Q3.** What do you usually want to remember after connecting with a leader?
 
@@ -93,8 +93,8 @@ Julian only, excluding even `super_admin`. It is distinct from Q7's "broad
 notes" and is **not** satisfied by the shipped admin-only RLS (which grants
 SELECT to `super_admin` and `ministry_admin` alike). The Shepherd Care
 foundation migration already deferred this "if Julian asks for" it — that trigger
-is now met. Tracked as SC.4; see
-[`../SHEPHERD_CARE_TRACKER_PLAN.md`](../plans/SHEPHERD_CARE_TRACKER_PLAN.md) §12._
+is now met. Tracked as SC.4 (detailed in the shepherd-care tracker plan,
+retired to git history); shipped as the Private Care Note (ADR 0003)._
 
 **Q9.** For launch planning, what numbers do you currently use or estimate?
 Church attendance, people in groups, guests, expected growth, target group
