@@ -30,6 +30,38 @@ const LOAD_WATCHDOG_MS = 15_000;
 // logs when a committed goto/reload still hasn't reached
 // `document.readyState === "complete"` after LOAD_WATCHDOG_MS, so the wedge's
 // frequency stays observable in CI job logs even while the lane stays green.
+
+// Navigation targets can carry bearer secrets in the path — the invite
+// redemption spec navigates to `/invite/<raw-token>` while the token is still
+// redeemable, and raw invite tokens must never be logged (the invitations row
+// itself stores only a hash). The watchdog therefore logs a redacted route
+// shape, not the raw target: the pathname only (queries dropped), with each
+// segment kept when it's a lowercase route literal or a UUID (the useful
+// routing shape) and masked otherwise (tokens, encoded blobs).
+const UUID_SEGMENT =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const ROUTE_LITERAL = /^[a-z][a-z0-9-]{0,29}$/;
+function redactNavTarget(target: string): string {
+  let pathname: string;
+  try {
+    // goto targets are usually relative; page.url() is absolute — resolve
+    // both against a throwaway base.
+    pathname = new URL(target, "http://e2e.invalid").pathname;
+  } catch {
+    return "<unparseable target>";
+  }
+  return pathname
+    .split("/")
+    .map((segment) =>
+      segment === "" ||
+      ROUTE_LITERAL.test(segment) ||
+      UUID_SEGMENT.test(segment)
+        ? segment
+        : ":redacted"
+    )
+    .join("/");
+}
+
 function hardenNavigationWaits(page: Page, specLabel: string): void {
   const watchLoad = (kind: string, target: string) => {
     const onLoad = () => clearTimeout(timer);
@@ -40,7 +72,7 @@ function hardenNavigationWaits(page: Page, specLabel: string): void {
         if (state !== "complete") {
           console.log(
             `[e2e] #910 wedge: load not fired ${LOAD_WATCHDOG_MS}ms after ` +
-              `${kind} commit — ${target} (${specLabel})`
+              `${kind} commit — ${redactNavTarget(target)} (${specLabel})`
           );
         }
       } catch {
