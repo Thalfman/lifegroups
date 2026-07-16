@@ -1,7 +1,7 @@
 # The Care Note visibility pin is a behavioral differential, not a regex
 
 **Status:** Accepted — 2026-07-07. Implements candidate 5 in the
-[2026-07-06 architecture deepening review](../reviews/2026-07-06-architecture-deepening-review.html).
+2026-07-06 architecture deepening review (retired to git history).
 Deepens the SEC-1 pin from the 2026-06-21 audit; sibling to the audit-pairing
 fitness check (the write path's behavioral guard).
 

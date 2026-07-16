@@ -75,20 +75,16 @@ and multiplication by group type (ADR 0019/0021/0034). Delivered via PRD #371 an
   (Leader Care Note is group-scoped, amending 0017) — and
   **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)**,
   sliced into **#372–#382**.
-- [`docs/PRODUCT_DEFINITION.md`](./docs/PRODUCT_DEFINITION.md) — 📖 **the end
-  product in one document:** roles, feature inventory by surface, placement
-  (routes/nav/flags), theme, privacy model, and a dated current-state assessment.
 - [`CONTEXT.md`](./CONTEXT.md) — the domain glossary (Care Note, Prayer Request,
   Prospect, Over-Shepherd, Ministry Year, …). Use this vocabulary.
 - [`docs/julian-inputs/SYSTEMS_CONVERSATION.md`](./docs/julian-inputs/SYSTEMS_CONVERSATION.md)
   — ⭐ **the original North Star:** Julian's twelve questions. The pivot re-shapes
   these into Care/Plan/Multiply (ADR 0016); the Q&A remains the source of his words.
-- [`docs/PRD.md`](./docs/PRD.md) — the prior 1:1 PRD (Q1–Q12); superseded in framing
-  by PRD #371, kept as the historical record.
 - [`docs/adr/0004-systems-conversation-architecture.md`](./docs/adr/0004-systems-conversation-architecture.md)
   — the architecture decisions mapped to Q1–Q12 (pre-pivot).
-- [`docs/README.md`](./docs/README.md) — the documentation index. Everything off
-  the North-Star path has been retired to git history (`git log -- docs/archive`).
+- [`docs/README.md`](./docs/README.md) — the documentation index. Docs are limited
+  to decision records (`docs/adr/`), the glossary, and navigation maps; everything
+  point-in-time (plans, audits, reviews, the prior PRD) is retired to git history.
 
 ## The oversight ladder (role model)
 

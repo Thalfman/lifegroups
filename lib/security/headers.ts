@@ -5,7 +5,7 @@
 // sensitive pastoral-care data.
 //
 // The Content-Security-Policy is **enforcing** (#904; it shipped report-only
-// first per docs/REPO_SWEEP_PLAN.md §8 Q1). It is the pragmatic variant — the
+// first). It is the pragmatic variant — the
 // decision record for each allowance:
 //   - `style-src 'unsafe-inline'` + `script-src 'unsafe-inline' 'unsafe-eval'`:
 //     Next injects inline styles and its runtime needs eval in dev; the three

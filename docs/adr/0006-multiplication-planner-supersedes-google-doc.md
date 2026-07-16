@@ -8,9 +8,9 @@
 
 PRD Q11 left one decision owed by Julian: whether the in-app multiplication
 pipeline is the system of record, or whether his Google Doc
-([`../julian-inputs/LG_MULTIPLICATION_PLAN_2026.md`](../julian-inputs/LG_MULTIPLICATION_PLAN_2026.md))
+(captured as `LG_MULTIPLICATION_PLAN_2026.md`, retired to git history)
 stays master. This blocked nothing technically, but it was framed as a decision
-to *solicit from Julian* — and an unanswered governance question is a poor thing
+to _solicit from Julian_ — and an unanswered governance question is a poor thing
 to put in front of a busy Ministry Admin.
 
 Reviewing what already ships, the in-app pipeline already models most of the
@@ -40,7 +40,7 @@ obviously-better tool and let it win by adoption.** Concretely:
    to its **own admin surface** ("Multiplication" tab) — a cleaner, more
    editable replacement for the Google Doc.
 2. **Seed** the planner from the saved markdown
-   ([`LG_MULTIPLICATION_PLAN_2026.md`](../julian-inputs/LG_MULTIPLICATION_PLAN_2026.md))
+   (`LG_MULTIPLICATION_PLAN_2026.md`, retired to git history)
    so Julian opens a **populated** tab, not a blank one.
 3. **Extend the model** with the Doc fields not yet captured (see below).
 4. **Treat the 2026 vs. 2027 split as in-app data, not a decision.** The source
@@ -49,7 +49,7 @@ obviously-better tool and let it win by adoption.** Concretely:
    the app**, where it is audited and sortable.
 
 The "who is master" question dissolves: once the app holds the same data, better
-organised and live against real group/membership records, it *is* master in
+organised and live against real group/membership records, it _is_ master in
 practice. We document the app as authoritative and retire the Doc when Julian is
 ready — no decree required.
 
@@ -63,19 +63,19 @@ existing pipeline.
 - **Successor / leader-designate** on `multiplication_candidates` — the Doc's
   second `(Name)` (e.g. `(Tony L.)`, `(Cindy Kessaris)`) reads as the
   apprentice/leader intended to carry the multiplied group. This is distinct
-  from the *existing* co-shepherd tenure signal, which is derived from
+  from the _existing_ co-shepherd tenure signal, which is derived from
   `group_leaders` and feeds the readiness criterion. Net-new field.
 - **Meeting time** (`during the day` / `evening`) — present in the Doc, not yet
   modelled. Captured so the planner can honour the "two options per person"
   goal. Whether this lands on `groups` or on the candidate is a build-slice
-  call; the planner needs to *display and edit* it either way.
+  call; the planner needs to _display and edit_ it either way.
 - **Uncertainty / provenance** — the Doc's `(?)` markers and the
   reconciliation caveats (header counts that don't match listed leaders) are
   carried as notes during seeding, not as schema.
 
 ## Deferred (explicitly out of scope here)
 
-- **"Launch from scratch" interest lists** — the Doc lists *people interested*
+- **"Launch from scratch" interest lists** — the Doc lists _people interested_
   in a not-yet-existent group (e.g. "Karl and Lori Asen"). These cannot be
   `multiplication_candidates` (which FK to a real `groups` row) and need a
   net-new prospective-group / interest model. Deferred to a later slice so the
@@ -91,8 +91,8 @@ existing pipeline.
 - **Seeding beats a blank tab.** A populated planner he can correct is far more
   likely to displace the Doc than an empty form he must re-enter from scratch.
 - **Extending the existing model beats a new one.** `multiplication_candidates`
-  + segmentation already encode Julian's criteria and the audit/RLS patterns;
-  bolting on two fields is cheaper and safer than a parallel system.
+  - segmentation already encode Julian's criteria and the audit/RLS patterns;
+    bolting on two fields is cheaper and safer than a parallel system.
 
 ## Revisit if
 

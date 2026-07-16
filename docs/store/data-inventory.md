@@ -3,7 +3,7 @@
 Status: Living document — keep accurate to the code and schema
 Owner: Tom
 Last updated: 2026-07-11
-Phase: Mobile store roadmap Phase 3 (see [`docs/MOBILE_STORE_ROADMAP.md`](../MOBILE_STORE_ROADMAP.md))
+Phase: Mobile store roadmap Phase 3 (roadmap doc retired to git history)
 
 This document enumerates the data categories LifeGroups collects and the
 processors that receive them, derived from the actual code and schema. It feeds

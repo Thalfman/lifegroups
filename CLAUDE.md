@@ -94,7 +94,7 @@ lib/                  auth/         session, roles, leader-surface flag
 types/                Hand-rolled Supabase row types + enums (the trust boundary)
 supabase/             migrations/ (schema + RLS), seed/, functions/ (Edge), dev/
 tests/                a11y/ Playwright specs + harness, stubs/
-docs/                 adr/ (decisions), architecture/, agents/, plans/
+docs/                 adr/ (decisions), architecture/, agents/, runbooks/
 proxy.ts              Refreshes the Supabase session cookie on every request
                         (Next 16's renamed `middleware` convention)
 ```

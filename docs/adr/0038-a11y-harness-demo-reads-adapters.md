@@ -1,7 +1,7 @@
 # The a11y harness renders seam-backed surfaces through their real builders
 
 **Status:** Accepted — 2026-07-07. Implements candidate 4 (safe slice) in the
-[2026-07-06 architecture deepening review](../reviews/2026-07-06-architecture-deepening-review.html).
+2026-07-06 architecture deepening review (retired to git history).
 Generalizes the `launch-planning-snapshot` precedent ("the demo can't drift
 from the live card's shape") and extends the reads seam (ADR 0015) with a
 third adapter kind: demo.

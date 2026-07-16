@@ -1,9 +1,8 @@
 # Product
 
-> Brand/design register. For the full end-product definition — feature
-> inventory, placement (routes/nav/flags), privacy model, and the dated
-> current-state assessment — see
-> [`docs/PRODUCT_DEFINITION.md`](./docs/PRODUCT_DEFINITION.md).
+> Brand/design register. For the role model and route table see
+> [`README.md`](./README.md); for the privacy model see
+> [`docs/architecture/RLS_VISIBILITY.md`](./docs/architecture/RLS_VISIBILITY.md).
 
 ## Register
 

@@ -10,8 +10,8 @@
 // reshaping this module — but with one dimension present it grades on that
 // dimension alone (weights renormalize over whatever is supplied).
 //
-// See docs/plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md (rubric locked 2026-05-30)
-// and docs/adr/0004-systems-conversation-architecture.md (D8).
+// Rubric locked 2026-05-30; see
+// docs/adr/0004-systems-conversation-architecture.md (D8).
 
 import type { GroupHealthLetter } from "@/types/enums";
 import { isRecord } from "@/lib/admin/validation";

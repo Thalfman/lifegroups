@@ -1,4 +1,4 @@
-// Design-system form classes (docs/design-direction.md §4 Forms). Every form
+// Design-system form classes. Every form
 // surface styles through these Tailwind utility strings; the legacy
 // CSSProperties twins were retired with issue #847 once the last inline-style
 // surfaces migrated.

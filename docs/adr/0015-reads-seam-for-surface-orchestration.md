@@ -4,7 +4,7 @@
 landings (the two login tiers the admin-focused migration never reached)
 gained `buildOverShepherdData` / `buildLeaderCareData` with in-memory test
 adapters, closing candidate 3 of the
-[2026-07-06 architecture deepening review](../reviews/2026-07-06-architecture-deepening-review.html).
+2026-07-06 architecture deepening review (retired to git history).
 **Date:** 2026-06-04
 
 ## Context

@@ -101,8 +101,8 @@ function dateCell(iso: string | null): string {
   return dateLabel(iso.slice(0, 10));
 }
 
-// DataTable conventions (docs/design-direction.md §4 Tables & lists): 12px
-// sentence-case ink3 header row, 13px cells, lineSoft row separators.
+// DataTable conventions: 12px sentence-case ink3 header row, 13px cells,
+// lineSoft row separators.
 const TH = "pb-2 pr-3.5 text-left font-sans text-xs font-semibold text-ink3";
 
 const TD =

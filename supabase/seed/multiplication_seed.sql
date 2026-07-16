@@ -1,7 +1,8 @@
 -- Julian #144: multiplication planner seed.
 --
--- Transcribes docs/julian-inputs/LG_MULTIPLICATION_PLAN_2026.md (the provenance
--- record per ADR 0006). Each group carries a free-text group_type (the cell
+-- Transcribes LG_MULTIPLICATION_PLAN_2026.md (the provenance record per ADR
+-- 0006, since retired to git history). Each group carries a free-text
+-- group_type (the cell
 -- model was retired); a candidate anchors to its group.
 --
 -- Run after the schema + segmentation + pipeline migrations, like

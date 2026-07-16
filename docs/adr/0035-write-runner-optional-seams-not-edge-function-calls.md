@@ -2,9 +2,9 @@
 
 **Status:** Accepted — 2026-07-06. Extends
 [ADR 0001](./0001-admin-write-action-runner.md) /
-[ADR 0005](./0005-leader-write-action-runner.md) (the Write Action Runner and
+[ADR 0005](./0005-centralized-write-validation.md) (the Write Action Runner and
 its shared core). Implements the safe slice of candidate 1 in the
-[2026-07-06 architecture deepening review](../reviews/2026-07-06-architecture-deepening-review.html).
+2026-07-06 architecture deepening review (retired to git history).
 
 Four write families re-spelled the runner's whole tested skeleton by hand —
 untested — because small things wouldn't fit through its interface: a value

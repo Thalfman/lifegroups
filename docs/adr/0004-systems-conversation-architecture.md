@@ -3,7 +3,8 @@
 The North Star is Julian's systems conversation
 ([`../julian-inputs/SYSTEMS_CONVERSATION.md`](../julian-inputs/SYSTEMS_CONVERSATION.md),
 2026-05-27). This ADR records the architecture decisions taken in response, mapped
-**1:1 to the questions**. The product side of the same mapping is [`../PRD.md`](../PRD.md).
+**1:1 to the questions**. The product side of the same mapping was `PRD.md`
+(retired to git history).
 Deeper decisions have their own records — [ADR 0001](./0001-admin-write-action-runner.md),
 [ADR 0002](./0002-oversight-ladder-and-leader-gating.md),
 [ADR 0003](./0003-private-care-note-encryption.md) — and are referenced below rather than restated.
@@ -20,7 +21,7 @@ freeform sheet. Q6 ("both!") makes history _and_ tasks first-class; Q3 fixes wha
 interaction must remember (issue/good-thing + whether/when/what follow-up).
 **Consequences.** `shepherd_care_profiles`, `shepherd_care_interactions`,
 `shepherd_care_follow_ups`. The spreadsheet columns in
-[`../julian-inputs/MIN_CARE_LIST_TEMPLATE.md`](../julian-inputs/MIN_CARE_LIST_TEMPLATE.md)
+`MIN_CARE_LIST_TEMPLATE.md` (retired to git history)
 map onto profile fields.
 
 ## D2 — A per-leader status enum · _answers Q2_
@@ -100,9 +101,9 @@ authorized and audited uniformly.
 configurable healthy threshold), an admin-entered spiritual-growth 1–5, and a leader-
 answered group question relayed and entered by the admin — output as a **letter A–D**
 backed by an internal numeric, on a **monthly** review period. Multiplication readiness
-is excluded to avoid double-counting D7's launch pipeline. The full rubric is
-[`../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md);
-build slices are #127/#128/#129.
+is excluded to avoid double-counting D7's launch pipeline. The full rubric was
+`GROUP_HEALTH_RUBRIC_DISCOVERY.md` (retired to git history; the shipped rubric
+lives in code and ADR 0018); build slices are #127/#128/#129.
 
 **Why it's recorded here.** Two non-obvious calls a future reader will question:
 

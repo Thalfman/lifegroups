@@ -1,7 +1,7 @@
 # Big shells get a view-model seam where branching earns it (invite workflow first)
 
 **Status:** Accepted — 2026-07-07. Implements candidate 6 (safe slice) in the
-[2026-07-06 architecture deepening review](../reviews/2026-07-06-architecture-deepening-review.html).
+2026-07-06 architecture deepening review (retired to git history).
 Generalizes the `lib/forms/confirm-action-view.ts` precedent (#489): pure
 decisions extracted from a `"use client"` shell so the lifecycle is
 unit-tested once, with the component reduced to hooks + markup.
